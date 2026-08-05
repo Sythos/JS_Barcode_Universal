@@ -1,0 +1,76 @@
+ISBN (Bookland EAN-13) — format provenance and usability
+==========================================================================
+
+This file records where the ISBN (Bookland EAN-13) symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+ISBN is a NUMBERING scheme, not a symbology. An ISBN barcode is an
+ordinary EAN-13 carrying a 978 or 979 prefix — the so-called "Bookland"
+country code. The number itself is administered by the International ISBN
+Agency under ISO 2108; the symbol is EAN-13 under GS1's rules.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO 2108 — International Standard Book Number (the numbering rules).
+ISO/IEC 15420 — EAN/UPC bar code symbology specification (the symbol).
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [TO VERIFY]
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+No patent encumbrance is known for either the numbering scheme or the
+EAN-13 symbol used to print it. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+No live trademark restriction is known on implementing ISBN encoding.
+"ISBN" is a standard designation administered by the International ISBN
+Agency. [TO VERIFY]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+ISBN (Bookland EAN-13) is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code and no constant table from any other barcode implementation was used,
+consulted or copied, under any licence.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, ISBN (Bookland EAN-13) is understood to be freely
+implementable and redistributable, and this project's implementation of it
+is distributed under the MIT License with no additional restriction.
+
+References relied upon:
+  - ISO 2108, ISO
+  - ISO/IEC 15420, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

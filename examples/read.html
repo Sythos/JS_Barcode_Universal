@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sythos Barcode Suite — Read</title>
+<!--
+  Sythos Barcode Suite — example
+  Copyright (c) 2026 Sythos
+  SPDX-License-Identifier: MIT
+
+  File input first, camera second — deliberately.
+
+  getUserMedia requires a secure context, so the camera cannot work when this
+  page is opened from file://. Reading a dropped or chosen image has no such
+  restriction and works everywhere, including iOS Safari opened from disk. The
+  camera is offered as a progressive enhancement, and the page says plainly why
+  it is unavailable rather than appearing broken.
+-->
+<style>
+  :root {
+    --bg: #10131a; --panel: #181c26; --line: #262c3a;
+    --ink: #e6e9f0; --muted: #8b93a7; --accent: #5ac8fa;
+    --ok: #4ade80; --warn: #fbbf24;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f8; --panel: #ffffff; --line: #dfe3ea;
+      --ink: #171a21; --muted: #666e80; --accent: #0a84c4;
+      --ok: #16a34a; --warn: #b45309;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header { max-width: 1000px; margin: 0 auto 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .sub a { color: var(--accent); }
+  .layout { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px;
+            grid-template-columns: 1fr 1fr; align-items: start; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: 12px; padding: 18px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;
+       color: var(--muted); margin: 0 0 12px; }
+  #drop {
+    border: 2px dashed var(--line); border-radius: 10px; padding: 32px 16px;
+    text-align: center; color: var(--muted); cursor: pointer; font-size: 14px;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.over { border-color: var(--accent); background: rgba(90,200,250,0.08); }
+  #drop b { color: var(--ink); }
+  button {
+    padding: 10px 16px; font: inherit; font-weight: 600; font-size: 13px;
+    cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #051019; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  video, #preview {
+    width: 100%; border-radius: 8px; background: #000; display: block; margin-top: 12px;
+  }
+  #preview { background: #fff; }
+  .note {
+    margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 12.5px;
+    background: rgba(251,191,36,0.12); border: 1px solid var(--warn); color: var(--warn);
+  }
+  .note code { font-family: ui-monospace, monospace; }
+  #results:empty::after {
+    content: "Nothing decoded yet."; color: var(--muted); font-size: 13px;
+  }
+  .hit {
+    border: 1px solid var(--line); border-left: 3px solid var(--ok);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    background: var(--bg);
+  }
+  .hit .fmt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+              color: var(--ok); font-weight: 700; }
+  .hit .val { font-family: ui-monospace, monospace; font-size: 13px;
+              word-break: break-all; margin-top: 3px; }
+  .hit .val a { color: var(--accent); }
+  .status { font-size: 12px; color: var(--muted); margin-top: 10px;
+            font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Read a barcode</h1>
+  <p class="sub">
+    Sythos Barcode Suite &mdash; 100% original JavaScript, zero dependencies, MIT.
+    See also <a href="create.html">create.html</a>.
+  </p>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="panel">
+      <h2>From an image</h2>
+      <div id="drop">
+        <b>Drop an image here</b><br>or click to choose a file
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <canvas id="preview"></canvas>
+      <div class="status" id="fileStatus"></div>
+    </div>
+
+    <div class="panel" style="margin-top:20px">
+      <h2>From the camera</h2>
+      <button class="primary" id="camStart">Start camera</button>
+      <button id="camStop" disabled>Stop</button>
+      <!-- playsinline is required on iOS: without it the video takes over the
+           whole screen and the canvas never sees a frame. -->
+      <video id="video" playsinline muted autoplay hidden></video>
+      <div id="camNote"></div>
+      <div class="status" id="camStatus"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Results</h2>
+    <div id="results"></div>
+  </div>
+</div>
+
+<canvas id="work" hidden></canvas>
+
+<script src="../bundle/sythos-barcode.js"></script>
+<script>
+(function () {
+  'use strict';
+  var B = window.SythosBarcode;
+
+  var el = function (id) { return document.getElementById(id); };
+  var work = el('work');
+  var results = el('results');
+
+  function show(hits, source) {
+    if (!hits.length) return false;
+    results.innerHTML = '';
+    hits.forEach(function (h) {
+      var div = document.createElement('div');
+      div.className = 'hit';
+
+      var fmt = document.createElement('div');
+      fmt.className = 'fmt';
+      fmt.textContent = h.format + (source ? ' · ' + source : '');
+
+      var val = document.createElement('div');
+      val.className = 'val';
+      // Linkify URLs, but build the anchor with the DOM so decoded content is
+      // never interpreted as markup. Scanned data is untrusted input.
+      if (/^https?:\/\//i.test(h.text)) {
+        var a = document.createElement('a');
+        a.href = h.text;
+        a.textContent = h.text;
+        a.rel = 'noopener noreferrer';
+        a.target = '_blank';
+        val.appendChild(a);
+      } else {
+        val.textContent = h.text;
+      }
+
+      div.appendChild(fmt);
+      div.appendChild(val);
+      results.appendChild(div);
+    });
+    return true;
+  }
+
+  function scanCanvas(canvas) {
+    var ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx || !canvas.width || !canvas.height) return [];
+    var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    try {
+      return B.decode(image, { tryHarder: true });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /* ---------------- file input ---------------- */
+
+  var drop = el('drop');
+  var fileInput = el('file');
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) {
+      e.preventDefault(); drop.classList.add('over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) {
+      e.preventDefault(); drop.classList.remove('over');
+    });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+
+      // Very large photos cost time without adding information; cap the long
+      // edge so a 48-megapixel phone shot still scans promptly.
+      var max = 1600;
+      var s = Math.min(1, max / Math.max(img.width, img.height));
+      var w = Math.max(1, Math.round(img.width * s));
+      var h = Math.max(1, Math.round(img.height * s));
+
+      var preview = el('preview');
+      preview.width = w; preview.height = h;
+      preview.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      work.width = w; work.height = h;
+      work.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, w, h);
+
+      var t0 = (performance && performance.now) ? performance.now() : 0;
+      var hits = scanCanvas(work);
+      var ms = ((performance && performance.now) ? performance.now() : 0) - t0;
+
+      el('fileStatus').textContent =
+        w + '×' + h + ' · ' + ms.toFixed(0) + ' ms · ' + hits.length + ' found';
+      if (!show(hits, 'image')) {
+        results.innerHTML = '<div class="status">No barcode found in that image.</div>';
+      }
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      el('fileStatus').textContent = 'Could not load that file as an image.';
+    };
+    img.src = url;
+  }
+
+  /* ---------------- camera ---------------- */
+
+  var video = el('video');
+  var stream = null;
+  var raf = null;
+
+  var secure = window.isSecureContext ||
+    location.protocol === 'https:' ||
+    location.hostname === 'localhost';
+
+  if (!secure) {
+    el('camNote').innerHTML =
+      '<div class="note">The camera needs a secure context, so it is unavailable ' +
+      'when this page is opened from <code>file://</code>. Serve the folder over ' +
+      'http and reload &mdash; for example <code>npx serve</code> &mdash; or use ' +
+      'the image input above, which works anywhere.</div>';
+    el('camStart').disabled = true;
+  } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    el('camNote').innerHTML =
+      '<div class="note">This browser does not expose a camera API.</div>';
+    el('camStart').disabled = true;
+  }
+
+  el('camStart').addEventListener('click', function () {
+    // Called from a click, which is what iOS requires for both getUserMedia
+    // and the subsequent play().
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    }).then(function (s) {
+      stream = s;
+      video.srcObject = s;
+      video.hidden = false;
+      el('camStart').disabled = true;
+      el('camStop').disabled = false;
+      return video.play();
+    }).then(function () {
+      loop();
+    }).catch(function (e) {
+      el('camNote').innerHTML =
+        '<div class="note">Camera unavailable: ' + String(e.message || e) + '</div>';
+    });
+  });
+
+  el('camStop').addEventListener('click', stopCamera);
+
+  function stopCamera() {
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    video.hidden = true;
+    el('camStart').disabled = false;
+    el('camStop').disabled = true;
+    el('camStatus').textContent = '';
+  }
+
+  var frames = 0;
+  var lastReport = 0;
+
+  function loop() {
+    raf = requestAnimationFrame(loop);
+    if (!video.videoWidth) return;
+
+    // Scan at a reduced size: a 720p frame carries far more detail than the
+    // decoder needs, and the binarizer cost is what sets the frame rate.
+    var scale = Math.min(1, 800 / video.videoWidth);
+    work.width = Math.round(video.videoWidth * scale);
+    work.height = Math.round(video.videoHeight * scale);
+    work.getContext('2d', { willReadFrequently: true })
+      .drawImage(video, 0, 0, work.width, work.height);
+
+    frames++;
+    var hits = scanCanvas(work);
+    if (hits.length) {
+      show(hits, 'camera');
+      stopCamera();
+      return;
+    }
+
+    var now = (performance && performance.now) ? performance.now() : 0;
+    if (now - lastReport > 500) {
+      lastReport = now;
+      el('camStatus').textContent =
+        'scanning ' + work.width + '×' + work.height + ' · ' + frames + ' frames';
+    }
+  }
+
+  window.addEventListener('pagehide', stopCamera);
+})();
+</script>
+</body>
+</html>

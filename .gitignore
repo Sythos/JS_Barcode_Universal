@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------------------
+# JS_Barcode_Universal
+#
+# What this repository publishes is the library and nothing else:
+#
+#   src/       the source, which is the package
+#   bundle/    prebuilt IIFE + ESM, so a <script> tag works with no build step
+#   examples/  two runnable demo pages
+#
+# Everything below is either a local development artefact, a generated file
+# that a consumer never needs, or tooling that is deliberately not published.
+# The rule of thumb: if it is not required to *use* the library, it does not
+# belong in the repository.
+# ---------------------------------------------------------------------------
+
+# --- Editor and local assistant artefacts ---------------------------------
+# Assistant working directories and instruction files are dot-prefixed or
+# all-caps by convention; both shapes are covered generically rather than by
+# naming individual tools, which dates badly.
+.assistant*/
+.ai/
+.cursor/
+.aider*
+.github/copilot-instructions.md
+*_INSTRUCTIONS.md
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Development tooling and local scripts --------------------------------
+# Not published: none of it is needed to use the library, and all of it is
+# specific to how the project happens to be developed.
+tools/
+scripts/
+test/
+tests/
+__tests__/
+bench/
+fixtures/
+scratch/
+sandbox/
+local/
+dev/
+tmp/
+temp/
+*.test.js
+*.test.mjs
+*.spec.js
+*.spec.mjs
+test-*.js
+test-*.mjs
+scratch-*.js
+scratch-*.mjs
+dev-*.js
+dev-*.mjs
+*.local.js
+*.local.mjs
+*.local.json
+
+# --- Build configuration a consumer never runs ----------------------------
+tsconfig.json
+.eslintrc*
+eslint.config.*
+.prettierrc*
+.editorconfig
+
+# --- Generated output -----------------------------------------------------
+# bundle/ is deliberately NOT ignored: it is committed on purpose, because the
+# tool that builds it is not published, so a fresh clone must find it ready.
+dist/
+types/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# --- Node -----------------------------------------------------------------
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+yarn-error.log*
+.npm/
+*.tgz
+
+# --- OS -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini

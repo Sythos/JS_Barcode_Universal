@@ -1,0 +1,75 @@
+QR Code — format provenance and usability
+==========================================================================
+
+This file records where the QR Code symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Devised by DENSO WAVE INCORPORATED (Japan) in 1994, for tracking parts in
+vehicle manufacturing.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 18004 — QR Code bar code symbology specification.
+Published by ISO/IEC. The specification TEXT is copyrighted by its
+publisher and is paywalled; it is not reproduced here.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+DENSO WAVE holds patents relating to QR Code and has publicly stated that
+it does not exercise those rights for the standardised symbology, which is
+what made QR Code ubiquitous. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"QR Code" is a REGISTERED TRADEMARK of DENSO WAVE INCORPORATED. This is
+the most important entry in this file: the mark does not restrict
+implementing the symbology, but it does constrain how a product is NAMED
+and BRANDED. Describing software as "reads QR Code" is descriptive use;
+naming a product "QR Code Studio" is not.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+QR Code is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code and no constant table from any other barcode implementation was used,
+consulted or copied, under any licence.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, QR Code is understood to be freely
+implementable and redistributable, and this project's implementation of it
+is distributed under the MIT License with no additional restriction.
+
+References relied upon:
+  - ISO/IEC 18004, ISO/IEC
+  - DENSO WAVE's published position on its QR Code patent rights [TO VERIFY]
+  - QR Code trademark registration, DENSO WAVE INCORPORATED [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

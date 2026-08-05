@@ -1,0 +1,71 @@
+GS1-128 — format provenance and usability
+==========================================================================
+
+This file records where the GS1-128 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Not a distinct symbology: GS1-128 is Code 128 carrying a leading FNC1
+character, with its data structured by GS1 Application Identifiers.
+Formerly known as UCC/EAN-128.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 15417 — Code 128 (the underlying symbology).
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [TO VERIFY] (the Application Identifier rules)
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+Inherits Code 128's position; understood expired. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"GS1" and its symbology names are trademarks of GS1 AISBL. "GS1-128" is a
+GS1 designation — again a constraint on branding, not on implementation.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+GS1-128 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code and no constant table from any other barcode implementation was used,
+consulted or copied, under any licence.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, GS1-128 is understood to be freely
+implementable and redistributable, and this project's implementation of it
+is distributed under the MIT License with no additional restriction.
+
+References relied upon:
+  - ISO/IEC 15417, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

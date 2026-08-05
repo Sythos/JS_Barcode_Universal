@@ -1,0 +1,215 @@
+MIT License
+
+Copyright (c) 2026 Sythos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+APPENDIX — INFORMATIONAL INVENTORY OF NON-MIT LICENSES, PATENTS AND TRADEMARKS
+================================================================================
+
+READ THIS FIRST
+---------------
+
+**Nothing in this appendix applies to, encumbers, or imposes any obligation on
+the software distributed under the MIT License above.**
+
+This package contains 100% original code, written from scratch. It has ZERO
+runtime dependencies. No source code, and no table of values, has been copied
+from any other software project, under any license. The distributed artifact is
+therefore covered by the MIT License above and by nothing else.
+
+This appendix exists only because barcode symbologies carry a history of
+specification copyrights, expired patents and live trademarks, and it is useful
+to have that history inventoried in one place. It is an ENGINEERING INVENTORY,
+NOT LEGAL ADVICE. Every row marked "TO VERIFY" is an item the author has not
+independently confirmed; do not rely on any of it for a legal decision. If your
+use case is commercially sensitive, consult a qualified attorney.
+
+
+1. THE DISTRIBUTED PACKAGE
+--------------------------
+
+    Runtime dependencies ............ none
+    Third-party code included ....... none
+    Third-party licenses that apply . none
+    Effective license ............... MIT, in full, as stated above
+
+
+2. DEVELOPMENT-TIME TOOLS (NOT DISTRIBUTED, NOT LINKED, NEVER READ)
+-------------------------------------------------------------------
+
+    Tool                              License      Role
+    --------------------------------  -----------  ---------------------------
+    independent barcode               various      differential encode and
+      implementations                              decode oracles
+    typescript (tsc)                  Apache-2.0   .d.ts generation from JSDoc
+
+THE PROJECT RULE, STATED PRECISELY:
+
+    These tools may be INVOKED during testing.
+    Their SOURCE is never opened, and no line of their code, and no constant
+    from their tables, ever enters this project's output.
+
+They are used strictly as black boxes: an input goes in, the OUTPUT that comes
+back is compared against ours. Outputs are facts about a published symbology,
+not creative expression, so comparing against them creates no derivative work
+and no license obligation. This is the standard clean-room technique, and it is
+the opposite of source copying — it is how originality is PROVEN rather than
+merely asserted.
+
+typescript (tsc) is not a barcode library and carries no symbology logic at
+all. It is an optional generator: it reads the JSDoc annotations already
+present in this project's own source and emits .d.ts declarations from them.
+There is no TypeScript source in this project.
+
+No barcode library is a dependency of this package. None of the tools above is
+a runtime dependency, none ships in the published package, and running or not
+running any of them changes nothing about the distributed JavaScript.
+
+Should any of them ever be proposed as a runtime dependency, this section must
+be revisited — the zero-dependency rule exists to prevent exactly that.
+
+
+3. SPECIFICATION DOCUMENTS
+--------------------------
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGIES the text
+describes are not — an encoding scheme is a system, not a work of authorship.
+This project implements the symbologies; it does not reproduce, redistribute or
+excerpt the specification documents.
+
+    Document                          Publisher / rights holder
+    --------------------------------  ---------------------------------------
+    ISO/IEC 18004    (QR Code)        ISO/IEC — copyrighted, paywalled
+    ISO/IEC 16022    (Data Matrix)    ISO/IEC — copyrighted, paywalled
+    ISO/IEC 15438    (PDF417)         ISO/IEC — copyrighted, paywalled
+    ISO/IEC 24778    (Aztec)          ISO/IEC — copyrighted, paywalled
+    ISO/IEC 16023    (MaxiCode)       ISO/IEC — copyrighted, paywalled
+    ISO/IEC 15417    (Code 128)       ISO/IEC — copyrighted, paywalled
+    ISO/IEC 16388    (Code 39)        ISO/IEC — copyrighted, paywalled
+    ISO/IEC 16390    (ITF)            ISO/IEC — copyrighted, paywalled
+    ISO/IEC 15420    (EAN/UPC)        ISO/IEC — copyrighted, paywalled
+    ISO 2108         (ISBN numbering) ISO — copyrighted; the numbering
+                                      scheme, not a symbology
+    ISO/IEC 24723-5  (GS1 Composite,
+                      DataBar, DotCode
+                      and related)    ISO/IEC — copyrighted, paywalled
+    GS1 General Specifications        GS1 — freely downloadable; redistribution
+                                      terms are GS1's own       [TO VERIFY]
+    AIM symbology specifications      AIM Inc. — terms vary     [TO VERIFY]
+    GB/T 21049       (Han Xin Code)   SAC (China)               [TO VERIFY]
+    USPS publications (POSTNET,
+      PLANET, Intelligent Mail)       USPS — published openly   [TO VERIFY]
+
+
+4. PATENT POSITIONS
+-------------------
+
+Barcode patents from the 1990s have broadly expired, and several rights holders
+issued public statements permitting free use. NONE OF THE FOLLOWING HAS BEEN
+INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
+
+    Symbology      Rights holder      Reported position
+    -------------  -----------------  --------------------------------------
+    QR Code        DENSO WAVE         patent rights reportedly not
+                                      exercised for standardised QR
+                                                                  [TO VERIFY]
+    Micro QR       DENSO WAVE         assumed to follow QR         [TO VERIFY]
+    rMQR           DENSO WAVE         standardised 2022 — MUCH NEWER; do NOT
+                                      assume the older QR position covers it
+                                                        [TO VERIFY — PRIORITY]
+    Data Matrix    orig. RVSI/CiMatrix  ECC200 reported released for
+                                      public use                   [TO VERIFY]
+    PDF417         orig. Symbol Tech. reported released for
+                                      public use                   [TO VERIFY]
+    Aztec Code     orig. Welch Allyn  reported placed in the
+                                      public domain                [TO VERIFY]
+    MaxiCode       UPS                reported released for
+                                      public use                   [TO VERIFY]
+    DotCode        AIM                open AIM standard            [TO VERIFY]
+    Han Xin Code   Chinese nat'l std  status under GB/T 21049      [TO VERIFY]
+    DataBar/GS1    GS1                published for open use       [TO VERIFY]
+    Code 128 / 39 /
+      93 / Codabar / ITF / MSI /
+      Code 11 / Telepen / Pharmacode  originating patents long expired
+                                                                   [TO VERIFY]
+
+Formats whose status could not be established as clearly redistributable are
+NOT IMPLEMENTED by this project. See section 6.
+
+
+5. TRADEMARKS
+-------------
+
+**A trademark is not a license.** These marks do not restrict anyone's right to
+implement the corresponding symbology. They restrict BRANDING — how a product
+names and presents itself.
+
+    Mark                     Holder
+    -----------------------  -----------------------------------
+    QR Code(R)               DENSO WAVE INCORPORATED
+    Micro QR, rMQR           DENSO WAVE INCORPORATED
+    Aztec Code               originally Welch Allyn      [TO VERIFY]
+    MaxiCode                 United Parcel Service of America
+    GS1, GS1 DataBar,
+      GS1 DataMatrix, GS1-128  GS1 AISBL
+    Data Matrix              [status TO VERIFY]
+    Telepen                  SB Electronic Systems Ltd   [TO VERIFY]
+
+All marks are the property of their respective owners and are used here in a
+purely descriptive, nominative sense — to identify which symbologies this
+software reads and writes.
+
+PRACTICAL CONSEQUENCE: this package may accurately describe itself as
+implementing QR Code, Aztec Code, MaxiCode and so on. It must NOT be NAMED
+after any of those marks. A descriptive package name is required.
+
+
+6. EXPLICITLY NOT IMPLEMENTED — PROPRIETARY OR UNCLEAR STATUS
+-------------------------------------------------------------
+
+Deliberately excluded because they are proprietary, license-encumbered, or of
+status too unclear to redistribute an implementation with confidence:
+
+    Digimarc Barcode ........ proprietary, Digimarc Corporation
+    VeriCode / VSCode ....... proprietary, Veritec Inc.
+    DataGlyphs .............. proprietary, Xerox
+    Snowflake Code .......... proprietary, Marconi Data Systems
+    ShotCode ................ proprietary
+    Microsoft Tag ........... proprietary, discontinued
+    Bokode .................. research project, unclear status
+    Softstrip ............... obsolete, unclear status
+    Ultracode ............... status unresolved            [TO VERIFY]
+
+If any of these is later confirmed to be freely implementable and
+redistributable, it may move into scope — and this section must be updated in
+the same commit.
+
+
+7. MAINTENANCE RULE
+-------------------
+
+This appendix is normative for the project's process, not for its users. Any
+change to the dependency set, the oracle tools, or the implemented format list
+MUST update this file in the same commit. A "[TO VERIFY]" marker may only be
+removed together with a citation recorded in NOTICE.md.
+
+Last reviewed: 2026-08-04

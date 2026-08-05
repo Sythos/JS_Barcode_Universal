@@ -1,0 +1,70 @@
+EAN-13 — format provenance and usability
+==========================================================================
+
+This file records where the EAN-13 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Introduced in 1977 as the European Article Number, extending the
+twelve-digit UPC to thirteen digits. Administered today by GS1.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 15420 — EAN/UPC bar code symbology specification.
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [TO VERIFY]
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+The originating patents date from the 1970s-1980s and are understood to
+have expired long ago. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"GS1" and its symbology names are trademarks of GS1 AISBL.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+EAN-13 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code and no constant table from any other barcode implementation was used,
+consulted or copied, under any licence.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, EAN-13 is understood to be freely
+implementable and redistributable, and this project's implementation of it
+is distributed under the MIT License with no additional restriction.
+
+References relied upon:
+  - ISO/IEC 15420, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

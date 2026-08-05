@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sythos Barcode Suite — Create</title>
+<!--
+  Sythos Barcode Suite — example
+  Copyright (c) 2026 Sythos
+  SPDX-License-Identifier: MIT
+
+  Loads the IIFE bundle with a plain <script> tag, so this page works when
+  opened straight from disk (file://). No server, no build step, no modules.
+-->
+<style>
+  :root {
+    --bg: #10131a;
+    --panel: #181c26;
+    --line: #262c3a;
+    --ink: #e6e9f0;
+    --muted: #8b93a7;
+    --accent: #5ac8fa;
+    --danger: #ff6b6b;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f8; --panel: #ffffff; --line: #dfe3ea;
+      --ink: #171a21; --muted: #666e80; --accent: #0a84c4;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header { max-width: 1100px; margin: 0 auto 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .sub a { color: var(--accent); }
+  .layout {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 340px 1fr; gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px;
+          text-transform: uppercase; letter-spacing: 0.05em; }
+  label:first-child { margin-top: 0; }
+  input, select, textarea {
+    width: 100%; padding: 9px 11px; font: inherit; font-size: 14px;
+    background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  input[type=color] { padding: 3px; height: 38px; }
+  input[type=checkbox] { width: auto; height: 18px; padding: 0; margin: 4px 0 0;
+                         accent-color: var(--accent); }
+  textarea { resize: vertical; min-height: 74px; font-family: ui-monospace, monospace; font-size: 13px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  button {
+    flex: 1; min-width: 108px; padding: 10px 14px; font: inherit; font-weight: 600;
+    font-size: 13px; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #051019; }
+  button:hover { filter: brightness(1.12); }
+  #stage {
+    min-height: 300px; display: flex; align-items: center; justify-content: center;
+    padding: 24px; background: #fff; border-radius: 8px; overflow: auto;
+  }
+  #stage canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+  .meta {
+    margin-top: 14px; font-family: ui-monospace, monospace; font-size: 12px;
+    color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .error {
+    margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+    background: rgba(255,107,107,0.12); border: 1px solid var(--danger); color: var(--danger);
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Content-type builder. The generated fields live in #ctFields; the wrappers
+     below would otherwise trip `label:first-child` and lose their top margin. */
+  #plainWrap > label:first-child,
+  #ctWrap    > label:first-child,
+  #ctFields  > label:first-child,
+  #payloadWrap > label:first-child { margin-top: 14px; }
+  #ctFields > .row { margin-top: 14px; }
+  .payload {
+    font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45;
+    white-space: pre-wrap; word-break: break-all;
+    padding: 9px 11px; min-height: 38px; max-height: 168px; overflow: auto;
+    background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  .payload:empty::before { content: "(empty)"; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Create a barcode</h1>
+  <p class="sub">
+    Sythos Barcode Suite &mdash; 100% original JavaScript, zero dependencies, MIT.
+    See also <a href="read.html">read.html</a>.
+  </p>
+</header>
+
+<div class="layout">
+  <div class="panel">
+    <label for="format">Format</label>
+    <select id="format"></select>
+    <p class="hint" id="formatHint"></p>
+
+    <div id="ctWrap">
+      <label for="ctype">Content type</label>
+      <select id="ctype"></select>
+    </div>
+
+    <div id="ctFields"></div>
+
+    <div id="plainWrap">
+      <label for="text">Content</label>
+      <textarea id="text">https://example.com</textarea>
+    </div>
+
+    <div id="payloadWrap">
+      <label for="payloadOut">Encoded payload</label>
+      <div class="payload" id="payloadOut" tabindex="0"></div>
+      <p class="hint" id="payloadLen"></p>
+    </div>
+
+    <div id="qrOpts">
+      <div class="row">
+        <div>
+          <label for="ecc">Error correction</label>
+          <select id="ecc">
+            <option value="L">L &mdash; 7%</option>
+            <option value="M" selected>M &mdash; 15%</option>
+            <option value="Q">Q &mdash; 25%</option>
+            <option value="H">H &mdash; 30%</option>
+          </select>
+        </div>
+        <div>
+          <label for="version">Version</label>
+          <select id="version"><option value="">Auto</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="scale">Scale (px/module)</label>
+        <input type="number" id="scale" value="6" min="1" max="40">
+      </div>
+      <div>
+        <label for="margin">Quiet zone</label>
+        <input type="number" id="margin" value="4" min="0" max="20">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="dark">Dark</label>
+        <input type="color" id="dark" value="#000000">
+      </div>
+      <div>
+        <label for="light">Light</label>
+        <input type="color" id="light" value="#ffffff">
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="download-png">Download PNG</button>
+      <button id="download-svg">Download SVG</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="stage"><canvas id="canvas"></canvas></div>
+    <div class="meta" id="meta"></div>
+    <div id="err"></div>
+  </div>
+</div>
+
+<script src="../bundle/sythos-barcode.js"></script>
+<script>
+(function () {
+  'use strict';
+  var B = window.SythosBarcode;
+
+  var el = function (id) { return document.getElementById(id); };
+  var formatSel = el('format');
+  var canvas = el('canvas');
+
+  // Sensible sample content per format, so switching format never lands the
+  // user on an "invalid payload" error they have to reverse-engineer.
+  var SAMPLES = {
+    qr: 'https://example.com',
+    ean13: '5901234123457',
+    ean8: '96385074',
+    upca: '036000291452',
+    upce: '01234565',
+    code128: 'ABC-123456',
+    gs1128: '0101234567890128',
+    code39: 'SYTHOS-39',
+    code93: 'SYTHOS93',
+    itf: '12345678',
+    itf14: '12345678901231',
+    codabar: 'A12345A',
+    code11: '123456',
+    msi: '1234567',
+    pharmacode: '1234'
+  };
+
+  /* ---8<--- payload builders --- (unit-tested from a scratch Node script that
+     extracts this exact block out of the file, so the tests never drift from
+     the shipped code). Everything between the sentinels must stay dependency
+     free: no DOM, no closures over outer state.
+
+     The escaping conventions genuinely differ and must not be shared:
+       - WIFI / MECARD  backslash-escape  \ ; , : "
+       - vCard / vEvent backslash-escape  \ ; ,  and newline -> \n, but NOT ':'
+         (escaping the colon there would corrupt every "URL:https://..." value).
+  */
+
+  function ctTrim(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/^\s+|\s+$/g, '');
+  }
+
+  function ctStr(s) {
+    return String(s === null || s === undefined ? '' : s);
+  }
+
+  /** WIFI: / MECARD: value escaping — backslash before \ ; , : and " */
+  function escWifi(s) {
+    return ctStr(s).replace(/([\\;,:"])/g, '\\$1');
+  }
+
+  /** vCard 3.0 / iCalendar TEXT value escaping — \ ; , and newlines. No colon. */
+  function escVCardText(s) {
+    var out = ctStr(s);
+    out = out.replace(/\\/g, '\\\\');
+    out = out.replace(/;/g, '\\;');
+    out = out.replace(/,/g, '\\,');
+    out = out.replace(/\r\n|\r|\n/g, '\\n');
+    return out;
+  }
+
+  /** "2026-09-01T14:00" (or with seconds) -> "20260901T140000" */
+  function icalStamp(s) {
+    var raw = ctTrim(s);
+    if (!raw) return '';
+    var cleaned = raw.replace(/[^0-9T]/g, '');
+    var parts = cleaned.split('T');
+    var date = parts[0] || '';
+    var time = parts.length > 1 ? parts[1] : '';
+    if (!date) return '';
+    while (time.length < 6) { time += '0'; }
+    return date + 'T' + time.substring(0, 6);
+  }
+
+  function buildPlain(v) {
+    return ctStr(v.text);
+  }
+
+  function buildUrl(v) {
+    var u = ctTrim(v.url);
+    if (!u) return '';
+    // Scheme test, not a "://" test: mailto:, tel: and geo: have no slashes.
+    if (!/^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(u)) u = 'https://' + u;
+    return u;
+  }
+
+  function buildEmail(v) {
+    var to = ctTrim(v.to);
+    var subject = ctStr(v.subject);
+    var body = ctStr(v.body);
+    var params = [];
+    if (ctTrim(subject)) params.push('subject=' + encodeURIComponent(subject));
+    if (ctTrim(body)) params.push('body=' + encodeURIComponent(body));
+    // The address itself is not percent-encoded: "@" must survive.
+    return 'mailto:' + to + (params.length ? '?' + params.join('&') : '');
+  }
+
+  function buildPhone(v) {
+    return 'tel:' + ctTrim(v.number);
+  }
+
+  function buildSms(v) {
+    return 'SMSTO:' + ctTrim(v.number) + ':' + ctStr(v.message);
+  }
+
+  function buildWifi(v) {
+    var enc = ctTrim(v.encryption) || 'WPA';
+    var out = 'WIFI:T:' + enc + ';S:' + escWifi(v.ssid) + ';';
+    if (enc !== 'nopass') out += 'P:' + escWifi(v.password) + ';';
+    if (v.hidden === true || v.hidden === 'true') out += 'H:true;';
+    return out + ';';
+  }
+
+  function buildVCard(v) {
+    var first = ctTrim(v.first);
+    var last = ctTrim(v.last);
+    var lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+    // The ";" in N: is structural — escape each component, then join.
+    lines.push('N:' + escVCardText(last) + ';' + escVCardText(first));
+    var fnParts = [];
+    if (first) fnParts.push(first);
+    if (last) fnParts.push(last);
+    lines.push('FN:' + escVCardText(fnParts.join(' ')));
+    if (ctTrim(v.org))     lines.push('ORG:' + escVCardText(ctTrim(v.org)));
+    if (ctTrim(v.title))   lines.push('TITLE:' + escVCardText(ctTrim(v.title)));
+    if (ctTrim(v.phone))   lines.push('TEL:' + escVCardText(ctTrim(v.phone)));
+    if (ctTrim(v.email))   lines.push('EMAIL:' + escVCardText(ctTrim(v.email)));
+    if (ctTrim(v.url))     lines.push('URL:' + escVCardText(ctTrim(v.url)));
+    // ADR is 7 structural components; a free-text address goes in "street".
+    if (ctTrim(v.address)) lines.push('ADR:;;' + escVCardText(ctTrim(v.address)) + ';;;;');
+    lines.push('END:VCARD');
+    return lines.join('\r\n');
+  }
+
+  function buildMecard(v) {
+    var segs = [];
+    if (ctTrim(v.name))  segs.push('N:' + escWifi(ctTrim(v.name)));
+    if (ctTrim(v.phone)) segs.push('TEL:' + escWifi(ctTrim(v.phone)));
+    if (ctTrim(v.email)) segs.push('EMAIL:' + escWifi(ctTrim(v.email)));
+    if (ctTrim(v.url))   segs.push('URL:' + escWifi(ctTrim(v.url)));
+    var out = 'MECARD:';
+    for (var i = 0; i < segs.length; i++) { out += segs[i] + ';'; }
+    return out + ';';
+  }
+
+  function buildGeo(v) {
+    var lat = ctTrim(v.lat);
+    var lon = ctTrim(v.lon);
+    var alt = ctTrim(v.alt);
+    var out = 'geo:' + lat + ',' + lon;
+    if (alt) out += ',' + alt;
+    return out;
+  }
+
+  function buildEvent(v) {
+    var lines = ['BEGIN:VEVENT'];
+    if (ctTrim(v.summary))  lines.push('SUMMARY:' + escVCardText(ctTrim(v.summary)));
+    if (ctTrim(v.location)) lines.push('LOCATION:' + escVCardText(ctTrim(v.location)));
+    var dtStart = icalStamp(v.start);
+    var dtEnd = icalStamp(v.end);
+    if (dtStart) lines.push('DTSTART:' + dtStart);
+    if (dtEnd) lines.push('DTEND:' + dtEnd);
+    lines.push('END:VEVENT');
+    return lines.join('\r\n');
+  }
+
+  var PAYLOAD_BUILDERS = {
+    text: buildPlain,
+    url: buildUrl,
+    email: buildEmail,
+    phone: buildPhone,
+    sms: buildSms,
+    wifi: buildWifi,
+    vcard: buildVCard,
+    mecard: buildMecard,
+    geo: buildGeo,
+    event: buildEvent
+  };
+
+  /* ---8<--- end payload builders --- */
+
+  // Data-driven field definitions. `kind` maps straight onto the control that
+  // gets created; `half` pairs a field with the next one in a .row grid.
+  // Every default is a literal (never derived from `new Date()`) so the page
+  // and its unit tests agree, and so no type ever opens in an error state.
+  var CONTENT_TYPES = [
+    {
+      type: 'text', label: 'Plain text',
+      fields: [
+        { id: 'text', label: 'Text', kind: 'textarea', value: 'https://example.com' }
+      ]
+    },
+    {
+      type: 'url', label: 'URL',
+      fields: [
+        { id: 'url', label: 'URL', kind: 'url', value: 'https://sythos.net',
+          placeholder: 'example.com  (https:// added if missing)' }
+      ]
+    },
+    {
+      type: 'email', label: 'Email',
+      fields: [
+        { id: 'to', label: 'To', kind: 'email', value: 'hello@example.com' },
+        { id: 'subject', label: 'Subject', kind: 'text', value: 'Hello from a QR code' },
+        { id: 'body', label: 'Body', kind: 'textarea', value: 'Scanned your code — let’s talk.' }
+      ]
+    },
+    {
+      type: 'phone', label: 'Phone',
+      fields: [
+        { id: 'number', label: 'Phone number', kind: 'tel', value: '+390212345678' }
+      ]
+    },
+    {
+      type: 'sms', label: 'SMS',
+      fields: [
+        { id: 'number', label: 'Phone number', kind: 'tel', value: '+390212345678' },
+        { id: 'message', label: 'Message', kind: 'textarea', value: 'Hello!' }
+      ]
+    },
+    {
+      type: 'wifi', label: 'Wi-Fi network',
+      fields: [
+        { id: 'ssid', label: 'Network name (SSID)', kind: 'text', value: 'Sythos-Guest' },
+        { id: 'password', label: 'Password', kind: 'text', value: 'correct horse' },
+        { id: 'encryption', label: 'Encryption', kind: 'select', value: 'WPA', options: [
+          { value: 'WPA', label: 'WPA / WPA2 / WPA3' },
+          { value: 'WEP', label: 'WEP' },
+          { value: 'nopass', label: 'None (open)' }
+        ] },
+        { id: 'hidden', label: 'Hidden network', kind: 'checkbox', value: false }
+      ]
+    },
+    {
+      type: 'vcard', label: 'Contact (vCard)',
+      fields: [
+        { id: 'first', label: 'First name', kind: 'text', value: 'Ada', half: true },
+        { id: 'last', label: 'Last name', kind: 'text', value: 'Lovelace', half: true },
+        { id: 'org', label: 'Organisation', kind: 'text', value: 'Analytical Engines' },
+        { id: 'title', label: 'Title', kind: 'text', value: 'Mathematician' },
+        { id: 'phone', label: 'Phone', kind: 'tel', value: '+390212345678' },
+        { id: 'email', label: 'Email', kind: 'email', value: 'ada@example.com' },
+        { id: 'url', label: 'Website', kind: 'url', value: 'https://example.com' },
+        { id: 'address', label: 'Address', kind: 'text', value: '12 Baker Street, London' }
+      ]
+    },
+    {
+      type: 'mecard', label: 'Contact (MeCard)',
+      fields: [
+        { id: 'name', label: 'Name', kind: 'text', value: 'Lovelace,Ada' },
+        { id: 'phone', label: 'Phone', kind: 'tel', value: '+390212345678' },
+        { id: 'email', label: 'Email', kind: 'email', value: 'ada@example.com' },
+        { id: 'url', label: 'Website', kind: 'url', value: 'https://example.com' }
+      ]
+    },
+    {
+      type: 'geo', label: 'Geo location',
+      fields: [
+        { id: 'lat', label: 'Latitude', kind: 'number', step: 'any', value: '45.4642', half: true },
+        { id: 'lon', label: 'Longitude', kind: 'number', step: 'any', value: '9.1900', half: true },
+        { id: 'alt', label: 'Altitude (m, optional)', kind: 'number', step: 'any', value: '' }
+      ]
+    },
+    {
+      type: 'event', label: 'Calendar event',
+      fields: [
+        { id: 'summary', label: 'Summary', kind: 'text', value: 'Sythos Barcode Suite 1.0' },
+        { id: 'location', label: 'Location', kind: 'text', value: 'Milano, Italy' },
+        { id: 'start', label: 'Start', kind: 'datetime-local', value: '2026-09-01T14:00', half: true },
+        { id: 'end', label: 'End', kind: 'datetime-local', value: '2026-09-01T15:30', half: true }
+      ]
+    }
+  ];
+
+  var ctypeSel = el('ctype');
+  var ctFieldsEl = el('ctFields');
+  var ctType = CONTENT_TYPES[0].type;
+
+  // One value bag per content type, seeded from the defaults, so switching
+  // away and back inside a session never loses what was typed.
+  var ctValues = {};
+  CONTENT_TYPES.forEach(function (def) {
+    var bag = {};
+    def.fields.forEach(function (f) {
+      bag[f.id] = (f.kind === 'checkbox')
+        ? (f.value === true)
+        : (f.value === null || f.value === undefined ? '' : String(f.value));
+    });
+    ctValues[def.type] = bag;
+
+    var o = document.createElement('option');
+    o.value = def.type;
+    o.textContent = def.label;
+    ctypeSel.appendChild(o);
+  });
+  ctypeSel.value = ctType;
+
+  function ctDef(typeId) {
+    var found = CONTENT_TYPES.filter(function (d) { return d.type === typeId; });
+    return found.length ? found[0] : CONTENT_TYPES[0];
+  }
+
+  function ctFieldId(typeId, fieldId) {
+    // Prefixed so generated ids can never collide with the page's own
+    // (#text, #scale, #margin, #version, …).
+    return 'ct-' + typeId + '-' + fieldId;
+  }
+
+  function ctLabel(typeId, f) {
+    var lab = document.createElement('label');
+    lab.setAttribute('for', ctFieldId(typeId, f.id));
+    lab.textContent = f.label;
+    return lab;
+  }
+
+  function ctControl(typeId, f, bag) {
+    var input;
+    if (f.kind === 'textarea') {
+      input = document.createElement('textarea');
+      input.rows = f.rows || 3;
+    } else if (f.kind === 'select') {
+      input = document.createElement('select');
+      (f.options || []).forEach(function (opt) {
+        var o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        input.appendChild(o);
+      });
+    } else {
+      input = document.createElement('input');
+      // Unknown types (datetime-local on ancient engines) degrade to text.
+      try { input.type = f.kind; } catch (e) { input.type = 'text'; }
+      if (f.step) input.setAttribute('step', f.step);
+    }
+    input.id = ctFieldId(typeId, f.id);
+    if (f.placeholder) input.setAttribute('placeholder', f.placeholder);
+    if (f.kind === 'checkbox') {
+      input.checked = bag[f.id] === true;
+    } else {
+      input.value = bag[f.id] === null || bag[f.id] === undefined ? '' : String(bag[f.id]);
+    }
+    return input;
+  }
+
+  function ctCell(typeId, f, bag) {
+    var cell = document.createElement('div');
+    cell.appendChild(ctLabel(typeId, f));
+    cell.appendChild(ctControl(typeId, f, bag));
+    return cell;
+  }
+
+  function ctRender() {
+    var def = ctDef(ctType);
+    var bag = ctValues[def.type];
+    while (ctFieldsEl.firstChild) ctFieldsEl.removeChild(ctFieldsEl.firstChild);
+
+    var fields = def.fields;
+    var i = 0;
+    while (i < fields.length) {
+      var f = fields[i];
+      var next = (i + 1 < fields.length) ? fields[i + 1] : null;
+      if (f.half && next && next.half) {
+        var row = document.createElement('div');
+        row.className = 'row';
+        row.appendChild(ctCell(def.type, f, bag));
+        row.appendChild(ctCell(def.type, next, bag));
+        ctFieldsEl.appendChild(row);
+        i += 2;
+      } else {
+        ctFieldsEl.appendChild(ctLabel(def.type, f));
+        ctFieldsEl.appendChild(ctControl(def.type, f, bag));
+        i += 1;
+      }
+    }
+  }
+
+  function ctSync() {
+    var def = ctDef(ctType);
+    var bag = ctValues[def.type];
+    def.fields.forEach(function (f) {
+      var node = document.getElementById(ctFieldId(def.type, f.id));
+      if (!node) return;
+      bag[f.id] = (f.kind === 'checkbox') ? !!node.checked : node.value;
+    });
+  }
+
+  function currentPayload() {
+    if (formatSel.value !== 'qr') return el('text').value;
+    var build = PAYLOAD_BUILDERS[ctType];
+    return build ? build(ctValues[ctType]) : '';
+  }
+
+  var formats = B.listFormats();
+  formats.forEach(function (f) {
+    var o = document.createElement('option');
+    o.value = f.id;
+    o.textContent = f.label + (f.canWrite ? '' : ' (unavailable)');
+    o.disabled = !f.canWrite;
+    formatSel.appendChild(o);
+  });
+  formatSel.value = formats.some(function (f) { return f.id === 'qr' && f.canWrite; })
+    ? 'qr' : 'ean13';
+
+  var versionSel = el('version');
+  for (var v = 1; v <= 40; v++) {
+    var o = document.createElement('option');
+    o.value = String(v);
+    o.textContent = 'Version ' + v + '  (' + (17 + 4 * v) + '×' + (17 + 4 * v) + ')';
+    versionSel.appendChild(o);
+  }
+
+  var lastMatrix = null;
+
+  function currentOptions() {
+    return {
+      format: formatSel.value,
+      ecc: el('ecc').value,
+      version: el('version').value ? Number(el('version').value) : undefined,
+      checkDigit: true
+    };
+  }
+
+  function renderOptions() {
+    return {
+      scale: Math.max(1, Number(el('scale').value) || 6),
+      margin: Math.max(0, Number(el('margin').value) || 0),
+      dark: el('dark').value,
+      light: el('light').value
+    };
+  }
+
+  // User-supplied strings never go through innerHTML.
+  function showError(msg) {
+    var box = el('err');
+    while (box.firstChild) box.removeChild(box.firstChild);
+    if (!msg) return;
+    var d = document.createElement('div');
+    d.className = 'error';
+    d.textContent = msg;
+    box.appendChild(d);
+  }
+
+  function update() {
+    var isQR = formatSel.value === 'qr';
+    el('qrOpts').style.display = isQR ? '' : 'none';
+    el('ctWrap').style.display = isQR ? '' : 'none';
+    ctFieldsEl.style.display = isQR ? '' : 'none';
+    el('payloadWrap').style.display = isQR ? '' : 'none';
+    el('plainWrap').style.display = isQR ? 'none' : '';
+
+    var info = formats.filter(function (f) { return f.id === formatSel.value; })[0];
+    el('formatHint').textContent = info
+      ? (info.kind + ' · ' + (info.canRead ? 'this suite can also read it' : 'write-only in this build'))
+      : '';
+
+    var payload = currentPayload();
+    el('payloadOut').textContent = payload;
+    el('payloadLen').textContent = payload.length + ' character' + (payload.length === 1 ? '' : 's');
+
+    showError('');
+    try {
+      lastMatrix = B.encode(payload, currentOptions());
+    } catch (e) {
+      lastMatrix = null;
+      showError(String(e && e.message ? e.message : e));
+      el('meta').innerHTML = '';
+      var ctx = canvas.getContext('2d');
+      canvas.width = 10; canvas.height = 10;
+      if (ctx) ctx.clearRect(0, 0, 10, 10);
+      return;
+    }
+
+    // renderToCanvasAuto tries WebGL2 first and falls back to the 2D context,
+    // reporting which one actually ran.
+    var out = B.renderToCanvasAuto(lastMatrix, canvas, renderOptions());
+
+    el('meta').innerHTML =
+      '<span>modules <b>' + lastMatrix.width + '×' + lastMatrix.height + '</b></span>' +
+      '<span>pixels <b>' + canvas.width + '×' + canvas.height + '</b></span>' +
+      '<span>backend <b>' + out.backend + '</b></span>' +
+      '<span>bytes in <b>' + payload.length + '</b></span>';
+  }
+
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  el('download-svg').addEventListener('click', function () {
+    if (!lastMatrix) return;
+    var svg = B.toSVG(lastMatrix, renderOptions());
+    saveBlob(new Blob([svg], { type: 'image/svg+xml' }), formatSel.value + '.svg');
+  });
+
+  el('download-png').addEventListener('click', function () {
+    if (!lastMatrix) return;
+    B.toPNG(lastMatrix, renderOptions()).then(function (bytes) {
+      saveBlob(new Blob([bytes], { type: 'image/png' }), formatSel.value + '.png');
+    });
+  });
+
+  formatSel.addEventListener('change', function () {
+    if (SAMPLES[formatSel.value]) el('text').value = SAMPLES[formatSel.value];
+    update();
+  });
+
+  ctypeSel.addEventListener('change', function () {
+    ctSync();                 // keep whatever was typed under the old type
+    ctType = ctypeSel.value;
+    ctRender();
+    update();
+  });
+
+  // Delegated: the generated controls are replaced wholesale on every type
+  // switch, so listeners live on the container instead. Both events bubble.
+  ctFieldsEl.addEventListener('input', function () { ctSync(); update(); });
+  ctFieldsEl.addEventListener('change', function () { ctSync(); update(); });
+
+  ['text', 'ecc', 'version', 'scale', 'margin', 'dark', 'light'].forEach(function (id) {
+    el(id).addEventListener('input', update);
+    el(id).addEventListener('change', update);
+  });
+
+  ctRender();
+  update();
+})();
+</script>
+</body>
+</html>
