@@ -7742,7 +7742,7 @@ __modules["index.js"] = function (__require, __exports) {
  * is, so a canvas, an `OffscreenCanvas`, sharp, jimp and node-canvas all work
  * without an adapter.
  *
- * @module @sythos/barcode
+ * @module @sythos/js_barcode_universal
  */
 const { BitMatrix } = __require("core/bit-matrix.js");
 const { EncodeError, NotFoundError } = __require("core/errors.js");

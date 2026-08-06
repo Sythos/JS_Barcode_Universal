@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
-| **Packaging** — scoped npm package `@sythos/barcode`, per-format `licenses/` | ✅ install-verified |
+| **Packaging** — scoped npm package `@sythos/js_barcode_universal`, per-format `licenses/` | ✅ install-verified |
 
 The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime field GF(929)** — so PDF417 needs no second implementation when it lands. Addition, subtraction and negation are methods, never an inlined `^`.
 
@@ -122,6 +122,6 @@ Encoding stays on the CPU because that is the correct engineering answer, not be
 
 ## 4. Open questions
 
-1. **Package name** — settled: the package publishes as the scoped **`@sythos/barcode`**, with `publishConfig.access: "public"` (scoped packages default to restricted). Deliberately descriptive: naming a product after a trademark (QR Code®, Aztec Code, MaxiCode) is the one thing to avoid, since those marks do not restrict *implementing* the symbologies but do constrain branding.
+1. **Package name** — settled: the package publishes as the scoped **`@sythos/js_barcode_universal`**, with `publishConfig.access: "public"` (scoped packages default to restricted). Deliberately descriptive: naming a product after a trademark (QR Code®, Aztec Code, MaxiCode) is the one thing to avoid, since those marks do not restrict *implementing* the symbologies but do constrain branding.
 2. **Browser build** — ESM + IIFE ship today. Worth adding a minified variant?
 3. **Camera helper** — `read.html` has a working `getUserMedia` loop with the iOS quirks handled (`playsinline`, user-gesture `play()`, `facingMode: 'environment'`). Promote it to a library export (`scanFromCamera(video, onResult)`), or leave it as example code?

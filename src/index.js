@@ -42,7 +42,7 @@
  * is, so a canvas, an `OffscreenCanvas`, sharp, jimp and node-canvas all work
  * without an adapter.
  *
- * @module @sythos/barcode
+ * @module @sythos/js_barcode_universal
  */
 
 import { BitMatrix } from './core/bit-matrix.js';

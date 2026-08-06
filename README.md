@@ -52,15 +52,15 @@ There are four ways in, and none of them needs a build step.
 ### 1. npm
 
 ```sh
-npm install @sythos/barcode
+npm install @sythos/js_barcode_universal
 ```
 
-`yarn add @sythos/barcode` and `pnpm add @sythos/barcode` do the same thing. Nothing is installed
+`yarn add @sythos/js_barcode_universal` and `pnpm add @sythos/js_barcode_universal` do the same thing. Nothing is installed
 alongside it — there are no runtime dependencies, no postinstall script and no native build. The
 package is plain ESM (`"type": "module"`) and asks for Node 18 or newer.
 
 ```js
-import { encode, decode, toSVG, toImageData } from '@sythos/barcode';
+import { encode, decode, toSVG, toImageData } from '@sythos/js_barcode_universal';
 
 const code = encode('SYT-2026-0042', { format: 'code128' });
 
@@ -76,8 +76,8 @@ tree-shaking bundler drop everything you did not ask for. Importing only the QR 
 the SVG renderer never pulls in the 1D formats, the PNG encoder or the read pipeline:
 
 ```js
-import { encodeQR } from '@sythos/barcode/qr';
-import { toSVG }    from '@sythos/barcode/render/svg';
+import { encodeQR } from '@sythos/js_barcode_universal/qr';
+import { toSVG }    from '@sythos/js_barcode_universal/render/svg';
 
 const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 // a 25×25 module symbol — 264×264 px at scale 8 with the default 4-module quiet zone
@@ -85,31 +85,31 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 
 | Subpath | What it exports |
 |---|---|
-| `@sythos/barcode` | The whole surface: `encode`, `decode`, every renderer, every error type |
-| `@sythos/barcode/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
-| `@sythos/barcode/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
-| `@sythos/barcode/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, …) and `decodeOneD` |
-| `@sythos/barcode/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
-| `@sythos/barcode/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
-| `@sythos/barcode/render/svg` | `toSVG`, `toSVGDataURI` |
-| `@sythos/barcode/render/png` | `toPNG`, `toPNGDataURI` |
-| `@sythos/barcode/render/image-data` | `toImageData`, `toCanvas` |
-| `@sythos/barcode/bundle` | The prebuilt ESM bundle, as one file |
-| `@sythos/barcode/bundle/iife` | The prebuilt IIFE bundle, for a `<script>` tag |
+| `@sythos/js_barcode_universal` | The whole surface: `encode`, `decode`, every renderer, every error type |
+| `@sythos/js_barcode_universal/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
+| `@sythos/js_barcode_universal/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
+| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, …) and `decodeOneD` |
+| `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
+| `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
+| `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
+| `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
+| `@sythos/js_barcode_universal/render/image-data` | `toImageData`, `toCanvas` |
+| `@sythos/js_barcode_universal/bundle` | The prebuilt ESM bundle, as one file |
+| `@sythos/js_barcode_universal/bundle/iife` | The prebuilt IIFE bundle, for a `<script>` tag |
 
 The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no install at all:
 
 ```html
-<script src="https://unpkg.com/@sythos/barcode"></script>
-<script src="https://unpkg.com/@sythos/barcode@0.1.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/barcode@0.1.0"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@0.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@0.1.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
 you.
 
 > **These CDN URLs resolve only once the package has been published to npm.** Until that first
-> publish they 404, and so does `npm install @sythos/barcode`. Use the committed
+> publish they 404, and so does `npm install @sythos/js_barcode_universal`. Use the committed
 > [`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) from a checkout in the meantime — it is
 > byte-for-byte the file the CDN will serve.
 
