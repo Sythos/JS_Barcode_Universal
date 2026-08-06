@@ -50,17 +50,19 @@ The decisive mechanism is still the last one: **a format is not finished until a
 
 ### Shipped and tested
 
+**118 tests, all passing.** 16 formats write, 13 read.
+
 | Area | State |
 |---|---|
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
-| **1D writers** — EAN-13/8, UPC-A/E, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, Pharmacode | ✅ 26 tests |
-| **1D readers** — EAN-13/8, UPC-A/E, Code 128, Code 39, Code 93, ITF, Codabar | ✅ verified |
-| **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2 | ✅ |
+| **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, Pharmacode | ✅ 32 tests |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar | ✅ phantom-free |
+| **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
+| **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
-| **Examples** — `create.html`, `read.html` | ✅ |
-| **QR encoder** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI | ✅ table identity clean |
-| **QR decoder + detector** | 🔧 in progress |
+| **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
+| **Packaging** — scoped npm package `@sythos/barcode`, per-format `licenses/` | ✅ install-verified |
 
 The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime field GF(929)** — so PDF417 needs no second implementation when it lands. Addition, subtraction and negation are methods, never an inlined `^`.
 
@@ -120,6 +122,6 @@ Encoding stays on the CPU because that is the correct engineering answer, not be
 
 ## 4. Open questions
 
-1. **Package name** — currently `sythos-barcode-suite`. A scoped `@sythos/...` name needs an npm org. Note that naming it after a trademark (QR Code®, Aztec Code, MaxiCode) is the one thing to avoid: those marks do not restrict *implementing* the symbologies, but they do constrain branding.
+1. **Package name** — settled: the package publishes as the scoped **`@sythos/barcode`**, with `publishConfig.access: "public"` (scoped packages default to restricted). Deliberately descriptive: naming a product after a trademark (QR Code®, Aztec Code, MaxiCode) is the one thing to avoid, since those marks do not restrict *implementing* the symbologies but do constrain branding.
 2. **Browser build** — ESM + IIFE ship today. Worth adding a minified variant?
 3. **Camera helper** — `read.html` has a working `getUserMedia` loop with the iOS quirks handled (`playsinline`, user-gesture `play()`, `facingMode: 'environment'`). Promote it to a library export (`scanFromCamera(video, onResult)`), or leave it as example code?

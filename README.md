@@ -10,6 +10,29 @@ Read and write barcodes in JavaScript.
 DOM — images go in and come out as plain `{ data, width, height }` RGBA objects, which is exactly
 what an `ImageData` is.
 
+**The code is complete and entirely human-readable.** The full source ships. There is no
+WebAssembly, no native addon, no compiled artefact, no binary blob and no minified file anywhere
+in this repository — every tracked file is text you can open and read.
+
+That includes the prebuilt bundles. They are *generated*, concatenated and wrapped from `src/` by
+the project's own bundler, but nothing is stripped in the process:
+[`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) runs to roughly 7,900 lines, about a third
+of them comments, averaging a little over 30 characters a line. Open it anywhere and you are
+reading the same annotated code as the source, in the same order — a convenience, not a black box.
+
+Don't take that on trust either; it takes one command:
+
+```sh
+awk '{ n += length($0) } END { print "lines:", NR, " avg length:", int(n/NR) }' bundle/sythos-barcode.js
+```
+
+A minified bundle gives you a handful of lines averaging thousands of characters. This one does
+not, and that is the whole point.
+
+This is deliberate. A barcode library decides what a scanner believes a label says, so it belongs
+in the category of code you can audit rather than have to trust. Every constant table, every
+check digit and every error-correction step is here in full, with the reasoning next to it.
+
 ```js
 import { encode, decode, toSVG, toImageData } from './src/index.js';
 
@@ -24,9 +47,73 @@ console.log(found[0].text);   // 'https://example.com'
 
 ## Quick start
 
-There are three ways in, and none of them needs a build step.
+There are four ways in, and none of them needs a build step.
 
-### 1. A `<script>` tag
+### 1. npm
+
+```sh
+npm install @sythos/barcode
+```
+
+`yarn add @sythos/barcode` and `pnpm add @sythos/barcode` do the same thing. Nothing is installed
+alongside it — there are no runtime dependencies, no postinstall script and no native build. The
+package is plain ESM (`"type": "module"`) and asks for Node 18 or newer.
+
+```js
+import { encode, decode, toSVG, toImageData } from '@sythos/barcode';
+
+const code = encode('SYT-2026-0042', { format: 'code128' });
+
+const svg = toSVG(code, { scale: 2, margin: 10, barHeight: 60 });
+// '<svg xmlns="http://www.w3.org/2000/svg" width="374" height="100" …'
+
+const found = decode(toImageData(code, { scale: 4, margin: 10 }), { formats: ['code128'] });
+console.log(found[0].text);   // 'SYT-2026-0042'
+```
+
+**Subpath exports** hand you one layer instead of the whole surface, which is what lets a
+tree-shaking bundler drop everything you did not ask for. Importing only the QR writer and only
+the SVG renderer never pulls in the 1D formats, the PNG encoder or the read pipeline:
+
+```js
+import { encodeQR } from '@sythos/barcode/qr';
+import { toSVG }    from '@sythos/barcode/render/svg';
+
+const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
+// a 25×25 module symbol — 264×264 px at scale 8 with the default 4-module quiet zone
+```
+
+| Subpath | What it exports |
+|---|---|
+| `@sythos/barcode` | The whole surface: `encode`, `decode`, every renderer, every error type |
+| `@sythos/barcode/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
+| `@sythos/barcode/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
+| `@sythos/barcode/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, …) and `decodeOneD` |
+| `@sythos/barcode/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
+| `@sythos/barcode/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
+| `@sythos/barcode/render/svg` | `toSVG`, `toSVGDataURI` |
+| `@sythos/barcode/render/png` | `toPNG`, `toPNGDataURI` |
+| `@sythos/barcode/render/image-data` | `toImageData`, `toCanvas` |
+| `@sythos/barcode/bundle` | The prebuilt ESM bundle, as one file |
+| `@sythos/barcode/bundle/iife` | The prebuilt IIFE bundle, for a `<script>` tag |
+
+The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no install at all:
+
+```html
+<script src="https://unpkg.com/@sythos/barcode"></script>
+<script src="https://unpkg.com/@sythos/barcode@0.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/barcode@0.1.0"></script>
+```
+
+Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
+you.
+
+> **These CDN URLs resolve only once the package has been published to npm.** Until that first
+> publish they 404, and so does `npm install @sythos/barcode`. Use the committed
+> [`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) from a checkout in the meantime — it is
+> byte-for-byte the file the CDN will serve.
+
+### 2. A `<script>` tag
 
 [`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) is a self-contained IIFE that exposes a
 single global, `SythosBarcode`. It works straight from `file://` — open an HTML file off your
@@ -44,7 +131,7 @@ disk and it runs.
 </script>
 ```
 
-### 2. ESM bundle
+### 3. ESM bundle
 
 [`bundle/sythos-barcode.esm.js`](bundle/sythos-barcode.esm.js) is the same code as a single ES
 module, for `<script type="module">`, a bundler, or Node.
@@ -62,7 +149,7 @@ toPNG(ean, { scale: 3, barHeight: 80 }).then((bytes) => {
 });
 ```
 
-### 3. The source directly
+### 4. The source directly
 
 [`src/index.js`](src/index.js) is plain ESM with JSDoc types and no build step of its own. Import
 it and let your bundler tree-shake; the package is marked side-effect free.
@@ -121,7 +208,7 @@ time.
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 
-Fifteen formats, all writable, twelve readable. **Code 11, MSI Plessey and Pharmacode are
+Sixteen formats, all writable, thirteen readable. **Code 11, MSI Plessey and Pharmacode are
 write-only** — they encode correctly, but there is no reader for them, and `decode` will never
 return one.
 

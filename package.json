@@ -1,7 +1,7 @@
 {
-  "name": "sythos-barcode-suite",
+  "name": "@sythos/barcode",
   "version": "0.1.0",
-  "description": "Read and write barcodes in JavaScript. 100% original code, zero runtime dependencies. QR Code, EAN/UPC, Code 128, Code 39, Code 93, ITF, Codabar, MSI, Code 11 and Pharmacode.",
+  "description": "Read and write barcodes in JavaScript. 100% original code, zero runtime dependencies. QR Code, EAN/UPC, ISBN, Code 128, Code 39, Code 93, ITF, Codabar, MSI, Code 11 and Pharmacode.",
   "author": "Sythos",
   "license": "MIT",
   "type": "module",
@@ -13,6 +13,9 @@
   "sideEffects": false,
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "exports": {
     ".": "./src/index.js",
@@ -32,23 +35,35 @@
     "src",
     "bundle",
     "examples",
+    "licenses",
     "LICENSE",
     "NOTICE.md",
     "README.md"
   ],
   "keywords": [
     "barcode",
+    "barcode-generator",
+    "barcode-scanner",
     "qrcode",
     "qr",
+    "qr-code",
     "ean",
     "ean13",
+    "ean8",
     "upc",
+    "upca",
+    "upce",
+    "isbn",
     "code128",
+    "gs1-128",
     "code39",
     "code93",
     "itf",
+    "itf14",
     "codabar",
     "msi",
+    "code11",
+    "pharmacode",
     "scanner",
     "decoder",
     "encoder",
@@ -56,8 +71,10 @@
     "reader",
     "writer",
     "zero-dependencies",
+    "no-dependencies",
     "browser",
-    "nodejs"
+    "nodejs",
+    "esm"
   ],
   "repository": {
     "type": "git",
