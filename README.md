@@ -2,6 +2,7 @@
 
 Read and write barcodes in JavaScript.
 
+[![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
 
@@ -108,10 +109,9 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
 you.
 
-> **These CDN URLs resolve only once the package has been published to npm.** Until that first
-> publish they 404, and so does `npm install @sythos/js_barcode_universal`. Use the committed
-> [`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) from a checkout in the meantime — it is
-> byte-for-byte the file the CDN will serve.
+Both CDNs serve the same file the repository ships in
+[`bundle/sythos-barcode.js`](bundle/sythos-barcode.js) — byte for byte, since that is exactly what
+npm publishes.
 
 ### 2. A `<script>` tag
 
