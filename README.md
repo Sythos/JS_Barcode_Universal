@@ -255,7 +255,9 @@ for where they sit.
 ## Live examples
 
 Two self-contained pages, each loading the IIFE bundle with a plain `<script>` tag. **Both open
-directly from disk** — double-click the file, no server and no build.
+directly from disk** — double-click the file, no server and no build. This `examples/` directory is
+the single canonical source; the development workspace references these files instead of keeping
+a second copy.
 
 ### [`examples/create.html`](examples/create.html)
 
