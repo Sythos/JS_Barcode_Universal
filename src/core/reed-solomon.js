@@ -56,7 +56,7 @@ import { ChecksumError } from './errors.js';
  *
  *   g(x) = product over i of (x - a^(base + i)),  i = 0 .. eccLen-1
  *
- * `base` is 0 for QR, Data Matrix and Aztec; 1 for PDF417.
+ * `base` is 0 for QR and Aztec; 1 for Data Matrix and PDF417.
  *
  * @param {number} eccLen
  * @param {import('./galois-field.js').GaloisField} field

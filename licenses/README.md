@@ -11,6 +11,7 @@ appendix carries the consolidated inventory these files expand on.
 | Format | File | `[TO VERIFY]` items |
 |---|---|---:|
 | QR Code | [`qr-code.license`](qr-code.license) | 5 |
+| Data Matrix ECC 200 | [`data-matrix.license`](data-matrix.license) | 9 |
 | EAN-13 | [`ean-13.license`](ean-13.license) | 5 |
 | EAN-8 | [`ean-8.license`](ean-8.license) | 5 |
 | UPC-A | [`upc-a.license`](upc-a.license) | 6 |

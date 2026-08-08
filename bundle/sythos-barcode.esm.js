@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v0.1.0
+ * Sythos Barcode Suite v1.0.0
  *
  * MIT License
  *
@@ -2751,155 +2751,6 @@ __modules["oned/index.js"] = function (__require, __exports) {
 __exports.ONED_FORMATS = ONED_FORMATS;
 };
 
-__modules["core/bit-buffer.js"] = function (__require, __exports) {
-/**
- * Bit-level writing and reading, MSB-first.
- *
- * Every 2D symbology serialises its payload as a bitstream that does not
- * respect byte boundaries — QR alone mixes 4-bit mode indicators, 10-bit
- * character-count fields and 11-bit alphanumeric pairs. These two classes are
- * the write and read halves of that.
- *
- * @module core/bit-buffer
- */
-const { FormatError } = __require("core/errors.js");
-
-/** Growable MSB-first bit writer. */
-class BitWriter {
-  constructor() {
-    /** @type {number[]} Packed bytes; the last one may be partially filled. */
-    this.bytes = [];
-    this.bitLength = 0;
-  }
-
-  /** @returns {number} Bits written so far. */
-  get length() {
-    return this.bitLength;
-  }
-
-  /**
-   * Append the low `count` bits of `value`, most significant first.
-   *
-   * @param {number} value
-   * @param {number} count
-   */
-  put(value, count) {
-    for (let i = count - 1; i >= 0; i--) {
-      this.putBit(((value >>> i) & 1) === 1);
-    }
-  }
-
-  /** @param {boolean} bit */
-  putBit(bit) {
-    const idx = this.bitLength >>> 3;
-    if (this.bytes.length <= idx) this.bytes.push(0);
-    if (bit) this.bytes[idx] |= 0x80 >>> (this.bitLength & 7);
-    this.bitLength++;
-  }
-
-  /** @param {ArrayLike<number>} data */
-  putBytes(data) {
-    for (let i = 0; i < data.length; i++) this.put(data[i], 8);
-  }
-
-  /** Pad with zero bits until the length is a multiple of 8. */
-  padToByte() {
-    while (this.bitLength & 7) this.putBit(false);
-  }
-
-  /**
-   * @returns {Uint8Array} Byte view; trailing bits of the final byte are zero.
-   */
-  toBytes() {
-    return Uint8Array.from(this.bytes);
-  }
-
-  /** @returns {string} Debug view, e.g. "0100 0011 0101". */
-  toString() {
-    let s = '';
-    for (let i = 0; i < this.bitLength; i++) {
-      if (i && i % 4 === 0) s += ' ';
-      s += (this.bytes[i >>> 3] >>> (7 - (i & 7))) & 1;
-    }
-    return s;
-  }
-}
-
-/** MSB-first bit reader over a byte array. */
-class BitReader {
-  /** @param {ArrayLike<number>} bytes */
-  constructor(bytes) {
-    this.bytes = bytes;
-    this.byteOffset = 0;
-    this.bitOffset = 0;
-  }
-
-  /** @returns {number} Bits not yet consumed. */
-  available() {
-    return 8 * (this.bytes.length - this.byteOffset) - this.bitOffset;
-  }
-
-  /**
-   * Read `count` bits (1..32) as an unsigned integer, most significant first.
-   *
-   * @param {number} count
-   * @returns {number}
-   * @throws {FormatError} If the stream is exhausted.
-   */
-  read(count) {
-    if (count < 1 || count > 32) {
-      throw new FormatError(`BitReader: cannot read ${count} bits`);
-    }
-    if (count > this.available()) {
-      throw new FormatError(
-        `BitReader: needed ${count} bits, ${this.available()} remain`
-      );
-    }
-
-    let result = 0;
-    let remaining = count;
-
-    // Finish the partially consumed byte first, then take whole bytes.
-    if (this.bitOffset > 0) {
-      const inCurrent = 8 - this.bitOffset;
-      const take = Math.min(remaining, inCurrent);
-      const shift = inCurrent - take;
-      const mask = (0xff >> this.bitOffset) & ~((1 << shift) - 1);
-      result = (this.bytes[this.byteOffset] & mask) >> shift;
-      remaining -= take;
-      this.bitOffset += take;
-      if (this.bitOffset === 8) {
-        this.bitOffset = 0;
-        this.byteOffset++;
-      }
-    }
-
-    while (remaining >= 8) {
-      result = (result << 8) | (this.bytes[this.byteOffset] & 0xff);
-      this.byteOffset++;
-      remaining -= 8;
-    }
-
-    if (remaining > 0) {
-      const shift = 8 - remaining;
-      const mask = ~((1 << shift) - 1) & 0xff;
-      result = (result << remaining) | ((this.bytes[this.byteOffset] & mask) >> shift);
-      this.bitOffset += remaining;
-    }
-
-    return result >>> 0;
-  }
-
-  /** @returns {boolean} */
-  readBit() {
-    return this.read(1) === 1;
-  }
-}
-
-__exports.BitWriter = BitWriter;
-__exports.BitReader = BitReader;
-};
-
 __modules["core/galois-field.js"] = function (__require, __exports) {
 /**
  * Finite field arithmetic.
@@ -3113,7 +2964,7 @@ const { ChecksumError } = __require("core/errors.js");
  *
  *   g(x) = product over i of (x - a^(base + i)),  i = 0 .. eccLen-1
  *
- * `base` is 0 for QR, Data Matrix and Aztec; 1 for PDF417.
+ * `base` is 0 for QR and Aztec; 1 for Data Matrix and PDF417.
  *
  * @param {number} eccLen
  * @param {import('./galois-field.js').GaloisField} field
@@ -3372,6 +3223,1178 @@ function rsDecode(received, eccLen, field, base = 0) {
 __exports.generatorPoly = generatorPoly;
 __exports.rsEncode = rsEncode;
 __exports.rsDecode = rsDecode;
+};
+
+__modules["datamatrix/tables.js"] = function (__require, __exports) {
+/**
+ * Data Matrix ECC 200 symbol parameters.
+ *
+ * Width and height include finder borders. `regionWidth` and `regionHeight`
+ * describe the usable modules inside one data region. The last three columns
+ * make the Reed-Solomon block split explicit instead of hiding the 144x144
+ * exception in encoder control flow.
+ *
+ * @module datamatrix/tables
+ */
+
+function symbol(width, height, dataRegionWidth, dataRegionHeight, dataCodewords, errorCodewords, dataBlockLengths) {
+  const blockCount = dataBlockLengths.length;
+  return Object.freeze({
+    width, height, rows: height, columns: width,
+    // Region dimensions include their one-module finder border on each side;
+    // dataRegion* expose the inner placement lattice explicitly.
+    regionWidth: dataRegionWidth + 2, regionHeight: dataRegionHeight + 2,
+    dataRegionWidth, dataRegionHeight,
+    dataRegionRows: dataRegionHeight, dataRegionColumns: dataRegionWidth,
+    dataCodewords, errorCodewords, blockCount,
+    eccPerBlock: errorCodewords / blockCount,
+    dataBlockLengths: Object.freeze(dataBlockLengths),
+  });
+}
+
+/** Classic ISO/IEC 16022 ECC 200 symbols; DMRE is deliberately excluded. */
+const DATAMATRIX_SYMBOLS = Object.freeze([
+  symbol(10, 10, 8, 8, 3, 5, [3]),
+  symbol(12, 12, 10, 10, 5, 7, [5]),
+  symbol(14, 14, 12, 12, 8, 10, [8]),
+  symbol(16, 16, 14, 14, 12, 12, [12]),
+  symbol(18, 18, 16, 16, 18, 14, [18]),
+  symbol(20, 20, 18, 18, 22, 18, [22]),
+  symbol(22, 22, 20, 20, 30, 20, [30]),
+  symbol(24, 24, 22, 22, 36, 24, [36]),
+  symbol(26, 26, 24, 24, 44, 28, [44]),
+  symbol(32, 32, 14, 14, 62, 36, [62]),
+  symbol(36, 36, 16, 16, 86, 42, [86]),
+  symbol(40, 40, 18, 18, 114, 48, [114]),
+  symbol(44, 44, 20, 20, 144, 56, [144]),
+  symbol(48, 48, 22, 22, 174, 68, [174]),
+  symbol(52, 52, 24, 24, 204, 84, [102, 102]),
+  symbol(64, 64, 14, 14, 280, 112, [140, 140]),
+  symbol(72, 72, 16, 16, 368, 144, [92, 92, 92, 92]),
+  symbol(80, 80, 18, 18, 456, 192, [114, 114, 114, 114]),
+  symbol(88, 88, 20, 20, 576, 224, [144, 144, 144, 144]),
+  symbol(96, 96, 22, 22, 696, 272, [174, 174, 174, 174]),
+  symbol(104, 104, 24, 24, 816, 336, [136, 136, 136, 136, 136, 136]),
+  symbol(120, 120, 18, 18, 1050, 408, [175, 175, 175, 175, 175, 175]),
+  symbol(132, 132, 20, 20, 1304, 496, [163, 163, 163, 163, 163, 163, 163, 163]),
+  symbol(144, 144, 22, 22, 1558, 620, [156, 156, 156, 156, 156, 156, 156, 156, 155, 155]),
+  symbol(18, 8, 16, 6, 5, 7, [5]),
+  symbol(32, 8, 14, 6, 10, 11, [10]),
+  symbol(26, 12, 24, 10, 16, 14, [16]),
+  symbol(36, 12, 16, 10, 22, 18, [22]),
+  symbol(36, 16, 16, 14, 32, 24, [32]),
+  symbol(48, 16, 22, 14, 49, 28, [49]),
+]);
+
+/** Compatibility alias. */
+const SYMBOLS = DATAMATRIX_SYMBOLS;
+
+/** Return the smallest permitted symbol that holds `count` data codewords. */
+function symbolForDataCodewords(count, shape = 'any') {
+  for (const s of DATAMATRIX_SYMBOLS) {
+    const rectangular = s.width !== s.height;
+    if ((shape === 'square' && rectangular) || (shape === 'rectangular' && !rectangular)) continue;
+    if (count <= s.dataCodewords) return s;
+  }
+  throw new RangeError(`Data Matrix: ${count} data codewords do not fit an ECC 200 ${shape} symbol`);
+}
+
+/** Check redundant geometry and block identities in the static table. */
+function validateDataMatrixTables() {
+  const issues = [];
+  for (const s of DATAMATRIX_SYMBOLS) {
+    const regionsX = s.width / s.regionWidth;
+    const regionsY = s.height / s.regionHeight;
+    if (!Number.isInteger(regionsX) || !Number.isInteger(regionsY)) issues.push(`${s.width}x${s.height}: non-integral regions`);
+    const modules = regionsX * regionsY * s.dataRegionWidth * s.dataRegionHeight;
+    // Annex F reserves four terminal modules on a few lattice dimensions.
+    // They are set to dark after codeword placement and do not carry data.
+    const unused = modules - (s.dataCodewords + s.errorCodewords) * 8;
+    if (unused !== 0 && unused !== 4) issues.push(`${s.width}x${s.height}: geometry/codeword mismatch`);
+    if (s.dataBlockLengths.reduce((a, b) => a + b, 0) !== s.dataCodewords) issues.push(`${s.width}x${s.height}: data block mismatch`);
+    if (s.eccPerBlock * s.blockCount !== s.errorCodewords) issues.push(`${s.width}x${s.height}: ecc block mismatch`);
+  }
+  return issues;
+}
+
+/** Compatibility alias. */
+const validateTables = validateDataMatrixTables;
+
+__exports.DATAMATRIX_SYMBOLS = DATAMATRIX_SYMBOLS;
+__exports.SYMBOLS = SYMBOLS;
+__exports.symbolForDataCodewords = symbolForDataCodewords;
+__exports.validateDataMatrixTables = validateDataMatrixTables;
+__exports.validateTables = validateTables;
+};
+
+__modules["datamatrix/encoder.js"] = function (__require, __exports) {
+/** Data Matrix ECC 200 encoder: ASCII/Base256, RS interleaving and Annex F placement. */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { GF256_DM } = __require("core/galois-field.js");
+const { rsEncode } = __require("core/reed-solomon.js");
+const { symbolForDataCodewords } = __require("datamatrix/tables.js");
+
+function asciiCodewords(text) {
+  const out = [];
+  for (let i = 0; i < text.length;) {
+    const a = text.charCodeAt(i);
+    if (a > 255) throw new EncodeError('Data Matrix ASCII: characters must fit ISO-8859-1; use Base256 for UTF-8');
+    if (i + 1 < text.length) {
+      const b = text.charCodeAt(i + 1);
+      if (a >= 48 && a <= 57 && b >= 48 && b <= 57) { out.push(130 + (a - 48) * 10 + b - 48); i += 2; continue; }
+    }
+    if (a <= 127) out.push(a + 1);
+    else out.push(235, a - 127);
+    i++;
+  }
+  return out;
+}
+
+function bytesFor(value) {
+  if (value instanceof Uint8Array) return value;
+  if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  if (typeof value !== 'string') throw new EncodeError('Data Matrix: value must be a string or byte array');
+  return new TextEncoder().encode(value);
+}
+
+function randomize255(value, position) {
+  const pseudo = (149 * position) % 255 + 1;
+  return value + pseudo <= 255 ? value + pseudo : value + pseudo - 256;
+}
+
+function base256Codewords(value, prefixLength = 0) {
+  const bytes = bytesFor(value);
+  if (bytes.length > 1555) throw new EncodeError('Data Matrix Base256: payload exceeds ECC 200 capacity');
+  const out = [231];
+  if (bytes.length <= 249) out.push(bytes.length);
+  else out.push(Math.floor(bytes.length / 250) + 249, bytes.length % 250);
+  // Base256 randomization uses the absolute 1-based codeword position in the
+  // symbol. A leading GS1 FNC1 therefore shifts every randomized codeword.
+  for (let i = 1; i < out.length; i++) out[i] = randomize255(out[i], prefixLength + i + 1);
+  for (const b of bytes) out.push(randomize255(b, prefixLength + out.length + 1));
+  return out;
+}
+
+function pad(data, capacity) {
+  const out = data.slice();
+  if (out.length < capacity) out.push(129);
+  while (out.length < capacity) {
+    const position = out.length + 1;
+    const pseudo = (149 * position) % 253 + 1;
+    const v = 129 + pseudo;
+    out.push(v <= 254 ? v : v - 254);
+  }
+  return out;
+}
+
+function interleave(data, symbol) {
+  const blocks = symbol.dataBlockLengths.map((length) => ({ data: new Array(length), ecc: null }));
+  let at = 0;
+  const longest = Math.max(...symbol.dataBlockLengths);
+  // Data codewords are dealt across the RS blocks by column. Splitting the
+  // stream into consecutive chunks and then interleaving those chunks looks
+  // self-consistent to a decoder doing the same inverse operation, but it is
+  // not ECC 200's wire order once a symbol has multiple blocks.
+  for (let i = 0; i < longest; i++) {
+    for (const block of blocks) if (i < block.data.length) block.data[i] = data[at++];
+  }
+  for (const block of blocks) {
+    // ECC 200 starts its generator roots at alpha^1 (generator base 1).
+    block.ecc = rsEncode(block.data, symbol.eccPerBlock, GF256_DM, 1);
+  }
+
+  const out = [];
+  for (let i = 0; i < longest; i++) for (const b of blocks) if (i < b.data.length) out.push(b.data[i]);
+  // The 144x144 symbol has eight long and two short data blocks. Its parity
+  // interleave begins with the first short block; deriving the rotation from
+  // the declarative lengths keeps that exception out of a size-specific test.
+  const eccOffset = blocks.findIndex((block) => block.data.length < longest);
+  const rotation = eccOffset < 0 ? 0 : eccOffset;
+  for (let i = 0; i < symbol.eccPerBlock; i++) {
+    for (let b = 0; b < blocks.length; b++) out.push(blocks[(b + rotation) % blocks.length].ecc[i]);
+  }
+  return out;
+}
+
+function place(codewords, rows, cols) {
+  const cells = new Int8Array(rows * cols).fill(-1);
+  const bit = (row, col, pos, n) => {
+    if (row < 0) { row += rows; col += 4 - ((rows + 4) % 8); }
+    if (col < 0) { col += cols; row += 4 - ((cols + 4) % 8); }
+    cells[row * cols + col] = (codewords[pos] >>> (8 - n)) & 1;
+  };
+  const utah = (r, c, p) => { bit(r - 2, c - 2, p, 1); bit(r - 2, c - 1, p, 2); bit(r - 1, c - 2, p, 3); bit(r - 1, c - 1, p, 4); bit(r - 1, c, p, 5); bit(r, c - 2, p, 6); bit(r, c - 1, p, 7); bit(r, c, p, 8); };
+  const corner1 = (p) => { bit(rows - 1, 0, p, 1); bit(rows - 1, 1, p, 2); bit(rows - 1, 2, p, 3); bit(0, cols - 2, p, 4); bit(0, cols - 1, p, 5); bit(1, cols - 1, p, 6); bit(2, cols - 1, p, 7); bit(3, cols - 1, p, 8); };
+  const corner2 = (p) => { bit(rows - 3, 0, p, 1); bit(rows - 2, 0, p, 2); bit(rows - 1, 0, p, 3); bit(0, cols - 4, p, 4); bit(0, cols - 3, p, 5); bit(0, cols - 2, p, 6); bit(0, cols - 1, p, 7); bit(1, cols - 1, p, 8); };
+  const corner3 = (p) => { bit(rows - 3, 0, p, 1); bit(rows - 2, 0, p, 2); bit(rows - 1, 0, p, 3); bit(0, cols - 2, p, 4); bit(0, cols - 1, p, 5); bit(1, cols - 1, p, 6); bit(2, cols - 1, p, 7); bit(3, cols - 1, p, 8); };
+  const corner4 = (p) => { bit(rows - 1, 0, p, 1); bit(rows - 1, cols - 1, p, 2); bit(0, cols - 3, p, 3); bit(0, cols - 2, p, 4); bit(0, cols - 1, p, 5); bit(1, cols - 3, p, 6); bit(1, cols - 2, p, 7); bit(1, cols - 1, p, 8); };
+  let row = 4, col = 0, pos = 0;
+  do {
+    if (row === rows && col === 0) corner1(pos++);
+    if (row === rows - 2 && col === 0 && cols % 4 !== 0) corner2(pos++);
+    if (row === rows - 2 && col === 0 && cols % 8 === 4) corner3(pos++);
+    if (row === rows + 4 && col === 2 && cols % 8 === 0) corner4(pos++);
+    do { if (row < rows && col >= 0 && cells[row * cols + col] < 0) utah(row, col, pos++); row -= 2; col += 2; } while (row >= 0 && col < cols);
+    row += 1; col += 3;
+    do { if (row >= 0 && col < cols && cells[row * cols + col] < 0) utah(row, col, pos++); row += 2; col -= 2; } while (row < rows && col >= 0);
+    row += 3; col += 1;
+  } while (row < rows || col < cols);
+  if (cells[cells.length - 1] < 0) { cells[cells.length - 1] = 1; cells[cells.length - cols - 2] = 1; }
+  if (pos !== codewords.length) throw new EncodeError(`Data Matrix: placement consumed ${pos} of ${codewords.length} codewords`);
+  return cells;
+}
+
+function buildMatrix(codewords, symbol) {
+  const regionCols = symbol.width / symbol.regionWidth;
+  const regionRows = symbol.height / symbol.regionHeight;
+  const dataWidth = symbol.dataRegionColumns;
+  const dataHeight = symbol.dataRegionRows;
+  const data = place(codewords, regionRows * dataHeight, regionCols * dataWidth);
+  const matrix = new BitMatrix(symbol.width, symbol.height);
+  for (let ry = 0; ry < regionRows; ry++) for (let rx = 0; rx < regionCols; rx++) {
+    const x0 = rx * symbol.regionWidth, y0 = ry * symbol.regionHeight;
+    for (let x = 0; x < symbol.regionWidth; x++) { if ((x & 1) === 0) matrix.set(x0 + x, y0); matrix.set(x0 + x, y0 + dataHeight + 1); }
+    // The top and right timing borders are complementary: top-left is dark,
+    // top-right is light, and the solid bottom-right corner remains dark.
+    for (let y = 0; y < symbol.regionHeight; y++) { matrix.set(x0, y0 + y); if ((y & 1) === 1) matrix.set(x0 + dataWidth + 1, y0 + y); }
+    for (let y = 0; y < dataHeight; y++) for (let x = 0; x < dataWidth; x++) if (data[(ry * dataHeight + y) * (regionCols * dataWidth) + rx * dataWidth + x]) matrix.set(x0 + 1 + x, y0 + 1 + y);
+  }
+  return matrix;
+}
+
+/** Encode a string (ASCII mode) or byte payload (Base256) into Data Matrix ECC 200. */
+function encodeDataMatrix(value, options = {}) {
+  const encoding = options.encoding ?? (value instanceof Uint8Array ? 'base256' : 'ascii');
+  let raw;
+  if (encoding === 'ascii') {
+    if (typeof value !== 'string') throw new EncodeError('Data Matrix ASCII: value must be a string');
+    raw = asciiCodewords(value);
+  } else if (encoding === 'base256') raw = base256Codewords(value, options.gs1 === true ? 1 : 0);
+  else throw new EncodeError(`Data Matrix: unsupported encoding "${encoding}"`);
+  // GS1 DataMatrix is ECC 200 with FNC1 in the first codeword position.
+  if (options.gs1 === true) raw.unshift(232);
+  const shape = options.shape ?? 'any';
+  if (shape !== 'any' && shape !== 'square' && shape !== 'rectangular') throw new EncodeError(`Data Matrix: invalid shape "${shape}"`);
+  const symbol = symbolForDataCodewords(raw.length, shape);
+  if (!symbol) throw new EncodeError(`Data Matrix: ${raw.length} data codewords do not fit an ECC 200 ${shape} symbol`);
+  return buildMatrix(interleave(pad(raw, symbol.dataCodewords), symbol), symbol);
+}
+
+/** Encode already compacted ASCII/Base256 codewords, primarily for conformance tests. */
+function encodeDataMatrixCodewords(codewords, options = {}) {
+  if (!Array.isArray(codewords) && !(codewords instanceof Uint8Array)) throw new EncodeError('Data Matrix: codewords must be an array');
+  for (const c of codewords) if (!Number.isInteger(c) || c < 0 || c > 255) throw new EncodeError('Data Matrix: codewords must be bytes');
+  const symbol = symbolForDataCodewords(codewords.length, options.shape ?? 'any');
+  if (!symbol) throw new EncodeError('Data Matrix: codewords do not fit ECC 200');
+  return buildMatrix(interleave(pad(Array.from(codewords), symbol.dataCodewords), symbol), symbol);
+}
+
+__exports.encodeDataMatrix = encodeDataMatrix;
+__exports.encodeDataMatrixCodewords = encodeDataMatrixCodewords;
+};
+
+__modules["datamatrix/decoder.js"] = function (__require, __exports) {
+/**
+ * Data Matrix ECC 200 decoder for an already sampled symbol.
+ *
+ * The detector owns locating, perspective correction and orientation. This
+ * module starts with the complete, upright symbol including its finder borders.
+ * The table entry is deliberately read through a small normalizer so table data
+ * remains declarative: it needs total rows/columns, one data-region's rows and
+ * columns, data/ECC codeword counts, and either a block count or data block
+ * lengths. The standard 144x144 uneven data blocks are supported.
+ *
+ * @module datamatrix/decoder
+ */
+const { ChecksumError, FormatError } = __require("core/errors.js");
+const { GF256_DM } = __require("core/galois-field.js");
+const { rsDecode } = __require("core/reed-solomon.js");
+const { SYMBOLS } = __require("datamatrix/tables.js");
+
+const CW_PAD = 129;
+const CW_BASE256 = 231;
+
+/** @param {object} entry @param {...string} names @returns {number | undefined} */
+function numberField(entry, ...names) {
+  for (const name of names) if (Number.isInteger(entry[name])) return entry[name];
+  return undefined;
+}
+
+/** Normalize the public table entry into the decoder's geometry contract. */
+function layoutFor(width, height) {
+  const entry = SYMBOLS.find((s) =>
+    numberField(s, 'columns', 'cols', 'matrixColumns', 'width') === width &&
+    numberField(s, 'rows', 'matrixRows', 'height') === height);
+  if (!entry) throw new FormatError(`Data Matrix: ${width}x${height} is not an ECC 200 symbol size`);
+
+  const regionRows = numberField(entry, 'dataRegionRows', 'regionRows') ??
+    (numberField(entry, 'regionHeight') ? numberField(entry, 'regionHeight') - 2 : undefined);
+  const regionCols = numberField(entry, 'dataRegionColumns', 'dataRegionCols', 'regionColumns') ??
+    (numberField(entry, 'regionWidth') ? numberField(entry, 'regionWidth') - 2 : undefined);
+  const dataCount = numberField(entry, 'dataCodewords', 'dataCapacity');
+  const eccCount = numberField(entry, 'errorCodewords', 'eccCodewords');
+  const blockCount = numberField(entry, 'interleavedBlocks', 'interleavedBlockCount', 'blockCount', 'rsBlocks') || 1;
+  if (!regionRows || !regionCols || dataCount === undefined || eccCount === undefined ||
+      height % (regionRows + 2) || width % (regionCols + 2) || eccCount % blockCount) {
+    throw new FormatError(`Data Matrix: invalid table layout for ${width}x${height}`);
+  }
+
+  const rows = height / (regionRows + 2);
+  const cols = width / (regionCols + 2);
+  const blockData = Array.isArray(entry.blockDataCodewords) ? entry.blockDataCodewords.slice() :
+    Array.isArray(entry.dataCodewordsPerBlock) ? entry.dataCodewordsPerBlock.slice() : null;
+  let dataLengths;
+  if (blockData) {
+    dataLengths = blockData;
+  } else {
+    // The sole uneven ECC 200 distribution is 144x144: its first eight of ten
+    // blocks contain one extra data codeword. This derives it instead of hiding
+    // a magic size check in the deinterleaver.
+    const short = Math.floor(dataCount / blockCount);
+    dataLengths = new Array(blockCount).fill(short);
+    for (let i = 0; i < dataCount % blockCount; i++) dataLengths[i]++;
+  }
+  if (dataLengths.length !== blockCount || dataLengths.reduce((a, b) => a + b, 0) !== dataCount) {
+    throw new FormatError(`Data Matrix: inconsistent block layout for ${width}x${height}`);
+  }
+  return { entry, regionRows, regionCols, regionRowCount: rows, regionColCount: cols,
+    dataRows: rows * regionRows, dataCols: cols * regionCols, dataCount, eccCount,
+    blockCount, eccPerBlock: eccCount / blockCount, dataLengths };
+}
+
+/** Remove the L/finders from every data region, retaining only placement modules. */
+function extractDataModules(matrix, layout) {
+  const data = new Uint8Array(layout.dataRows * layout.dataCols);
+  for (let regionY = 0; regionY < layout.regionRowCount; regionY++) {
+    for (let regionX = 0; regionX < layout.regionColCount; regionX++) {
+      const sourceX = regionX * (layout.regionCols + 2) + 1;
+      const sourceY = regionY * (layout.regionRows + 2) + 1;
+      for (let y = 0; y < layout.regionRows; y++) {
+        const targetY = regionY * layout.regionRows + y;
+        for (let x = 0; x < layout.regionCols; x++) {
+          data[targetY * layout.dataCols + regionX * layout.regionCols + x] =
+            matrix.get(sourceX + x, sourceY + y) ? 1 : 0;
+        }
+      }
+    }
+  }
+  return data;
+}
+
+/** Read placement codewords using the ECC 200 Utah sweep (the inverse writer path). */
+function readPlacement(modules, rows, cols, count) {
+  const seen = new Uint8Array(rows * cols);
+  const out = new Uint8Array(count);
+  const get = (row, col) => modules[row * cols + col] !== 0;
+  const module = (row, col) => {
+    if (row < 0) { row += rows; col += 4 - ((rows + 4) % 8); }
+    if (col < 0) { col += cols; row += 4 - ((cols + 4) % 8); }
+    if (row < 0 || row >= rows || col < 0 || col >= cols) {
+      throw new FormatError('Data Matrix: placement coordinate escaped data region');
+    }
+    seen[row * cols + col] = 1;
+    return get(row, col) ? 1 : 0;
+  };
+  const bits = (coords) => coords.reduce((value, p) => (value << 1) | module(p[0], p[1]), 0);
+  const utah = (row, col) => bits([[row - 2, col - 2], [row - 2, col - 1], [row - 1, col - 2], [row - 1, col - 1],
+    [row - 1, col], [row, col - 2], [row, col - 1], [row, col]]);
+  const corner1 = () => bits([[rows - 1, 0], [rows - 1, 1], [rows - 1, 2], [0, cols - 2], [0, cols - 1], [1, cols - 1], [2, cols - 1], [3, cols - 1]]);
+  const corner2 = () => bits([[rows - 3, 0], [rows - 2, 0], [rows - 1, 0], [0, cols - 4], [0, cols - 3], [0, cols - 2], [0, cols - 1], [1, cols - 1]]);
+  const corner3 = () => bits([[rows - 3, 0], [rows - 2, 0], [rows - 1, 0], [0, cols - 2], [0, cols - 1], [1, cols - 1], [2, cols - 1], [3, cols - 1]]);
+  const corner4 = () => bits([[rows - 1, 0], [rows - 1, cols - 1], [0, cols - 3], [0, cols - 2], [0, cols - 1], [1, cols - 3], [1, cols - 2], [1, cols - 1]]);
+
+  let row = 4, col = 0, n = 0;
+  const put = (value) => { if (n < count) out[n++] = value; };
+  do {
+    if (row === rows && col === 0) put(corner1());
+    if (row === rows - 2 && col === 0 && cols % 4 !== 0) put(corner2());
+    if (row === rows - 2 && col === 0 && cols % 8 === 4) put(corner3());
+    if (row === rows + 4 && col === 2 && cols % 8 === 0) put(corner4());
+    do { if (row < rows && col >= 0 && !seen[row * cols + col]) put(utah(row, col)); row -= 2; col += 2; } while (row >= 0 && col < cols);
+    row += 1; col += 3;
+    do { if (row >= 0 && col < cols && !seen[row * cols + col]) put(utah(row, col)); row += 2; col -= 2; } while (row < rows && col >= 0);
+    row += 3; col += 1;
+  } while (row < rows || col < cols);
+  if (n !== count) throw new FormatError(`Data Matrix: placement yielded ${n}, expected ${count} codewords`);
+  return out;
+}
+
+/** Restore RS blocks, correct them, then concatenate their data portions. */
+function deinterleaveAndCorrect(codewords, layout) {
+  if (codewords.length !== layout.dataCount + layout.eccCount) throw new FormatError('Data Matrix: codeword count mismatch');
+  const blocks = layout.dataLengths.map((len) => new Uint8Array(len + layout.eccPerBlock));
+  // Data codewords arrive in their original stream order. ECC 200 deals that
+  // stream round-robin across the RS blocks, so the inverse is determined by
+  // the wire index rather than by splitting it into consecutive block-sized
+  // chunks. For 144x144, indices 1550..1557 naturally land in the eight long
+  // blocks while the two short blocks remain at 155 data codewords.
+  for (let i = 0; i < layout.dataCount; i++) {
+    blocks[i % layout.blockCount][Math.floor(i / layout.blockCount)] = codewords[i];
+  }
+
+  // Parity normally begins with block zero. The uneven 144x144 layout rotates
+  // the parity wire order to begin with its first short block; derive the same
+  // mapping from the declarative lengths instead of keying it to dimensions.
+  const longest = Math.max(...layout.dataLengths);
+  const firstShort = layout.dataLengths.findIndex((length) => length < longest);
+  const rotation = firstShort < 0 ? 0 : firstShort;
+  let at = layout.dataCount;
+  for (let i = 0; i < layout.eccPerBlock; i++) {
+    for (let slot = 0; slot < layout.blockCount; slot++) {
+      const block = (slot + rotation) % layout.blockCount;
+      blocks[block][layout.dataLengths[block] + i] = codewords[at++];
+    }
+  }
+
+  let corrections = 0;
+  const data = new Uint8Array(layout.dataCount);
+  for (let b = 0; b < blocks.length; b++) {
+    corrections += rsDecode(blocks[b], layout.eccPerBlock, GF256_DM, 1);
+  }
+  // Rebuild the original high-level codeword stream after correction. Keeping
+  // this in wire-index order is essential: concatenating block data passes
+  // single-block round trips but scrambles every multi-block payload.
+  for (let i = 0; i < layout.dataCount; i++) {
+    data[i] = blocks[i % layout.blockCount][Math.floor(i / layout.blockCount)];
+  }
+  return { data, corrections };
+}
+
+function unrandomize(value, position) {
+  const pseudo = ((149 * position) % 255) + 1;
+  return value - pseudo >= 0 ? value - pseudo : value - pseudo + 256;
+}
+
+/** Decode ASCII plus Base 256, preserving semantic bytes alongside text. */
+function parseData(data) {
+  let text = '';
+  const bytes = [];
+  let upperShift = false;
+  let gs1 = false;
+  for (let i = 0; i < data.length;) {
+    const cw = data[i++];
+    if (cw === CW_PAD) break;
+    if (cw <= 128) {
+      const value = cw - 1 + (upperShift ? 128 : 0);
+      upperShift = false;
+      text += String.fromCharCode(value); bytes.push(value); continue;
+    }
+    if (cw <= 229) {
+      const pair = cw - 130;
+      const digits = String(pair).padStart(2, '0'); text += digits; bytes.push(digits.charCodeAt(0), digits.charCodeAt(1)); continue;
+    }
+    if (cw === 232) {
+      if (i === 1) gs1 = true;
+      else { text += '\x1d'; bytes.push(29); }
+      continue;
+    }
+    if (cw === 235) { upperShift = true; continue; }
+    if (cw === CW_BASE256) {
+      if (i >= data.length) throw new FormatError('Data Matrix: Base 256 length is missing');
+      let length = unrandomize(data[i], i + 1); i++;
+      if (length === 0) length = data.length - i;
+      else if (length >= 250) {
+        if (i >= data.length) throw new FormatError('Data Matrix: Base 256 extended length is missing');
+        length = 250 * (length - 249) + unrandomize(data[i], i + 1); i++;
+      }
+      if (i + length > data.length) throw new FormatError('Data Matrix: Base 256 segment exceeds data capacity');
+      const segment = new Uint8Array(length);
+      for (let n = 0; n < length; n++, i++) segment[n] = unrandomize(data[i], i + 1);
+      bytes.push(...segment);
+      for (let n = 0; n < segment.length; n++) text += String.fromCharCode(segment[n]);
+      continue;
+    }
+    throw new FormatError(`Data Matrix: unsupported encoding codeword ${cw}`);
+  }
+  return { text, bytes: Uint8Array.from(bytes), gs1 };
+}
+
+/**
+ * Decode an upright, sampled Data Matrix ECC 200 symbol.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix Full symbol, no quiet zone.
+ * @returns {{text: string, bytes: Uint8Array, correctedErrors: number, symbol: object}}
+ */
+function decodeDataMatrix(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) throw new FormatError('Data Matrix: no matrix supplied');
+  const layout = layoutFor(matrix.width, matrix.height);
+  const placement = readPlacement(extractDataModules(matrix, layout), layout.dataRows, layout.dataCols, layout.dataCount + layout.eccCount);
+  const { data, corrections } = deinterleaveAndCorrect(placement, layout);
+  const result = parseData(data);
+  return { ...result, corrections, correctedErrors: corrections, symbol: layout.entry };
+}
+__exports.ChecksumError = ChecksumError;
+
+__exports.decodeDataMatrix = decodeDataMatrix;
+};
+
+__modules["image/perspective.js"] = function (__require, __exports) {
+/**
+ * Projective (perspective) transforms.
+ *
+ * A 2D symbol photographed off-axis is not a rotated square — it is a
+ * quadrilateral with converging edges. Correcting that needs a full projective
+ * map, not an affine one; an affine approximation reads the near edge of a
+ * tilted symbol correctly and drifts a module or more by the far edge.
+ *
+ * The map is a 3x3 homogeneous matrix. Points are transformed as
+ * (x, y, 1) * M, then divided through by the resulting w.
+ *
+ * @module image/perspective
+ */
+class PerspectiveTransform {
+  /* eslint-disable-next-line max-params */
+  constructor(a11, a21, a31, a12, a22, a32, a13, a23, a33) {
+    this.a11 = a11; this.a21 = a21; this.a31 = a31;
+    this.a12 = a12; this.a22 = a22; this.a32 = a32;
+    this.a13 = a13; this.a23 = a23; this.a33 = a33;
+  }
+
+  /**
+   * Transform points in place.
+   *
+   * @param {Float32Array | number[]} points Interleaved [x0, y0, x1, y1, ...].
+   * @returns {Float32Array | number[]} The same array.
+   */
+  transform(points) {
+    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
+    for (let i = 0; i < points.length; i += 2) {
+      const x = points[i];
+      const y = points[i + 1];
+      const w = a13 * x + a23 * y + a33;
+      points[i] = (a11 * x + a21 * y + a31) / w;
+      points[i + 1] = (a12 * x + a22 * y + a32) / w;
+    }
+    return points;
+  }
+
+  /**
+   * Transform a single point.
+   *
+   * @param {number} x @param {number} y
+   * @returns {{x: number, y: number}}
+   */
+  transformPoint(x, y) {
+    const w = this.a13 * x + this.a23 * y + this.a33;
+    return {
+      x: (this.a11 * x + this.a21 * y + this.a31) / w,
+      y: (this.a12 * x + this.a22 * y + this.a32) / w,
+    };
+  }
+
+  /**
+   * Map the unit square — (0,0), (1,0), (1,1), (0,1) — onto an arbitrary quad.
+   *
+   * Corners are given in that same order, i.e. going around the quad, not
+   * as opposite pairs.
+   *
+   * @returns {PerspectiveTransform}
+   */
+  /* eslint-disable-next-line max-params */
+  static squareToQuad(x0, y0, x1, y1, x2, y2, x3, y3) {
+    const dx3 = x0 - x1 + x2 - x3;
+    const dy3 = y0 - y1 + y2 - y3;
+
+    if (dx3 === 0 && dy3 === 0) {
+      // The quad is a parallelogram, so the map is affine and the projective
+      // terms vanish. Worth special-casing: it is the common case for flat
+      // scans, and the general solution divides by zero here.
+      return new PerspectiveTransform(
+        x1 - x0, x2 - x1, x0,
+        y1 - y0, y2 - y1, y0,
+        0, 0, 1
+      );
+    }
+
+    const dx1 = x1 - x2;
+    const dx2 = x3 - x2;
+    const dy1 = y1 - y2;
+    const dy2 = y3 - y2;
+    const denominator = dx1 * dy2 - dx2 * dy1;
+    const a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
+    const a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
+
+    return new PerspectiveTransform(
+      x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0,
+      y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0,
+      a13, a23, 1
+    );
+  }
+
+  /**
+   * Map an arbitrary quad onto the unit square — the inverse of
+   * {@link squareToQuad}, via the adjugate.
+   *
+   * @returns {PerspectiveTransform}
+   */
+  /* eslint-disable-next-line max-params */
+  static quadToSquare(x0, y0, x1, y1, x2, y2, x3, y3) {
+    return PerspectiveTransform.squareToQuad(x0, y0, x1, y1, x2, y2, x3, y3).inverse();
+  }
+
+  /**
+   * Map one quad onto another, corner for corner.
+   *
+   * This is what turns four detected finder corners into a sampling grid:
+   * compose "detected quad -> unit square" with "unit square -> ideal grid".
+   *
+   * @returns {PerspectiveTransform}
+   */
+  /* eslint-disable-next-line max-params */
+  static quadToQuad(
+    sx0, sy0, sx1, sy1, sx2, sy2, sx3, sy3,
+    dx0, dy0, dx1, dy1, dx2, dy2, dx3, dy3
+  ) {
+    const toSquare = PerspectiveTransform.quadToSquare(sx0, sy0, sx1, sy1, sx2, sy2, sx3, sy3);
+    const toQuad = PerspectiveTransform.squareToQuad(dx0, dy0, dx1, dy1, dx2, dy2, dx3, dy3);
+    return toSquare.times(toQuad);
+  }
+
+  /**
+   * Adjugate — the inverse up to a scale factor, which is irrelevant in
+   * homogeneous coordinates because the division by w cancels it.
+   *
+   * @returns {PerspectiveTransform}
+   */
+  inverse() {
+    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
+    return new PerspectiveTransform(
+      a22 * a33 - a23 * a32,
+      a23 * a31 - a21 * a33,
+      a21 * a32 - a22 * a31,
+      a13 * a32 - a12 * a33,
+      a11 * a33 - a13 * a31,
+      a12 * a31 - a11 * a32,
+      a12 * a23 - a13 * a22,
+      a13 * a21 - a11 * a23,
+      a11 * a22 - a12 * a21
+    );
+  }
+
+  /**
+   * Matrix product: apply `this` first, then `other`.
+   *
+   * @param {PerspectiveTransform} other
+   * @returns {PerspectiveTransform}
+   */
+  times(other) {
+    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
+    const o = other;
+    return new PerspectiveTransform(
+      o.a11 * a11 + o.a21 * a12 + o.a31 * a13,
+      o.a11 * a21 + o.a21 * a22 + o.a31 * a23,
+      o.a11 * a31 + o.a21 * a32 + o.a31 * a33,
+      o.a12 * a11 + o.a22 * a12 + o.a32 * a13,
+      o.a12 * a21 + o.a22 * a22 + o.a32 * a23,
+      o.a12 * a31 + o.a22 * a32 + o.a32 * a33,
+      o.a13 * a11 + o.a23 * a12 + o.a33 * a13,
+      o.a13 * a21 + o.a23 * a22 + o.a33 * a23,
+      o.a13 * a31 + o.a23 * a32 + o.a33 * a33
+    );
+  }
+}
+
+__exports.PerspectiveTransform = PerspectiveTransform;
+};
+
+__modules["image/grid-sampler.js"] = function (__require, __exports) {
+/**
+ * Resample a distorted symbol in the image into an upright module grid.
+ *
+ * Given a transform that maps grid coordinates to image coordinates, this
+ * samples the centre of every module. Sampling centres rather than averaging
+ * whole cells is deliberate: module edges are where blur and bleed live, and
+ * including them turns a marginal symbol into an unreadable one.
+ *
+ * @module image/grid-sampler
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { NotFoundError } = __require("core/errors.js");
+const { PerspectiveTransform } = __require("image/perspective.js");
+
+/**
+ * Sample a `dimension` x `dimension` grid (or `width` x `height`).
+ *
+ * @param {BitMatrix} image Binarized source image.
+ * @param {number} width Modules across.
+ * @param {number} height Modules down.
+ * @param {PerspectiveTransform} transform Grid space -> image space.
+ * @returns {BitMatrix}
+ * @throws {NotFoundError} If the grid falls outside the image.
+ */
+function sampleGrid(image, width, height, transform) {
+  const out = new BitMatrix(width, height);
+  const points = new Float32Array(width * 2);
+
+  for (let y = 0; y < height; y++) {
+    // Module centres: offset by half a module in both axes.
+    const gridY = y + 0.5;
+    for (let x = 0; x < width; x++) {
+      points[x * 2] = x + 0.5;
+      points[x * 2 + 1] = gridY;
+    }
+    transform.transform(points);
+
+    for (let x = 0; x < width; x++) {
+      const px = points[x * 2] | 0;
+      const py = points[x * 2 + 1] | 0;
+      if (px < 0 || py < 0 || px >= image.width || py >= image.height) {
+        throw new NotFoundError(
+          `Sampling grid escapes the image at module (${x}, ${y})`
+        );
+      }
+      if (image.get(px, py)) out.set(x, y);
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Sample with a 3x3 majority vote per module.
+ *
+ * Slower, and worth it when a single-point sample lands on a speck of noise or
+ * a JPEG artefact. Readers fall back to this after a clean sample fails to
+ * decode, rather than paying for it on every attempt.
+ *
+ * @param {BitMatrix} image
+ * @param {number} width
+ * @param {number} height
+ * @param {PerspectiveTransform} transform
+ * @returns {BitMatrix}
+ */
+function sampleGridVoting(image, width, height, transform) {
+  const out = new BitMatrix(width, height);
+
+  // Spacing between module centres, measured in image pixels, so the vote
+  // spreads across the module rather than a fixed pixel radius that would be
+  // meaningless at a different scale.
+  const p0 = transform.transformPoint(0.5, 0.5);
+  const p1 = transform.transformPoint(1.5, 0.5);
+  const p2 = transform.transformPoint(0.5, 1.5);
+  const stepX = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+  const stepY = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+  const rx = Math.max(1, Math.round(stepX / 4));
+  const ry = Math.max(1, Math.round(stepY / 4));
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const c = transform.transformPoint(x + 0.5, y + 0.5);
+      const cx = c.x | 0;
+      const cy = c.y | 0;
+      if (cx < 0 || cy < 0 || cx >= image.width || cy >= image.height) {
+        throw new NotFoundError(
+          `Sampling grid escapes the image at module (${x}, ${y})`
+        );
+      }
+
+      let dark = 0;
+      let total = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const sx = cx + dx * rx;
+          const sy = cy + dy * ry;
+          if (sx < 0 || sy < 0 || sx >= image.width || sy >= image.height) continue;
+          total++;
+          if (image.get(sx, sy)) dark++;
+        }
+      }
+      if (total > 0 && dark * 2 > total) out.set(x, y);
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Build the transform for a symbol whose four corners are known, and sample it.
+ *
+ * Corners are in reading order: top-left, top-right, bottom-right, bottom-left.
+ *
+ * @param {BitMatrix} image
+ * @param {number} dimension Modules per side.
+ * @param {Array<{x: number, y: number}>} corners
+ * @param {boolean} [voting]
+ * @returns {BitMatrix}
+ */
+function sampleQuad(image, dimension, corners, voting = false) {
+  if (corners.length !== 4) throw new NotFoundError('sampleQuad needs exactly 4 corners');
+  const [tl, tr, br, bl] = corners;
+  const d = dimension;
+
+  const transform = PerspectiveTransform.quadToQuad(
+    0, 0, d, 0, d, d, 0, d,
+    tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y
+  );
+
+  return voting
+    ? sampleGridVoting(image, d, d, transform)
+    : sampleGrid(image, d, d, transform);
+}
+
+__exports.sampleGrid = sampleGrid;
+__exports.sampleGridVoting = sampleGridVoting;
+__exports.sampleQuad = sampleQuad;
+};
+
+__modules["datamatrix/detector.js"] = function (__require, __exports) {
+/**
+ * Data Matrix ECC 200 detection in a binarized image.
+ *
+ * An ECC 200 symbol is distinguished by two neighbouring solid finder borders
+ * (the L) and two alternating clock borders.  The detector first finds dark
+ * connected components, then scores every legal ECC 200 size and every
+ * quarter-turn of the component's bounding quadrilateral against those four
+ * borders.  This deliberately verifies the complete border rather than merely
+ * looking for an L: ordinary text and table rules produce L shapes often.
+ *
+ * The resulting quadrilateral is sampled back into the canonical orientation:
+ * solid borders at left and bottom.  It is intentionally independent of the
+ * payload decoder, so geometry can be used by callers that need the matrix.
+ *
+ * @module datamatrix/detector
+ */
+const { NotFoundError } = __require("core/errors.js");
+const { sampleGrid, sampleQuad } = __require("image/grid-sampler.js");
+const { PerspectiveTransform } = __require("image/perspective.js");
+const { decodeDataMatrix } = __require("datamatrix/decoder.js");
+
+// ECC 200 dimensions.  DMRE is deliberately not included: it uses a separate
+// size table and is not part of the original ECC 200 family implemented here.
+const SIZES = [
+  [10, 10], [12, 12], [14, 14], [16, 16], [18, 18], [20, 20], [22, 22], [24, 24], [26, 26],
+  [32, 32], [36, 36], [40, 40], [44, 44], [48, 48], [52, 52], [64, 64], [72, 72], [80, 80],
+  [88, 88], [96, 96], [104, 104], [120, 120], [132, 132], [144, 144],
+  [18, 8], [32, 8], [26, 12], [36, 12], [36, 16], [48, 16],
+];
+
+/** @typedef {{x:number, y:number}} Point */
+/** @typedef {{corners: Point[], dimension: number, width: number, height: number, moduleSize: number, matrix: import('../core/bit-matrix.js').BitMatrix}} Detection */
+
+function dark(image, x, y) {
+  return image.get(Math.max(0, Math.min(image.width - 1, Math.round(x))),
+    Math.max(0, Math.min(image.height - 1, Math.round(y))));
+}
+
+/** Return components which are large enough to plausibly contain a symbol. */
+function components(image) {
+  const seen = new Uint8Array(image.width * image.height);
+  const out = [];
+  const push = (x, y, xs, ys) => { xs.push(x); ys.push(y); };
+  for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+    const start = y * image.width + x;
+    if (seen[start] || !image.get(x, y)) continue;
+    const xs = [x], ys = [y]; seen[start] = 1;
+    let head = 0, minX = x, maxX = x, minY = y, maxY = y;
+    while (head < xs.length) {
+      const px = xs[head], py = ys[head++];
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+      for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= image.width || ny >= image.height) continue;
+        const at = ny * image.width + nx;
+        if (!seen[at] && image.get(nx, ny)) { seen[at] = 1; push(nx, ny, xs, ys); }
+      }
+    }
+    if (maxX - minX >= 7 && maxY - minY >= 7) out.push({ minX, minY, maxX, maxY, pixels: xs.length });
+  }
+  return out.sort((a, b) => b.pixels - a.pixels).slice(0, 40);
+}
+
+/** Sample a physical edge at module centres. */
+function edge(image, a, b, count) {
+  const values = [];
+  for (let i = 0; i < count; i++) {
+    const t = (i + 0.5) / count;
+    values.push(dark(image, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t));
+  }
+  return values;
+}
+
+function solidScore(values) {
+  let n = 0; for (const value of values) if (value) n++;
+  return n / values.length;
+}
+
+function clockScore(values, startsDark) {
+  let n = 0;
+  for (let i = 0; i < values.length; i++) if (values[i] === ((i & 1) === 0 ? startsDark : !startsDark)) n++;
+  return n / values.length;
+}
+
+/** Count light/dark changes along a physical edge at approximately one-pixel intervals. */
+function edgeTransitions(image, a, b) {
+  const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y)));
+  let previous = dark(image, a.x, a.y);
+  let changes = 0;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const value = dark(image, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+    if (value !== previous) changes++;
+    previous = value;
+  }
+  return changes;
+}
+
+/** Reject a smaller harmonic whose module-centre samples happen to alternate. */
+function transitionCountFits(observed, modules) {
+  const expected = modules - 1;
+  const tolerance = Math.max(2, Math.floor(expected * 0.08));
+  return Math.abs(observed - expected) <= tolerance;
+}
+
+function sample(image, width, height, corners, voting) {
+  if (width === height) return sampleQuad(image, width, corners, voting);
+  const [tl, tr, br, bl] = corners;
+  const transform = PerspectiveTransform.quadToQuad(0, 0, width, 0, width, height, 0, height,
+    tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
+  return sampleGrid(image, width, height, transform);
+}
+
+/**
+ * Find Data Matrix symbols in a binarized image.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
+ * @returns {Detection | null} The strongest candidate, or null when absent.
+ */
+function detectDataMatrix(binaryImage) {
+  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+    throw new NotFoundError('detectDataMatrix: no image supplied');
+  }
+  const detections = [];
+  const used = new Set();
+  for (const box of components(binaryImage)) {
+    const base = [
+      { x: box.minX, y: box.minY }, { x: box.maxX + 1, y: box.minY },
+      { x: box.maxX + 1, y: box.maxY + 1 }, { x: box.minX, y: box.maxY + 1 },
+    ];
+    // Profile the actual ink, rather than the outer sampling quadrilateral:
+    // its far x/y boundary lies one pixel beyond the last dark pixel.
+    const ink = [
+      { x: box.minX, y: box.minY }, { x: box.maxX, y: box.minY },
+      { x: box.maxX, y: box.maxY }, { x: box.minX, y: box.maxY },
+    ];
+    for (const [w, h] of SIZES) for (let turn = 0; turn < 4; turn++) {
+      // A 90 degree turn swaps physical width and height.
+      const physicalW = (turn & 1) ? h : w, physicalH = (turn & 1) ? w : h;
+      const pitchX = (box.maxX - box.minX + 1) / physicalW;
+      const pitchY = (box.maxY - box.minY + 1) / physicalH;
+      if (Math.min(pitchX, pitchY) < 1 || Math.abs(pitchX - pitchY) > Math.max(pitchX, pitchY) * 0.22) continue;
+      const corners = base.slice(turn).concat(base.slice(0, turn));
+      const profile = ink.slice(turn).concat(ink.slice(0, turn));
+      // Canonical edge order: top clock, right clock, bottom solid, left solid.
+      const top = edge(binaryImage, profile[0], profile[1], w);
+      const right = edge(binaryImage, profile[1], profile[2], h);
+      const bottom = edge(binaryImage, profile[2], profile[3], w);
+      const left = edge(binaryImage, profile[3], profile[0], h);
+      // Sampling only the proposed module centres aliases exact harmonics: an
+      // 80-module clock border, for example, can look like a perfect 16-module
+      // border.  Count transitions at image-pixel resolution as an independent
+      // dimension measurement before accepting the candidate.
+      if (!transitionCountFits(edgeTransitions(binaryImage, profile[0], profile[1]), w) ||
+          !transitionCountFits(edgeTransitions(binaryImage, profile[1], profile[2]), h)) continue;
+      // The top clock starts dark at the solid left border.  The right clock is
+      // anchored dark at the solid bottom border instead, so its top phase
+      // depends on the symbol height (all ECC 200 heights are even and
+      // therefore start light).
+      const score = (clockScore(top, true) + clockScore(right, (h & 1) === 1) +
+        solidScore(bottom) + solidScore(left)) / 4;
+      if (score < 0.88) continue;
+      const key = `${box.minX},${box.minY},${box.maxX},${box.maxY}`;
+      if (used.has(key)) continue;
+      let matrix;
+      try { matrix = sample(binaryImage, w, h, corners, false); } catch (e) { continue; }
+      used.add(key);
+      detections.push({ corners, dimension: w === h ? w : 0, width: w, height: h,
+        moduleSize: (pitchX + pitchY) / 2, matrix, score });
+    }
+  }
+  detections.sort((a, b) => b.score - a.score || b.moduleSize - a.moduleSize);
+  return detections[0] ?? null;
+}
+
+/**
+ * Detect and decode Data Matrix symbols.  Detection failure is normal for an
+ * image without a symbol, so candidates that cannot decode are skipped.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
+ * @returns {(import('./decoder.js').DecodeResult & {corners: Point[]}) | null}
+ */
+function detectAndDecodeDataMatrix(binaryImage) {
+  let detection;
+  try { detection = detectDataMatrix(binaryImage); } catch (e) { return null; }
+  if (!detection) return null;
+  for (const voting of [false, true]) {
+    let matrix = detection.matrix;
+    try { if (voting) matrix = sample(binaryImage, detection.width, detection.height, detection.corners, true); } catch (e) { continue; }
+    try { return Object.assign({ corners: detection.corners }, decodeDataMatrix(matrix)); }
+    catch (e) { /* A geometric candidate is not necessarily a symbol. */ }
+  }
+  return null;
+}
+
+__exports.detectDataMatrix = detectDataMatrix;
+__exports.detectAndDecodeDataMatrix = detectAndDecodeDataMatrix;
+};
+
+__modules["datamatrix/index.js"] = function (__require, __exports) {
+/** Data Matrix ECC 200 entry points. @module datamatrix */
+const __reexport0 = __require("datamatrix/encoder.js"); __exports.encodeDataMatrix = __reexport0.encodeDataMatrix; __exports.encodeDataMatrixCodewords = __reexport0.encodeDataMatrixCodewords;
+const __reexport1 = __require("datamatrix/decoder.js"); __exports.decodeDataMatrix = __reexport1.decodeDataMatrix;
+const __reexport2 = __require("datamatrix/detector.js"); __exports.detectDataMatrix = __reexport2.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport2.detectAndDecodeDataMatrix;
+const __reexport3 = __require("datamatrix/tables.js"); __exports.DATAMATRIX_SYMBOLS = __reexport3.DATAMATRIX_SYMBOLS; __exports.SYMBOLS = __reexport3.SYMBOLS; __exports.symbolForDataCodewords = __reexport3.symbolForDataCodewords; __exports.validateDataMatrixTables = __reexport3.validateDataMatrixTables; __exports.validateTables = __reexport3.validateTables;
+
+
+};
+
+__modules["core/bit-buffer.js"] = function (__require, __exports) {
+/**
+ * Bit-level writing and reading, MSB-first.
+ *
+ * Every 2D symbology serialises its payload as a bitstream that does not
+ * respect byte boundaries — QR alone mixes 4-bit mode indicators, 10-bit
+ * character-count fields and 11-bit alphanumeric pairs. These two classes are
+ * the write and read halves of that.
+ *
+ * @module core/bit-buffer
+ */
+const { FormatError } = __require("core/errors.js");
+
+/** Growable MSB-first bit writer. */
+class BitWriter {
+  constructor() {
+    /** @type {number[]} Packed bytes; the last one may be partially filled. */
+    this.bytes = [];
+    this.bitLength = 0;
+  }
+
+  /** @returns {number} Bits written so far. */
+  get length() {
+    return this.bitLength;
+  }
+
+  /**
+   * Append the low `count` bits of `value`, most significant first.
+   *
+   * @param {number} value
+   * @param {number} count
+   */
+  put(value, count) {
+    for (let i = count - 1; i >= 0; i--) {
+      this.putBit(((value >>> i) & 1) === 1);
+    }
+  }
+
+  /** @param {boolean} bit */
+  putBit(bit) {
+    const idx = this.bitLength >>> 3;
+    if (this.bytes.length <= idx) this.bytes.push(0);
+    if (bit) this.bytes[idx] |= 0x80 >>> (this.bitLength & 7);
+    this.bitLength++;
+  }
+
+  /** @param {ArrayLike<number>} data */
+  putBytes(data) {
+    for (let i = 0; i < data.length; i++) this.put(data[i], 8);
+  }
+
+  /** Pad with zero bits until the length is a multiple of 8. */
+  padToByte() {
+    while (this.bitLength & 7) this.putBit(false);
+  }
+
+  /**
+   * @returns {Uint8Array} Byte view; trailing bits of the final byte are zero.
+   */
+  toBytes() {
+    return Uint8Array.from(this.bytes);
+  }
+
+  /** @returns {string} Debug view, e.g. "0100 0011 0101". */
+  toString() {
+    let s = '';
+    for (let i = 0; i < this.bitLength; i++) {
+      if (i && i % 4 === 0) s += ' ';
+      s += (this.bytes[i >>> 3] >>> (7 - (i & 7))) & 1;
+    }
+    return s;
+  }
+}
+
+/** MSB-first bit reader over a byte array. */
+class BitReader {
+  /** @param {ArrayLike<number>} bytes */
+  constructor(bytes) {
+    this.bytes = bytes;
+    this.byteOffset = 0;
+    this.bitOffset = 0;
+  }
+
+  /** @returns {number} Bits not yet consumed. */
+  available() {
+    return 8 * (this.bytes.length - this.byteOffset) - this.bitOffset;
+  }
+
+  /**
+   * Read `count` bits (1..32) as an unsigned integer, most significant first.
+   *
+   * @param {number} count
+   * @returns {number}
+   * @throws {FormatError} If the stream is exhausted.
+   */
+  read(count) {
+    if (count < 1 || count > 32) {
+      throw new FormatError(`BitReader: cannot read ${count} bits`);
+    }
+    if (count > this.available()) {
+      throw new FormatError(
+        `BitReader: needed ${count} bits, ${this.available()} remain`
+      );
+    }
+
+    let result = 0;
+    let remaining = count;
+
+    // Finish the partially consumed byte first, then take whole bytes.
+    if (this.bitOffset > 0) {
+      const inCurrent = 8 - this.bitOffset;
+      const take = Math.min(remaining, inCurrent);
+      const shift = inCurrent - take;
+      const mask = (0xff >> this.bitOffset) & ~((1 << shift) - 1);
+      result = (this.bytes[this.byteOffset] & mask) >> shift;
+      remaining -= take;
+      this.bitOffset += take;
+      if (this.bitOffset === 8) {
+        this.bitOffset = 0;
+        this.byteOffset++;
+      }
+    }
+
+    while (remaining >= 8) {
+      result = (result << 8) | (this.bytes[this.byteOffset] & 0xff);
+      this.byteOffset++;
+      remaining -= 8;
+    }
+
+    if (remaining > 0) {
+      const shift = 8 - remaining;
+      const mask = ~((1 << shift) - 1) & 0xff;
+      result = (result << remaining) | ((this.bytes[this.byteOffset] & mask) >> shift);
+      this.bitOffset += remaining;
+    }
+
+    return result >>> 0;
+  }
+
+  /** @returns {boolean} */
+  readBit() {
+    return this.read(1) === 1;
+  }
+}
+
+__exports.BitWriter = BitWriter;
+__exports.BitReader = BitReader;
 };
 
 __modules["qr/tables.js"] = function (__require, __exports) {
@@ -5564,315 +6587,6 @@ __exports.ChecksumError = ChecksumError;
 __exports.decodeQR = decodeQR;
 };
 
-__modules["image/perspective.js"] = function (__require, __exports) {
-/**
- * Projective (perspective) transforms.
- *
- * A 2D symbol photographed off-axis is not a rotated square — it is a
- * quadrilateral with converging edges. Correcting that needs a full projective
- * map, not an affine one; an affine approximation reads the near edge of a
- * tilted symbol correctly and drifts a module or more by the far edge.
- *
- * The map is a 3x3 homogeneous matrix. Points are transformed as
- * (x, y, 1) * M, then divided through by the resulting w.
- *
- * @module image/perspective
- */
-class PerspectiveTransform {
-  /* eslint-disable-next-line max-params */
-  constructor(a11, a21, a31, a12, a22, a32, a13, a23, a33) {
-    this.a11 = a11; this.a21 = a21; this.a31 = a31;
-    this.a12 = a12; this.a22 = a22; this.a32 = a32;
-    this.a13 = a13; this.a23 = a23; this.a33 = a33;
-  }
-
-  /**
-   * Transform points in place.
-   *
-   * @param {Float32Array | number[]} points Interleaved [x0, y0, x1, y1, ...].
-   * @returns {Float32Array | number[]} The same array.
-   */
-  transform(points) {
-    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
-    for (let i = 0; i < points.length; i += 2) {
-      const x = points[i];
-      const y = points[i + 1];
-      const w = a13 * x + a23 * y + a33;
-      points[i] = (a11 * x + a21 * y + a31) / w;
-      points[i + 1] = (a12 * x + a22 * y + a32) / w;
-    }
-    return points;
-  }
-
-  /**
-   * Transform a single point.
-   *
-   * @param {number} x @param {number} y
-   * @returns {{x: number, y: number}}
-   */
-  transformPoint(x, y) {
-    const w = this.a13 * x + this.a23 * y + this.a33;
-    return {
-      x: (this.a11 * x + this.a21 * y + this.a31) / w,
-      y: (this.a12 * x + this.a22 * y + this.a32) / w,
-    };
-  }
-
-  /**
-   * Map the unit square — (0,0), (1,0), (1,1), (0,1) — onto an arbitrary quad.
-   *
-   * Corners are given in that same order, i.e. going around the quad, not
-   * as opposite pairs.
-   *
-   * @returns {PerspectiveTransform}
-   */
-  /* eslint-disable-next-line max-params */
-  static squareToQuad(x0, y0, x1, y1, x2, y2, x3, y3) {
-    const dx3 = x0 - x1 + x2 - x3;
-    const dy3 = y0 - y1 + y2 - y3;
-
-    if (dx3 === 0 && dy3 === 0) {
-      // The quad is a parallelogram, so the map is affine and the projective
-      // terms vanish. Worth special-casing: it is the common case for flat
-      // scans, and the general solution divides by zero here.
-      return new PerspectiveTransform(
-        x1 - x0, x2 - x1, x0,
-        y1 - y0, y2 - y1, y0,
-        0, 0, 1
-      );
-    }
-
-    const dx1 = x1 - x2;
-    const dx2 = x3 - x2;
-    const dy1 = y1 - y2;
-    const dy2 = y3 - y2;
-    const denominator = dx1 * dy2 - dx2 * dy1;
-    const a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
-    const a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
-
-    return new PerspectiveTransform(
-      x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0,
-      y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0,
-      a13, a23, 1
-    );
-  }
-
-  /**
-   * Map an arbitrary quad onto the unit square — the inverse of
-   * {@link squareToQuad}, via the adjugate.
-   *
-   * @returns {PerspectiveTransform}
-   */
-  /* eslint-disable-next-line max-params */
-  static quadToSquare(x0, y0, x1, y1, x2, y2, x3, y3) {
-    return PerspectiveTransform.squareToQuad(x0, y0, x1, y1, x2, y2, x3, y3).inverse();
-  }
-
-  /**
-   * Map one quad onto another, corner for corner.
-   *
-   * This is what turns four detected finder corners into a sampling grid:
-   * compose "detected quad -> unit square" with "unit square -> ideal grid".
-   *
-   * @returns {PerspectiveTransform}
-   */
-  /* eslint-disable-next-line max-params */
-  static quadToQuad(
-    sx0, sy0, sx1, sy1, sx2, sy2, sx3, sy3,
-    dx0, dy0, dx1, dy1, dx2, dy2, dx3, dy3
-  ) {
-    const toSquare = PerspectiveTransform.quadToSquare(sx0, sy0, sx1, sy1, sx2, sy2, sx3, sy3);
-    const toQuad = PerspectiveTransform.squareToQuad(dx0, dy0, dx1, dy1, dx2, dy2, dx3, dy3);
-    return toSquare.times(toQuad);
-  }
-
-  /**
-   * Adjugate — the inverse up to a scale factor, which is irrelevant in
-   * homogeneous coordinates because the division by w cancels it.
-   *
-   * @returns {PerspectiveTransform}
-   */
-  inverse() {
-    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
-    return new PerspectiveTransform(
-      a22 * a33 - a23 * a32,
-      a23 * a31 - a21 * a33,
-      a21 * a32 - a22 * a31,
-      a13 * a32 - a12 * a33,
-      a11 * a33 - a13 * a31,
-      a12 * a31 - a11 * a32,
-      a12 * a23 - a13 * a22,
-      a13 * a21 - a11 * a23,
-      a11 * a22 - a12 * a21
-    );
-  }
-
-  /**
-   * Matrix product: apply `this` first, then `other`.
-   *
-   * @param {PerspectiveTransform} other
-   * @returns {PerspectiveTransform}
-   */
-  times(other) {
-    const { a11, a21, a31, a12, a22, a32, a13, a23, a33 } = this;
-    const o = other;
-    return new PerspectiveTransform(
-      o.a11 * a11 + o.a21 * a12 + o.a31 * a13,
-      o.a11 * a21 + o.a21 * a22 + o.a31 * a23,
-      o.a11 * a31 + o.a21 * a32 + o.a31 * a33,
-      o.a12 * a11 + o.a22 * a12 + o.a32 * a13,
-      o.a12 * a21 + o.a22 * a22 + o.a32 * a23,
-      o.a12 * a31 + o.a22 * a32 + o.a32 * a33,
-      o.a13 * a11 + o.a23 * a12 + o.a33 * a13,
-      o.a13 * a21 + o.a23 * a22 + o.a33 * a23,
-      o.a13 * a31 + o.a23 * a32 + o.a33 * a33
-    );
-  }
-}
-
-__exports.PerspectiveTransform = PerspectiveTransform;
-};
-
-__modules["image/grid-sampler.js"] = function (__require, __exports) {
-/**
- * Resample a distorted symbol in the image into an upright module grid.
- *
- * Given a transform that maps grid coordinates to image coordinates, this
- * samples the centre of every module. Sampling centres rather than averaging
- * whole cells is deliberate: module edges are where blur and bleed live, and
- * including them turns a marginal symbol into an unreadable one.
- *
- * @module image/grid-sampler
- */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { NotFoundError } = __require("core/errors.js");
-const { PerspectiveTransform } = __require("image/perspective.js");
-
-/**
- * Sample a `dimension` x `dimension` grid (or `width` x `height`).
- *
- * @param {BitMatrix} image Binarized source image.
- * @param {number} width Modules across.
- * @param {number} height Modules down.
- * @param {PerspectiveTransform} transform Grid space -> image space.
- * @returns {BitMatrix}
- * @throws {NotFoundError} If the grid falls outside the image.
- */
-function sampleGrid(image, width, height, transform) {
-  const out = new BitMatrix(width, height);
-  const points = new Float32Array(width * 2);
-
-  for (let y = 0; y < height; y++) {
-    // Module centres: offset by half a module in both axes.
-    const gridY = y + 0.5;
-    for (let x = 0; x < width; x++) {
-      points[x * 2] = x + 0.5;
-      points[x * 2 + 1] = gridY;
-    }
-    transform.transform(points);
-
-    for (let x = 0; x < width; x++) {
-      const px = points[x * 2] | 0;
-      const py = points[x * 2 + 1] | 0;
-      if (px < 0 || py < 0 || px >= image.width || py >= image.height) {
-        throw new NotFoundError(
-          `Sampling grid escapes the image at module (${x}, ${y})`
-        );
-      }
-      if (image.get(px, py)) out.set(x, y);
-    }
-  }
-
-  return out;
-}
-
-/**
- * Sample with a 3x3 majority vote per module.
- *
- * Slower, and worth it when a single-point sample lands on a speck of noise or
- * a JPEG artefact. Readers fall back to this after a clean sample fails to
- * decode, rather than paying for it on every attempt.
- *
- * @param {BitMatrix} image
- * @param {number} width
- * @param {number} height
- * @param {PerspectiveTransform} transform
- * @returns {BitMatrix}
- */
-function sampleGridVoting(image, width, height, transform) {
-  const out = new BitMatrix(width, height);
-
-  // Spacing between module centres, measured in image pixels, so the vote
-  // spreads across the module rather than a fixed pixel radius that would be
-  // meaningless at a different scale.
-  const p0 = transform.transformPoint(0.5, 0.5);
-  const p1 = transform.transformPoint(1.5, 0.5);
-  const p2 = transform.transformPoint(0.5, 1.5);
-  const stepX = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-  const stepY = Math.hypot(p2.x - p0.x, p2.y - p0.y);
-  const rx = Math.max(1, Math.round(stepX / 4));
-  const ry = Math.max(1, Math.round(stepY / 4));
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const c = transform.transformPoint(x + 0.5, y + 0.5);
-      const cx = c.x | 0;
-      const cy = c.y | 0;
-      if (cx < 0 || cy < 0 || cx >= image.width || cy >= image.height) {
-        throw new NotFoundError(
-          `Sampling grid escapes the image at module (${x}, ${y})`
-        );
-      }
-
-      let dark = 0;
-      let total = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const sx = cx + dx * rx;
-          const sy = cy + dy * ry;
-          if (sx < 0 || sy < 0 || sx >= image.width || sy >= image.height) continue;
-          total++;
-          if (image.get(sx, sy)) dark++;
-        }
-      }
-      if (total > 0 && dark * 2 > total) out.set(x, y);
-    }
-  }
-
-  return out;
-}
-
-/**
- * Build the transform for a symbol whose four corners are known, and sample it.
- *
- * Corners are in reading order: top-left, top-right, bottom-right, bottom-left.
- *
- * @param {BitMatrix} image
- * @param {number} dimension Modules per side.
- * @param {Array<{x: number, y: number}>} corners
- * @param {boolean} [voting]
- * @returns {BitMatrix}
- */
-function sampleQuad(image, dimension, corners, voting = false) {
-  if (corners.length !== 4) throw new NotFoundError('sampleQuad needs exactly 4 corners');
-  const [tl, tr, br, bl] = corners;
-  const d = dimension;
-
-  const transform = PerspectiveTransform.quadToQuad(
-    0, 0, d, 0, d, d, 0, d,
-    tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y
-  );
-
-  return voting
-    ? sampleGridVoting(image, d, d, transform)
-    : sampleGrid(image, d, d, transform);
-}
-
-__exports.sampleGrid = sampleGrid;
-__exports.sampleGridVoting = sampleGridVoting;
-__exports.sampleQuad = sampleQuad;
-};
-
 __modules["qr/detector.js"] = function (__require, __exports) {
 /**
  * QR Code detection — finding symbols in a binarized image.
@@ -7749,6 +8463,7 @@ const { LuminanceSource } = __require("image/luminance.js");
 const { binarize } = __require("image/binarizer.js");
 const { ONED_FORMATS } = __require("oned/index.js");
 const { decodeOneD } = __require("oned/reader.js");
+const datamatrix = __require("datamatrix/index.js");
 const qr = __require("qr/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
@@ -7761,6 +8476,7 @@ const __reexport5 = __require("render/png.js"); __exports.toPNG = __reexport5.to
 const __reexport6 = __require("render/index.js"); __exports.renderToCanvasAuto = __reexport6.renderToCanvasAuto; __exports.isWebGL2Available = __reexport6.isWebGL2Available;
 const __reexport7 = __require("render/index.js"); __exports.renderToCanvasAutoAsync = __reexport7.renderToCanvasAutoAsync; __exports.isWebGPUAvailable = __reexport7.isWebGPUAvailable;
 const __reexport8 = __require("qr/index.js"); __exports.encodeQR = __reexport8.encodeQR; __exports.decodeQR = __reexport8.decodeQR; __exports.detectQR = __reexport8.detectQR; __exports.detectAndDecodeQR = __reexport8.detectAndDecodeQR;
+const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
 
 /**
  * @typedef {object} FormatInfo
@@ -7784,6 +8500,8 @@ const qrCanEncode = qrPresent &&
   typeof qr.encodeQR === 'function' && qr.QR_CAN_ENCODE !== false;
 const qrCanDecode = qrPresent &&
   typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
+const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
+const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 
 /**
  * Every format this build supports.
@@ -7809,6 +8527,13 @@ function listFormats() {
     label: 'QR Code',
     canWrite: qrCanEncode,
     canRead: qrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'datamatrix',
+    label: 'Data Matrix ECC 200',
+    canWrite: dataMatrixCanEncode,
+    canRead: dataMatrixCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
 
@@ -7840,10 +8565,13 @@ function encode(text, options = {}) {
   if (format === 'qr' || format === 'qrcode') {
     return qr.encodeQR(value, options);
   }
+  if (format === 'datamatrix' || format === 'data-matrix') {
+    return datamatrix.encodeDataMatrix(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -7876,6 +8604,7 @@ function decode(image, options = {}) {
   const { formats = null, tryHarder = true, binarizer = 'auto' } = options;
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
+  const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -7895,6 +8624,21 @@ function decode(image, options = {}) {
         }
       } catch {
         /* no QR in this pass */
+      }
+    }
+
+    if (wantDataMatrix && dataMatrixCanDecode) {
+      // Hybrid thresholding can erase the interior of very large, perfectly
+      // uniform modules. In auto mode keep the local-threshold attempt, then
+      // retry Data Matrix once with the global threshold before giving up.
+      const dataMatrixBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of dataMatrixBits) {
+        try {
+          const found = datamatrix.detectAndDecodeDataMatrix(candidateBits);
+          if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
+        } catch {
+          /* no Data Matrix with this threshold */
+        }
       }
     }
 
@@ -7932,7 +8676,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '0.1.0';
+const VERSION = '1.0.0';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;
@@ -7957,11 +8701,14 @@ export const {
   binarizeGlobal,
   binarizeHybrid,
   decode,
+  decodeDataMatrix,
   decodeOneD,
   decodeOneDStrict,
   decodeQR,
   decodeStrict,
+  detectAndDecodeDataMatrix,
   detectAndDecodeQR,
+  detectDataMatrix,
   detectQR,
   ean13CheckDigit,
   encode,
@@ -7970,6 +8717,7 @@ export const {
   encodeCode128,
   encodeCode39,
   encodeCode93,
+  encodeDataMatrix,
   encodeEAN13,
   encodeEAN8,
   encodeISBN,

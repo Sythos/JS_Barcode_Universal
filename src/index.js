@@ -51,6 +51,7 @@ import { LuminanceSource } from './image/luminance.js';
 import { binarize } from './image/binarizer.js';
 import { ONED_FORMATS } from './oned/index.js';
 import { decodeOneD } from './oned/reader.js';
+import * as datamatrix from './datamatrix/index.js';
 import * as qr from './qr/index.js';
 
 export { BitMatrix };
@@ -66,6 +67,9 @@ export { toPNG, toPNGDataURI } from './render/png.js';
 export { renderToCanvasAuto, isWebGL2Available } from './render/index.js';
 export { renderToCanvasAutoAsync, isWebGPUAvailable } from './render/index.js';
 export { encodeQR, decodeQR, detectQR, detectAndDecodeQR } from './qr/index.js';
+export {
+  encodeDataMatrix, decodeDataMatrix, detectDataMatrix, detectAndDecodeDataMatrix,
+} from './datamatrix/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -89,6 +93,8 @@ const qrCanEncode = qrPresent &&
   typeof qr.encodeQR === 'function' && qr.QR_CAN_ENCODE !== false;
 const qrCanDecode = qrPresent &&
   typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
+const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
+const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 
 /**
  * Every format this build supports.
@@ -114,6 +120,13 @@ export function listFormats() {
     label: 'QR Code',
     canWrite: qrCanEncode,
     canRead: qrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'datamatrix',
+    label: 'Data Matrix ECC 200',
+    canWrite: dataMatrixCanEncode,
+    canRead: dataMatrixCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
 
@@ -145,10 +158,13 @@ export function encode(text, options = {}) {
   if (format === 'qr' || format === 'qrcode') {
     return qr.encodeQR(value, options);
   }
+  if (format === 'datamatrix' || format === 'data-matrix') {
+    return datamatrix.encodeDataMatrix(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -181,6 +197,7 @@ export function decode(image, options = {}) {
   const { formats = null, tryHarder = true, binarizer = 'auto' } = options;
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
+  const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -200,6 +217,21 @@ export function decode(image, options = {}) {
         }
       } catch {
         /* no QR in this pass */
+      }
+    }
+
+    if (wantDataMatrix && dataMatrixCanDecode) {
+      // Hybrid thresholding can erase the interior of very large, perfectly
+      // uniform modules. In auto mode keep the local-threshold attempt, then
+      // retry Data Matrix once with the global threshold before giving up.
+      const dataMatrixBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of dataMatrixBits) {
+        try {
+          const found = datamatrix.detectAndDecodeDataMatrix(candidateBits);
+          if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
+        } catch {
+          /* no Data Matrix with this threshold */
+        }
       }
     }
 
@@ -237,4 +269,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '0.1.0';
+export const VERSION = '1.0.0';

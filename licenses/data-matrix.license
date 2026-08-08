@@ -1,0 +1,82 @@
+Data Matrix ECC 200 — format provenance and usability
+==========================================================================
+
+This file records where the Data Matrix ECC 200 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Data Matrix emerged from industrial automatic-identification work
+associated with International Data Matrix and later RVSI/CI Matrix in the
+late 1980s and early 1990s. The exact corporate chronology and attribution
+have not been independently confirmed by the author. [TO VERIFY]
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 16022:2024 — Data Matrix bar code symbology specification.
+Published by ISO/IEC. The specification TEXT is copyrighted by its
+publisher and is paywalled; it is not reproduced here.
+GS1 General Specifications and the GS1 DataMatrix Guideline govern use
+of ECC 200 with a leading FNC1 and GS1 Application Identifiers.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+Patent rights associated with ECC 200 have been reported as released for
+public use by an earlier rights holder, but the original patents, chain of
+title and release terms have not been independently confirmed by the
+author. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+The current registration status and ownership of the words "Data Matrix"
+have not been independently established. [TO VERIFY] "GS1" and "GS1
+DataMatrix" are GS1 designations; their use is descriptive here and does
+not imply endorsement. [TO VERIFY]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+Data Matrix ECC 200 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code and no constant table from any other barcode implementation was used,
+consulted or copied, under any licence.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+This project's original implementation is distributed under the MIT
+License. The ISO/IEC and GS1 references establish the technical standards;
+this engineering inventory does not claim to have resolved the
+patent-release or trademark entries that remain marked [TO VERIFY].
+
+References relied upon:
+  - ISO/IEC 16022:2024, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL
+  - GS1 DataMatrix Guideline, GS1 AISBL
+  - Reported ECC 200 patent-release position [TO VERIFY]
+  - Data Matrix trademark status and ownership [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

@@ -91,6 +91,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
 | `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, …) and `decodeOneD` |
 | `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
+| `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `decodeDataMatrix`, `detectDataMatrix`, `detectAndDecodeDataMatrix` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -102,8 +103,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@0.1.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@0.1.0"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.0.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -207,8 +208,9 @@ time.
 | MSI Plessey | `msi` | 1D | ✅ | — |
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
+| Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
 
-Sixteen formats, all writable, thirteen readable. **Code 11, MSI Plessey and Pharmacode are
+Seventeen formats, all writable, fourteen readable. **Code 11, MSI Plessey and Pharmacode are
 write-only** — they encode correctly, but there is no reader for them, and `decode` will never
 return one.
 
@@ -219,11 +221,33 @@ ITF-14 *is* an ITF fixed at fourteen digits, and an ISBN barcode *is* an EAN-13 
 prefix. Match on `result.format === 'code128'` rather than `'gs1128'`, or a
 condition on the sub-variant id will silently never fire.
 
+### Data Matrix ECC 200
+
+`datamatrix` writes and reads the 30 classic ECC 200 square and rectangular symbol sizes. The
+encoder supports ASCII compaction (including numeric pairs), Base256 binary payloads, automatic
+or forced square/rectangular shape, Reed–Solomon error correction and GS1 FNC1 in the first
+position. DMRE is not included.
+
+```js
+import { encodeDataMatrix, decodeDataMatrix } from '@sythos/js_barcode_universal/datamatrix';
+
+const symbol = encodeDataMatrix('0101234567890128', { gs1: true, shape: 'square' });
+const result = decodeDataMatrix(symbol);
+console.log(result.text, result.gs1); // 0101234567890128 true
+```
+
+Binary content is accepted as a `Uint8Array` with `encoding: 'base256'`. The current high-level
+decoder handles ASCII and Base256 codewords; C40, Text, X12 and EDIFACT input symbols are not yet
+decoded. The current detector accepts axis-aligned square or rectangular symbols; the normal
+`decode(image, { formats: ['datamatrix'] })` pipeline also retries quarter-turn rotations.
+Arbitrary-angle and perspective-skewed Data Matrix photographs are not yet guaranteed.
+
 ### Not implemented
 
-**Data Matrix, PDF417, Aztec, GS1 DataBar and MaxiCode are not implemented** — neither writing
-nor reading. Some scaffolding for them exists in the core (the Galois field code already handles
-the prime field PDF417 needs), but no symbology above is usable today. See [`PLAN.md`](PLAN.md)
+**PDF417, Aztec, GS1 DataBar and MaxiCode are not implemented** — neither writing
+nor reading. Data Matrix ECC 200 is implemented for its classic square and rectangular symbols;
+DMRE remains outside the current scope. Some scaffolding for the remaining formats exists in the core (the Galois field code already handles
+the prime field PDF417 needs), but none of those remaining symbologies is usable today. See [`PLAN.md`](PLAN.md)
 for where they sit.
 
 ---
@@ -266,12 +290,14 @@ encode(text, options?) → BitMatrix
 ```
 
 `options`: `format` (default `'qr'`), `ecc` (`'L'|'M'|'Q'|'H'`), `version` (QR 1–40, auto if
-omitted), `checkDigit`, `fullAscii` (Code 39 extended), `gs1` (emit a leading FNC1).
+omitted), `checkDigit`, `fullAscii` (Code 39 extended), `gs1` (emit a leading FNC1). Data Matrix
+ECC 200 accepts `shape: 'any' | 'square' | 'rectangular'` and `encoding: 'ascii' | 'base256'`.
 
 ```js
 encode('5901234123457', { format: 'ean13' })
 encode('ABC-123', { format: 'code39', fullAscii: true, checkDigit: true })
 encode('https://example.com', { format: 'qr', ecc: 'H', version: 7 })
+encode('0101234567890128', { format: 'datamatrix', gs1: true })
 ```
 
 ```js
@@ -355,9 +381,10 @@ RGBA bytes → luminance → binarize → detect → sample → error-correct �
 
 Luminance conversion flattens the image to greyscale. Binarization turns that into a `BitMatrix`,
 either globally or with a hybrid local threshold that survives uneven lighting. Detection locates
-a symbol and its corners in that bit plane. Sampling reads the symbol back onto its module grid
-through a perspective transform, so a photograph taken at an angle still yields a square grid.
-Error correction repairs what the camera lost. Only then is the payload decoded.
+a symbol and its corners in that bit plane. Detectors that recover four perspective-aware corners
+(currently QR) sample the symbol back through a perspective transform. Data Matrix currently uses
+an axis-aligned bounding box plus quarter-turn retries. Error correction repairs what the camera
+lost. Only then is the payload decoded.
 
 **Reed–Solomon is generic over the finite field.** The `GaloisField` class is constructed with a
 field order and a primitive polynomial rather than hard-coding GF(256), which is what lets one
@@ -412,6 +439,11 @@ co-author to credit.
 MaxiCode and GS1 DataBar are likewise marks of their owners. A trademark does not restrict
 implementing a symbology, but it does constrain branding — which is why this package is named
 descriptively rather than after any mark.
+
+Data Matrix ECC 200 is governed by ISO/IEC 16022:2024; GS1 DataMatrix additionally uses the GS1
+General Specifications and a leading FNC1. Its engineering provenance, patent and trademark
+research notes are recorded in [`licenses/data-matrix.license`](licenses/data-matrix.license),
+with unresolved claims kept explicitly marked `[TO VERIFY]`.
 
 [`LICENSE`](LICENSE) carries the full MIT text plus an informational appendix inventorying the
 specification copyrights, patent history and trademarks that surround these symbologies. None of

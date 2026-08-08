@@ -50,7 +50,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 
 ### Shipped and tested
 
-**118 tests, all passing.** 16 formats write, 13 read.
+**131 tests, all passing.** 17 formats write, 14 read.
 
 | Area | State |
 |---|---|
@@ -59,6 +59,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 | **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, Pharmacode | ✅ 32 tests |
 | **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
+| **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -70,7 +71,6 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 
 **P5 — the other 2D formats**, in descending value / ascending pain:
 
-- **Data Matrix** — GF(256) primitive `0x12D`, ECC200, square and rectangular sizes, the Annex-F diagonal placement walk. Includes **GS1 DataMatrix** (FNC1 in first position), the counterpart to the GS1-128 support already shipped.
 - **PDF417** — GF(929), already supported by the core. 3 cluster tables × 929 codewords. **Spike this before anything else in P5:** test whether the cluster table is generatable by enumerating all 17-module, 8-element patterns with element widths 1–6, filtering on `cluster = (b1−b2+b3−b4) mod 9 ∈ {0,3,6}`, and checking it yields exactly 929 patterns per cluster — then cross-check a handful of codeword→pattern mappings, because the count alone does not prove the *ordering*. If generation fails, the table must be transcribed from documentation, and that changes the effort by an order of magnitude. Better to learn that on day two than in month four.
 - **Aztec** — Reed–Solomon over a field whose size depends on layer count (GF(16) through GF(4096), all already available); bull's-eye detector; mode message; spiral layout.
 
