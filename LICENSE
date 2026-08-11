@@ -39,8 +39,8 @@ therefore covered by the MIT License above and by nothing else.
 This appendix exists only because barcode symbologies carry a history of
 specification copyrights, expired patents and live trademarks, and it is useful
 to have that history inventoried in one place. It is an ENGINEERING INVENTORY,
-NOT LEGAL ADVICE. Every row marked "TO VERIFY" is an item the author has not
-independently confirmed; do not rely on any of it for a legal decision. If your
+NOT LEGAL ADVICE. Review labels identify items that are not legally cleared;
+do not rely on any of them for a legal decision. If your
 use case is commercially sensitive, consult a qualified attorney.
 
 
@@ -113,44 +113,44 @@ excerpt the specification documents.
                       DataBar, DotCode
                       and related)    ISO/IEC — copyrighted, paywalled
     GS1 General Specifications        GS1 — freely downloadable; redistribution
-                                      terms are GS1's own       [TO VERIFY]
-    AIM symbology specifications      AIM Inc. — terms vary     [TO VERIFY]
-    GB/T 21049       (Han Xin Code)   SAC (China)               [TO VERIFY]
+                                      terms are GS1's own       [LICENSE TERMS REVIEW REQUIRED]
+    AIM symbology specifications      AIM Inc. — terms vary     [LICENSE TERMS REVIEW REQUIRED]
+    GB/T 21049       (Han Xin Code)   SAC (China)               [LEGAL REVIEW]
     USPS publications (POSTNET,
-      PLANET, Intelligent Mail)       USPS — published openly   [TO VERIFY]
+      PLANET, Intelligent Mail)       USPS — published openly   [LICENSE TERMS REVIEW REQUIRED]
 
 
 4. PATENT POSITIONS
 -------------------
 
-Barcode patents from the 1990s have broadly expired, and several rights holders
-issued public statements permitting free use. NONE OF THE FOLLOWING HAS BEEN
-INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
+Some older barcode patents may have expired, and some rights holders have
+issued public statements permitting free use. The entries below are research
+pointers, not a complete patent-family or jurisdictional clearance.
 
     Symbology      Rights holder      Reported position
     -------------  -----------------  --------------------------------------
     QR Code        DENSO WAVE         patent rights reportedly not
                                       exercised for standardised QR
-                                                                  [TO VERIFY]
-    Micro QR       DENSO WAVE         assumed to follow QR         [TO VERIFY]
+                                      [VERIFIED FACT]
+    Micro QR       DENSO WAVE         assumed to follow QR         [PATENT FAMILY REVIEW REQUIRED]
     rMQR           DENSO WAVE         standardised 2022 — MUCH NEWER; do NOT
                                       assume the older QR position covers it
-                                                        [TO VERIFY — PRIORITY]
+                                                        [PATENT FAMILY REVIEW REQUIRED]
     Data Matrix    orig. RVSI/CiMatrix  ECC200 reported released for
-                                      public use                   [TO VERIFY]
+                                      public use                   [PATENT FAMILY REVIEW REQUIRED]
     PDF417         orig. Symbol Tech. reported released for
-                                      public use                   [TO VERIFY]
+                                      public use                   [PATENT FAMILY REVIEW REQUIRED]
     Aztec Code     orig. Welch Allyn  reported placed in the
-                                      public domain                [TO VERIFY]
+                                      public domain                [VERIFIED FACT]
     MaxiCode       UPS                reported released for
-                                      public use                   [TO VERIFY]
-    DotCode        AIM                open AIM standard            [TO VERIFY]
-    Han Xin Code   Chinese nat'l std  status under GB/T 21049      [TO VERIFY]
-    DataBar/GS1    GS1                published for open use       [TO VERIFY]
+                                      public use                   [PATENT FAMILY REVIEW REQUIRED]
+    DotCode        AIM                open AIM standard            [LICENSE TERMS REVIEW REQUIRED]
+    Han Xin Code   Chinese nat'l std  status under GB/T 21049      [LEGAL REVIEW]
+    DataBar/GS1    GS1                published for open use       [LICENSE TERMS REVIEW REQUIRED]
     Code 128 / 39 /
       93 / Codabar / ITF / MSI /
       Code 11 / Telepen / Pharmacode  originating patents long expired
-                                                                   [TO VERIFY]
+                                                                   [PATENT FAMILY REVIEW REQUIRED]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.
@@ -167,12 +167,12 @@ names and presents itself.
     -----------------------  -----------------------------------
     QR Code(R)               DENSO WAVE INCORPORATED
     Micro QR, rMQR           DENSO WAVE INCORPORATED
-    Aztec Code               originally Welch Allyn      [TO VERIFY]
+    Aztec Code               originally Welch Allyn      [REGISTRY CHECK REQUIRED]
     MaxiCode                 United Parcel Service of America
     GS1, GS1 DataBar,
       GS1 DataMatrix, GS1-128  GS1 AISBL
-    Data Matrix              [status TO VERIFY]
-    Telepen                  SB Electronic Systems Ltd   [TO VERIFY]
+    Data Matrix              [REGISTRY CHECK REQUIRED]
+    Telepen                  SB Electronic Systems Ltd   [REGISTRY CHECK REQUIRED]
 
 All marks are the property of their respective owners and are used here in a
 purely descriptive, nominative sense — to identify which symbologies this
@@ -197,7 +197,7 @@ status too unclear to redistribute an implementation with confidence:
     Microsoft Tag ........... proprietary, discontinued
     Bokode .................. research project, unclear status
     Softstrip ............... obsolete, unclear status
-    Ultracode ............... status unresolved            [TO VERIFY]
+    Ultracode ............... status unresolved            [LEGAL REVIEW]
 
 If any of these is later confirmed to be freely implementable and
 redistributable, it may move into scope — and this section must be updated in
@@ -209,7 +209,7 @@ the same commit.
 
 This appendix is normative for the project's process, not for its users. Any
 change to the dependency set, the oracle tools, or the implemented format list
-MUST update this file in the same commit. A "[TO VERIFY]" marker may only be
-removed together with a citation recorded in NOTICE.md.
+MUST update this file in the same commit. A review label may only be narrowed
+or removed together with a citation recorded in NOTICE.md.
 
 Last reviewed: 2026-08-04

@@ -88,7 +88,7 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 - WebGPU renderer alongside the WebGL2 one.
 - Aztec robustness follow-through: ZXing and zxing-cpp black-box vectors, plus a real-photo corpus with tracked pass-rate. The current detector handles rotation, inversion and quadrilateral sampling; severe perspective remains an enhancement rather than a guaranteed capability.
 - Real-photo corpus with a **tracked pass-rate, not pass/fail** — a binary gate hides a regression from 94% to 71%.
-- `[TO VERIFY]` markers in `LICENSE` §3–5 cleared with citations, logged in `NOTICE.md`. Priority: **rMQR** (standardised 2022 — do not assume DENSO WAVE's older QR position covers it).
+- Review labels in `LICENSE` §3–5 narrowed only with citations, logged in `NOTICE.md`. Priority: **rMQR** (standardised 2022 — do not assume DENSO WAVE's older QR position covers it).
 
 ---
 

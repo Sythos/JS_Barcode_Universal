@@ -469,7 +469,7 @@ descriptively rather than after any mark.
 Data Matrix ECC 200 is governed by ISO/IEC 16022:2024; GS1 DataMatrix additionally uses the GS1
 General Specifications and a leading FNC1. Its engineering provenance, patent and trademark
 research notes are recorded in [`licenses/data-matrix.license`](licenses/data-matrix.license),
-with unresolved claims kept explicitly marked `[TO VERIFY]`.
+with unresolved claims kept explicitly marked using scoped review labels.
 
 [`LICENSE`](LICENSE) carries the full MIT text plus an informational appendix inventorying the
 specification copyrights, patent history and trademarks that surround these symbologies. None of

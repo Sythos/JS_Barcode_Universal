@@ -101,6 +101,6 @@ first principles in the module that uses them)*
 
 ## Verification log
 
-Records each `[TO VERIFY]` marker cleared from `LICENSE`, with its citation.
+Records each review label narrowed or cleared from `LICENSE`, with its citation.
 
 *(empty)*
