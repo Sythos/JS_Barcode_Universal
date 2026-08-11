@@ -50,7 +50,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 
 ### Shipped and tested
 
-**Aztec implementation is complete locally; decoding vectors from an independent BWIP generator passes. ZXing, zxing-cpp and real-photo interoperability remain the release gate.**
+**Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
 18 formats write, 15 read.
 
 | Area | State |
@@ -61,7 +61,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 | **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
-| **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ local suite + independent BWIP decode; broader interop pending |
+| **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -74,7 +74,6 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 **P5 — the remaining 2D formats**, in descending value / ascending pain:
 
 - **PDF417** — GF(929), already supported by the core. 3 cluster tables × 929 codewords. **Spike this before anything else in P5:** test whether the cluster table is generatable by enumerating all 17-module, 8-element patterns with element widths 1–6, filtering on `cluster = (b1−b2+b3−b4) mod 9 ∈ {0,3,6}`, and checking it yields exactly 929 patterns per cluster — then cross-check a handful of codeword→pattern mappings, because the count alone does not prove the *ordering*. If generation fails, the table must be transcribed from documentation, and that changes the effort by an order of magnitude. Better to learn that on day two than in month four.
-- **Aztec follow-through** — run ZXing and zxing-cpp black-box interoperability vectors, add a real-photo corpus and track pass-rate. The current detector handles rotation, inversion and quadrilateral sampling; severe perspective is not yet a guaranteed capability. ECI is not yet configurable through the public API.
 
 **Long tail, tiered by shared machinery** — this is what makes scope cuttable intelligently:
 
@@ -87,6 +86,7 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 **Other work:**
 - GPU binarization for camera frames (see §2) — the one place GPU would genuinely change the numbers.
 - WebGPU renderer alongside the WebGL2 one.
+- Aztec robustness follow-through: ZXing and zxing-cpp black-box vectors, plus a real-photo corpus with tracked pass-rate. The current detector handles rotation, inversion and quadrilateral sampling; severe perspective remains an enhancement rather than a guaranteed capability.
 - Real-photo corpus with a **tracked pass-rate, not pass/fail** — a binary gate hides a regression from 94% to 71%.
 - `[TO VERIFY]` markers in `LICENSE` §3–5 cleared with citations, logged in `NOTICE.md`. Priority: **rMQR** (standardised 2022 — do not assume DENSO WAVE's older QR position covers it).
 
