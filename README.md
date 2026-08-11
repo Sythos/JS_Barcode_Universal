@@ -103,8 +103,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.0.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.0.0"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.1.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
