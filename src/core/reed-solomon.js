@@ -153,6 +153,44 @@ function evalPoly(poly, x, field) {
   return acc;
 }
 
+function multiplyAscending(left, right, field, limit) {
+  const out = new Array(Math.min(limit, left.length + right.length - 1)).fill(0);
+  for (let i = 0; i < left.length; i++) for (let j = 0; j < right.length && i + j < out.length; j++) {
+    out[i + j] = field.add(out[i + j], field.mul(left[i], right[j]));
+  }
+  return out;
+}
+
+function berlekampMassey(syndromes, field) {
+  const limit = syndromes.length;
+  const lambda = new Array(limit + 1).fill(0);
+  const previous = new Array(limit + 1).fill(0);
+  const temporary = new Array(limit + 1).fill(0);
+  lambda[0] = 1;
+  previous[0] = 1;
+  let errorCount = 0;
+  let shift = 1;
+  let lastDiscrepancy = 1;
+
+  for (let step = 0; step < limit; step++) {
+    let discrepancy = syndromes[step];
+    for (let i = 1; i <= errorCount; i++) discrepancy = field.add(discrepancy, field.mul(lambda[i], syndromes[step - i]));
+    if (discrepancy === 0) { shift++; continue; }
+    const scale = field.div(discrepancy, lastDiscrepancy);
+    for (let i = 0; i <= limit; i++) temporary[i] = lambda[i];
+    for (let i = 0; i + shift <= limit; i++) if (previous[i] !== 0) {
+      lambda[i + shift] = field.sub(lambda[i + shift], field.mul(scale, previous[i]));
+    }
+    if (2 * errorCount <= step) {
+      errorCount = step + 1 - errorCount;
+      for (let i = 0; i <= limit; i++) previous[i] = temporary[i];
+      lastDiscrepancy = discrepancy;
+      shift = 1;
+    } else shift++;
+  }
+  return { locator: lambda.slice(0, errorCount + 1), errorCount };
+}
+
 /**
  * Correct errors in a received codeword, in place.
  *
@@ -160,11 +198,16 @@ function evalPoly(poly, x, field) {
  * @param {number} eccLen
  * @param {import('./galois-field.js').GaloisField} field
  * @param {number} [base]
+ * @param {number[]} [erasures] Known damaged indexes, counted from wire order.
  * @returns {number} Number of symbols corrected.
  * @throws {ChecksumError} If the damage exceeds the correction capacity.
  */
-export function rsDecode(received, eccLen, field, base = 0) {
+export function rsDecode(received, eccLen, field, base = 0, erasures = []) {
   const n = received.length;
+  if (!Array.isArray(erasures) || new Set(erasures).size !== erasures.length || erasures.some((index) => !Number.isInteger(index) || index < 0 || index >= n)) {
+    throw new ChecksumError('Reed-Solomon: erasure positions must be unique codeword indexes');
+  }
+  if (erasures.length > eccLen) throw new ChecksumError(`Reed-Solomon: ${erasures.length} erasures exceeds correction capacity ${eccLen} (${field.name})`);
 
   // --- Syndromes. S[i] = R(a^(base+i)); all zero means an intact codeword.
   const syn = new Array(eccLen).fill(0);
@@ -176,53 +219,24 @@ export function rsDecode(received, eccLen, field, base = 0) {
   }
   if (!damaged) return 0;
 
-  // --- Berlekamp-Massey. Degree-ascending here: lambda[k] is the coefficient
-  // of x^k, which is how the recurrence is naturally stated.
-  const lambda = new Array(eccLen + 1).fill(0);
-  const prev = new Array(eccLen + 1).fill(0);
-  const tmp = new Array(eccLen + 1).fill(0);
-  lambda[0] = 1;
-  prev[0] = 1;
-  let errCount = 0;   // current LFSR length
-  let shift = 1;      // steps since `prev` was last updated
-  let lastDisc = 1;   // discrepancy at that update
-
-  for (let step = 0; step < eccLen; step++) {
-    let disc = syn[step];
-    for (let i = 1; i <= errCount; i++) {
-      disc = field.add(disc, field.mul(lambda[i], syn[step - i]));
-    }
-
-    if (disc === 0) {
-      shift++;
-      continue;
-    }
-
-    const scale = field.div(disc, lastDisc);
-    tmp.fill(0);
-    for (let i = 0; i <= eccLen; i++) tmp[i] = lambda[i];
-
-    for (let i = 0; i + shift <= eccLen; i++) {
-      if (prev[i] === 0) continue;
-      lambda[i + shift] = field.sub(lambda[i + shift], field.mul(scale, prev[i]));
-    }
-
-    if (2 * errCount <= step) {
-      errCount = step + 1 - errCount;
-      for (let i = 0; i <= eccLen; i++) prev[i] = tmp[i];
-      lastDisc = disc;
-      shift = 1;
-    } else {
-      shift++;
-    }
+  // Remove the known roots before locating unknown errors. The leading
+  // erasureCount terms contain only the known-location transient and are not
+  // part of the error-only recurrence.
+  let erasureLocator = [1];
+  for (const index of erasures) {
+    const location = field.exp(n - 1 - index);
+    erasureLocator = multiplyAscending(erasureLocator, [1, field.neg(location)], field, eccLen + 1);
   }
-
-  if (errCount === 0 || errCount > eccLen / 2) {
+  const modified = multiplyAscending(syn, erasureLocator, field, eccLen).slice(erasures.length);
+  const { locator: errorLocator, errorCount } = berlekampMassey(modified, field);
+  if (2 * errorCount + erasures.length > eccLen) {
     throw new ChecksumError(
-      `Reed-Solomon: ${errCount} errors exceeds correction capacity ` +
-      `${Math.floor(eccLen / 2)} (${field.name})`
+      `Reed-Solomon: ${errorCount} errors and ${erasures.length} erasures exceed correction capacity ` +
+      `${eccLen} (${field.name})`
     );
   }
+  const lambda = multiplyAscending(erasureLocator, errorLocator, field, eccLen + 1);
+  const totalCount = errorCount + erasures.length;
 
   // --- Chien search. Position p (counted from the low-order end) is in error
   // when lambda(a^-p) == 0.
@@ -231,16 +245,16 @@ export function rsDecode(received, eccLen, field, base = 0) {
     const xInv = field.exp(-p);
     let acc = 0;
     let term = 1;
-    for (let i = 0; i <= errCount; i++) {
+    for (let i = 0; i <= totalCount; i++) {
       acc = field.add(acc, field.mul(lambda[i], term));
       term = field.mul(term, xInv);
     }
     if (acc === 0) positions.push(p);
   }
 
-  if (positions.length !== errCount) {
+  if (positions.length !== totalCount) {
     throw new ChecksumError(
-      `Reed-Solomon: located ${positions.length} of ${errCount} error positions`
+      `Reed-Solomon: located ${positions.length} of ${totalCount} error positions`
     );
   }
 
@@ -249,7 +263,7 @@ export function rsDecode(received, eccLen, field, base = 0) {
   const omega = new Array(eccLen).fill(0);
   for (let i = 0; i < eccLen; i++) {
     let acc = 0;
-    for (let j = 0; j <= i && j <= errCount; j++) {
+    for (let j = 0; j <= i && j <= totalCount; j++) {
       acc = field.add(acc, field.mul(lambda[j], syn[i - j]));
     }
     omega[i] = acc;
@@ -273,7 +287,7 @@ export function rsDecode(received, eccLen, field, base = 0) {
     // in a prime field every term contributes with an integer multiplier.
     let den = 0;
     term = 1;
-    for (let i = 1; i <= errCount; i++) {
+    for (let i = 1; i <= totalCount; i++) {
       if (field.prime) {
         // i * lambda[i] * x^(i-1), where `i` is repeated addition.
         let mult = 0;

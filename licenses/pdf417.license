@@ -1,0 +1,37 @@
+# PDF417 engineering inventory
+
+## Implementation
+
+The PDF417 encoder, decoder, Reed–Solomon adapter, compaction code and image
+sampling helpers in this package are original Sythos work and are distributed
+under the repository MIT License. No third-party source code or table is
+shipped as a runtime dependency.
+
+## Technical references
+
+- ISO/IEC 15438:2015, PDF417 bar code symbology specification. The standard
+  text is copyrighted by ISO/IEC and is not reproduced here.
+- AIM USS-PDF417, Appendix H / Table H1, public reference copy used to
+  transcribe the normative 3 × 929 codeword pattern ordering. The reference
+  is attributed for provenance; its copyright and redistribution terms require
+  legal review.
+- US 5,243,655 and US 5,304,786, historical patent records associated with
+  PDF417. Family, continuation and jurisdictional status require legal review.
+
+## Scope and review labels
+
+Release validation records black-box checks with ZXing Java 3.5.3, Zint 2.16.0
+and bwip-js 4.5.1. Those tools are development-time test instruments only and
+are not distributed with this package or included as runtime dependencies.
+
+- `[VERIFIED FACT]` — supported by a primary or authoritative public source.
+- `[PATENT FAMILY REVIEW REQUIRED]` — patent family, term or jurisdiction
+  remains to be checked.
+- `[LICENSE TERMS REVIEW REQUIRED]` — source document or redistribution terms
+  require confirmation.
+- `[REGISTRY CHECK REQUIRED]` — current trademark or registration status
+  remains to be checked.
+- `[LEGAL REVIEW]` — a legal conclusion must not be inferred from this file.
+
+This file is an engineering inventory, not legal advice. It does not claim
+PDF417 is patent-free, public-domain, certified or ISO-compliant.

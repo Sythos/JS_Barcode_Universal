@@ -54,6 +54,7 @@ import { decodeOneD } from './oned/reader.js';
 import * as datamatrix from './datamatrix/index.js';
 import * as qr from './qr/index.js';
 import * as aztec from './aztec/index.js';
+import * as pdf417 from './pdf417/index.js';
 
 export { BitMatrix };
 export {
@@ -72,6 +73,7 @@ export {
   encodeDataMatrix, decodeDataMatrix, detectDataMatrix, detectAndDecodeDataMatrix,
 } from './datamatrix/index.js';
 export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './aztec/index.js';
+export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './pdf417/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -99,6 +101,12 @@ const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 const aztecCanEncode = typeof aztec.encodeAztec === 'function';
 const aztecCanDecode = typeof aztec.detectAndDecodeAztec === 'function';
+const pdf417CanEncode = typeof pdf417.encodePDF417 === 'function';
+// The matrix decoder is complete, but automatic image localization is still
+// limited to clean module-aligned symbols or an application-supplied
+// quadrilateral. Keep the generic scanner capability opt-in until a
+// perspective/noise corpus is passed.
+const pdf417CanDecode = typeof pdf417.detectAndDecodePDF417 === 'function';
 
 /**
  * Every format this build supports.
@@ -140,6 +148,13 @@ export function listFormats() {
     canRead: aztecCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'pdf417',
+    label: 'PDF417',
+    canWrite: pdf417CanEncode,
+    canRead: pdf417CanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -163,6 +178,11 @@ export function listFormats() {
  * @param {number} [options.layers] Aztec layer count; automatic if omitted.
  * @param {boolean} [options.compact] Force an Aztec Compact or Full symbol.
  * @param {number} [options.eccPercent] Requested Aztec error-correction percentage.
+ * @param {number} [options.eccLevel] PDF417 error-correction level, 0-8.
+ * @param {number} [options.columns] PDF417 columns, 1-30.
+ * @param {number} [options.rows] PDF417 rows, 3-90.
+ * @param {number} [options.rowHeight] PDF417 row height in modules.
+ * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @returns {BitMatrix}
  */
 export function encode(text, options = {}) {
@@ -178,10 +198,13 @@ export function encode(text, options = {}) {
   if (format === 'aztec' || format === 'aztec-code') {
     return aztec.encodeAztec(value, options);
   }
+  if (format === 'pdf417' || format === 'pdf-417') {
+    return pdf417.encodePDF417(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -191,12 +214,17 @@ export function encode(text, options = {}) {
  * @typedef {object} DecodeResult
  * @property {string} text
  * @property {string} format
- * @property {Uint8Array} [bytes] Raw payload, before text decoding.
+ * @property {Uint8Array} [bytes] Raw octets exposed by byte-oriented payload modes, before text decoding.
+ * @property {{mode: 'text'|'byte'|'numeric', text: string, bytes: Uint8Array, eci: number, latch: number|null, codewordStart: number, codewordEnd: number}[]} [segments] PDF417 compaction segments in source order.
  * @property {number} [version] QR version.
  * @property {string} [ecc] QR error-correction level.
  * @property {number} [layers] Aztec layer count.
  * @property {boolean} [compact] Whether an Aztec symbol is Compact.
  * @property {number} [corrections] Reed–Solomon corrections applied by an Aztec decode.
+ * @property {number} [rows] PDF417 row count.
+ * @property {number} [columns] PDF417 column count.
+ * @property {number} [eccLevel] PDF417 error-correction level.
+ * @property {number} [rowHeight] PDF417 row height in modules.
  */
 
 /**
@@ -219,6 +247,7 @@ export function decode(image, options = {}) {
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
+  const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -271,6 +300,15 @@ export function decode(image, options = {}) {
       }
     }
 
+    if (wantPDF417 && pdf417CanDecode) {
+      try {
+        const found = pdf417.detectAndDecodePDF417(bits);
+        if (found) results.push({ ...found, format: 'pdf417' });
+      } catch {
+        /* no PDF417 in this pass */
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -305,4 +343,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.1.0';
+export const VERSION = '1.2.0';

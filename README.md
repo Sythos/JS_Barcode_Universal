@@ -6,7 +6,7 @@ Read and write barcodes in JavaScript.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
 
-100% original code, zero runtime dependencies, MIT. It runs unmodified in Node, in browsers
+Original Sythos implementation, zero runtime dependencies, MIT. It runs unmodified in Node, in browsers
 (including Safari on iOS) and in web workers. The core requires no canvas, no filesystem and no
 DOM — images go in and come out as plain `{ data, width, height }` RGBA objects, which is exactly
 what an `ImageData` is.
@@ -103,8 +103,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.1.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.1.0"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.2.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -210,10 +210,15 @@ time.
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
 | Aztec Code | `aztec` | 2D | ✅ | ✅ |
+| PDF417 | `pdf417` | 2D | ✅ | ✅ |
 
-Eighteen formats, all writable, fifteen readable. **Code 11, MSI Plessey and Pharmacode are
-write-only** — they encode correctly, but there is no reader for them, and `decode` will never
-return one.
+Nineteen formats, all writable, sixteen readable. **Code 11, MSI Plessey and Pharmacode remain
+write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
+camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
+validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
+tests; external black-box vectors from ZXing 3.5.3 and bwip-js also pass in both directions.
+Text and Numeric vectors are covered bidirectionally; binary byte-for-byte interop remains
+explicitly unclaimed until a dedicated external byte corpus is added.
 
 [^1]: `gs1128`, `itf14` and `isbn` are sub-variants that share a decoder with their base format, so
 they decode under that base id: a GS1-128 comes back as `code128`, an ITF-14 as `itf`, and an ISBN
@@ -263,13 +268,31 @@ The image detector handles rotation, inverted polarity and quadrilateral samplin
 central bull’s-eye. Severe photographic perspective remains an interoperability and robustness
 gate rather than a guaranteed capability.
 
+### PDF417 (writer, matrix decoder and camera reader)
+
+`pdf417` supports PDF417 Text, Byte and Numeric compaction, ECI 3 (ISO-8859-1) and ECI 26
+(UTF-8), ECC levels 0–8, row-height inference and Reed–Solomon erasure correction. The direct
+matrix decoder is available from `@sythos/js_barcode_universal/pdf417`.
+
+The image helper handles clean module-aligned raster symbols, integer scale, right-angle
+rotations, automatic perspective estimation, mild blur/noise and an application-supplied
+quadrilateral. Results expose `bytes` and ordered `segments` for byte-preserving payloads. Real
+device validation covers Pixel 10/Chrome and iPhone 17/Safari with printed symbols and continuous
+camera capture. Extreme glare, severe occlusion, curved media and multi-symbol scenes remain
+outside the validated robustness envelope.
+
+```js
+import { encodePDF417, decodePDF417 } from '@sythos/js_barcode_universal/pdf417';
+
+const symbol = encodePDF417('AAMVA SAMPLE', { eccLevel: 3 });
+console.log(decodePDF417(symbol).text);
+```
+
 ### Not implemented
 
-**PDF417, GS1 DataBar and MaxiCode are not implemented** — neither writing
-nor reading. Data Matrix ECC 200 is implemented for its classic square and rectangular symbols;
-DMRE remains outside the current scope. Some scaffolding for the remaining formats exists in the core (the Galois field code already handles
-the prime field PDF417 needs), but none of those remaining symbologies is usable today. See [`PLAN.md`](PLAN.md)
-for where they sit.
+**GS1 DataBar and MaxiCode are not implemented** — neither writing nor reading. Data Matrix ECC
+200 is implemented for its classic square and rectangular symbols;
+DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining symbologies.
 
 ---
 
@@ -454,12 +477,12 @@ and reports which backend actually drew.
 
 MIT © 2026 Sythos. Every source file carries the header.
 
-**The code is 100% original.** No source code and no constant table from any other barcode
-implementation is present, under any licence, permissive or otherwise. The symbologies are
+**The implementation is original Sythos work.** No third-party source code or constant table from
+another barcode implementation is incorporated into or shipped by this package. The symbologies are
 implemented from published descriptions of the formats — which are systems and facts, not works of
 authorship — and from constant tables generated by this project's own scripts wherever a table is
-derivable rather than arbitrary. There is consequently no upstream licence to carry and no
-co-author to credit.
+derivable rather than arbitrary. The distributed package has no runtime third-party licence or
+co-author attribution.
 
 **Trademark is not licence.** QR Code® is a registered trademark of DENSO WAVE; Aztec Code,
 MaxiCode and GS1 DataBar are likewise marks of their owners. A trademark does not restrict
@@ -471,9 +494,13 @@ General Specifications and a leading FNC1. Its engineering provenance, patent an
 research notes are recorded in [`licenses/data-matrix.license`](licenses/data-matrix.license),
 with unresolved claims kept explicitly marked using scoped review labels.
 
+PDF417 provenance and legal review notes are recorded in
+[`licenses/pdf417.license`](licenses/pdf417.license) and in the attribution log in
+[`NOTICE.md`](NOTICE.md).
+
 [`LICENSE`](LICENSE) carries the full MIT text plus an informational appendix inventorying the
 specification copyrights, patent history and trademarks that surround these symbologies. None of
-them encumbers this code; the appendix is an engineering inventory, not legal advice.
+them is resolved by this file; the appendix is an engineering inventory, not legal advice.
 [`NOTICE.md`](NOTICE.md) records the origin of the code and how its correctness is verified.
 
 ---

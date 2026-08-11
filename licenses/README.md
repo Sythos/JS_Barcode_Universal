@@ -13,6 +13,7 @@ appendix carries the consolidated inventory these files expand on.
 | Aztec Code | [`aztec-code.license`](aztec-code.license) | Scoped labels |
 | QR Code | [`qr-code.license`](qr-code.license) | Scoped labels |
 | Data Matrix ECC 200 | [`data-matrix.license`](data-matrix.license) | Scoped labels |
+| PDF417 | [`pdf417.license`](pdf417.license) | Scoped labels |
 | EAN-13 | [`ean-13.license`](ean-13.license) | Scoped labels |
 | EAN-8 | [`ean-8.license`](ean-8.license) | Scoped labels |
 | UPC-A | [`upc-a.license`](upc-a.license) | Scoped labels |
@@ -53,6 +54,10 @@ The primary references used for the current review include:
 - [GS1 EAN/UPC standards](https://www.gs1.org/standards/barcodes/ean-upc)
 - [GS1 Application Identifiers](https://www.gs1.org/gs1-application-identifiers)
 - [GS1 DataMatrix Guideline](https://www.gs1.org/sites/default/files/docs/barcodes/GS1_DataMatrix_Guideline.pdf)
+- [ISO/IEC 15438:2015 — PDF417](https://www.iso.org/standard/65502.html)
+- [AIM USS-PDF417 public reference](https://www.expresscorp.com/uploads/specifications/44/USS-PDF-417.pdf)
+- [US 5,243,655 patent record](https://patents.google.com/patent/US5243655A/en)
+- [US 5,304,786 patent record](https://patents.google.com/patent/US5304786A/en)
 - [DENSO QR Code technology position](https://www.denso.com/global/home/business/innovation/qrcode/)
 - [USPTO Aztec patent dedication notice](https://www.uspto.gov/web/offices/com/sol/og/1997/week24/patdisc.htm)
 - [USPTO patent-term guidance](https://www.uspto.gov/web/offices/pac/mpep/s2701.html)

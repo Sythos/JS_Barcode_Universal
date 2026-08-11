@@ -31,10 +31,9 @@ READ THIS FIRST
 **Nothing in this appendix applies to, encumbers, or imposes any obligation on
 the software distributed under the MIT License above.**
 
-This package contains 100% original code, written from scratch. It has ZERO
-runtime dependencies. No source code, and no table of values, has been copied
-from any other software project, under any license. The distributed artifact is
-therefore covered by the MIT License above and by nothing else.
+The implementation and integration work in this package is original work by
+Sythos. It has ZERO runtime dependencies. No third-party source code or
+constant table is incorporated into or shipped by the distributed artifact.
 
 This appendix exists only because barcode symbologies carry a history of
 specification copyrights, expired patents and live trademarks, and it is useful
@@ -53,7 +52,7 @@ use case is commercially sensitive, consult a qualified attorney.
     Effective license ............... MIT, in full, as stated above
 
 
-2. DEVELOPMENT-TIME TOOLS (NOT DISTRIBUTED, NOT LINKED, NEVER READ)
+2. DEVELOPMENT-TIME TOOLS (NOT DISTRIBUTED OR LINKED)
 -------------------------------------------------------------------
 
     Tool                              License      Role
@@ -65,15 +64,13 @@ use case is commercially sensitive, consult a qualified attorney.
 THE PROJECT RULE, STATED PRECISELY:
 
     These tools may be INVOKED during testing.
-    Their SOURCE is never opened, and no line of their code, and no constant
-    from their tables, ever enters this project's output.
+    No source code or constant table from those tools enters this project's
+    output.
 
 They are used strictly as black boxes: an input goes in, the OUTPUT that comes
 back is compared against ours. Outputs are facts about a published symbology,
-not creative expression, so comparing against them creates no derivative work
-and no license obligation. This is the standard clean-room technique, and it is
-the opposite of source copying — it is how originality is PROVEN rather than
-merely asserted.
+not creative expression. Comparing against them is a testing activity and is
+not a legal conclusion about derivative works or license obligations.
 
 typescript (tsc) is not a barcode library and carries no symbology logic at
 all. It is an optional generator: it reads the JSDoc annotations already
