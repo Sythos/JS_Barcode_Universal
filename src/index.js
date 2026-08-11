@@ -55,6 +55,7 @@ import * as datamatrix from './datamatrix/index.js';
 import * as qr from './qr/index.js';
 import * as aztec from './aztec/index.js';
 import * as pdf417 from './pdf417/index.js';
+import * as micropdf417 from './micropdf417/index.js';
 
 export { BitMatrix };
 export {
@@ -74,6 +75,9 @@ export {
 } from './datamatrix/index.js';
 export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './aztec/index.js';
 export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './pdf417/index.js';
+export {
+  encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
+} from './micropdf417/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -107,6 +111,8 @@ const pdf417CanEncode = typeof pdf417.encodePDF417 === 'function';
 // quadrilateral. Keep the generic scanner capability opt-in until a
 // perspective/noise corpus is passed.
 const pdf417CanDecode = typeof pdf417.detectAndDecodePDF417 === 'function';
+const microPdf417CanEncode = typeof micropdf417.encodeMicroPDF417 === 'function';
+const microPdf417CanDecode = typeof micropdf417.detectAndDecodeMicroPDF417 === 'function';
 
 /**
  * Every format this build supports.
@@ -155,6 +161,13 @@ export function listFormats() {
     canRead: pdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'micropdf417',
+    label: 'MicroPDF417',
+    canWrite: microPdf417CanEncode,
+    canRead: microPdf417CanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -183,6 +196,8 @@ export function listFormats() {
  * @param {number} [options.rows] PDF417 rows, 3-90.
  * @param {number} [options.rowHeight] PDF417 row height in modules.
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
+ * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
+ * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
  * @returns {BitMatrix}
  */
 export function encode(text, options = {}) {
@@ -201,10 +216,13 @@ export function encode(text, options = {}) {
   if (format === 'pdf417' || format === 'pdf-417') {
     return pdf417.encodePDF417(value, options);
   }
+  if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
+    return micropdf417.encodeMicroPDF417(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -225,6 +243,8 @@ export function encode(text, options = {}) {
  * @property {number} [columns] PDF417 column count.
  * @property {number} [eccLevel] PDF417 error-correction level.
  * @property {number} [rowHeight] PDF417 row height in modules.
+ * @property {number} [variant] MicroPDF417 predefined variant number.
+ * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
  */
 
 /**
@@ -248,6 +268,7 @@ export function decode(image, options = {}) {
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
+  const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -309,6 +330,21 @@ export function decode(image, options = {}) {
       }
     }
 
+    if (wantMicroPDF417 && microPdf417CanDecode) {
+      // MicroPDF417 detection measures runs across the whole raster. Hybrid
+      // thresholding can alter uniform modules near local-window boundaries,
+      // so retry the global threshold in auto mode as for the other 2D codes.
+      const microPdf417Bits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of microPdf417Bits) {
+        try {
+          const found = micropdf417.detectAndDecodeMicroPDF417(candidateBits);
+          if (found) { results.push({ ...found, format: 'micropdf417' }); break; }
+        } catch {
+          /* no MicroPDF417 with this threshold */
+        }
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -343,4 +379,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.2.0';
+export const VERSION = '1.2.5';

@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.2.0
+ * Sythos Barcode Suite v1.2.5
  *
  * MIT License
  *
@@ -9507,6 +9507,753 @@ const __reexport5 = __require("pdf417/tables.js"); __exports.PDF417_PATTERN_TABL
 
 };
 
+__modules["micropdf417/tables.js"] = function (__require, __exports) {
+/**
+ * MicroPDF417 format facts and Row Address Pattern (RAP) helpers.
+ *
+ * The tables are represented as compact, immutable data and are guarded by
+ * {@link validateMicroPdf417Tables}. They are deliberately separate from the
+ * PDF417 symbol-character table: MicroPDF417 has a fixed family of symbols and
+ * its own row-address system.
+ *
+ * Values are derived from publicly available symbology documentation and
+ * independently checked against black-box reference output. This module makes
+ * no certification or conformance claim.
+ *
+ * @module micropdf417/tables
+ */
+
+const variant = (id, columns, rows, eccCodewords, rapStart, rapRotation) => Object.freeze({
+  id,
+  columns,
+  rows,
+  totalCodewords: columns * rows,
+  dataCodewords: columns * rows - eccCodewords,
+  eccCodewords,
+  rapStart,
+  rapRotation,
+});
+
+/** All 34 predefined MicroPDF417 symbol variants, in format-table order. */
+const MICROPDF417_VARIANTS = Object.freeze([
+  variant(1, 1, 11, 7, 1, 8), variant(2, 1, 14, 7, 8, 0),
+  variant(3, 1, 17, 7, 36, 0), variant(4, 1, 20, 8, 19, 0),
+  variant(5, 1, 24, 8, 9, 8), variant(6, 1, 28, 8, 25, 8),
+  variant(7, 2, 8, 8, 1, 0), variant(8, 2, 11, 9, 1, 8),
+  variant(9, 2, 14, 9, 8, 0), variant(10, 2, 17, 10, 36, 0),
+  variant(11, 2, 20, 11, 19, 0), variant(12, 2, 23, 13, 9, 8),
+  variant(13, 2, 26, 15, 27, 8),
+  variant(14, 3, 6, 12, 1, 0), variant(15, 3, 8, 14, 7, 0),
+  variant(16, 3, 10, 16, 15, 0), variant(17, 3, 12, 18, 25, 0),
+  variant(18, 3, 15, 21, 37, 0), variant(19, 3, 20, 26, 1, 16),
+  variant(20, 3, 26, 32, 1, 8), variant(21, 3, 32, 38, 21, 8),
+  variant(22, 3, 38, 44, 15, 16), variant(23, 3, 44, 50, 1, 24),
+  variant(24, 4, 4, 8, 47, 24), variant(25, 4, 6, 12, 1, 0),
+  variant(26, 4, 8, 14, 7, 0), variant(27, 4, 10, 16, 15, 0),
+  variant(28, 4, 12, 18, 25, 0), variant(29, 4, 15, 21, 37, 0),
+  variant(30, 4, 20, 26, 1, 16), variant(31, 4, 26, 32, 1, 8),
+  variant(32, 4, 32, 38, 21, 8), variant(33, 4, 38, 44, 15, 16),
+  variant(34, 4, 44, 50, 1, 24),
+]);
+
+const byId = new Map(MICROPDF417_VARIANTS.map((entry) => [entry.id, entry]));
+
+// Six run widths, ordered bar-space-bar-space-bar-space.  A RAP is ten
+// modules wide; the right RAP has one additional one-module stop bar when
+// rendered. Keeping runs rather than bitmap literals makes each invariant
+// inspectable and avoids a rendering-specific representation here.
+const SIDE_RAP_RUNS = Object.freeze([
+  '221311', '311311', '312211', '222211', '213211', '214111', '223111', '313111',
+  '322111', '412111', '421111', '331111', '241111', '232111', '231211', '321211',
+  '411211', '411121', '411112', '321112', '312112', '311212', '311221', '311131',
+  '311122', '311113', '221113', '221122', '221131', '221221', '222121', '312121',
+  '321121', '231121', '231112', '222112', '213112', '212212', '212221', '212131',
+  '212122', '212113', '211213', '211123', '211132', '211141', '211231', '211222',
+  '211312', '211321', '211411', '212311',
+]);
+
+const CENTER_RAP_RUNS = Object.freeze([
+  '112231', '121231', '122131', '131131', '131221', '132121', '141121', '141211',
+  '142111', '133111', '132211', '131311', '122311', '123211', '124111', '115111',
+  '114211', '114121', '123121', '123112', '122212', '122221', '121321', '121411',
+  '112411', '113311', '113221', '113212', '113122', '122122', '131122', '131113',
+  '122113', '113113', '112213', '112222', '112312', '112321', '111421', '111331',
+  '111322', '111232', '111223', '111133', '111124', '111214', '112114', '121114',
+  '121123', '121132', '112132', '112141',
+]);
+
+/** @param {number} value @param {number} offset @returns {number} */
+function microPdf417NextRap(value, offset = 1) {
+  if (!Number.isInteger(value) || value < 1 || value > 52) throw new RangeError('MicroPDF417: RAP number must be in 1..52');
+  if (!Number.isInteger(offset)) throw new RangeError('MicroPDF417: RAP offset must be an integer');
+  return ((value - 1 + offset) % 52 + 52) % 52 + 1;
+}
+
+/** @param {number} id @returns {Readonly<typeof MICROPDF417_VARIANTS[number]>} */
+function microPdf417VariantByNumber(id) {
+  const entry = byId.get(id);
+  if (!entry) throw new RangeError('MicroPDF417: variant must be an integer in 1..34');
+  return entry;
+}
+
+/**
+ * Return the smallest data-region candidate that fits `codewords`.
+ * Ties are resolved by width, then height, so selection is deterministic.
+ */
+function microPdf417VariantForCapacity(codewords) {
+  if (!Number.isInteger(codewords) || codewords < 1) throw new RangeError('MicroPDF417: codeword capacity must be a positive integer');
+  const candidates = MICROPDF417_VARIANTS.filter((entry) => entry.dataCodewords >= codewords);
+  if (!candidates.length) throw new RangeError('MicroPDF417: payload exceeds the largest symbol data region');
+  return candidates.slice().sort((a, b) => a.totalCodewords - b.totalCodewords || a.columns - b.columns || a.rows - b.rows)[0];
+}
+
+/** Return the six bar/space run widths for a numbered side or center RAP. */
+function microPdf417RapSequence(number, kind = 'side') {
+  if (!Number.isInteger(number) || number < 1 || number > 52) throw new RangeError('MicroPDF417: RAP number must be in 1..52');
+  if (kind === 'side') return SIDE_RAP_RUNS[number - 1];
+  if (kind === 'center') return CENTER_RAP_RUNS[number - 1];
+  throw new RangeError('MicroPDF417: RAP kind must be side or center');
+}
+
+/**
+ * Resolve all row-address data for a zero-based row within a variant.
+ * @returns {{left: number, center: number|null, right: number, cluster: 0|3|6}}
+ */
+function microPdf417RowAddress(entry, row) {
+  if (!entry || !Number.isInteger(entry.columns) || !Number.isInteger(entry.rows)) throw new TypeError('MicroPDF417: a variant entry is required');
+  if (!Number.isInteger(row) || row < 0 || row >= entry.rows) throw new RangeError(`MicroPDF417: row must be in 0..${entry.rows - 1}`);
+  const left = microPdf417NextRap(entry.rapStart, row);
+  const cluster = /** @type {0|3|6} */ (((left - 1) % 3) * 3);
+  if (entry.columns < 3) return { left, center: null, right: microPdf417NextRap(left, entry.rapRotation), cluster };
+  const center = microPdf417NextRap(left, entry.rapRotation);
+  return { left, center, right: microPdf417NextRap(center, entry.rapRotation), cluster };
+}
+
+const validRuns = (runs) => runs.length === 6 && /^[1-9]{6}$/.test(runs) && [...runs].reduce((sum, digit) => sum + Number(digit), 0) === 10;
+const oneEdgeShift = (from, to) => [...from].reduce((sum, digit, index) => sum + Math.abs(Number(digit) - Number(to[index])), 0) === 2;
+
+/** Return any table-invariant failures; an empty result means the table is coherent. */
+function validateMicroPdf417Tables() {
+  const issues = [];
+  if (MICROPDF417_VARIANTS.length !== 34) issues.push('expected 34 variants');
+  const ids = new Set();
+  const formats = new Set();
+  for (const entry of MICROPDF417_VARIANTS) {
+    if (ids.has(entry.id)) issues.push(`duplicate variant ${entry.id}`); ids.add(entry.id);
+    const format = `${entry.columns}x${entry.rows}`;
+    if (formats.has(format)) issues.push(`duplicate format ${format}`); formats.add(format);
+    if (entry.totalCodewords !== entry.columns * entry.rows) issues.push(`${format}: total codeword geometry mismatch`);
+    if (entry.dataCodewords + entry.eccCodewords !== entry.totalCodewords) issues.push(`${format}: data/ECC capacity mismatch`);
+    if (entry.eccCodewords < 7 || entry.eccCodewords > 50) issues.push(`${format}: invalid ECC length`);
+    if (entry.rapStart < 1 || entry.rapStart > 52 || entry.rapRotation < 0 || entry.rapRotation > 51) issues.push(`${format}: invalid RAP assignment`);
+    for (let row = 0; row < entry.rows; row++) {
+      const address = microPdf417RowAddress(entry, row);
+      if (address.cluster !== ((address.left - 1) % 3) * 3) issues.push(`${format}: cluster mismatch at row ${row}`);
+      if ((entry.columns < 3) !== (address.center === null)) issues.push(`${format}: center RAP layout mismatch`);
+    }
+  }
+  for (const [kind, runs] of [['side', SIDE_RAP_RUNS], ['center', CENTER_RAP_RUNS]]) {
+    if (runs.length !== 52) issues.push(`${kind}: expected 52 RAPs`);
+    if (new Set(runs).size !== runs.length) issues.push(`${kind}: duplicate RAP`);
+    for (let i = 0; i < runs.length; i++) {
+      if (!validRuns(runs[i])) issues.push(`${kind}: invalid RAP ${i + 1}`);
+      if (runs.length && !oneEdgeShift(runs[i], runs[(i + 1) % runs.length])) issues.push(`${kind}: RAP ${i + 1} is not adjacent to its successor`);
+    }
+  }
+  return issues;
+}
+
+__exports.MICROPDF417_VARIANTS = MICROPDF417_VARIANTS;
+__exports.microPdf417NextRap = microPdf417NextRap;
+__exports.microPdf417VariantByNumber = microPdf417VariantByNumber;
+__exports.microPdf417VariantForCapacity = microPdf417VariantForCapacity;
+__exports.microPdf417RapSequence = microPdf417RapSequence;
+__exports.microPdf417RowAddress = microPdf417RowAddress;
+__exports.validateMicroPdf417Tables = validateMicroPdf417Tables;
+};
+
+__modules["micropdf417/error-correction.js"] = function (__require, __exports) {
+/** MicroPDF417 error correction over the existing GF(929) core. @module micropdf417/error-correction */
+const { EncodeError } = __require("core/errors.js");
+const { GF929 } = __require("core/galois-field.js");
+const { generatorPoly, rsDecode, rsEncode } = __require("core/reed-solomon.js");
+
+function eccLength(entry) {
+  if (!entry || !Number.isInteger(entry.eccCodewords)) throw new EncodeError('MicroPDF417: a variant with an ECC length is required');
+  if (entry.eccCodewords < 1 || entry.eccCodewords >= GF929.size) throw new EncodeError('MicroPDF417: ECC length is outside GF(929) bounds');
+  return entry.eccCodewords;
+}
+
+/** Return the fixed number of parity codewords for a MicroPDF417 variant. */
+function microPdf417EccLength(entry) { return eccLength(entry); }
+
+/** Build the MicroPDF417 generator polynomial for a variant's fixed ECC length. */
+function microPdf417Generator(entry) { return generatorPoly(eccLength(entry), GF929, 1); }
+
+/** Compute systematic MicroPDF417 parity codewords. `data` must already include padding. */
+function microPdf417ErrorCorrection(data, entry) { return rsEncode(data, eccLength(entry), GF929, 1); }
+
+/** Correct a complete MicroPDF417 codeword stream, optionally marking erasures. */
+function microPdf417CorrectErrors(codewords, entry, erasures = []) {
+  return rsDecode(codewords, eccLength(entry), GF929, 1, erasures);
+}
+
+__exports.microPdf417EccLength = microPdf417EccLength;
+__exports.microPdf417Generator = microPdf417Generator;
+__exports.microPdf417ErrorCorrection = microPdf417ErrorCorrection;
+__exports.microPdf417CorrectErrors = microPdf417CorrectErrors;
+};
+
+__modules["micropdf417/compaction.js"] = function (__require, __exports) {
+/** MicroPDF417 high-level compaction adapter. @module micropdf417/compaction */
+const { EncodeError } = __require("core/errors.js");
+const { compactPdf417Bytes, compactPdf417Numeric, compactPdf417Text } = __require("pdf417/compaction.js");
+
+function byteLength(value) {
+  if (value instanceof Uint8Array) return value.byteLength;
+  if (ArrayBuffer.isView(value)) return value.byteLength;
+  return -1;
+}
+
+function assertNotEmpty(value) {
+  if ((typeof value === 'string' && value.length === 0) || byteLength(value) === 0) {
+    throw new EncodeError('MicroPDF417: value must not be empty');
+  }
+}
+
+function latin1Bytes(value) {
+  if (typeof value !== 'string') return value;
+  const bytes = [];
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint > 255) {
+      throw new EncodeError('MicroPDF417 ECI 3: string contains a character outside ISO-8859-1');
+    }
+    bytes.push(codePoint);
+  }
+  return Uint8Array.from(bytes);
+}
+
+function compactByte(value, eci) {
+  if (eci === undefined) return compactPdf417Bytes(value);
+  if (eci === 3) return compactPdf417Bytes(latin1Bytes(value));
+  if (eci === 26) {
+    if (typeof value !== 'string') {
+      throw new EncodeError('MicroPDF417 ECI 26: value must be a string so UTF-8 validity is known');
+    }
+    const encoded = compactPdf417Bytes(value);
+    return encoded[0] === 927 && encoded[1] === 26 ? encoded : [927, 26, ...encoded];
+  }
+  throw new EncodeError('MicroPDF417: supported ECI assignment numbers are 3 and 26');
+}
+
+/**
+ * Compact one MicroPDF417 value.
+ *
+ * Unlike PDF417, MicroPDF417 starts in Byte Compaction. Text therefore needs
+ * an explicit 900 latch. Byte compaction always emits 901 or 924 so its start
+ * state is unambiguous, including when an ECI designator precedes it.
+ */
+function compactMicroPDF417(value, options = {}) {
+  assertNotEmpty(value);
+  const mode = options.compaction ?? 'auto';
+  const eci = options.eci;
+  if (eci !== undefined && eci !== 3 && eci !== 26) {
+    throw new EncodeError('MicroPDF417: supported ECI assignment numbers are 3 and 26');
+  }
+
+  if (mode === 'text') {
+    if (eci !== undefined) throw new EncodeError('MicroPDF417: explicit ECI is supported only with byte compaction');
+    return [900, ...compactPdf417Text(value)];
+  }
+  if (mode === 'numeric') {
+    if (eci !== undefined) throw new EncodeError('MicroPDF417: explicit ECI is supported only with byte compaction');
+    return compactPdf417Numeric(value);
+  }
+  if (mode === 'byte') return compactByte(value, eci);
+  if (mode !== 'auto') {
+    throw new EncodeError(`MicroPDF417: unsupported compaction mode ${JSON.stringify(mode)}`);
+  }
+
+  if (eci !== undefined) return compactByte(value, eci);
+  if (typeof value === 'string' && /^\d{13,}$/.test(value)) return compactPdf417Numeric(value);
+  if (typeof value === 'string') {
+    try {
+      return [900, ...compactPdf417Text(value)];
+    } catch (error) {
+      if (!(error instanceof EncodeError)) throw error;
+    }
+  }
+  return compactPdf417Bytes(value);
+}
+
+__exports.compactMicroPDF417 = compactMicroPDF417;
+};
+
+__modules["micropdf417/encoder.js"] = function (__require, __exports) {
+/** MicroPDF417 encoder. @module micropdf417/encoder */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { pdf417PatternForCodeword } = __require("pdf417/tables.js");
+const { compactMicroPDF417 } = __require("micropdf417/compaction.js");
+const { microPdf417ErrorCorrection } = __require("micropdf417/error-correction.js");
+const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber, microPdf417VariantForCapacity } = __require("micropdf417/tables.js");
+
+function appendWidths(matrix, y, x, sequence, height) {
+  let dark = true;
+  for (const digit of sequence) {
+    const width = digit.charCodeAt(0) - 48;
+    if (!Number.isInteger(width) || width < 1 || width > 6) {
+      throw new EncodeError('MicroPDF417: invalid module-width sequence');
+    }
+    if (dark) matrix.setRegion(x, y, width, height);
+    x += width;
+    dark = !dark;
+  }
+  return x;
+}
+
+function codewordSequence(codeword, cluster) {
+  return pdf417PatternForCodeword(codeword, cluster)
+    .toString(2)
+    .padStart(17, '0')
+    .replace(/0+|1+/g, (run) => String(run.length));
+}
+
+function symbolWidth(columns) {
+  return 21 + columns * 17 + (columns > 2 ? 10 : 0);
+}
+
+function validateOptions(options) {
+  const rowHeight = options.rowHeight ?? 2;
+  if (!Number.isInteger(rowHeight) || rowHeight < 2) {
+    throw new EncodeError('MicroPDF417: rowHeight must be an integer of at least 2');
+  }
+  if (options.columns !== undefined &&
+      (!Number.isInteger(options.columns) || options.columns < 1 || options.columns > 4)) {
+    throw new EncodeError('MicroPDF417: columns must be an integer in 1..4');
+  }
+  if (options.variant !== undefined &&
+      (!Number.isInteger(options.variant) || options.variant < 1 || options.variant > 34)) {
+    throw new EncodeError('MicroPDF417: variant must be an integer in 1..34');
+  }
+  if (options.aspectRatio !== undefined &&
+      (!Number.isFinite(options.aspectRatio) || options.aspectRatio <= 0)) {
+    throw new EncodeError('MicroPDF417: aspectRatio must be positive');
+  }
+  if (options.rows !== undefined) {
+    throw new EncodeError('MicroPDF417: rows are fixed by the selected variant');
+  }
+  if (options.eccLevel !== undefined) {
+    throw new EncodeError('MicroPDF417: error correction is fixed by the selected variant');
+  }
+  for (const feature of [
+    'structuredAppend', 'macro', 'macroPdf417', 'macroControlBlock',
+    'readerInit', 'gs1', 'hibc', 'linkage',
+  ]) {
+    if (options[feature] !== undefined) {
+      throw new EncodeError(`MicroPDF417: ${feature} is not implemented`);
+    }
+  }
+  return rowHeight;
+}
+
+function chooseVariant(codewordCount, rowHeight, options) {
+  if (options.variant !== undefined) {
+    const variant = microPdf417VariantByNumber(options.variant);
+    if (!variant) throw new EncodeError(`MicroPDF417: unknown variant ${options.variant}`);
+    if (options.columns !== undefined && variant.columns !== options.columns) {
+      throw new EncodeError(`MicroPDF417: variant ${variant.id} has ${variant.columns} columns`);
+    }
+    if (codewordCount > variant.dataCodewords) {
+      throw new EncodeError(
+        `MicroPDF417: payload requires ${codewordCount} data codewords, variant ${variant.id} holds ${variant.dataCodewords}`
+      );
+    }
+    return variant;
+  }
+
+  if (options.columns === undefined && options.aspectRatio === undefined) {
+    try {
+      return microPdf417VariantForCapacity(codewordCount);
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      throw new EncodeError(`MicroPDF417: payload requires ${codewordCount} data codewords and exceeds every variant`);
+    }
+  }
+
+  const candidates = MICROPDF417_VARIANTS.filter((variant) =>
+    variant.dataCodewords >= codewordCount &&
+    (options.columns === undefined || variant.columns === options.columns)
+  );
+  if (!candidates.length) {
+    const columnText = options.columns === undefined ? '' : ` with ${options.columns} columns`;
+    throw new EncodeError(`MicroPDF417: payload does not fit any supported variant${columnText}`);
+  }
+  if (options.aspectRatio === undefined) {
+    return candidates.reduce((best, variant) =>
+      variant.dataCodewords < best.dataCodewords ||
+      (variant.dataCodewords === best.dataCodewords && variant.totalCodewords < best.totalCodewords)
+        ? variant : best
+    );
+  }
+
+  const target = options.aspectRatio;
+  return candidates.reduce((best, variant) => {
+    const ratio = symbolWidth(variant.columns) / (variant.rows * rowHeight);
+    const score = Math.abs(Math.log(ratio / target)) +
+      (variant.dataCodewords - codewordCount) / 10000;
+    return !best || score < best.score ? { variant, score } : best;
+  }, null).variant;
+}
+
+/** Encode a value as one of the 34 fixed MicroPDF417 variants. */
+function encodeMicroPDF417(value, options = {}) {
+  const rowHeight = validateOptions(options);
+  const payload = compactMicroPDF417(value, options);
+  const variant = chooseVariant(payload.length, rowHeight, options);
+  const data = payload.slice();
+  while (data.length < variant.dataCodewords) data.push(900);
+  const ecc = microPdf417ErrorCorrection(data, variant);
+  if (ecc.length !== variant.eccCodewords) {
+    throw new EncodeError('MicroPDF417: error-correction length does not match the selected variant');
+  }
+  const codewords = data.concat(ecc);
+  if (codewords.length !== variant.totalCodewords || codewords.length !== variant.rows * variant.columns) {
+    throw new EncodeError('MicroPDF417: selected variant has inconsistent codeword dimensions');
+  }
+
+  const matrix = new BitMatrix(symbolWidth(variant.columns), variant.rows * rowHeight);
+  for (let row = 0; row < variant.rows; row++) {
+    const y = row * rowHeight;
+    const address = microPdf417RowAddress(variant, row);
+    let x = appendWidths(matrix, y, 0, microPdf417RapSequence(address.left, 'side'), rowHeight);
+    for (let column = 0; column < variant.columns; column++) {
+      x = appendWidths(
+        matrix,
+        y,
+        x,
+        codewordSequence(codewords[row * variant.columns + column], address.cluster),
+        rowHeight
+      );
+      const hasCentralRap = (variant.columns === 3 && column === 0) ||
+        (variant.columns === 4 && column === 1);
+      if (hasCentralRap) {
+        if (address.center === null) {
+          throw new EncodeError('MicroPDF417: selected variant is missing its centre row address');
+        }
+        x = appendWidths(matrix, y, x, microPdf417RapSequence(address.center, 'center'), rowHeight);
+      }
+    }
+    x = appendWidths(matrix, y, x, microPdf417RapSequence(address.right, 'side'), rowHeight);
+    matrix.setRegion(x, y, 1, rowHeight);
+    x++;
+    if (x !== matrix.width) throw new EncodeError('MicroPDF417: row width does not match the selected variant');
+  }
+
+  matrix.micropdf417 = {
+    variant: variant.id,
+    rows: variant.rows,
+    columns: variant.columns,
+    eccCodewords: variant.eccCodewords,
+    rowHeight,
+    payloadCodewords: payload.length,
+    dataCodewords: data,
+    codewords,
+  };
+  return matrix;
+}
+
+__exports.encodeMicroPDF417 = encodeMicroPDF417;
+};
+
+__modules["micropdf417/decoder.js"] = function (__require, __exports) {
+/**
+ * Direct-module MicroPDF417 decoder.
+ *
+ * This module reads an already sampled, axis-aligned `BitMatrix`. Image finding,
+ * perspective correction, and recognition from photographic pixels are deliberately
+ * outside this first decoder boundary. The RAP sequence is authoritative for format
+ * detection; matrix metadata is used only as an optional row-height hint.
+ *
+ * @module micropdf417/decoder
+ */
+const { FormatError } = __require("core/errors.js");
+const { decodePdf417CompactionDetailed } = __require("pdf417/compaction.js");
+const { pdf417CodewordForPattern } = __require("pdf417/tables.js");
+const { microPdf417CorrectErrors } = __require("micropdf417/error-correction.js");
+const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber } = __require("micropdf417/tables.js");
+
+function symbolWidth(columns) {
+  return 21 + columns * 17 + (columns > 2 ? 10 : 0);
+}
+
+function bits(matrix, y, x, width) {
+  let value = 0;
+  for (let i = 0; i < width; i++) value = (value << 1) | (matrix.get(x + i, y) ? 1 : 0);
+  return value;
+}
+
+function widthsToBits(widths) {
+  let dark = true;
+  let out = '';
+  for (const digit of widths) {
+    out += (dark ? '1' : '0').repeat(digit.charCodeAt(0) - 48);
+    dark = !dark;
+  }
+  return out;
+}
+
+function hasExpectedBits(matrix, y, x, sequence) {
+  const expected = widthsToBits(sequence);
+  for (let i = 0; i < expected.length; i++) {
+    if ((matrix.get(x + i, y) ? '1' : '0') !== expected[i]) return false;
+  }
+  return true;
+}
+
+function centralRapAfter(entry, column) {
+  return (entry.columns === 3 && column === 0) ||
+    (entry.columns === 4 && column === 1);
+}
+
+/** Return true when all address patterns for this format candidate agree. */
+function hasValidRowAddresses(matrix, entry, rowHeight) {
+  for (let row = 0; row < entry.rows; row++) {
+    const y = row * rowHeight;
+    const address = microPdf417RowAddress(entry, row);
+    let x = 0;
+    if (!hasExpectedBits(matrix, y, x, microPdf417RapSequence(address.left, 'side'))) return false;
+    x += 10;
+    for (let column = 0; column < entry.columns; column++) {
+      x += 17;
+      if (centralRapAfter(entry, column)) {
+        if (address.center === null ||
+            !hasExpectedBits(matrix, y, x, microPdf417RapSequence(address.center, 'center'))) return false;
+        x += 10;
+      }
+    }
+    if (!hasExpectedBits(matrix, y, x, microPdf417RapSequence(address.right, 'side'))) return false;
+    x += 10;
+    if (!matrix.get(x, y) || x + 1 !== matrix.width) return false;
+  }
+  return true;
+}
+
+function candidateFormats(matrix, options) {
+  const metadataHeight = matrix.micropdf417?.rowHeight;
+  const requestedHeight = options.rowHeight ?? metadataHeight;
+  if (requestedHeight !== undefined && (!Number.isInteger(requestedHeight) || requestedHeight < 1)) {
+    throw new FormatError('MicroPDF417: rowHeight must be a positive integer');
+  }
+  const requestedVariant = options.variant === undefined ? null : microPdf417VariantByNumber(options.variant);
+  const pool = requestedVariant ? [requestedVariant] : MICROPDF417_VARIANTS;
+  const candidates = [];
+  for (const entry of pool) {
+    if (matrix.width !== symbolWidth(entry.columns)) continue;
+    if (matrix.height % entry.rows) continue;
+    const rowHeight = matrix.height / entry.rows;
+    if (requestedHeight !== undefined && rowHeight !== requestedHeight) continue;
+    if (hasValidRowAddresses(matrix, entry, rowHeight)) candidates.push({ entry, rowHeight });
+  }
+  return candidates;
+}
+
+function resolveFormat(matrix, options) {
+  if (!matrix?.width || !matrix?.height || typeof matrix.get !== 'function') {
+    throw new FormatError('MicroPDF417: matrix with width, height and get() is required');
+  }
+  const candidates = candidateFormats(matrix, options);
+  if (!candidates.length) throw new FormatError('MicroPDF417: no variant matches matrix geometry and row-address patterns');
+  if (candidates.length > 1) throw new FormatError('MicroPDF417: row-address patterns do not identify a unique variant');
+  return candidates[0];
+}
+
+function readCodewords(matrix, entry, rowHeight) {
+  const codewords = [];
+  const erasures = [];
+  for (let row = 0; row < entry.rows; row++) {
+    const y = row * rowHeight;
+    const address = microPdf417RowAddress(entry, row);
+    let x = 10;
+    for (let column = 0; column < entry.columns; column++) {
+      const decoded = pdf417CodewordForPattern(bits(matrix, y, x, 17));
+      if (!decoded || decoded.cluster !== address.cluster) {
+        erasures.push(codewords.length);
+        codewords.push(0);
+      } else {
+        codewords.push(decoded.codeword);
+      }
+      x += 17;
+      if (centralRapAfter(entry, column)) x += 10;
+    }
+  }
+  return { codewords, erasures };
+}
+
+/**
+ * Decode a sampled MicroPDF417 matrix.
+ *
+ * The complete fixed data region is compacted after correction. Encoder padding
+ * is PDF417 Text latch 900, which contributes no characters at the end of the
+ * payload. This avoids relying on non-symbol metadata for payload length.
+ */
+function decodeMicroPDF417(matrix, options = {}) {
+  const { entry, rowHeight } = resolveFormat(matrix, options);
+  const { codewords, erasures } = readCodewords(matrix, entry, rowHeight);
+  const corrections = microPdf417CorrectErrors(codewords, entry, erasures);
+  const data = codewords.slice(0, entry.dataCodewords);
+  const decoded = decodePdf417CompactionDetailed(data);
+  return {
+    ...decoded,
+    codewords,
+    rows: entry.rows,
+    columns: entry.columns,
+    variant: entry.id,
+    eccCodewords: entry.eccCodewords,
+    rowHeight,
+    corrections,
+  };
+}
+
+__exports.decodeMicroPDF417 = decodeMicroPDF417;
+};
+
+__modules["micropdf417/detector.js"] = function (__require, __exports) {
+/**
+ * Axis-aligned MicroPDF417 raster detection.
+ *
+ * A MicroPDF417 symbol has a fixed module width for each column count and a
+ * dark leading and trailing module in every row.  Consequently the bounding
+ * rectangle of dark pixels identifies the complete symbol even when a light
+ * quiet zone surrounds it.  Its width determines the integer raster scale;
+ * the existing direct-module decoder then verifies every row-address pattern
+ * and selects the exact variant.  This is intentionally narrower than the
+ * PDF417 photo detector: it handles clean binarized rasters only, not skew or
+ * projective camera images.
+ *
+ * @module micropdf417/detector
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { decodeMicroPDF417 } = __require("micropdf417/decoder.js");
+
+/** @typedef {{x:number, y:number}} Point */
+
+// Each row has two 10-module side RAPs, a final separator, and 17 modules for
+// each data column. Three and four columns also contain one central RAP.
+function symbolWidth(columns) { return 21 + columns * 17 + (columns > 2 ? 10 : 0); }
+const WIDTHS = [1, 2, 3, 4].map(symbolWidth);
+
+function rotateClockwise(source) {
+  const rotated = new BitMatrix(source.height, source.width);
+  for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) {
+    if (source.get(x, y)) rotated.set(source.height - 1 - y, x);
+  }
+  return rotated;
+}
+
+function integerScale(width, modules) {
+  if (width % modules) return 0;
+  const scale = width / modules;
+  return Number.isInteger(scale) && scale > 0 ? scale : 0;
+}
+
+/** Collapse exact integer scale blocks using a majority vote. */
+function sampleRaster(image, bounds, modulesWide, scale) {
+  const modulesHigh = bounds.height / scale;
+  if (!Number.isInteger(modulesHigh) || modulesHigh < 1) return null;
+  const matrix = new BitMatrix(modulesWide, modulesHigh);
+  for (let y = 0; y < modulesHigh; y++) for (let x = 0; x < modulesWide; x++) {
+    let dark = 0;
+    for (let py = 0; py < scale; py++) for (let px = 0; px < scale; px++) {
+      if (image.get(bounds.x + x * scale + px, bounds.y + y * scale + py)) dark++;
+    }
+    if (dark * 2 >= scale * scale) matrix.set(x, y);
+  }
+  return matrix;
+}
+
+function rectangle(bounds) {
+  return [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height },
+  ];
+}
+
+function detectAxisAligned(image, options) {
+  const bounds = image.getBounds();
+  if (!bounds) return null;
+  for (const width of WIDTHS) {
+    const scale = integerScale(bounds.width, width);
+    if (!scale || bounds.height % scale) continue;
+    const matrix = sampleRaster(image, bounds, width, scale);
+    if (!matrix) continue;
+    try {
+      const decoded = decodeMicroPDF417(matrix, options);
+      return { matrix, corners: rectangle(bounds), moduleSize: scale, ...decoded };
+    } catch { /* The RAP sequence is not a MicroPDF417 symbol of this width. */ }
+  }
+  return null;
+}
+
+/**
+ * Detect and decode one clean, binarized MicroPDF417 raster.
+ *
+ * Integer upscaling and quiet zones are accepted. The image is retried at all
+ * quarter-turns, but arbitrary angles and perspective require caller-side
+ * rectification before this function is used. `rotation` reports the clockwise
+ * orientation of the supplied input relative to a normally oriented symbol;
+ * it is not the inverse correction applied internally while searching.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
+ * @param {object} [options] Passed to {@link decodeMicroPDF417}.
+ * @returns {(ReturnType<typeof decodeMicroPDF417> & {matrix: BitMatrix, corners: Point[], moduleSize: number, rotation: number}) | null}
+ */
+function detectMicroPDF417(binaryImage, options = {}) {
+  if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function') return null;
+  let oriented = binaryImage;
+  let toOriginal = (point) => ({ x: point.x, y: point.y });
+  for (let turns = 0; turns < 4; turns++) {
+    const found = detectAxisAligned(oriented, options);
+    // Search rotates clockwise to normalize the input. Public rotation has the
+    // opposite meaning: it describes how the input itself was rotated.
+    if (found) return {
+      ...found,
+      rotation: (360 - turns * 90) % 360,
+      corners: found.corners.map(toOriginal),
+    };
+    const previous = oriented;
+    const previousToOriginal = toOriginal;
+    oriented = rotateClockwise(previous);
+    // Boundary coordinates (rather than just pixel centres) are transformed
+    // here, so callers can draw the returned rectangle directly on the input.
+    toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
+  }
+  return null;
+}
+
+/** Alias kept symmetric with the other 2D readers. */
+function detectAndDecodeMicroPDF417(binaryImage, options = {}) {
+  return detectMicroPDF417(binaryImage, options);
+}
+
+__exports.detectMicroPDF417 = detectMicroPDF417;
+__exports.detectAndDecodeMicroPDF417 = detectAndDecodeMicroPDF417;
+};
+
+__modules["micropdf417/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("micropdf417/tables.js"); __exports.MICROPDF417_VARIANTS = __reexport0.MICROPDF417_VARIANTS; __exports.microPdf417NextRap = __reexport0.microPdf417NextRap; __exports.microPdf417VariantByNumber = __reexport0.microPdf417VariantByNumber; __exports.microPdf417VariantForCapacity = __reexport0.microPdf417VariantForCapacity; __exports.microPdf417RapSequence = __reexport0.microPdf417RapSequence; __exports.microPdf417RowAddress = __reexport0.microPdf417RowAddress; __exports.validateMicroPdf417Tables = __reexport0.validateMicroPdf417Tables;
+const __reexport1 = __require("micropdf417/error-correction.js"); __exports.microPdf417EccLength = __reexport1.microPdf417EccLength; __exports.microPdf417Generator = __reexport1.microPdf417Generator; __exports.microPdf417ErrorCorrection = __reexport1.microPdf417ErrorCorrection; __exports.microPdf417CorrectErrors = __reexport1.microPdf417CorrectErrors;
+const __reexport2 = __require("micropdf417/compaction.js"); __exports.compactMicroPDF417 = __reexport2.compactMicroPDF417;
+const __reexport3 = __require("micropdf417/encoder.js"); __exports.encodeMicroPDF417 = __reexport3.encodeMicroPDF417;
+const __reexport4 = __require("micropdf417/decoder.js"); __exports.decodeMicroPDF417 = __reexport4.decodeMicroPDF417;
+const __reexport5 = __require("micropdf417/detector.js"); __exports.detectMicroPDF417 = __reexport5.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport5.detectAndDecodeMicroPDF417;
+
+
+};
+
 __modules["render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -10764,6 +11511,7 @@ const datamatrix = __require("datamatrix/index.js");
 const qr = __require("qr/index.js");
 const aztec = __require("aztec/index.js");
 const pdf417 = __require("pdf417/index.js");
+const micropdf417 = __require("micropdf417/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -10778,6 +11526,7 @@ const __reexport8 = __require("qr/index.js"); __exports.encodeQR = __reexport8.e
 const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
 const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
 const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
+const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
 
 /**
  * @typedef {object} FormatInfo
@@ -10811,6 +11560,8 @@ const pdf417CanEncode = typeof pdf417.encodePDF417 === 'function';
 // quadrilateral. Keep the generic scanner capability opt-in until a
 // perspective/noise corpus is passed.
 const pdf417CanDecode = typeof pdf417.detectAndDecodePDF417 === 'function';
+const microPdf417CanEncode = typeof micropdf417.encodeMicroPDF417 === 'function';
+const microPdf417CanDecode = typeof micropdf417.detectAndDecodeMicroPDF417 === 'function';
 
 /**
  * Every format this build supports.
@@ -10859,6 +11610,13 @@ function listFormats() {
     canRead: pdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'micropdf417',
+    label: 'MicroPDF417',
+    canWrite: microPdf417CanEncode,
+    canRead: microPdf417CanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -10887,6 +11645,8 @@ function listFormats() {
  * @param {number} [options.rows] PDF417 rows, 3-90.
  * @param {number} [options.rowHeight] PDF417 row height in modules.
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
+ * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
+ * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
  * @returns {BitMatrix}
  */
 function encode(text, options = {}) {
@@ -10905,10 +11665,13 @@ function encode(text, options = {}) {
   if (format === 'pdf417' || format === 'pdf-417') {
     return pdf417.encodePDF417(value, options);
   }
+  if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
+    return micropdf417.encodeMicroPDF417(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -10929,6 +11692,8 @@ function encode(text, options = {}) {
  * @property {number} [columns] PDF417 column count.
  * @property {number} [eccLevel] PDF417 error-correction level.
  * @property {number} [rowHeight] PDF417 row height in modules.
+ * @property {number} [variant] MicroPDF417 predefined variant number.
+ * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
  */
 
 /**
@@ -10952,6 +11717,7 @@ function decode(image, options = {}) {
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
+  const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -11013,6 +11779,21 @@ function decode(image, options = {}) {
       }
     }
 
+    if (wantMicroPDF417 && microPdf417CanDecode) {
+      // MicroPDF417 detection measures runs across the whole raster. Hybrid
+      // thresholding can alter uniform modules near local-window boundaries,
+      // so retry the global threshold in auto mode as for the other 2D codes.
+      const microPdf417Bits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of microPdf417Bits) {
+        try {
+          const found = micropdf417.detectAndDecodeMicroPDF417(candidateBits);
+          if (found) { results.push({ ...found, format: 'micropdf417' }); break; }
+        } catch {
+          /* no MicroPDF417 with this threshold */
+        }
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -11047,7 +11828,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.2.0';
+const VERSION = '1.2.5';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;
@@ -11074,6 +11855,7 @@ export const {
   decode,
   decodeAztec,
   decodeDataMatrix,
+  decodeMicroPDF417,
   decodeOneD,
   decodeOneDStrict,
   decodePDF417,
@@ -11081,10 +11863,12 @@ export const {
   decodeStrict,
   detectAndDecodeAztec,
   detectAndDecodeDataMatrix,
+  detectAndDecodeMicroPDF417,
   detectAndDecodePDF417,
   detectAndDecodeQR,
   detectAztec,
   detectDataMatrix,
+  detectMicroPDF417,
   detectPDF417,
   detectQR,
   ean13CheckDigit,
@@ -11102,6 +11886,7 @@ export const {
   encodeITF,
   encodeITF14,
   encodeMSI,
+  encodeMicroPDF417,
   encodePDF417,
   encodePharmacode,
   encodeQR,

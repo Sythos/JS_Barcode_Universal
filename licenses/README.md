@@ -14,6 +14,7 @@ appendix carries the consolidated inventory these files expand on.
 | QR Code | [`qr-code.license`](qr-code.license) | Scoped labels |
 | Data Matrix ECC 200 | [`data-matrix.license`](data-matrix.license) | Scoped labels |
 | PDF417 | [`pdf417.license`](pdf417.license) | Scoped labels |
+| MicroPDF417 | [`micropdf417.license`](micropdf417.license) | Scoped labels |
 | EAN-13 | [`ean-13.license`](ean-13.license) | Scoped labels |
 | EAN-8 | [`ean-8.license`](ean-8.license) | Scoped labels |
 | UPC-A | [`upc-a.license`](upc-a.license) | Scoped labels |
@@ -55,6 +56,10 @@ The primary references used for the current review include:
 - [GS1 Application Identifiers](https://www.gs1.org/gs1-application-identifiers)
 - [GS1 DataMatrix Guideline](https://www.gs1.org/sites/default/files/docs/barcodes/GS1_DataMatrix_Guideline.pdf)
 - [ISO/IEC 15438:2015 — PDF417](https://www.iso.org/standard/65502.html)
+- [ISO/IEC 24728:2006 — MicroPDF417](https://www.iso.org/standard/38838.html)
+- [MicroPDF417 overview](https://en.wikipedia.org/wiki/MicroPDF417)
+- [US 6,047,892 record](https://patents.google.com/patent/US6047892A/en) and [direct PDF](https://patentimages.storage.googleapis.com/0a/79/f5/e8d374043414f3/US6047892.pdf)
+- [ZXing-C++ consultative interoperability reference](https://github.com/zxing-cpp/zxing-cpp)
 - [AIM USS-PDF417 public reference](https://www.expresscorp.com/uploads/specifications/44/USS-PDF-417.pdf)
 - [US 5,243,655 patent record](https://patents.google.com/patent/US5243655A/en)
 - [US 5,304,786 patent record](https://patents.google.com/patent/US5304786A/en)

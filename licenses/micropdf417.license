@@ -1,0 +1,96 @@
+MicroPDF417 — format provenance and usability
+==========================================================================
+
+This file records the public technical and legal-review references consulted
+for the MicroPDF417 symbology implemented by this project. It is an
+engineering inventory, not legal advice.
+
+
+SPECIFICATION AND TECHNICAL BASIS
+--------------------------------------------------------------------------
+
+[VERIFIED FACT] ISO/IEC 24728:2006 is the published MicroPDF417 bar code
+symbology specification. It describes the symbology characteristics, data
+character encodation, fixed symbol formats, dimensions, error correction and
+decoding algorithm:
+
+  https://www.iso.org/standard/38838.html
+
+The standard text is copyrighted by ISO. This project does not reproduce,
+redistribute or excerpt the standard; it implements the symbology as an
+independently written program.
+
+For orientation only, the public Wikipedia overview was consulted:
+
+  https://en.wikipedia.org/wiki/MicroPDF417
+
+Wikipedia is not treated as a legal authority or as a source of code.
+
+
+PATENT REVIEW
+--------------------------------------------------------------------------
+
+[VERIFIED FACT] The public record for US 6,047,892 identifies a
+two-dimensional bar-code symbology using implicit version information:
+
+  https://patents.google.com/patent/US6047892A/en
+
+The direct PDF supplied through Google Patents is:
+
+  https://patentimages.storage.googleapis.com/0a/79/f5/e8d374043414f3/US6047892.pdf
+
+[PATENT FAMILY REVIEW REQUIRED] Database status labels, assignee data,
+expiration calculations, continuations, foreign equivalents and any
+jurisdiction-specific rights are not legal conclusions. No freedom-to-operate
+opinion is made by this project.
+
+
+TRADEMARK, COPYRIGHT AND ATTRIBUTION
+--------------------------------------------------------------------------
+
+[REGISTRY CHECK REQUIRED] The current registration status and ownership of
+"MicroPDF417" have not been established by a current trademark-office search.
+The name is used descriptively and does not imply endorsement.
+
+[LICENSE TERMS REVIEW REQUIRED] ISO's standard text and the patent document
+have their own copyright and access terms. Neither document is included in
+this repository. The implementation code is original work by Sythos under the
+MIT License.
+
+[VERIFIED FACT] ZXing-C++ documents MicroPDF417 as a supported symbology:
+
+  https://github.com/zxing-cpp/zxing-cpp
+
+It is a consultative interoperability reference only. No ZXing-C++ source,
+tables or runtime dependency are included in this project.
+
+
+IMPLEMENTATION BASIS
+--------------------------------------------------------------------------
+
+MicroPDF417 is implemented here as original JavaScript. No third-party barcode
+source code is copied into or shipped by this project. Public and normative
+MicroPDF417 values are represented in original Sythos data structures, with
+the provenance and legal-review status recorded in this file and NOTICE.md.
+ZXing-C++, Zint and bwip-js may be consulted for implementation review or
+black-box interoperability validation; none is a runtime dependency.
+
+
+NOTICE AND REVIEW REQUESTS
+--------------------------------------------------------------------------
+
+Any note, objection or concern about patents, trademarks, copyright,
+attribution or use of MicroPDF417 must be reported through a GitHub Issue at:
+
+  https://github.com/Sythos/JS_Barcode_Universal/issues
+
+Each report will be reviewed and verified before this inventory or the
+implementation is changed. This request is a maintenance process, not a legal
+admission or a substitute for professional advice.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+This is an engineering assessment, not legal advice. If your use is
+commercially sensitive, obtain your own legal review.
