@@ -53,6 +53,7 @@ import { ONED_FORMATS } from './oned/index.js';
 import { decodeOneD } from './oned/reader.js';
 import * as datamatrix from './datamatrix/index.js';
 import * as qr from './qr/index.js';
+import * as aztec from './aztec/index.js';
 
 export { BitMatrix };
 export {
@@ -70,6 +71,7 @@ export { encodeQR, decodeQR, detectQR, detectAndDecodeQR } from './qr/index.js';
 export {
   encodeDataMatrix, decodeDataMatrix, detectDataMatrix, detectAndDecodeDataMatrix,
 } from './datamatrix/index.js';
+export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './aztec/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -95,6 +97,8 @@ const qrCanDecode = qrPresent &&
   typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
 const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
+const aztecCanEncode = typeof aztec.encodeAztec === 'function';
+const aztecCanDecode = typeof aztec.detectAndDecodeAztec === 'function';
 
 /**
  * Every format this build supports.
@@ -129,6 +133,13 @@ export function listFormats() {
     canRead: dataMatrixCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'aztec',
+    label: 'Aztec Code',
+    canWrite: aztecCanEncode,
+    canRead: aztecCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -149,6 +160,9 @@ export function listFormats() {
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
+ * @param {number} [options.layers] Aztec layer count; automatic if omitted.
+ * @param {boolean} [options.compact] Force an Aztec Compact or Full symbol.
+ * @param {number} [options.eccPercent] Requested Aztec error-correction percentage.
  * @returns {BitMatrix}
  */
 export function encode(text, options = {}) {
@@ -161,10 +175,13 @@ export function encode(text, options = {}) {
   if (format === 'datamatrix' || format === 'data-matrix') {
     return datamatrix.encodeDataMatrix(value, options);
   }
+  if (format === 'aztec' || format === 'aztec-code') {
+    return aztec.encodeAztec(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -177,6 +194,9 @@ export function encode(text, options = {}) {
  * @property {Uint8Array} [bytes] Raw payload, before text decoding.
  * @property {number} [version] QR version.
  * @property {string} [ecc] QR error-correction level.
+ * @property {number} [layers] Aztec layer count.
+ * @property {boolean} [compact] Whether an Aztec symbol is Compact.
+ * @property {number} [corrections] Reed–Solomon corrections applied by an Aztec decode.
  */
 
 /**
@@ -198,6 +218,7 @@ export function decode(image, options = {}) {
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
+  const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -231,6 +252,21 @@ export function decode(image, options = {}) {
           if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
         } catch {
           /* no Data Matrix with this threshold */
+        }
+      }
+    }
+
+    if (wantAztec && aztecCanDecode) {
+      // The central bull's-eye is a small, high-contrast target. Hybrid
+      // thresholding can flatten it on clean rendered symbols, so mirror the
+      // Data Matrix global fallback in auto mode.
+      const aztecBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of aztecBits) {
+        try {
+          const found = aztec.detectAndDecodeAztec(candidateBits);
+          if (found) { results.push({ ...found, format: 'aztec' }); break; }
+        } catch {
+          /* no Aztec code with this threshold */
         }
       }
     }

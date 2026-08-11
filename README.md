@@ -209,8 +209,9 @@ time.
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
+| Aztec Code | `aztec` | 2D | ✅ | ✅ |
 
-Seventeen formats, all writable, fourteen readable. **Code 11, MSI Plessey and Pharmacode are
+Eighteen formats, all writable, fifteen readable. **Code 11, MSI Plessey and Pharmacode are
 write-only** — they encode correctly, but there is no reader for them, and `decode` will never
 return one.
 
@@ -242,9 +243,29 @@ decoded. The current detector accepts axis-aligned square or rectangular symbols
 `decode(image, { formats: ['datamatrix'] })` pipeline also retries quarter-turn rotations.
 Arbitrary-angle and perspective-skewed Data Matrix photographs are not yet guaranteed.
 
+### Aztec Code
+
+`aztec` writes Compact layers 1–4 and Full layers 1–32, selecting a fitting symbol automatically
+unless `layers` and `compact` are forced. It supports the five Aztec text tables and UTF-8 byte
+payloads through Binary Shift, with `eccPercent` (default 23) controlling the requested
+error-correction level.
+ECI is not yet a configurable public option.
+
+```js
+import { encodeAztec, decodeAztec } from '@sythos/js_barcode_universal/aztec';
+
+const symbol = encodeAztec('Ciao, mondo 👋', { eccPercent: 23 });
+const result = decodeAztec(symbol);
+console.log(result.text); // Ciao, mondo 👋
+```
+
+The image detector handles rotation, inverted polarity and quadrilateral sampling around the
+central bull’s-eye. Severe photographic perspective remains an interoperability and robustness
+gate rather than a guaranteed capability.
+
 ### Not implemented
 
-**PDF417, Aztec, GS1 DataBar and MaxiCode are not implemented** — neither writing
+**PDF417, GS1 DataBar and MaxiCode are not implemented** — neither writing
 nor reading. Data Matrix ECC 200 is implemented for its classic square and rectangular symbols;
 DMRE remains outside the current scope. Some scaffolding for the remaining formats exists in the core (the Galois field code already handles
 the prime field PDF417 needs), but none of those remaining symbologies is usable today. See [`PLAN.md`](PLAN.md)
@@ -294,12 +315,15 @@ encode(text, options?) → BitMatrix
 `options`: `format` (default `'qr'`), `ecc` (`'L'|'M'|'Q'|'H'`), `version` (QR 1–40, auto if
 omitted), `checkDigit`, `fullAscii` (Code 39 extended), `gs1` (emit a leading FNC1). Data Matrix
 ECC 200 accepts `shape: 'any' | 'square' | 'rectangular'` and `encoding: 'ascii' | 'base256'`.
+Aztec accepts `layers`, `compact` and `eccPercent`; it transports UTF-8 byte payloads through
+Binary Shift, and it does not expose configurable ECI yet.
 
 ```js
 encode('5901234123457', { format: 'ean13' })
 encode('ABC-123', { format: 'code39', fullAscii: true, checkDigit: true })
 encode('https://example.com', { format: 'qr', ecc: 'H', version: 7 })
 encode('0101234567890128', { format: 'datamatrix', gs1: true })
+encode('Ciao, mondo 👋', { format: 'aztec', eccPercent: 23 })
 ```
 
 ```js

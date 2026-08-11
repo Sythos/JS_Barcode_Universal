@@ -194,6 +194,9 @@ export const GF256_QR = new GaloisField({ size: 256, primitive: 0x011d, name: 'G
 /** Data Matrix ECC200. x^8 + x^5 + x^3 + x^2 + 1 */
 export const GF256_DM = new GaloisField({ size: 256, primitive: 0x012d, name: 'GF(256)/DataMatrix' });
 
+/** Aztec's eight-bit data field is algebraically identical to Data Matrix's. */
+export const GF256_AZTEC = GF256_DM;
+
 /** PDF417. Prime field; 3 is a primitive root modulo 929. */
 export const GF929 = new GaloisField({ size: 929, prime: true, generator: 3, name: 'GF(929)' });
 

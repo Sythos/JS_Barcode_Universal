@@ -2917,6 +2917,9 @@ const GF256_QR = new GaloisField({ size: 256, primitive: 0x011d, name: 'GF(256)/
 /** Data Matrix ECC200. x^8 + x^5 + x^3 + x^2 + 1 */
 const GF256_DM = new GaloisField({ size: 256, primitive: 0x012d, name: 'GF(256)/DataMatrix' });
 
+/** Aztec's eight-bit data field is algebraically identical to Data Matrix's. */
+const GF256_AZTEC = GF256_DM;
+
 /** PDF417. Prime field; 3 is a primitive root modulo 929. */
 const GF929 = new GaloisField({ size: 929, prime: true, generator: 3, name: 'GF(929)' });
 
@@ -2929,6 +2932,7 @@ const GF4096 = new GaloisField({ size: 4096, primitive: 0x1069, name: 'GF(4096)'
 __exports.GaloisField = GaloisField;
 __exports.GF256_QR = GF256_QR;
 __exports.GF256_DM = GF256_DM;
+__exports.GF256_AZTEC = GF256_AZTEC;
 __exports.GF929 = GF929;
 __exports.GF16 = GF16;
 __exports.GF64 = GF64;
@@ -2964,7 +2968,7 @@ const { ChecksumError } = __require("core/errors.js");
  *
  *   g(x) = product over i of (x - a^(base + i)),  i = 0 .. eccLen-1
  *
- * `base` is 0 for QR and Aztec; 1 for Data Matrix and PDF417.
+ * `base` is 0 for QR; 1 for Aztec, Data Matrix and PDF417.
  *
  * @param {number} eccLen
  * @param {import('./galois-field.js').GaloisField} field
@@ -7210,6 +7214,1122 @@ const __reexport3 = __require("qr/tables.js"); __exports.validateTables = __reex
 
 };
 
+__modules["aztec/high-level.js"] = function (__require, __exports) {
+/**
+ * Aztec high-level stream writer.
+ *
+ * The output is deliberately a `BitWriter`, rather than a byte array: Aztec's
+ * text controls and binary-shift lengths are not byte aligned.  This module is
+ * also the boundary where JavaScript strings become UTF-8.  Passing a byte
+ * view bypasses that conversion and preserves every octet unchanged.
+ *
+ * The initial state mandated by the symbology is UPPER.  The greedy text pass
+ * uses UPPER, LOWER, DIGIT and PUNCT tables, selecting the shortest available
+ * latch at each byte.  Bytes without a text-table representation are emitted
+ * through the standard B/S (binary shift) escape.  B/S is available from
+ * UPPER and makes this a complete, lossless representation of UTF-8 payloads.
+ *
+ * @module aztec/high-level
+ */
+const { BitWriter } = __require("core/bit-buffer.js");
+const { EncodeError } = __require("core/errors.js");
+
+/** Aztec high-level table identifiers, exposed for decoder/API symmetry. */
+const HIGH_LEVEL_MODE = Object.freeze({
+  UPPER: 0,
+  LOWER: 1,
+  DIGIT: 2,
+  MIXED: 3,
+  PUNCT: 4,
+});
+
+/** Maximum number of bytes represented by one B/S escape. */
+const MAX_BINARY_SHIFT = 2078;
+
+/**
+ * Convert accepted public input to its encoded octets.
+ *
+ * @param {string|ArrayBuffer|ArrayBufferView} value
+ * @param {'utf-8'} [charset]
+ * @returns {Uint8Array}
+ */
+function aztecBytes(value, charset = 'utf-8') {
+  if (charset !== 'utf-8') throw new EncodeError(`Aztec: unsupported charset "${charset}"`);
+  if (typeof value === 'string') return new TextEncoder().encode(value);
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  throw new EncodeError('Aztec: value must be a string, ArrayBuffer, or byte view');
+}
+
+/** @param {number} byte @returns {number} UPPER-table value, or -1. */
+function upperValue(byte) {
+  if (byte === 0x20) return 1;
+  if (byte >= 0x41 && byte <= 0x5a) return byte - 0x41 + 2;
+  return -1;
+}
+
+/** Aztec's latch table, packed as `(bitCount << 16) | bits`. */
+const LATCH = Object.freeze([
+  [0, 327708, 327710, 327709, 656318],
+  [590318, 0, 327710, 327709, 656318],
+  [262158, 590300, 0, 590301, 932798],
+  [327709, 327708, 656322, 0, 327710],
+  [327711, 656380, 656382, 656381, 0],
+]);
+
+/** @param {number} byte @returns {number} */
+function lowerValue(byte) {
+  if (byte === 0x20) return 1;
+  if (byte >= 0x61 && byte <= 0x7a) return byte - 0x61 + 2;
+  return -1;
+}
+
+/** @param {number} byte @returns {number} */
+function digitValue(byte) {
+  if (byte === 0x20) return 1;
+  if (byte >= 0x30 && byte <= 0x39) return byte - 0x30 + 2;
+  if (byte === 0x2c) return 12;
+  if (byte === 0x2e) return 13;
+  return -1;
+}
+
+const PUNCT = new Map([
+  [0x0d, 1], [0x21, 6], [0x22, 7], [0x23, 8], [0x24, 9], [0x25, 10],
+  [0x26, 11], [0x27, 12], [0x28, 13], [0x29, 14], [0x2a, 15], [0x2b, 16],
+  [0x2c, 17], [0x2d, 18], [0x2e, 19], [0x2f, 20], [0x3a, 21], [0x3b, 22],
+  [0x3c, 23], [0x3d, 24], [0x3e, 25], [0x3f, 26], [0x5b, 27], [0x5d, 28],
+  [0x7b, 29], [0x7d, 30],
+]);
+
+/** @param {number} byte @param {number} mode @returns {number} */
+function textValue(byte, mode) {
+  switch (mode) {
+    case HIGH_LEVEL_MODE.UPPER: return upperValue(byte);
+    case HIGH_LEVEL_MODE.LOWER: return lowerValue(byte);
+    case HIGH_LEVEL_MODE.DIGIT: return digitValue(byte);
+    case HIGH_LEVEL_MODE.PUNCT: return PUNCT.get(byte) ?? -1;
+    default: return -1;
+  }
+}
+
+/** @param {BitWriter} writer @param {number} from @param {number} to */
+function latch(writer, from, to) {
+  if (from === to) return;
+  const packed = LATCH[from][to];
+  writer.put(packed & 0xffff, packed >>> 16);
+}
+
+/** @param {number} mode @returns {number} */
+function characterWidth(mode) {
+  return mode === HIGH_LEVEL_MODE.DIGIT ? 4 : 5;
+}
+
+/**
+ * Write an Aztec binary-shift segment while in UPPER mode.
+ *
+ * B/S is `11111`; its five-bit length directly covers 1..31 bytes.  A zero
+ * length selects the extended eleven-bit form, whose stored value is n - 31.
+ * Splitting at 2078 keeps each control representable and makes arbitrarily
+ * long byte input well-defined.
+ *
+ * @param {BitWriter} writer
+ * @param {Uint8Array} bytes
+ * @param {number} start
+ * @param {number} length
+ */
+function writeBinaryShift(writer, bytes, start, length) {
+  let at = start;
+  let left = length;
+  while (left > 0) {
+    const count = Math.min(left, MAX_BINARY_SHIFT);
+    writer.put(31, 5); // UPPER B/S
+    if (count <= 31) writer.put(count, 5);
+    else {
+      writer.put(0, 5);
+      writer.put(count - 31, 11);
+    }
+    for (let i = 0; i < count; i++) writer.put(bytes[at + i], 8);
+    at += count;
+    left -= count;
+  }
+}
+
+/**
+ * Build a valid Aztec high-level bitstream.
+ *
+ * @param {string|ArrayBuffer|ArrayBufferView} value
+ * @param {{charset?: 'utf-8'}} [options]
+ * @returns {BitWriter}
+ */
+function encodeHighLevel(value, options = {}) {
+  const bytes = aztecBytes(value, options.charset ?? 'utf-8');
+  const writer = new BitWriter();
+  let mode = HIGH_LEVEL_MODE.UPPER;
+
+  for (let at = 0; at < bytes.length;) {
+    let bestMode = -1;
+    let bestValue = -1;
+    let bestCost = Number.POSITIVE_INFINITY;
+    for (const candidate of [HIGH_LEVEL_MODE.UPPER, HIGH_LEVEL_MODE.LOWER, HIGH_LEVEL_MODE.DIGIT, HIGH_LEVEL_MODE.PUNCT]) {
+      const value = textValue(bytes[at], candidate);
+      if (value < 0) continue;
+      const latchCost = candidate === mode ? 0 : LATCH[mode][candidate] >>> 16;
+      const cost = latchCost + characterWidth(candidate);
+      if (cost < bestCost) { bestCost = cost; bestMode = candidate; bestValue = value; }
+    }
+    if (bestMode >= 0) {
+      latch(writer, mode, bestMode);
+      writer.put(bestValue, characterWidth(bestMode));
+      mode = bestMode;
+      at++;
+    } else {
+      // B/S is defined from UPPER; the latch is retained after the shift.
+      latch(writer, mode, HIGH_LEVEL_MODE.UPPER);
+      mode = HIGH_LEVEL_MODE.UPPER;
+      const start = at;
+      while (at < bytes.length && ![HIGH_LEVEL_MODE.UPPER, HIGH_LEVEL_MODE.LOWER, HIGH_LEVEL_MODE.DIGIT, HIGH_LEVEL_MODE.PUNCT].some((m) => textValue(bytes[at], m) >= 0)) at++;
+      writeBinaryShift(writer, bytes, start, at - start);
+    }
+  }
+  return writer;
+}
+
+__exports.HIGH_LEVEL_MODE = HIGH_LEVEL_MODE;
+__exports.MAX_BINARY_SHIFT = MAX_BINARY_SHIFT;
+__exports.aztecBytes = aztecBytes;
+__exports.writeBinaryShift = writeBinaryShift;
+__exports.encodeHighLevel = encodeHighLevel;
+};
+
+__modules["aztec/tables.js"] = function (__require, __exports) {
+/**
+ * Aztec Code layer geometry and Reed-Solomon parameters.
+ *
+ * `totalBits` counts the payload ring before its leading pad bits are added;
+ * consequently only `usableBits` can be partitioned into codewords. Compact
+ * symbols have no reference grid. Full symbols insert alternating reference
+ * rows and columns every 16 modules around the centre.
+ *
+ * The five data fields use generator base 1. GF(256)/DataMatrix is also the
+ * Aztec 8-bit field: both use primitive polynomial 0x12d.
+ *
+ * @module aztec/tables
+ */
+const { GF16, GF64, GF256_AZTEC, GF1024, GF4096 } = __require("core/galois-field.js");
+
+/** Reed-Solomon generator base defined for Aztec parameter and data fields. */
+const AZTEC_RS_GENERATOR_BASE = 1;
+
+/** Minimum recommended error correction: 23 percent plus three codewords. */
+const AZTEC_DEFAULT_ECC_PERCENT = 23;
+const AZTEC_MIN_ECC_WORDS = 3;
+
+/** Word size selected solely by the number of layers. */
+function wordSizeForLayers(layers) {
+  if (!Number.isInteger(layers) || layers < 1 || layers > 32) {
+    throw new RangeError(`Aztec: layers must be an integer from 1 to 32 (got ${layers})`);
+  }
+  if (layers <= 2) return 6;
+  if (layers <= 8) return 8;
+  if (layers <= 22) return 10;
+  return 12;
+}
+
+/** Return the field used by Aztec codewords of `wordSize` bits. */
+function fieldForWordSize(wordSize) {
+  switch (wordSize) {
+    case 4: return GF16; // Mode message only.
+    case 6: return GF64;
+    case 8: return GF256_AZTEC;
+    case 10: return GF1024;
+    case 12: return GF4096;
+    default: throw new RangeError(`Aztec: unsupported codeword size ${wordSize}`);
+  }
+}
+
+/** Return the data field selected for a symbol with `layers` layers. */
+function fieldForLayers(layers) {
+  return fieldForWordSize(wordSizeForLayers(layers));
+}
+
+/** Matrix side length, including Full-mode reference grid lines. */
+function aztecSymbolSize(layers, compact = false) {
+  if (!Number.isInteger(layers) || layers < 1 || layers > (compact ? 4 : 32)) {
+    throw new RangeError(`Aztec: ${compact ? 'Compact' : 'Full'} layers out of range: ${layers}`);
+  }
+  if (compact) return 11 + 4 * layers;
+  const baseMatrixSize = 14 + 4 * layers;
+  return baseMatrixSize + 1 + 2 * Math.floor((baseMatrixSize / 2 - 1) / 15);
+}
+
+function layer(layers, compact) {
+  const wordSize = wordSizeForLayers(layers);
+  const totalBits = ((compact ? 88 : 112) + 16 * layers) * layers;
+  const usableBits = totalBits - totalBits % wordSize;
+  const totalCodewords = usableBits / wordSize;
+  const baseMatrixSize = (compact ? 11 : 14) + 4 * layers;
+  return Object.freeze({
+    compact,
+    layers,
+    wordSize,
+    totalBits,
+    usableBits,
+    totalCodewords,
+    // Compact mode encodes the count in six bits and can therefore hold no
+    // more than 64 data codewords even where the ring itself is larger.
+    maxDataCodewords: compact ? Math.min(totalCodewords, 64) : totalCodewords,
+    baseMatrixSize,
+    symbolSize: aztecSymbolSize(layers, compact),
+    modeMessageDataWords: compact ? 2 : 4,
+    modeMessageWords: compact ? 7 : 10,
+    modeMessageBits: compact ? 28 : 40,
+    rsGeneratorBase: AZTEC_RS_GENERATOR_BASE,
+  });
+}
+
+/** Compact Aztec layers 1 through 4, in encoding preference order. */
+const AZTEC_COMPACT_LAYERS = Object.freeze(
+  Array.from({ length: 4 }, (_, i) => layer(i + 1, true)),
+);
+
+/** Full Aztec layers 1 through 32, in ascending layer order. */
+const AZTEC_FULL_LAYERS = Object.freeze(
+  Array.from({ length: 32 }, (_, i) => layer(i + 1, false)),
+);
+
+/** All allowed symbols. Compact entries precede Full entries for automatic selection. */
+const AZTEC_LAYERS = Object.freeze([
+  ...AZTEC_COMPACT_LAYERS,
+  ...AZTEC_FULL_LAYERS,
+]);
+
+/** Return one immutable layer record. */
+function aztecLayer(layers, compact = false) {
+  if (!Number.isInteger(layers) || layers < 1 || layers > (compact ? 4 : 32)) {
+    throw new RangeError(`Aztec: ${compact ? 'Compact' : 'Full'} layers out of range: ${layers}`);
+  }
+  return (compact ? AZTEC_COMPACT_LAYERS : AZTEC_FULL_LAYERS)[layers - 1];
+}
+
+/**
+ * Calculate the minimum parity count for a data word count.
+ *
+ * The percentage is rounded up because a fractional codeword cannot be
+ * emitted. The mandatory three words protect short payloads, where a bare
+ * percentage would otherwise round to zero.
+ */
+function eccCodewordsFor(dataCodewords, eccPercent = AZTEC_DEFAULT_ECC_PERCENT) {
+  if (!Number.isInteger(dataCodewords) || dataCodewords < 0) {
+    throw new RangeError(`Aztec: data codewords must be a non-negative integer (got ${dataCodewords})`);
+  }
+  if (!Number.isFinite(eccPercent) || eccPercent < 0 || eccPercent > 100) {
+    throw new RangeError(`Aztec: ECC percent must be between 0 and 100 (got ${eccPercent})`);
+  }
+  return Math.ceil(dataCodewords * eccPercent / 100) + AZTEC_MIN_ECC_WORDS;
+}
+
+/**
+ * Choose the first symbol which holds an already stuffed payload.
+ *
+ * `dataBits` must be a multiple of the candidate word size; callers which
+ * start from high-level bits must stuff separately per candidate word size.
+ */
+function selectAztecLayer(dataBits, {
+  eccPercent = AZTEC_DEFAULT_ECC_PERCENT,
+  layers = null,
+  compact = null,
+} = {}) {
+  if (!Number.isInteger(dataBits) || dataBits < 0) {
+    throw new RangeError(`Aztec: data bits must be a non-negative integer (got ${dataBits})`);
+  }
+  if (compact !== null && typeof compact !== 'boolean') {
+    throw new TypeError('Aztec: compact must be true, false or null');
+  }
+
+  let candidates;
+  if (layers !== null) {
+    if (compact === null) throw new TypeError('Aztec: compact must be specified when layers is specified');
+    candidates = [aztecLayer(layers, compact)];
+  } else if (compact === null) {
+    candidates = AZTEC_LAYERS;
+  } else {
+    candidates = compact ? AZTEC_COMPACT_LAYERS : AZTEC_FULL_LAYERS;
+  }
+
+  for (const candidate of candidates) {
+    if (dataBits % candidate.wordSize !== 0) continue;
+    const dataCodewords = dataBits / candidate.wordSize;
+    const eccCodewords = eccCodewordsFor(dataCodewords, eccPercent);
+    if (dataCodewords <= candidate.maxDataCodewords &&
+        dataCodewords + eccCodewords <= candidate.totalCodewords) {
+      return Object.freeze({ ...candidate, dataCodewords, eccCodewords });
+    }
+  }
+
+  throw new RangeError('Aztec: payload and requested error correction do not fit an available symbol');
+}
+
+/** Check static identities so table corruption fails explicitly in tests. */
+function validateAztecTables() {
+  const issues = [];
+  for (const entry of AZTEC_LAYERS) {
+    if (entry.usableBits % entry.wordSize !== 0) issues.push(`${entry.compact ? 'C' : 'F'}${entry.layers}: unaligned usable bits`);
+    if (entry.totalCodewords !== entry.usableBits / entry.wordSize) issues.push(`${entry.compact ? 'C' : 'F'}${entry.layers}: codeword mismatch`);
+    if (entry.symbolSize !== aztecSymbolSize(entry.layers, entry.compact)) issues.push(`${entry.compact ? 'C' : 'F'}${entry.layers}: matrix size mismatch`);
+    if (entry.rsGeneratorBase !== AZTEC_RS_GENERATOR_BASE) issues.push(`${entry.compact ? 'C' : 'F'}${entry.layers}: generator base mismatch`);
+    if (entry.compact && entry.maxDataCodewords > 64) issues.push(`C${entry.layers}: Compact data-word limit exceeded`);
+  }
+  return issues;
+}
+
+__exports.AZTEC_RS_GENERATOR_BASE = AZTEC_RS_GENERATOR_BASE;
+__exports.AZTEC_DEFAULT_ECC_PERCENT = AZTEC_DEFAULT_ECC_PERCENT;
+__exports.AZTEC_MIN_ECC_WORDS = AZTEC_MIN_ECC_WORDS;
+__exports.wordSizeForLayers = wordSizeForLayers;
+__exports.fieldForWordSize = fieldForWordSize;
+__exports.fieldForLayers = fieldForLayers;
+__exports.aztecSymbolSize = aztecSymbolSize;
+__exports.AZTEC_COMPACT_LAYERS = AZTEC_COMPACT_LAYERS;
+__exports.AZTEC_FULL_LAYERS = AZTEC_FULL_LAYERS;
+__exports.AZTEC_LAYERS = AZTEC_LAYERS;
+__exports.aztecLayer = aztecLayer;
+__exports.eccCodewordsFor = eccCodewordsFor;
+__exports.selectAztecLayer = selectAztecLayer;
+__exports.validateAztecTables = validateAztecTables;
+};
+
+__modules["aztec/encoder.js"] = function (__require, __exports) {
+/**
+ * Aztec encoder: high-level bits, bit stuffing, Reed-Solomon and matrix layout.
+ *
+ * `tables.js` is intentionally the source of geometry and field selection.
+ * Its `aztecLayer(layers, compact)` entries must expose `totalBits`,
+ * `totalCodewords`, `baseMatrixSize` and `symbolSize`; `fieldForLayers()` must
+ * return the matching binary field.  All Aztec Reed-Solomon generators start
+ * at alpha^1, hence the explicit base `1` in both data and mode messages.
+ *
+ * @module aztec/encoder
+ */
+const { BitWriter } = __require("core/bit-buffer.js");
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { rsEncode } = __require("core/reed-solomon.js");
+const { encodeHighLevel } = __require("aztec/high-level.js");
+const { AZTEC_COMPACT_LAYERS, AZTEC_FULL_LAYERS, aztecLayer, eccCodewordsFor, fieldForLayers, fieldForWordSize, wordSizeForLayers } = __require("aztec/tables.js");
+
+/** @param {BitWriter} bits @param {number} at @returns {boolean} */
+function bitAt(bits, at) {
+  return at >= 0 && at < bits.length && ((bits.bytes[at >>> 3] >>> (7 - (at & 7))) & 1) !== 0;
+}
+
+/** @param {BitWriter} bits @param {number} from @param {number} count @returns {number} */
+function readBits(bits, from, count) {
+  let value = 0;
+  for (let i = 0; i < count; i++) value = (value << 1) | (bitAt(bits, from + i) ? 1 : 0);
+  return value;
+}
+
+/**
+ * Prevent all-zero and all-one codewords except their final bit.  The final
+ * bit is intentionally re-consumed after a stuffed word; it is the mechanism
+ * that makes the transform injective and reversible.
+ *
+ * @param {BitWriter} bits @param {number} wordSize @returns {BitWriter}
+ */
+function stuffBits(bits, wordSize) {
+  const out = new BitWriter();
+  const reserved = (1 << wordSize) - 2;
+  for (let at = 0; at < bits.length; at += wordSize) {
+    const word = readBits(bits, at, wordSize);
+    if ((word & reserved) === reserved) {
+      out.put(word & reserved, wordSize);
+      at--;
+    } else if ((word & reserved) === 0) {
+      out.put(word | 1, wordSize);
+      at--;
+    } else {
+      out.put(word, wordSize);
+    }
+  }
+  return out;
+}
+
+/**
+ * Add systematic Aztec Reed-Solomon parity and the leading alignment bits.
+ * @param {BitWriter} data @param {number} totalBits @param {number} wordSize
+ * @param {import('../core/galois-field.js').GaloisField} field
+ * @returns {{bits: BitWriter, dataWords: number, eccWords: number}}
+ */
+function addCheckWords(data, totalBits, wordSize, field) {
+  const totalWords = Math.floor(totalBits / wordSize);
+  const dataWords = Math.ceil(data.length / wordSize);
+  if (dataWords > totalWords) throw new EncodeError('Aztec: data codewords exceed layer capacity');
+  const eccWords = totalWords - dataWords;
+  const words = new Array(dataWords);
+  for (let i = 0; i < dataWords; i++) words[i] = readBits(data, i * wordSize, wordSize);
+  const ecc = rsEncode(words, eccWords, field, 1);
+  const out = new BitWriter();
+  out.put(0, totalBits % wordSize);
+  for (const word of words) out.put(word, wordSize);
+  for (const word of ecc) out.put(word, wordSize);
+  return { bits: out, dataWords, eccWords };
+}
+
+/** @param {number} layers @param {number} dataWords @param {boolean} compact @returns {BitWriter} */
+function modeMessage(layers, dataWords, compact) {
+  const raw = new BitWriter();
+  if (compact) {
+    raw.put(layers - 1, 2);
+    raw.put(dataWords - 1, 6);
+    return addCheckWords(raw, 28, 4, fieldForWordSize(4)).bits;
+  }
+  raw.put(layers - 1, 5);
+  raw.put(dataWords - 1, 11);
+  return addCheckWords(raw, 40, 4, fieldForWordSize(4)).bits;
+}
+
+/** @param {BitMatrix} matrix @param {number} center @param {number} size */
+function drawBullsEye(matrix, center, size) {
+  for (let ring = 0; ring < size; ring += 2) {
+    for (let p = center - ring; p <= center + ring; p++) {
+      matrix.set(p, center - ring); matrix.set(p, center + ring);
+      matrix.set(center - ring, p); matrix.set(center + ring, p);
+    }
+  }
+  matrix.set(center - size, center - size);
+  matrix.set(center - size + 1, center - size);
+  matrix.set(center - size, center - size + 1);
+  matrix.set(center + size, center - size);
+  matrix.set(center + size, center - size + 1);
+  matrix.set(center + size, center + size - 1);
+}
+
+/** @param {BitMatrix} matrix @param {BitWriter} message @param {boolean} compact @param {number} center */
+function drawModeMessage(matrix, message, compact, center) {
+  if (compact) {
+    for (let i = 0; i < 7; i++) {
+      const offset = center - 3 + i;
+      if (bitAt(message, i)) matrix.set(offset, center - 5);
+      if (bitAt(message, i + 7)) matrix.set(center + 5, offset);
+      if (bitAt(message, 20 - i)) matrix.set(offset, center + 5);
+      if (bitAt(message, 27 - i)) matrix.set(center - 5, offset);
+    }
+  } else {
+    for (let i = 0; i < 10; i++) {
+      const offset = center - 5 + i + Math.floor(i / 5);
+      if (bitAt(message, i)) matrix.set(offset, center - 7);
+      if (bitAt(message, i + 10)) matrix.set(center + 7, offset);
+      if (bitAt(message, 29 - i)) matrix.set(offset, center + 7);
+      if (bitAt(message, 39 - i)) matrix.set(center - 7, offset);
+    }
+  }
+}
+
+/**
+ * Lay low-level bits in the four-sided, inward Aztec spiral.
+ * @param {BitWriter} bits @param {{layers:number,compact:boolean,baseMatrixSize:number,symbolSize:number}} symbol
+ * @returns {BitMatrix}
+ */
+function buildAztecMatrix(bits, symbol) {
+  const { layers, compact, baseMatrixSize, symbolSize } = symbol;
+  const matrix = new BitMatrix(symbolSize);
+  const alignment = new Int32Array(baseMatrixSize);
+  const center = Math.floor(symbolSize / 2);
+
+  if (compact) {
+    for (let i = 0; i < baseMatrixSize; i++) alignment[i] = i;
+  } else {
+    const originalCenter = Math.floor(baseMatrixSize / 2);
+    for (let i = 0; i < originalCenter; i++) {
+      const offset = i + Math.floor(i / 15);
+      alignment[originalCenter - i - 1] = center - offset - 1;
+      alignment[originalCenter + i] = center + offset + 1;
+    }
+  }
+
+  let bit = 0;
+  for (let layer = 0; layer < layers; layer++) {
+    const rowSize = (layers - layer) * 4 + (compact ? 9 : 12);
+    const low = layer * 2;
+    const high = baseMatrixSize - 1 - low;
+    for (let j = 0; j < rowSize; j++) {
+      const offset = j * 2;
+      for (let k = 0; k < 2; k++) {
+        if (bitAt(bits, bit + offset + k)) matrix.set(alignment[low + k], alignment[low + j]);
+        if (bitAt(bits, bit + rowSize * 2 + offset + k)) matrix.set(alignment[low + j], alignment[high - k]);
+        if (bitAt(bits, bit + rowSize * 4 + offset + k)) matrix.set(alignment[high - k], alignment[high - j]);
+        if (bitAt(bits, bit + rowSize * 6 + offset + k)) matrix.set(alignment[high - j], alignment[low + k]);
+      }
+    }
+    bit += rowSize * 8;
+  }
+  if (bit !== bits.length) throw new EncodeError(`Aztec: layout consumed ${bit} of ${bits.length} bits`);
+
+  const mode = modeMessage(layers, symbol.dataWords, compact);
+  drawModeMessage(matrix, mode, compact, center);
+  drawBullsEye(matrix, center, compact ? 5 : 7);
+
+  if (!compact) {
+    for (let i = 0, offset = 0; i < Math.floor(baseMatrixSize / 2) - 1; i += 15, offset += 16) {
+      for (let p = center & 1; p < symbolSize; p += 2) {
+        matrix.set(center - offset, p); matrix.set(center + offset, p);
+        matrix.set(p, center - offset); matrix.set(p, center + offset);
+      }
+    }
+  }
+  return matrix;
+}
+
+/** @param {number | undefined} layers @param {boolean | undefined} compact */
+function candidates(layers, compact) {
+  if (layers !== undefined) {
+    if (!Number.isInteger(layers) || layers < 1 || layers > 32) throw new EncodeError('Aztec: layers must be an integer 1..32');
+    if (compact === true && layers > 4) throw new EncodeError('Aztec: compact symbols support layers 1..4');
+    return [aztecLayer(layers, compact === true)];
+  }
+  if (compact === true) return AZTEC_COMPACT_LAYERS;
+  if (compact === false) return AZTEC_FULL_LAYERS;
+  return [...AZTEC_COMPACT_LAYERS, ...AZTEC_FULL_LAYERS];
+}
+
+/**
+ * Encode a UTF-8 string or bytes into an Aztec Code matrix.
+ *
+ * @param {string|ArrayBuffer|ArrayBufferView} value
+ * @param {{layers?:number,compact?:boolean,eccPercent?:number,charset?:'utf-8'}} [options]
+ * @returns {BitMatrix & {format?:string,layers?:number,compact?:boolean,eccPercent?:number,dataCodewords?:number}}
+ */
+function encodeAztec(value, options = {}) {
+  const eccPercent = options.eccPercent ?? 23;
+  if (!Number.isFinite(eccPercent) || eccPercent < 5 || eccPercent > 95) {
+    throw new EncodeError('Aztec: eccPercent must be between 5 and 95');
+  }
+  const high = encodeHighLevel(value, { charset: options.charset ?? 'utf-8' });
+  for (const candidate of candidates(options.layers, options.compact)) {
+    if (!candidate) continue;
+    const wordSize = wordSizeForLayers(candidate.layers);
+    const stuffed = stuffBits(high, wordSize);
+    const dataWords = Math.ceil(stuffed.length / wordSize);
+    const eccWords = eccCodewordsFor(dataWords, eccPercent);
+    if (dataWords > candidate.maxDataCodewords || dataWords + eccWords > candidate.totalCodewords) continue;
+    const checked = addCheckWords(stuffed, candidate.totalBits, wordSize, fieldForLayers(candidate.layers));
+    // `addCheckWords` uses every remaining word as parity.  This is stronger
+    // than the requested percentage, never weaker, and canonical for a chosen
+    // layer/data-word combination.
+    const symbol = { ...candidate, dataWords: checked.dataWords };
+    const matrix = buildAztecMatrix(checked.bits, symbol);
+    matrix.format = 'aztec'; matrix.layers = candidate.layers; matrix.compact = candidate.compact;
+    matrix.eccPercent = Math.round(checked.eccWords * wordSize * 100 / Math.max(1, stuffed.length));
+    matrix.dataCodewords = checked.dataWords;
+    return matrix;
+  }
+  throw new EncodeError('Aztec: payload does not fit the requested layers and error correction');
+}
+
+__exports.stuffBits = stuffBits;
+__exports.addCheckWords = addCheckWords;
+__exports.modeMessage = modeMessage;
+__exports.buildAztecMatrix = buildAztecMatrix;
+__exports.encodeAztec = encodeAztec;
+};
+
+__modules["aztec/decoder.js"] = function (__require, __exports) {
+/**
+ * Decoder for a sampled Aztec symbol.
+ *
+ * This module deliberately accepts only a square, module-aligned BitMatrix.
+ * Locating a bull's-eye in a photograph and perspective sampling are detector
+ * concerns. Keeping the two stages apart makes all bit order and ECC rules
+ * testable without image-processing noise.
+ *
+ * Contract with tables.js:
+ *   - aztecSymbolForLayers(compact, layers) returns the nominal symbol data;
+ *   - aztecWordSizeForLayers(layers) returns 6, 8, 10 or 12;
+ *   - aztecFieldForLayers(layers) returns the matching binary Galois field;
+ *   - aztecMatrixSize(compact, layers) returns the rendered square size.
+ *
+ * @module aztec/decoder
+ */
+const { FormatError } = __require("core/errors.js");
+const { rsDecode } = __require("core/reed-solomon.js");
+const { aztecLayer: aztecSymbolForLayers, wordSizeForLayers: aztecWordSizeForLayers, fieldForLayers: aztecFieldForLayers, fieldForWordSize, aztecSymbolSize: aztecMatrixSize } = __require("aztec/tables.js");
+
+const UPPER = ['CTRL_PS', ' ', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'CTRL_LL', 'CTRL_ML', 'CTRL_DL', 'CTRL_BS'];
+const LOWER = ['CTRL_PS', ' ', ...'abcdefghijklmnopqrstuvwxyz', 'CTRL_US', 'CTRL_ML', 'CTRL_DL', 'CTRL_BS'];
+const MIXED = [
+  'CTRL_PS', ' ', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\b', '\t', '\n', '\x0b', '\f', '\r', '\x1b',
+  '\x1c', '\x1d', '\x1e', '\x1f', '@', '\\', '^', '_', '`', '|', '~', '\x7f', 'CTRL_LL', 'CTRL_UL', 'CTRL_PL', 'CTRL_BS',
+];
+const PUNCT = ['FLG(n)', '\r', '\r\n', '. ', ', ', ': ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '{', '}', 'CTRL_UL'];
+const DIGIT = ['CTRL_PS', ' ', ...'0123456789', ',', '.', 'CTRL_UL'];
+const TABLES = { UPPER, LOWER, MIXED, PUNCT, DIGIT };
+
+/** @param {boolean[]} bits @param {number} offset @param {number} count */
+function readBits(bits, offset, count) {
+  if (offset + count > bits.length) throw new FormatError('Aztec: truncated high-level stream');
+  let value = 0;
+  for (let i = 0; i < count; i++) value = (value << 1) | (bits[offset + i] ? 1 : 0);
+  return value;
+}
+
+/** @param {number} value @param {number} count @param {boolean[]} out */
+function appendBits(value, count, out) {
+  for (let i = count - 1; i >= 0; i--) out.push(((value >>> i) & 1) !== 0);
+}
+
+/**
+ * Decode an Aztec high-level bit stream to its exact byte payload.
+ *
+ * Text tables contribute their ISO-8859-1 byte values; Binary Shift appends
+ * raw bytes. ECI markers are consumed but intentionally not emitted: callers
+ * receive the transported byte payload and may select their own charset.
+ *
+ * @param {boolean[]} bits
+ * @returns {Uint8Array}
+ */
+function decodeHighLevelBits(bits) {
+  const output = [];
+  let latch = 'UPPER';
+  let shift = 'UPPER';
+  let offset = 0;
+
+  while (offset < bits.length) {
+    if (shift === 'BINARY') {
+      if (offset + 5 > bits.length) break; // legal trailing pad
+      let length = readBits(bits, offset, 5);
+      offset += 5;
+      if (length === 0) {
+        if (offset + 11 > bits.length) throw new FormatError('Aztec: truncated Binary Shift length');
+        length = readBits(bits, offset, 11) + 31;
+        offset += 11;
+      }
+      if (offset + length * 8 > bits.length) throw new FormatError('Aztec: truncated Binary Shift data');
+      for (let i = 0; i < length; i++) {
+        output.push(readBits(bits, offset, 8));
+        offset += 8;
+      }
+      shift = latch;
+      continue;
+    }
+
+    const size = shift === 'DIGIT' ? 4 : 5;
+    if (offset + size > bits.length) break; // trailing pad after unstuffing
+    const code = readBits(bits, offset, size);
+    offset += size;
+    const table = TABLES[shift];
+    const token = table[code];
+    if (token === undefined) throw new FormatError(`Aztec: invalid ${shift} code ${code}`);
+
+    if (token === 'FLG(n)') {
+      if (offset + 3 > bits.length) throw new FormatError('Aztec: truncated FLG(n)');
+      const count = readBits(bits, offset, 3);
+      offset += 3;
+      if (count === 0) output.push(0x1d); // FNC1 / GS
+      else if (count <= 6) {
+        // ECI assignment number, encoded as count decimal digits. It changes
+        // interpretation, not the wire bytes, so consume it without output.
+        for (let i = 0; i < count; i++) {
+          if (offset + 4 > bits.length) throw new FormatError('Aztec: truncated ECI');
+          const digit = readBits(bits, offset, 4);
+          offset += 4;
+          if (digit < 2 || digit > 11) throw new FormatError('Aztec: invalid ECI digit');
+        }
+      } else {
+        throw new FormatError(`Aztec: unsupported FLG(${count})`);
+      }
+      shift = latch;
+      continue;
+    }
+
+    if (token.startsWith('CTRL_')) {
+      const targetCode = token.slice(5, -1);
+      const latchMode = token.endsWith('L');
+      const target = ({ P: 'PUNCT', L: 'LOWER', M: 'MIXED', D: 'DIGIT', U: 'UPPER', B: 'BINARY' })[targetCode];
+      if (!target) throw new FormatError(`Aztec: invalid control ${token}`);
+      shift = target;
+      if (latchMode) latch = shift;
+      continue;
+    }
+
+    for (let i = 0; i < token.length; i++) output.push(token.charCodeAt(i));
+    shift = latch;
+  }
+  return Uint8Array.from(output);
+}
+
+/** @param {boolean} compact @param {number} layers */
+function alignmentMap(compact, layers) {
+  const baseSize = (compact ? 11 : 14) + layers * 4;
+  if (compact) return Array.from({ length: baseSize }, (_, i) => i);
+  const size = aztecMatrixSize(layers, false);
+  const map = new Array(baseSize);
+  const baseCenter = baseSize >> 1;
+  const center = size >> 1;
+  for (let i = 0; i < baseCenter; i++) {
+    const offset = i + Math.floor(i / 15);
+    map[baseCenter - i - 1] = center - offset - 1;
+    map[baseCenter + i] = center + offset + 1;
+  }
+  return map;
+}
+
+/**
+ * Read the four sides of the parameter message. The order mirrors the
+ * clockwise write order and is independent of the data spiral.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @param {boolean} compact
+ * @returns {boolean[]}
+ */
+function readModeBits(matrix, compact) {
+  const center = matrix.width >> 1;
+  const side = compact ? 7 : 10;
+  const offset = compact ? 5 : 7;
+  // Full symbols skip the reference grid line through the bull's-eye. This
+  // exact sequence is also used by drawModeMessage() in encoder.js.
+  const positions = Array.from(
+    { length: side },
+    (_, i) => compact ? center - 3 + i : center - 5 + i + Math.floor(i / 5),
+  );
+  const bits = [];
+  for (let i = 0; i < side; i++) bits.push(matrix.get(positions[i], center - offset));
+  for (let i = 0; i < side; i++) bits.push(matrix.get(center + offset, positions[i]));
+  for (let i = 0; i < side; i++) bits.push(matrix.get(positions[side - 1 - i], center + offset));
+  for (let i = 0; i < side; i++) bits.push(matrix.get(center - offset, positions[side - 1 - i]));
+  return bits;
+}
+
+/** @param {boolean[]} bits @param {boolean} compact */
+function decodeModeMessage(bits, compact) {
+  const total = compact ? 7 : 10;
+  const dataWords = compact ? 2 : 4;
+  const words = new Array(total);
+  for (let i = 0; i < total; i++) words[i] = readBits(bits, i * 4, 4);
+  const corrections = rsDecode(words, total - dataWords, fieldForWordSize(4), 1);
+  let data = 0;
+  for (let i = 0; i < dataWords; i++) data = (data << 4) | words[i];
+  const layers = compact ? (data >>> 6) + 1 : (data >>> 11) + 1;
+  const dataCodewords = compact ? (data & 0x3f) + 1 : (data & 0x7ff) + 1;
+  return { layers, dataCodewords, corrections };
+}
+
+/** @param {boolean} compact @param {number} layers */
+function totalBitsInLayers(compact, layers) {
+  return ((compact ? 88 : 112) + 16 * layers) * layers;
+}
+
+/**
+ * Extract raw, stuffed codeword bits in logical ring order.
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @param {boolean} compact @param {number} layers
+ * @returns {boolean[]}
+ */
+function extractBits(matrix, compact, layers) {
+  const baseSize = (compact ? 11 : 14) + layers * 4;
+  const map = alignmentMap(compact, layers);
+  const raw = new Array(totalBitsInLayers(compact, layers));
+  let offset = 0;
+  for (let layer = 0; layer < layers; layer++) {
+    const rowSize = (layers - layer) * 4 + (compact ? 9 : 12);
+    for (let j = 0; j < rowSize; j++) {
+      const col = j * 2;
+      for (let k = 0; k < 2; k++) {
+        raw[offset + col + k] = matrix.get(map[layer * 2 + k], map[layer * 2 + j]);
+        raw[offset + rowSize * 2 + col + k] = matrix.get(map[layer * 2 + j], map[baseSize - 1 - layer * 2 - k]);
+        raw[offset + rowSize * 4 + col + k] = matrix.get(map[baseSize - 1 - layer * 2 - k], map[baseSize - 1 - layer * 2 - j]);
+        raw[offset + rowSize * 6 + col + k] = matrix.get(map[baseSize - 1 - layer * 2 - j], map[layer * 2 + k]);
+      }
+    }
+    offset += rowSize * 8;
+  }
+  return raw;
+}
+
+/** @param {boolean[]} raw @param {number} layers @param {number} dataCodewords */
+function correctAndUnstuff(raw, layers, dataCodewords) {
+  const wordSize = aztecWordSizeForLayers(layers);
+  const totalWords = Math.floor(raw.length / wordSize);
+  if (dataCodewords <= 0 || dataCodewords > totalWords) throw new FormatError('Aztec: invalid data word count');
+  const start = raw.length % wordSize;
+  const words = new Array(totalWords);
+  for (let i = 0; i < totalWords; i++) words[i] = readBits(raw, start + i * wordSize, wordSize);
+  const corrections = rsDecode(words, totalWords - dataCodewords, aztecFieldForLayers(layers), 1);
+  const mask = (1 << wordSize) - 1;
+  const corrected = [];
+  for (let i = 0; i < dataCodewords; i++) {
+    const word = words[i];
+    if (word === 0 || word === mask) throw new FormatError('Aztec: invalid stuffed codeword');
+    if (word === 1 || word === mask - 1) {
+      for (let j = 0; j < wordSize - 1; j++) corrected.push(word === mask - 1);
+    } else {
+      appendBits(word, wordSize, corrected);
+    }
+  }
+  return { bits: corrected, corrections };
+}
+
+/** @param {Uint8Array} bytes */
+function bytesToText(bytes) {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { return new TextDecoder('latin1').decode(bytes); }
+}
+
+/**
+ * Decode a square Aztec symbol with one bit per module and no quiet zone.
+ * The matrix must already be oriented with the mode message at the top.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @returns {{text: string, bytes: Uint8Array, compact: boolean, layers: number, corrections: number, eccPercent: number}}
+ */
+function decodeAztec(matrix) {
+  if (!matrix || matrix.width !== matrix.height) throw new FormatError('Aztec: expected a square BitMatrix');
+  let compact;
+  let mode;
+  // Compact and full dimensions are disjoint; trying both also makes malformed
+  // candidate handling deterministic for the future image detector.
+  for (const candidate of [true, false]) {
+    try {
+      const value = decodeModeMessage(readModeBits(matrix, candidate), candidate);
+      if (value.layers < 1 || value.layers > (candidate ? 4 : 32)) continue;
+      if (aztecMatrixSize(value.layers, candidate) !== matrix.width) continue;
+      compact = candidate;
+      mode = value;
+      break;
+    } catch { /* Try the other family. */ }
+  }
+  if (compact === undefined || !mode) throw new FormatError('Aztec: invalid mode message or dimensions');
+  // Ensure the declared layer data agrees with the table module, so a future
+  // tables refactor cannot silently make decoder capacity calculations stale.
+  aztecSymbolForLayers(mode.layers, compact);
+  const raw = extractBits(matrix, compact, mode.layers);
+  const payload = correctAndUnstuff(raw, mode.layers, mode.dataCodewords);
+  const bytes = decodeHighLevelBits(payload.bits);
+  const totalWords = Math.floor(raw.length / aztecWordSizeForLayers(mode.layers));
+  return {
+    text: bytesToText(bytes),
+    bytes,
+    compact,
+    layers: mode.layers,
+    corrections: mode.corrections + payload.corrections,
+    eccPercent: Math.round(((totalWords - mode.dataCodewords) * 100) / totalWords),
+  };
+}
+
+__exports.decodeHighLevelBits = decodeHighLevelBits;
+__exports.decodeAztec = decodeAztec;
+};
+
+__modules["aztec/detector.js"] = function (__require, __exports) {
+/**
+ * Aztec image detection.
+ *
+ * Aztec has no finder pattern at its outer border. Its reliable geometric
+ * anchor is instead the alternating square bull's-eye in the centre: five
+ * rings in Compact symbols, seven rings in Full symbols. The detector finds
+ * isolated central modules, verifies those rings at module centres, then
+ * samples each legal symbol dimension. The decoder is deliberately the final
+ * arbiter: its mode-message Reed--Solomon check rejects accidental concentric
+ * artwork and tells us which of the compact/full dimensions is real.
+ *
+ * Sampling uses a quadrilateral, not a cropped bitmap, so the detected
+ * rotation is corrected before decoding. The ring search covers arbitrary
+ * in-plane rotations (four-degree coarse search; at normal camera scales its
+ * positional error remains well inside a module). The optional inverse pass
+ * supports light modules on a dark field.
+ *
+ * @module aztec/detector
+ */
+const { NotFoundError } = __require("core/errors.js");
+const { sampleQuad } = __require("image/grid-sampler.js");
+const { decodeAztec } = __require("aztec/decoder.js");
+
+/** @typedef {{x:number, y:number}} Point */
+/** @typedef {{corners: Point[], dimension: number, compact: boolean, moduleSize: number, matrix: import('../core/bit-matrix.js').BitMatrix}} Detection */
+
+// Compact: 11 + 4 layers. Full symbols add reference-grid rows/columns every
+// 15 modules measured from their central 14-module base, not every 15 layers.
+const DIMENSIONS = [
+  ...[1, 2, 3, 4].map((layers) => ({ compact: true, dimension: 11 + 4 * layers })),
+  ...Array.from({ length: 32 }, (_, index) => {
+    const layers = index + 1;
+    return { compact: false, dimension: 15 + 4 * layers + 2 * Math.floor((2 * layers + 6) / 15) };
+  }),
+];
+
+function pixel(image, x, y) {
+  const ix = Math.round(x);
+  const iy = Math.round(y);
+  return ix >= 0 && iy >= 0 && ix < image.width && iy < image.height && image.get(ix, iy);
+}
+
+/** Connected components of either polarity, retaining only plausible modules. */
+function components(image, value) {
+  const seen = new Uint8Array(image.width * image.height);
+  const out = [];
+  const maximumArea = Math.max(4, Math.floor(image.width * image.height * 0.08));
+  for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+    const start = y * image.width + x;
+    if (seen[start] || image.get(x, y) !== value) continue;
+    const xs = [x];
+    const ys = [y];
+    seen[start] = 1;
+    let head = 0;
+    let minX = x; let maxX = x; let minY = y; let maxY = y;
+    while (head < xs.length) {
+      const px = xs[head]; const py = ys[head++];
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+      for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= image.width || ny >= image.height) continue;
+        const at = ny * image.width + nx;
+        if (!seen[at] && image.get(nx, ny) === value) {
+          seen[at] = 1; xs.push(nx); ys.push(ny);
+        }
+      }
+    }
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const area = width * height;
+    // The central module is solid and approximately square. This filter is
+    // intentionally permissive because a rotated raster module is diamond-ish.
+    if (xs.length <= maximumArea && Math.abs(width - height) <= Math.max(1, Math.ceil(Math.max(width, height) * 0.35)) &&
+      xs.length >= area * 0.45) {
+      out.push({ x: (minX + maxX) / 2, y: (minY + maxY) / 2, width, height, pixels: xs.length });
+    }
+  }
+  return out.sort((a, b) => b.pixels - a.pixels).slice(0, 2000);
+}
+
+function expectedDark(ring, inverted) {
+  return inverted ? (ring & 1) === 1 : (ring & 1) === 0;
+}
+
+/** Score one square bull's-eye at an angle and a candidate module pitch. */
+function ringScore(image, centre, pitch, angle, inverted, rings) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  let correct = 0;
+  let total = 0;
+  for (let ring = 0; ring < rings; ring++) {
+    const wanted = expectedDark(ring, inverted);
+    for (let j = -ring; j <= ring; j++) for (let i = -ring; i <= ring; i++) {
+      if (ring && Math.abs(i) !== ring && Math.abs(j) !== ring) continue;
+      const x = centre.x + (i * cos - j * sin) * pitch;
+      const y = centre.y + (i * sin + j * cos) * pitch;
+      if (pixel(image, x, y) === wanted) correct++;
+      total++;
+    }
+  }
+  return correct / total;
+}
+
+function rotateCorners(corners, turn) {
+  return corners.slice(turn).concat(corners.slice(0, turn));
+}
+
+function invert(matrix) {
+  const out = matrix.clone();
+  for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.flip(x, y);
+  return out;
+}
+
+function cornersFor(centre, pitch, angle, dimension) {
+  const half = dimension * pitch / 2;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const point = (x, y) => ({ x: centre.x + x * cos - y * sin, y: centre.y + x * sin + y * cos });
+  return [point(-half, -half), point(half, -half), point(half, half), point(-half, half)];
+}
+
+/**
+ * Find an Aztec symbol in a binarized image.
+ *
+ * The returned matrix is in the orientation accepted by the Aztec decoder.
+ * A valid mode message is required before a geometric candidate is returned,
+ * making false positives from decorative concentric squares very unlikely.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
+ * @returns {Detection | null}
+ */
+function detectAztec(binaryImage) {
+  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+    throw new NotFoundError('detectAztec: no image supplied');
+  }
+  const candidates = [];
+  for (const inverted of [false, true]) {
+    for (const core of components(binaryImage, !inverted)) {
+      // A non-rotated one-module component directly gives its pitch. For
+      // rotated modules its bounding box grows by |sin| + |cos|, compensated
+      // below for every tested angle.
+      for (let degrees = 0; degrees < 180; degrees += 4) {
+        const angle = degrees * Math.PI / 180;
+        const scale = Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle));
+        const pitch = ((core.width + core.height) / 2) / scale;
+        if (pitch < 0.8) continue;
+        // Test Full first: its seven rings also exclude Compact candidates.
+        const fullScore = ringScore(binaryImage, core, pitch, angle, inverted, 7);
+        const rings = fullScore >= 0.88 ? 7 : 5;
+        const score = rings === 7 ? fullScore : ringScore(binaryImage, core, pitch, angle, inverted, 5);
+        if (score < 0.91) continue;
+        const symbolKinds = rings === 7 ? DIMENSIONS.filter((item) => !item.compact) : DIMENSIONS.filter((item) => item.compact);
+        for (const kind of symbolKinds) {
+          const baseCorners = cornersFor(core, pitch, angle, kind.dimension);
+          for (let turn = 0; turn < 4; turn++) {
+            const corners = rotateCorners(baseCorners, turn);
+            let matrix;
+            try { matrix = sampleQuad(binaryImage, kind.dimension, corners); } catch (e) { continue; }
+            if (inverted) matrix = invert(matrix);
+            try {
+              // The decoder verifies the mode-message ECC and exact geometry.
+              // We do not expose its result here so callers can use pure
+              // detection without treating payload decoding as an API contract.
+              decodeAztec(matrix);
+              candidates.push({ corners, dimension: kind.dimension, compact: kind.compact,
+                moduleSize: pitch, matrix, score });
+            } catch (e) { /* Not an Aztec mode message at this dimension. */ }
+          }
+        }
+      }
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score || b.moduleSize - a.moduleSize);
+  const best = candidates[0];
+  if (!best) return null;
+  delete best.score;
+  return best;
+}
+
+/**
+ * Detect then decode an Aztec symbol. Detection failure is a normal result for
+ * images without an Aztec code, therefore invalid candidates return null.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
+ * @returns {(import('./decoder.js').DecodeResult & {corners: Point[]}) | null}
+ */
+function detectAndDecodeAztec(binaryImage) {
+  let detection;
+  try { detection = detectAztec(binaryImage); } catch (e) { return null; }
+  if (!detection) return null;
+  try { return Object.assign({ corners: detection.corners }, decodeAztec(detection.matrix)); }
+  catch (e) { return null; }
+}
+
+__exports.detectAztec = detectAztec;
+__exports.detectAndDecodeAztec = detectAndDecodeAztec;
+};
+
+__modules["aztec/index.js"] = function (__require, __exports) {
+/** Aztec Code entry points. @module aztec */
+const __reexport0 = __require("aztec/encoder.js"); __exports.encodeAztec = __reexport0.encodeAztec;
+const __reexport1 = __require("aztec/decoder.js"); __exports.decodeAztec = __reexport1.decodeAztec;
+const __reexport2 = __require("aztec/detector.js"); __exports.detectAztec = __reexport2.detectAztec; __exports.detectAndDecodeAztec = __reexport2.detectAndDecodeAztec;
+const __reexport3 = __require("aztec/tables.js"); __exports.AZTEC_COMPACT_LAYERS = __reexport3.AZTEC_COMPACT_LAYERS; __exports.AZTEC_FULL_LAYERS = __reexport3.AZTEC_FULL_LAYERS; __exports.AZTEC_LAYERS = __reexport3.AZTEC_LAYERS; __exports.AZTEC_DEFAULT_ECC_PERCENT = __reexport3.AZTEC_DEFAULT_ECC_PERCENT; __exports.AZTEC_RS_GENERATOR_BASE = __reexport3.AZTEC_RS_GENERATOR_BASE; __exports.aztecLayer = __reexport3.aztecLayer; __exports.aztecSymbolSize = __reexport3.aztecSymbolSize; __exports.validateAztecTables = __reexport3.validateAztecTables;
+
+
+};
+
 __modules["render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -8465,6 +9585,7 @@ const { ONED_FORMATS } = __require("oned/index.js");
 const { decodeOneD } = __require("oned/reader.js");
 const datamatrix = __require("datamatrix/index.js");
 const qr = __require("qr/index.js");
+const aztec = __require("aztec/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -8477,6 +9598,7 @@ const __reexport6 = __require("render/index.js"); __exports.renderToCanvasAuto =
 const __reexport7 = __require("render/index.js"); __exports.renderToCanvasAutoAsync = __reexport7.renderToCanvasAutoAsync; __exports.isWebGPUAvailable = __reexport7.isWebGPUAvailable;
 const __reexport8 = __require("qr/index.js"); __exports.encodeQR = __reexport8.encodeQR; __exports.decodeQR = __reexport8.decodeQR; __exports.detectQR = __reexport8.detectQR; __exports.detectAndDecodeQR = __reexport8.detectAndDecodeQR;
 const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
+const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
 
 /**
  * @typedef {object} FormatInfo
@@ -8502,6 +9624,8 @@ const qrCanDecode = qrPresent &&
   typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
 const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
+const aztecCanEncode = typeof aztec.encodeAztec === 'function';
+const aztecCanDecode = typeof aztec.detectAndDecodeAztec === 'function';
 
 /**
  * Every format this build supports.
@@ -8536,6 +9660,13 @@ function listFormats() {
     canRead: dataMatrixCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'aztec',
+    label: 'Aztec Code',
+    canWrite: aztecCanEncode,
+    canRead: aztecCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -8556,6 +9687,9 @@ function listFormats() {
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
+ * @param {number} [options.layers] Aztec layer count; automatic if omitted.
+ * @param {boolean} [options.compact] Force an Aztec Compact or Full symbol.
+ * @param {number} [options.eccPercent] Requested Aztec error-correction percentage.
  * @returns {BitMatrix}
  */
 function encode(text, options = {}) {
@@ -8568,10 +9702,13 @@ function encode(text, options = {}) {
   if (format === 'datamatrix' || format === 'data-matrix') {
     return datamatrix.encodeDataMatrix(value, options);
   }
+  if (format === 'aztec' || format === 'aztec-code') {
+    return aztec.encodeAztec(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -8584,6 +9721,9 @@ function encode(text, options = {}) {
  * @property {Uint8Array} [bytes] Raw payload, before text decoding.
  * @property {number} [version] QR version.
  * @property {string} [ecc] QR error-correction level.
+ * @property {number} [layers] Aztec layer count.
+ * @property {boolean} [compact] Whether an Aztec symbol is Compact.
+ * @property {number} [corrections] Reed–Solomon corrections applied by an Aztec decode.
  */
 
 /**
@@ -8605,6 +9745,7 @@ function decode(image, options = {}) {
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
+  const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -8638,6 +9779,21 @@ function decode(image, options = {}) {
           if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
         } catch {
           /* no Data Matrix with this threshold */
+        }
+      }
+    }
+
+    if (wantAztec && aztecCanDecode) {
+      // The central bull's-eye is a small, high-contrast target. Hybrid
+      // thresholding can flatten it on clean rendered symbols, so mirror the
+      // Data Matrix global fallback in auto mode.
+      const aztecBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
+      for (const candidateBits of aztecBits) {
+        try {
+          const found = aztec.detectAndDecodeAztec(candidateBits);
+          if (found) { results.push({ ...found, format: 'aztec' }); break; }
+        } catch {
+          /* no Aztec code with this threshold */
         }
       }
     }
@@ -8701,17 +9857,21 @@ export const {
   binarizeGlobal,
   binarizeHybrid,
   decode,
+  decodeAztec,
   decodeDataMatrix,
   decodeOneD,
   decodeOneDStrict,
   decodeQR,
   decodeStrict,
+  detectAndDecodeAztec,
   detectAndDecodeDataMatrix,
   detectAndDecodeQR,
+  detectAztec,
   detectDataMatrix,
   detectQR,
   ean13CheckDigit,
   encode,
+  encodeAztec,
   encodeCodabar,
   encodeCode11,
   encodeCode128,

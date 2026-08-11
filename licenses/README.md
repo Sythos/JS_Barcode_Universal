@@ -10,6 +10,7 @@ appendix carries the consolidated inventory these files expand on.
 
 | Format | File | `[TO VERIFY]` items |
 |---|---|---:|
+| Aztec Code | [`aztec-code.license`](aztec-code.license) | 7 |
 | QR Code | [`qr-code.license`](qr-code.license) | 5 |
 | Data Matrix ECC 200 | [`data-matrix.license`](data-matrix.license) | 9 |
 | EAN-13 | [`ean-13.license`](ean-13.license) | 5 |
