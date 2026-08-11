@@ -4,7 +4,7 @@ UPC-A — format provenance and usability
 This file records where the UPC-A symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
 have not been independently confirmed by the author.
 
 
@@ -13,7 +13,7 @@ ORIGIN
 
 The Universal Product Code, adopted in the United States in 1973 and first
 scanned in retail in 1974. The symbol encoding is commonly credited to
-work at IBM, but the corporate and personal credit is [TO VERIFY] and no
+work at IBM, but the corporate and personal credit is [LEGAL REVIEW] and no
 individual is named here. Administered today by GS1.
 
 
@@ -22,7 +22,7 @@ SPECIFICATION
 
 ISO/IEC 15420 — EAN/UPC bar code symbology specification.
 GS1 General Specifications, GS1 AISBL — freely published; redistribution
-terms are GS1's own [TO VERIFY]
+terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
 describes is not — an encoding scheme is a system, not a work of
@@ -34,7 +34,7 @@ PATENT STATUS
 --------------------------------------------------------------------------
 
 The originating patents date from the early 1970s and are understood to
-have expired long ago. [TO VERIFY]
+have expired long ago. [PATENT FAMILY REVIEW REQUIRED]
 
 
 TRADEMARK
@@ -65,8 +65,8 @@ is distributed under the MIT License with no additional restriction.
 References relied upon:
   - ISO/IEC 15420, ISO/IEC
   - GS1 General Specifications, GS1 AISBL — freely published;
-    redistribution terms are GS1's own [TO VERIFY]
+    redistribution terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
 
-This is an engineering assessment, not legal advice. Items marked
-[TO VERIFY] have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Open review labels
+Open review labels identify claims that have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

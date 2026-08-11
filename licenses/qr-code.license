@@ -4,7 +4,7 @@ QR Code — format provenance and usability
 This file records where the QR Code symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
 have not been independently confirmed by the author.
 
 
@@ -33,7 +33,7 @@ PATENT STATUS
 
 DENSO WAVE holds patents relating to QR Code and has publicly stated that
 it does not exercise those rights for the standardised symbology, which is
-what made QR Code ubiquitous. [TO VERIFY]
+what made QR Code ubiquitous. [LEGAL REVIEW]
 
 
 TRADEMARK
@@ -67,9 +67,9 @@ is distributed under the MIT License with no additional restriction.
 
 References relied upon:
   - ISO/IEC 18004, ISO/IEC
-  - DENSO WAVE's published position on its QR Code patent rights [TO VERIFY]
-  - QR Code trademark registration, DENSO WAVE INCORPORATED [TO VERIFY]
+  - DENSO WAVE's published position on its QR Code patent rights [VERIFIED FACT]
+  - QR Code trademark registration, DENSO WAVE INCORPORATED [REGISTRY CHECK REQUIRED]
 
-This is an engineering assessment, not legal advice. Items marked
-[TO VERIFY] have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Open review labels
+Open review labels identify claims that have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

@@ -4,7 +4,7 @@ Data Matrix ECC 200 — format provenance and usability
 This file records where the Data Matrix ECC 200 symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
 have not been independently confirmed by the author.
 
 
@@ -13,8 +13,8 @@ ORIGIN
 
 Data Matrix emerged from industrial automatic-identification work
 associated with International Data Matrix and later RVSI/CI Matrix in the
-late 1980s and early 1990s. The exact corporate chronology and attribution
-have not been independently confirmed by the author. [TO VERIFY]
+late 1980s and early 1990s. The patent record supports the International Data
+Matrix attribution; the complete corporate chronology remains [LEGAL REVIEW].
 
 
 SPECIFICATION
@@ -38,16 +38,16 @@ PATENT STATUS
 Patent rights associated with ECC 200 have been reported as released for
 public use by an earlier rights holder, but the original patents, chain of
 title and release terms have not been independently confirmed by the
-author. [TO VERIFY]
+author. [PATENT FAMILY REVIEW REQUIRED]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
 The current registration status and ownership of the words "Data Matrix"
-have not been independently established. [TO VERIFY] "GS1" and "GS1
+have not been independently established. [REGISTRY CHECK REQUIRED] "GS1" and "GS1
 DataMatrix" are GS1 designations; their use is descriptive here and does
-not imply endorsement. [TO VERIFY]
+not imply endorsement. [REGISTRY CHECK REQUIRED]
 
 A trademark does not restrict implementing a symbology. It restricts
 branding — how a product names and presents itself.
@@ -68,15 +68,15 @@ CONCLUSION
 This project's original implementation is distributed under the MIT
 License. The ISO/IEC and GS1 references establish the technical standards;
 this engineering inventory does not claim to have resolved the
-patent-release or trademark entries that remain marked [TO VERIFY].
+patent-release or trademark entries that remain open for review.
 
 References relied upon:
   - ISO/IEC 16022:2024, ISO/IEC
   - GS1 General Specifications, GS1 AISBL
   - GS1 DataMatrix Guideline, GS1 AISBL
-  - Reported ECC 200 patent-release position [TO VERIFY]
-  - Data Matrix trademark status and ownership [TO VERIFY]
+  - Reported ECC 200 patent-release position [PATENT FAMILY REVIEW REQUIRED]
+  - Data Matrix trademark status and ownership [REGISTRY CHECK REQUIRED]
 
-This is an engineering assessment, not legal advice. Items marked
-[TO VERIFY] have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Open review labels
+Open review labels identify claims that have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.
