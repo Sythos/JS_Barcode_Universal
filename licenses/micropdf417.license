@@ -75,6 +75,12 @@ the provenance and legal-review status recorded in this file and NOTICE.md.
 ZXing-C++, Zint and bwip-js may be consulted for implementation review or
 black-box interoperability validation; none is a runtime dependency.
 
+The third-party software named in this inventory was used exclusively for
+independent verification and cross-checking of which portions of the published
+MicroPDF417 standard could be exercised under comparable conditions. It was
+not used as a runtime dependency, and no third-party source code was copied or
+shipped with this project.
+
 
 NOTICE AND REVIEW REQUESTS
 --------------------------------------------------------------------------
