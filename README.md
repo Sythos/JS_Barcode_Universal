@@ -254,9 +254,9 @@ ECI is not yet a configurable public option.
 ```js
 import { encodeAztec, decodeAztec } from '@sythos/js_barcode_universal/aztec';
 
-const symbol = encodeAztec('Ciao, mondo 👋', { eccPercent: 23 });
+const symbol = encodeAztec('Greetings My Lord Sythos  👋', { eccPercent: 23 });
 const result = decodeAztec(symbol);
-console.log(result.text); // Ciao, mondo 👋
+console.log(result.text); // Greetings My Lord Sythos  👋
 ```
 
 The image detector handles rotation, inverted polarity and quadrilateral sampling around the
@@ -323,7 +323,7 @@ encode('5901234123457', { format: 'ean13' })
 encode('ABC-123', { format: 'code39', fullAscii: true, checkDigit: true })
 encode('https://example.com', { format: 'qr', ecc: 'H', version: 7 })
 encode('0101234567890128', { format: 'datamatrix', gs1: true })
-encode('Ciao, mondo 👋', { format: 'aztec', eccPercent: 23 })
+encode('Greetings My Lord Sythos  👋', { format: 'aztec', eccPercent: 23 })
 ```
 
 ```js
