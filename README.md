@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.0"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.1"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -229,7 +229,7 @@ time.
 | MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
 | Micro QR Code | `microqr` | 2D | ✅ | ✅ |
 | rMQR Code | `rmqr` | 2D | ✅ | ✅ |
-| FrameQR Code | `frameqr` | 2D | ✅ | ✅ |
+| Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | ✅ | ✅ |
 | Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
 | Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
 | GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | ✅ |
@@ -370,9 +370,9 @@ const symbol = encodeRMQR('rMQR SAMPLE', { ecc: 'M' });
 console.log(decodeRMQR(symbol).text);
 ```
 
-### FrameQR Code
+### Sythos Canvas QR profile
 
-`frameqr` is an explicitly scoped, non-certified FrameQR Code profile: it reserves a bounded
+`frameqr` is an explicitly scoped, non-certified Sythos Canvas QR profile — not DENSO FrameQR® compatible. It reserves a bounded
 square, circle or diamond artwork canvas inside an ECC-H QR Model 2 symbol. It is **not** a native
 DENSO FrameQR encoder or decoder, and the package makes no DENSO interoperability claim. The
 profile can be read from clean rendered rasters and is exposed through the normal `encode`/`decode`
@@ -622,16 +622,16 @@ MIT © 2026 Sythos (https://www.sythos.net). Every source file carries the heade
 
 **The implementation is original Sythos work.** No third-party barcode source code is copied into
 or shipped by this package. The symbologies are implemented from published descriptions of the
-formats and from original Sythos data structures. MicroPDF417, Micro QR, rMQR and the FrameQR
-Code carry provenance and pending legal review in `NOTICE.md`. Independent
+formats and from original Sythos data structures. MicroPDF417, Micro QR, rMQR and the Sythos
+Canvas QR profile carry provenance and pending legal review in `NOTICE.md`. Independent
 implementations and public technical material may be consulted for engineering review or
 black-box verification; no third-party source code is copied or shipped. The distributed package has no runtime third-party
 dependencies. See [`NOTICE.md`](NOTICE.md) and the per-format files in [`licenses/`](licenses/).
 
 Public DENSO FrameQR material was consulted only to document the compatibility boundary. ZXing
 was used only as an independent black-box validation tool; no ZXing source code or tables are
-copied or shipped. The FrameQR Code profile does not claim native DENSO FrameQR
-interoperability or co-author attribution.
+copied or shipped. The Sythos Canvas QR profile is not DENSO FrameQR® compatible and does not
+claim native DENSO interoperability or co-author attribution.
 
 **Trademark is not licence.** QR Code® is a registered trademark of DENSO WAVE; Aztec Code,
 MaxiCode and GS1 DataBar are likewise marks of their owners. A trademark does not restrict

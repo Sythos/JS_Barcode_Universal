@@ -73,7 +73,7 @@ remain outside the validated robustness envelope.
 | **Compact PDF417** — truncated PDF417 geometry, Text/Byte/Numeric compaction and clean raster detector | ✅ write + read; independent black-box vectors |
 | **Micro QR** — M1–M4, Numeric/Alphanumeric/Byte/Kanji, BCH format, four masks, Reed–Solomon and detector | ✅ write + read; ECI/FNC1/Structured Append out of scope |
 | **rMQR** — 32 standard rectangular geometries, M/H ECC, Numeric/Alphanumeric/Byte/Kanji, ECI and detector | ✅ write + read; clean scaled raster and quarter-turn detector |
-| **FrameQR Code** — bounded square/circle/diamond artwork canvas on QR Model 2 ECC-H; explicitly not DENSO FrameQR | ✅ write + read; clean raster detector |
+| **Sythos Canvas QR profile — not DENSO FrameQR® compatible** — bounded square/circle/diamond artwork canvas on QR Model 2 ECC-H | ✅ write + read; clean raster detector |
 | **GS1 DataBar Omnidirectional / Truncated** — GTIN-14, linkage, Mod-79, physical writer, scanline and clean decoder | ✅ write + image read; other physical variants pending |
 | **EAN-2 / EAN-5 supplements** — parity, guards, checksum, composition and parent-bound image reader | ✅ write + attached image read |
 | **GS1 semantic layer** — FNC1 classification and shared Application Identifier parser | ✅ GS1-128 and DataBar-14 |
@@ -124,7 +124,7 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 - MicroPDF417 follow-through: black-box vectors plus a real-photo corpus; the current detector supports integer scale and quarter-turns, not arbitrary perspective.
 - Real-photo corpus with a **tracked pass-rate, not pass/fail** — a binary gate hides a regression from 94% to 71%.
 - Scoped legal review labels in `LICENSE` §3–5 are recorded with citations in `NOTICE.md`. Micro QR and rMQR provenance remains explicitly subject to standards, patent and trademark review.
-- FrameQR Code is deliberately scoped to the non-certified `sythos-canvas-qr/1` profile. DENSO FrameQR public material was consulted for the compatibility boundary, not as a native format definition; native DENSO interoperability remains unclaimed. ZXing was used only as an independent black-box validation tool, with no source code or tables copied or shipped.
+- Sythos Canvas QR profile is deliberately scoped to the non-certified `sythos-canvas-qr/1` profile and is not DENSO FrameQR® compatible. DENSO FrameQR public material was consulted for the compatibility boundary, not as a native format definition; native DENSO interoperability remains unclaimed. ZXing was used only as an independent black-box validation tool, with no source code or tables copied or shipped.
 - QR Model 1 remains deliberately unimplemented: its public Annex N material describes the differences, but the complete codeword placement figures/fixtures required for a trustworthy reader are not available in the current evidence set. No writer or reader is claimed.
 
 ### DENSO-licensed formats excluded from this SDK
