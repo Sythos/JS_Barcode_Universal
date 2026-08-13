@@ -4,7 +4,7 @@ ISBN (Bookland EAN-13) — format provenance and usability
 This file records where the ISBN (Bookland EAN-13) symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
@@ -23,7 +23,7 @@ SPECIFICATION
 ISO 2108 — International Standard Book Number (the numbering rules).
 ISO/IEC 15420 — EAN/UPC bar code symbology specification (the symbol).
 GS1 General Specifications, GS1 AISBL — freely published; redistribution
-terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
+terms are GS1's own [LEGAL REVIEW]
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
 describes is not — an encoding scheme is a system, not a work of
@@ -43,7 +43,7 @@ TRADEMARK
 
 No live trademark restriction is known on implementing ISBN encoding.
 "ISBN" is a standard designation administered by the International ISBN
-Agency. [REGISTRY CHECK REQUIRED]
+Agency. [LEGAL REVIEW]
 
 A trademark does not restrict implementing a symbology. It restricts
 branding — how a product names and presents itself.
@@ -54,8 +54,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 ISBN (Bookland EAN-13) is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -69,8 +71,8 @@ References relied upon:
   - ISO 2108, ISO
   - ISO/IEC 15420, ISO/IEC
   - GS1 General Specifications, GS1 AISBL — freely published;
-    redistribution terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
+    redistribution terms are GS1's own [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-Open review labels identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

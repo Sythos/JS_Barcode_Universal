@@ -4,7 +4,7 @@ Code 11 — format provenance and usability
 This file records where the Code 11 symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
@@ -31,15 +31,15 @@ PATENT STATUS
 --------------------------------------------------------------------------
 
 The originating patents date from the 1970s-1980s and are understood to
-have expired long ago. [PATENT FAMILY REVIEW REQUIRED]
+have expired long ago. [LEGAL REVIEW]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
 No live trademark restriction on implementing Code 11 is known to the
-author. [REGISTRY CHECK REQUIRED] That is a statement about the author's knowledge, not
-a finding that no mark subsists: no trademark search was carried out.
+author. [LEGAL REVIEW] That is a statement about the author's knowledge,
+not a finding that no mark subsists: no trademark search was carried out.
 
 A trademark does not restrict implementing a symbology. It restricts
 branding — how a product names and presents itself.
@@ -50,8 +50,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 Code 11 is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -62,8 +64,8 @@ implementable and redistributable, and this project's implementation of it
 is distributed under the MIT License with no additional restriction.
 
 References relied upon:
-  - AIM published specification for Code 11 [LICENSE TERMS REVIEW REQUIRED]
+  - AIM published specification for Code 11 [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-Open review labels identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

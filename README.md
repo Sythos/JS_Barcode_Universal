@@ -101,6 +101,8 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec`, `decodeAztec`, `detectAztec`, `detectAndDecodeAztec` |
 | `@sythos/js_barcode_universal/pdf417` | `encodePDF417`, `decodePDF417`, `detectPDF417`, `detectAndDecodePDF417` |
 | `@sythos/js_barcode_universal/micropdf417` | `encodeMicroPDF417`, `decodeMicroPDF417`, `detectMicroPDF417`, `detectAndDecodeMicroPDF417` |
+| `@sythos/js_barcode_universal/microqr` | `encodeMicroQR`, `decodeMicroQR`, `detectMicroQR`, `detectAndDecodeMicroQR` |
+| `@sythos/js_barcode_universal/rmqr` | `encodeRMQR`, `decodeRMQR`, `detectRMQR`, `detectAndDecodeRMQR` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -112,8 +114,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.2.5"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.2.5"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.3.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.3.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -221,8 +223,10 @@ time.
 | Aztec Code | `aztec` | 2D | ✅ | ✅ |
 | PDF417 | `pdf417` | 2D | ✅ | ✅ |
 | MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
+| Micro QR Code | `microqr` | 2D | ✅ | ✅ |
+| rMQR Code | `rmqr` | 2D | ✅ | ✅ |
 
-Twenty formats, all writable, seventeen readable. **Code 11, MSI Plessey and Pharmacode remain
+Twenty-two formats, all writable, nineteen readable. **Code 11, MSI Plessey and Pharmacode remain
 write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
 camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
 validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
@@ -315,6 +319,34 @@ The detector accepts clean, integer-scaled raster symbols and quarter-turn rotat
 perspective, severe photographic degradation and multi-symbol scenes are not yet claimed as
 robust capabilities.
 
+### Micro QR Code
+
+`microqr` implements the M1–M4 family with Numeric, Alphanumeric, ISO-8859-1 Byte and Kanji
+payloads, BCH format protection, the four Micro QR masks and Reed–Solomon correction. M1 is
+detection-only. ECI, FNC1/GS1 and Structured Append are intentionally outside the current API.
+The detector accepts clean scaled rasters, quarter-turns, inverted polarity and mild projective
+sampling, and rejects normal QR Model 2 symbols.
+
+```js
+import { encodeMicroQR, decodeMicroQR } from '@sythos/js_barcode_universal/microqr';
+
+const symbol = encodeMicroQR('12345', { version: 'M2', ecc: 'L' });
+console.log(decodeMicroQR(symbol).text);
+```
+
+### rMQR Code
+
+`rmqr` implements all 32 standard rectangular geometries, M/H ECC, Numeric, Alphanumeric, Byte,
+Kanji and ECI payloads. The detector accepts clean integer-scaled rasters, quiet zones and
+quarter-turns; arbitrary photographic perspective and multi-symbol scenes are not claimed.
+
+```js
+import { encodeRMQR, decodeRMQR } from '@sythos/js_barcode_universal/rmqr';
+
+const symbol = encodeRMQR('rMQR SAMPLE', { ecc: 'M' });
+console.log(decodeRMQR(symbol).text);
+```
+
 ### Not implemented
 
 **GS1 DataBar and MaxiCode are not implemented** — neither writing nor reading. Data Matrix ECC
@@ -369,6 +401,9 @@ Aztec accepts `layers`, `compact` and `eccPercent`; it transports UTF-8 byte pay
 Binary Shift, and it does not expose configurable ECI yet.
 MicroPDF417 accepts `compaction: 'auto' | 'text' | 'byte' | 'numeric'`, ECI 3 or 26 for Byte
 compaction, and optional `columns`, `rowHeight` and `aspectRatio` constraints.
+Micro QR accepts `version: 'M1' | 'M2' | 'M3' | 'M4'`, its legal ECC level and mask; its
+unsupported ECI, FNC1/GS1 and Structured Append features are rejected explicitly. rMQR accepts
+`ecc: 'M' | 'H'`, optional geometry/version constraints and ECI for byte payloads.
 
 ```js
 encode('5901234123457', { format: 'ean13' })
@@ -377,6 +412,8 @@ encode('https://example.com', { format: 'qr', ecc: 'H', version: 7 })
 encode('0101234567890128', { format: 'datamatrix', gs1: true })
 encode('Greetings My Lord Sythos  👋', { format: 'aztec', eccPercent: 23 })
 encode('MICRO PDF417', { format: 'micropdf417', compaction: 'text' })
+encode('12345', { format: 'microqr', version: 'M2', ecc: 'L' })
+encode('rMQR SAMPLE', { format: 'rmqr', ecc: 'M' })
 ```
 
 ```js
@@ -509,9 +546,11 @@ MIT © 2026 Sythos. Every source file carries the header.
 
 **The implementation is original Sythos work.** No third-party barcode source code is copied into
 or shipped by this package. The symbologies are implemented from published descriptions of the
-formats and from original Sythos data structures; MicroPDF417 normative/public values carry
-provenance and pending legal review in `NOTICE.md`. The distributed package has no runtime
-third-party licence or co-author attribution.
+formats and from original Sythos data structures; MicroPDF417, Micro QR and rMQR normative/public
+values carry provenance and pending legal review in `NOTICE.md`. Independent implementations and
+public technical material may be consulted for engineering review or black-box verification; no
+third-party source code is copied or shipped. The distributed package has no runtime third-party
+licence or co-author attribution.
 
 **Trademark is not licence.** QR Code® is a registered trademark of DENSO WAVE; Aztec Code,
 MaxiCode and GS1 DataBar are likewise marks of their owners. A trademark does not restrict
@@ -527,6 +566,10 @@ PDF417 and MicroPDF417 provenance and legal review notes are recorded in
 [`licenses/pdf417.license`](licenses/pdf417.license),
 [`licenses/micropdf417.license`](licenses/micropdf417.license) and the attribution log in
 [`NOTICE.md`](NOTICE.md).
+
+Micro QR and rMQR provenance and scoped legal-review notes are recorded in
+[`licenses/micro-qr.license`](licenses/micro-qr.license),
+[`licenses/rmqr.license`](licenses/rmqr.license) and [`NOTICE.md`](NOTICE.md).
 
 [`LICENSE`](LICENSE) carries the full MIT text plus an informational appendix inventorying the
 specification copyrights, patent history and trademarks that surround these symbologies. None of

@@ -1,37 +1,78 @@
-# PDF417 engineering inventory
+PDF417 — format provenance and usability
+==========================================================================
 
-## Implementation
+This file records where the PDF417 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
 
-The PDF417 encoder, decoder, Reed–Solomon adapter, compaction code and image
-sampling helpers in this package are original Sythos work and are distributed
-under the repository MIT License. No third-party source code or table is
-shipped as a runtime dependency.
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
 
-## Technical references
 
-- ISO/IEC 15438:2015, PDF417 bar code symbology specification. The standard
-  text is copyrighted by ISO/IEC and is not reproduced here.
-- AIM USS-PDF417, Appendix H / Table H1, public reference copy used to
-  transcribe the normative 3 × 929 codeword pattern ordering. The reference
-  is attributed for provenance; its copyright and redistribution terms require
-  legal review.
-- US 5,243,655 and US 5,304,786, historical patent records associated with
-  PDF417. Family, continuation and jurisdictional status require legal review.
+ORIGIN
+--------------------------------------------------------------------------
 
-## Scope and review labels
+PDF417 was developed by Symbol Technologies in the early 1990s. The
+historical attribution and ownership record are documented here as
+engineering provenance, not as a legal conclusion.
 
-Release validation records black-box checks with ZXing Java 3.5.3, Zint 2.16.0
-and bwip-js 4.5.1. Those tools are development-time test instruments only and
-are not distributed with this package or included as runtime dependencies.
 
-- `[VERIFIED FACT]` — supported by a primary or authoritative public source.
-- `[PATENT FAMILY REVIEW REQUIRED]` — patent family, term or jurisdiction
-  remains to be checked.
-- `[LICENSE TERMS REVIEW REQUIRED]` — source document or redistribution terms
-  require confirmation.
-- `[REGISTRY CHECK REQUIRED]` — current trademark or registration status
-  remains to be checked.
-- `[LEGAL REVIEW]` — a legal conclusion must not be inferred from this file.
+SPECIFICATION
+--------------------------------------------------------------------------
 
-This file is an engineering inventory, not legal advice. It does not claim
-PDF417 is patent-free, public-domain, certified or ISO-compliant.
+ISO/IEC 15438:2015 — PDF417 bar code symbology specification.
+AIM USS-PDF417 public reference, Appendix H / Table H1, used only as
+an attributed technical source for the normative pattern ordering.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+US 5,243,655 and US 5,304,786 are historical PDF417 patent records. Their
+current family, continuation and jurisdictional status requires a
+dedicated patent review. [LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+The current registration status and ownership of the term "PDF417" have
+not been independently established. [LEGAL REVIEW] The term is used
+descriptively and does not imply endorsement by a rights holder.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+PDF417 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+This project's original implementation is distributed under the MIT
+License. Normative values are attributed engineering inputs; the standard
+text is not reproduced, and patent, copyright and trademark questions
+remain subject to the review labels above.
+
+References relied upon:
+  - ISO/IEC 15438:2015, ISO/IEC
+  - AIM USS-PDF417 Appendix H / Table H1, public reference copy
+  - US 5,243,655, USPTO patent record
+  - US 5,304,786, USPTO patent record
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

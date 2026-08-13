@@ -4,23 +4,23 @@ MSI Plessey — format provenance and usability
 This file records where the MSI Plessey symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
 ORIGIN
 --------------------------------------------------------------------------
 
-A variant of the Plessey Code, developed by the MSI Data Corporation. [TO
-VERIFY] Chiefly used for retail shelf labelling and inventory.
+A variant of the Plessey Code, developed by the MSI Data Corporation.
+[LEGAL REVIEW] Chiefly used for retail shelf labelling and inventory.
 
 
 SPECIFICATION
 --------------------------------------------------------------------------
 
 No ISO/IEC standard exists for MSI. It is documented through
-vendor and industry publications rather than a formal standard. [TO
-VERIFY]
+vendor and industry publications rather than a formal standard. [LEGAL
+REVIEW]
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
 describes is not — an encoding scheme is a system, not a work of
@@ -39,7 +39,7 @@ TRADEMARK
 --------------------------------------------------------------------------
 
 No live trademark restriction on implementing MSI is known to the author.
-[REGISTRY CHECK REQUIRED] That is a statement about the author's knowledge, not a
+[LEGAL REVIEW] That is a statement about the author's knowledge, not a
 finding that no mark subsists: no trademark search was carried out. MSI
 Data Corporation is understood no longer to exist as an independent
 entity. [LEGAL REVIEW]
@@ -53,8 +53,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 MSI Plessey is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -65,8 +67,8 @@ implementable and redistributable, and this project's implementation of it
 is distributed under the MIT License with no additional restriction.
 
 References relied upon:
-  - Published descriptions of the MSI and Plessey symbologies [LICENSE TERMS REVIEW REQUIRED]
+  - Published descriptions of the MSI and Plessey symbologies [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-Open review labels identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

@@ -1,102 +1,81 @@
 MicroPDF417 — format provenance and usability
 ==========================================================================
 
-This file records the public technical and legal-review references consulted
-for the MicroPDF417 symbology implemented by this project. It is an
-engineering inventory, not legal advice.
+This file records where the MicroPDF417 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
 
 
-SPECIFICATION AND TECHNICAL BASIS
+ORIGIN
 --------------------------------------------------------------------------
 
-[VERIFIED FACT] ISO/IEC 24728:2006 is the published MicroPDF417 bar code
-symbology specification. It describes the symbology characteristics, data
-character encodation, fixed symbol formats, dimensions, error correction and
-decoding algorithm:
-
-  https://www.iso.org/standard/38838.html
-
-The standard text is copyrighted by ISO. This project does not reproduce,
-redistribute or excerpt the standard; it implements the symbology as an
-independently written program.
-
-For orientation only, the public Wikipedia overview was consulted:
-
-  https://en.wikipedia.org/wiki/MicroPDF417
-
-Wikipedia is not treated as a legal authority or as a source of code.
+MicroPDF417 is a compact stacked 2D symbology specified by ISO/IEC
+24728:2006. The fixed variants, RAP structures and compact symbol geometry
+are recorded here as technical provenance, not as a legal conclusion.
 
 
-PATENT REVIEW
+SPECIFICATION
 --------------------------------------------------------------------------
 
-[VERIFIED FACT] The public record for US 6,047,892 identifies a
-two-dimensional bar-code symbology using implicit version information:
+ISO/IEC 24728:2006 — MicroPDF417 bar code symbology specification.
+The standard text is copyrighted by ISO/IEC and is not reproduced here.
 
-  https://patents.google.com/patent/US6047892A/en
-
-The direct PDF supplied through Google Patents is:
-
-  https://patentimages.storage.googleapis.com/0a/79/f5/e8d374043414f3/US6047892.pdf
-
-[PATENT FAMILY REVIEW REQUIRED] Database status labels, assignee data,
-expiration calculations, continuations, foreign equivalents and any
-jurisdiction-specific rights are not legal conclusions. No freedom-to-operate
-opinion is made by this project.
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
 
 
-TRADEMARK, COPYRIGHT AND ATTRIBUTION
+PATENT STATUS
 --------------------------------------------------------------------------
 
-[REGISTRY CHECK REQUIRED] The current registration status and ownership of
-"MicroPDF417" have not been established by a current trademark-office search.
-The name is used descriptively and does not imply endorsement.
-
-[LICENSE TERMS REVIEW REQUIRED] ISO's standard text and the patent document
-have their own copyright and access terms. Neither document is included in
-this repository. The implementation code is original work by Sythos under the
-MIT License.
-
-[VERIFIED FACT] ZXing-C++ documents MicroPDF417 as a supported symbology:
-
-  https://github.com/zxing-cpp/zxing-cpp
-
-It is a consultative interoperability reference only. No ZXing-C++ source,
-tables or runtime dependency are included in this project.
+US 6,047,892 is a historical patent record associated with
+MicroPDF417-style implicit version information. Patent families,
+continuations, foreign equivalents and jurisdictional status require a
+dedicated review. [LEGAL REVIEW]
 
 
-IMPLEMENTATION BASIS
+TRADEMARK
 --------------------------------------------------------------------------
 
-MicroPDF417 is implemented here as original JavaScript. No third-party barcode
-source code is copied into or shipped by this project. Public and normative
-MicroPDF417 values are represented in original Sythos data structures, with
-the provenance and legal-review status recorded in this file and NOTICE.md.
-ZXing-C++, Zint and bwip-js may be consulted for implementation review or
-black-box interoperability validation; none is a runtime dependency.
+The current registration status and ownership of the term "MicroPDF417"
+have not been independently established. [LEGAL REVIEW] The term is used
+descriptively and does not imply endorsement by a rights holder.
 
-The third-party software named in this inventory was used exclusively for
-independent verification and cross-checking of which portions of the published
-MicroPDF417 standard could be exercised under comparable conditions. It was
-not used as a runtime dependency, and no third-party source code was copied or
-shipped with this project.
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
 
 
-NOTICE AND REVIEW REQUESTS
+IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
-Any note, objection or concern about patents, trademarks, copyright,
-attribution or use of MicroPDF417 must be reported through a GitHub Issue at:
-
-  https://github.com/Sythos/JS_Barcode_Universal/issues
-
-Each report will be reviewed and verified before this inventory or the
-implementation is changed. This request is a maintenance process, not a legal
-admission or a substitute for professional advice.
+MicroPDF417 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
 --------------------------------------------------------------------------
 
-This is an engineering assessment, not legal advice. If your use is
-commercially sensitive, obtain your own legal review.
+This project's original MicroPDF417 implementation is distributed under
+the MIT License. Third-party software cited in this inventory was used
+exclusively for independent verification and cross-checking of which
+portions of the published MicroPDF417 standard could be exercised under
+comparable conditions. It is not a runtime dependency; no third-party
+source code or table is copied or shipped. Patent, copyright and trademark
+questions remain subject to the review labels above.
+
+References relied upon:
+  - ISO/IEC 24728:2006, ISO/IEC
+  - MicroPDF417 overview, https://en.wikipedia.org/wiki/MicroPDF417
+  - US 6,047,892, https://patents.google.com/patent/US6047892A/en
+  - ZXing-C++ consultative interoperability reference, https://github.com/zxing-cpp/zxing-cpp
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

@@ -1,7 +1,7 @@
-Code 39 — format provenance and usability
+rMQR Code — format provenance and usability
 ==========================================================================
 
-This file records where the Code 39 symbology comes from, what governs
+This file records where the rMQR Code symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
 It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
@@ -11,16 +11,18 @@ have not been independently confirmed by the author.
 ORIGIN
 --------------------------------------------------------------------------
 
-Devised in 1974 at Intermec, credited to Dr. David Allais and Ray Stevens.
-[LEGAL REVIEW] One of the oldest alphanumeric symbologies still in general
-use.
+rMQR Code (Rectangular Micro QR Code) is a rectangular QR-family symbology
+standardised separately from QR Model 2 and Micro QR. This implementation
+covers the 32 standard geometries and M/H ECC variants.
 
 
 SPECIFICATION
 --------------------------------------------------------------------------
 
-ISO/IEC 16388 — Code 39 bar code symbology specification.
-Published by ISO/IEC; specification TEXT is copyrighted and paywalled.
+ISO/IEC 23941:2022 — Rectangular Micro QR Code bar code symbology
+specification. The specification TEXT is copyrighted by ISO/IEC and is
+not reproduced here.
+DENSO WAVE public rMQR technical information.
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
 describes is not — an encoding scheme is a system, not a work of
@@ -31,16 +33,18 @@ redistribute or excerpt any specification document.
 PATENT STATUS
 --------------------------------------------------------------------------
 
-The originating patents date from the 1970s-1980s and are understood to
-have expired long ago. [LEGAL REVIEW]
+Patent rights, declarations and family status associated with rMQR Code
+have not been independently established for every jurisdiction. The older
+QR-family public statements are not treated as an rMQR waiver. [LEGAL
+REVIEW]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
-No live trademark restriction on implementing Code 39 is known to the
-author. [LEGAL REVIEW] That is a statement about the author's knowledge,
-not a finding that no mark subsists: no trademark search was carried out.
+The current registration status and ownership of "rMQR" and "Rectangular
+Micro QR" have not been independently established. [LEGAL REVIEW] The
+names are used descriptively and do not imply endorsement.
 
 A trademark does not restrict implementing a symbology. It restricts
 branding — how a product names and presents itself.
@@ -49,7 +53,7 @@ branding — how a product names and presents itself.
 IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
-Code 39 is implemented here from published descriptions of the format,
+rMQR Code is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
 code or constant table from any other barcode implementation is copied or
 shipped. Public technical material and independent implementations may be
@@ -60,12 +64,15 @@ recorded in NOTICE.md.
 CONCLUSION
 --------------------------------------------------------------------------
 
-On the basis of the references below, Code 39 is understood to be freely
-implementable and redistributable, and this project's implementation of it
-is distributed under the MIT License with no additional restriction.
+This project's original rMQR implementation is distributed under the MIT
+License. Normative values are represented in original Sythos structures
+and were checked against independent public implementations; standard
+copyright and patent questions remain subject to legal review.
 
 References relied upon:
-  - ISO/IEC 16388, ISO/IEC
+  - ISO/IEC 23941:2022, ISO/IEC, https://www.iso.org/standard/77404.html
+  - DENSO WAVE rMQR overview, https://www.denso-wave.com/en/adcd/fundamental/2dcode/qrc/rmqr.html
+  - rMQR patent, trademark and licence scope [LEGAL REVIEW]
 
 This is an engineering assessment, not legal advice. Items marked
 [TO VERIFY] have not been independently confirmed by the author. If your

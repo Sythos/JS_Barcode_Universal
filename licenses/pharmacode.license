@@ -4,17 +4,17 @@ Pharmacode — format provenance and usability
 This file records where the Pharmacode symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
 ORIGIN
 --------------------------------------------------------------------------
 
-Devised by Laetus GmbH for pharmaceutical packaging control. [VERIFIED FACT]
-Unusual among linear symbologies: it encodes an integer directly in a
-bijective base-2 form rather than digit by digit, and carries no check
-digit at all.
+Devised by Laetus GmbH for pharmaceutical packaging control. [LEGAL
+REVIEW] Unusual among linear symbologies: it encodes an integer directly
+in a bijective base-2 form rather than digit by digit, and carries no
+check digit at all.
 
 
 SPECIFICATION
@@ -32,8 +32,8 @@ redistribute or excerpt any specification document.
 PATENT STATUS
 --------------------------------------------------------------------------
 
-No live patent encumbrance is known; the format dates from the 1970s. [TO
-VERIFY]
+No live patent encumbrance is known; the format dates from the 1970s.
+[LEGAL REVIEW]
 
 
 TRADEMARK
@@ -52,8 +52,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 Pharmacode is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -64,8 +66,8 @@ implementable and redistributable, and this project's implementation of it
 is distributed under the MIT License with no additional restriction.
 
 References relied upon:
-  - Laetus published description of Pharmacode [VERIFIED FACT]
+  - Laetus published description of Pharmacode [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-Open review labels identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

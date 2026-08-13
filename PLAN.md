@@ -55,7 +55,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-20 formats write, 17 read; PDF417 image reading is now enabled after synthetic, black-box and
+22 formats write, 19 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -69,6 +69,8 @@ remain outside the validated robustness envelope.
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
 | **MicroPDF417** — 34 fixed variants, RAP geometry, Text/Byte/Numeric compaction, ECI 3/26, fixed GF(929) ECC, raster detector | ✅ write + read; perspective robustness pending |
+| **Micro QR** — M1–M4, Numeric/Alphanumeric/Byte/Kanji, BCH format, four masks, Reed–Solomon and detector | ✅ write + read; ECI/FNC1/Structured Append out of scope |
+| **rMQR** — 32 standard rectangular geometries, M/H ECC, Numeric/Alphanumeric/Byte/Kanji, ECI and detector | ✅ write + read; clean scaled raster and quarter-turn detector |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -94,7 +96,7 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 **Long tail, tiered by shared machinery** — this is what makes scope cuttable intelligently:
 
 - *Nearly free given what exists:* Telepen, industrial/IATA 2-of-5 variants. Plus the **postal family** (POSTNET, PLANET, IMb, RM4SCC, KIX, Australia Post, Japan Post) — all 4-state height-modulated, sharing **one** engine.
-- *Moderate, reuses existing 2D machinery:* Micro QR and rMQR (own version tables, QR's core), Codablock-F and Code 16K (stacked Code 128).
+- *Moderate, reuses existing 2D machinery:* Codablock-F and Code 16K (stacked Code 128).
 - *Each effectively its own project:* MaxiCode (hexagonal grid, own detector), DotCode, Han Xin, GS1 Composite, and the **DataBar family** (14 / Limited / Stacked / Expanded — notoriously fiddly).
 
 **Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Ultracode. Listed with reasons in `LICENSE` §6.
@@ -105,7 +107,7 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 - Aztec robustness follow-through: ZXing and zxing-cpp black-box vectors, plus a real-photo corpus with tracked pass-rate. The current detector handles rotation, inversion and quadrilateral sampling; severe perspective remains an enhancement rather than a guaranteed capability.
 - MicroPDF417 follow-through: black-box vectors plus a real-photo corpus; the current detector supports integer scale and quarter-turns, not arbitrary perspective.
 - Real-photo corpus with a **tracked pass-rate, not pass/fail** — a binary gate hides a regression from 94% to 71%.
-- Scoped legal review labels in `LICENSE` §3–5 are recorded with citations in `NOTICE.md`. Priority: **rMQR** (standardised 2022 — do not assume DENSO WAVE's older QR position covers it).
+- Scoped legal review labels in `LICENSE` §3–5 are recorded with citations in `NOTICE.md`. Micro QR and rMQR provenance remains explicitly subject to standards, patent and trademark review.
 
 ---
 

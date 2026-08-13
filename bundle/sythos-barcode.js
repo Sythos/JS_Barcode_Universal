@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.2.5
+ * Sythos Barcode Suite v1.3.0
  *
  * MIT License
  *
@@ -10255,6 +10255,1532 @@ const __reexport5 = __require("micropdf417/detector.js"); __exports.detectMicroP
 
 };
 
+__modules["microqr/tables.js"] = function (__require, __exports) {
+/**
+ * Micro QR Code structural facts and geometry.
+ *
+ * Only the irreducible public symbology values are tabulated. Grid capacity,
+ * reserved areas and placement order are derived independently and checked by
+ * {@link validateMicroQrTables}. M1 and M3 have a four-bit final data symbol
+ * character; `dataBits` therefore is authoritative and must not be inferred as
+ * `dataCodewords * 8` for those versions.
+ *
+ * @module microqr/tables
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+
+/** Numeric version identifiers used by the encoder selection loop. */
+const MICROQR_VERSIONS = Object.freeze([1, 2, 3, 4]);
+const MICROQR_VERSION_NAMES = Object.freeze(['M1', 'M2', 'M3', 'M4']);
+const MICROQR_ECC_LEVELS = Object.freeze(['DETECT', 'L', 'M', 'Q']);
+const MICROQR_FORMAT_MASK = 0x4445;
+const MICROQR_FORMAT_GENERATOR = 0x537;
+
+const symbol = (version, ecc, symbolNumber, totalCodewords, dataCodewords, dataBits, eccCodewords) => Object.freeze({
+  version,
+  ecc,
+  symbolNumber,
+  size: 9 + Number(version.slice(1)) * 2,
+  totalCodewords,
+  dataCodewords,
+  dataBits,
+  eccCodewords,
+  blockCount: 1,
+  shortDataCodewordBits: dataBits % 8 || 8,
+  remainderBits: 0,
+});
+
+/** The eight legal Micro QR version/error-correction combinations. */
+const MICROQR_SYMBOLS = Object.freeze([
+  symbol('M1', 'DETECT', 0, 5, 3, 20, 2),
+  symbol('M2', 'L',      1, 10, 5, 40, 5),
+  symbol('M2', 'M',      2, 10, 4, 32, 6),
+  symbol('M3', 'L',      3, 17, 11, 84, 6),
+  symbol('M3', 'M',      4, 17, 9, 68, 8),
+  symbol('M4', 'L',      5, 24, 16, 128, 8),
+  symbol('M4', 'M',      6, 24, 14, 112, 10),
+  symbol('M4', 'Q',      7, 24, 10, 80, 14),
+]);
+
+const symbolByKey = new Map(MICROQR_SYMBOLS.map((entry) => [`${entry.version}:${entry.ecc}`, entry]));
+const symbolByNumber = new Map(MICROQR_SYMBOLS.map((entry) => [entry.symbolNumber, entry]));
+
+function canonicalVersion(version) {
+  const result = typeof version === 'number' ? `M${version}` : String(version).toUpperCase();
+  if (!MICROQR_VERSION_NAMES.includes(result)) throw new RangeError(`Micro QR: version must be M1-M4, got ${version}`);
+  return result;
+}
+
+/** @param {string|number} version @returns {number} */
+function microQrVersionSize(version) {
+  return 9 + Number(canonicalVersion(version).slice(1)) * 2;
+}
+
+/** Resolve the format symbol number for a legal version/ECC pair. */
+function microQrSymbolNumber(version, ecc) {
+  return microQrBlockLayout(version, ecc).symbolNumber;
+}
+
+/** Resolve the immutable single-block layout for a legal version/ECC pair. */
+function microQrBlockLayout(version, ecc) {
+  const canonical = canonicalVersion(version);
+  const level = ecc == null && canonical === 'M1' ? 'DETECT' : String(ecc).toUpperCase();
+  const entry = symbolByKey.get(`${canonical}:${level}`);
+  if (!entry) throw new RangeError(`Micro QR: error correction level ${ecc} is not valid for ${canonical}`);
+  return entry;
+}
+
+/** @returns {number} Usable message bits, including mode/count overhead. */
+function microQrDataCapacityBits(version, ecc) {
+  return microQrBlockLayout(version, ecc).dataBits;
+}
+
+/**
+ * Encode the five format data bits with BCH(15,5), then apply the Micro QR
+ * format mask. `symbolNumber` occupies the high three data bits and `mask`
+ * the low two.
+ */
+function microQrFormatInfo(symbolNumber, mask, maybeMask) {
+  // Public convenience overload: (version, ecc, mask).
+  if (arguments.length === 3) {
+    symbolNumber = microQrSymbolNumber(symbolNumber, mask);
+    mask = maybeMask;
+  }
+  if (!Number.isInteger(symbolNumber) || symbolNumber < 0 || symbolNumber > 7) {
+    throw new RangeError('Micro QR: symbol number must be an integer in 0..7');
+  }
+  if (!Number.isInteger(mask) || mask < 0 || mask > 3) {
+    throw new RangeError('Micro QR: mask must be an integer in 0..3');
+  }
+  const data = (symbolNumber << 2) | mask;
+  let remainder = data << 10;
+  for (let bit = 14; bit >= 10; bit--) {
+    if ((remainder & (1 << bit)) !== 0) remainder ^= MICROQR_FORMAT_GENERATOR << (bit - 10);
+  }
+  return ((data << 10) | remainder) ^ MICROQR_FORMAT_MASK;
+}
+
+function hammingDistance(a, b) {
+  let bits = (a ^ b) & 0x7fff;
+  let count = 0;
+  while (bits) { bits &= bits - 1; count++; }
+  return count;
+}
+
+/** Decode/correct a 15-bit format word. Returns null beyond three errors. */
+function microQrDecodeFormatInfo(bits) {
+  if (!Number.isInteger(bits) || bits < 0 || bits > 0x7fff) {
+    throw new RangeError('Micro QR: format information must be a 15-bit integer');
+  }
+  let best = null;
+  let bestDistance = 16;
+  for (const entry of MICROQR_SYMBOLS) for (let mask = 0; mask < 4; mask++) {
+    const expected = microQrFormatInfo(entry.symbolNumber, mask);
+    const distance = hammingDistance(bits, expected);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = { version: entry.version, ecc: entry.ecc, symbolNumber: entry.symbolNumber, mask, correctedBits: distance, bits: expected };
+    }
+  }
+  return bestDistance <= 3 ? best : null;
+}
+
+/**
+ * Format modules in bit-number order, least significant bit first. Bits 0..7
+ * run down column 8; bits 8..14 continue right-to-left along row 8.
+ * Position (8,8) is shared by the two arms and appears once.
+ */
+function microQrFormatInfoPositions(sizeOrVersion) {
+  const size = typeof sizeOrVersion === 'number' && sizeOrVersion >= 11
+    ? sizeOrVersion
+    : microQrVersionSize(sizeOrVersion);
+  if (![11, 13, 15, 17].includes(size)) throw new RangeError(`Micro QR: invalid symbol size ${size}`);
+  const positions = [];
+  for (let y = 1; y <= 8; y++) positions.push([8, y]);
+  for (let x = 7; x >= 1; x--) positions.push([x, 8]);
+  return positions;
+}
+
+const reservedCache = new Map();
+const functionCache = new Map();
+
+/**
+ * Fixed dark function modules before format information is written. Light
+ * separator and light timing modules remain unset; use
+ * {@link microQrReservedModules} to distinguish them from payload modules.
+ */
+function microQrFunctionModules(version) {
+  const canonical = canonicalVersion(version);
+  const cached = functionCache.get(canonical);
+  if (cached) return cached;
+  const size = microQrVersionSize(canonical);
+  const matrix = new BitMatrix(size, size);
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
+    const outer = x === 0 || x === 6 || y === 0 || y === 6;
+    const centre = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+    if (outer || centre) matrix.set(x, y);
+  }
+  for (let coordinate = 8; coordinate < size; coordinate += 2) {
+    matrix.set(coordinate, 0);
+    matrix.set(0, coordinate);
+  }
+  functionCache.set(canonical, matrix);
+  return matrix;
+}
+
+/** Shared immutable-in-use map of finder, separator, timing and format modules. */
+function microQrReservedModules(version) {
+  const canonical = canonicalVersion(version);
+  const cached = reservedCache.get(canonical);
+  if (cached) return cached;
+  const size = microQrVersionSize(canonical);
+  const matrix = new BitMatrix(size, size);
+  matrix.setRegion(0, 0, 8, 8); // 7x7 finder plus inner separator
+  for (let coordinate = 8; coordinate < size; coordinate++) {
+    matrix.set(coordinate, 0); // horizontal timing
+    matrix.set(0, coordinate); // vertical timing
+  }
+  for (const [x, y] of microQrFormatInfoPositions(size)) matrix.set(x, y);
+  reservedCache.set(canonical, matrix);
+  return matrix;
+}
+
+/** Number of modules carrying data or error-correction bits. */
+function microQrFreeModuleCount(version) {
+  const size = microQrVersionSize(version);
+  const reserved = microQrReservedModules(version);
+  let count = 0;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    if (!reserved.get(x, y)) count++;
+  }
+  return count;
+}
+
+const orderCache = new Map();
+
+/** Payload module coordinates as interleaved x,y pairs, MSB-first stream order. */
+function microQrDataModuleOrder(version) {
+  const canonical = canonicalVersion(version);
+  const cached = orderCache.get(canonical);
+  if (cached) return cached;
+  const size = microQrVersionSize(canonical);
+  const reserved = microQrReservedModules(canonical);
+  const order = new Int32Array(microQrFreeModuleCount(canonical) * 2);
+  let offset = 0;
+  let upward = true;
+  for (let column = size - 1; column > 0; column -= 2) {
+    for (let rowOffset = 0; rowOffset < size; rowOffset++) {
+      const y = upward ? size - 1 - rowOffset : rowOffset;
+      for (let side = 0; side < 2; side++) {
+        const x = column - side;
+        if (reserved.get(x, y)) continue;
+        order[offset++] = x;
+        order[offset++] = y;
+      }
+    }
+    upward = !upward;
+  }
+  orderCache.set(canonical, order);
+  return order;
+}
+
+/** The four Micro QR data-mask predicates. */
+function microQrMaskBit(mask, x, y) {
+  switch (mask) {
+    case 0: return (y & 1) === 0;
+    case 1: return (((y >> 1) + Math.floor(x / 3)) & 1) === 0;
+    case 2: return ((((y * x) & 1) + ((y * x) % 3)) & 1) === 0;
+    case 3: return ((((y + x) & 1) + ((y * x) % 3)) & 1) === 0;
+    default: throw new RangeError(`Micro QR: mask must be an integer in 0..3, got ${mask}`);
+  }
+}
+
+/** Return all internal table/geometry invariant failures. */
+function validateMicroQrTables() {
+  const issues = [];
+  if (MICROQR_SYMBOLS.length !== 8) issues.push('expected eight symbol/ECC combinations');
+  const numbers = new Set();
+  for (const entry of MICROQR_SYMBOLS) {
+    const tag = `${entry.version}-${entry.ecc}`;
+    if (numbers.has(entry.symbolNumber)) issues.push(`${tag}: duplicate symbol number`);
+    numbers.add(entry.symbolNumber);
+    if (entry.blockCount !== 1) issues.push(`${tag}: Micro QR must use one block`);
+    if (entry.dataBits + entry.eccCodewords * 8 !== microQrFreeModuleCount(entry.version)) {
+      issues.push(`${tag}: data/ECC bits do not fill the encoding region`);
+    }
+    if (entry.totalCodewords !== entry.dataCodewords + entry.eccCodewords) issues.push(`${tag}: codeword count mismatch`);
+    if (entry.dataBits !== (entry.dataCodewords - 1) * 8 + entry.shortDataCodewordBits) issues.push(`${tag}: final data codeword mismatch`);
+    if (entry.shortDataCodewordBits !== (entry.version === 'M1' || entry.version === 'M3' ? 4 : 8)) issues.push(`${tag}: wrong final data codeword width`);
+  }
+  for (const version of MICROQR_VERSIONS) {
+    const size = microQrVersionSize(version);
+    const positions = microQrFormatInfoPositions(size);
+    const unique = new Set(positions.map(([x, y]) => `${x},${y}`));
+    if (positions.length !== 15 || unique.size !== 15) issues.push(`${version}: format positions must be 15 unique modules`);
+    const order = microQrDataModuleOrder(version);
+    const orderUnique = new Set();
+    for (let i = 0; i < order.length; i += 2) {
+      const x = order[i], y = order[i + 1];
+      if (microQrReservedModules(version).get(x, y)) issues.push(`${version}: placement enters reserved module ${x},${y}`);
+      orderUnique.add(`${x},${y}`);
+    }
+    if (orderUnique.size * 2 !== order.length) issues.push(`${version}: placement repeats a module`);
+    if (order.length !== microQrFreeModuleCount(version) * 2) issues.push(`${version}: placement does not cover encoding region`);
+    const functions = microQrFunctionModules(version);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (functions.get(x, y) && !microQrReservedModules(version).get(x, y)) {
+        issues.push(`${version}: dark function module ${x},${y} is not reserved`);
+      }
+    }
+  }
+  for (const entry of MICROQR_SYMBOLS) for (let mask = 0; mask < 4; mask++) {
+    const decoded = microQrDecodeFormatInfo(microQrFormatInfo(entry.symbolNumber, mask));
+    if (!decoded || decoded.symbolNumber !== entry.symbolNumber || decoded.mask !== mask || decoded.correctedBits !== 0) {
+      issues.push(`${entry.version}-${entry.ecc}: format round-trip failed for mask ${mask}`);
+    }
+  }
+  return issues;
+}
+
+__exports.MICROQR_VERSIONS = MICROQR_VERSIONS;
+__exports.MICROQR_VERSION_NAMES = MICROQR_VERSION_NAMES;
+__exports.MICROQR_ECC_LEVELS = MICROQR_ECC_LEVELS;
+__exports.MICROQR_FORMAT_MASK = MICROQR_FORMAT_MASK;
+__exports.MICROQR_FORMAT_GENERATOR = MICROQR_FORMAT_GENERATOR;
+__exports.MICROQR_SYMBOLS = MICROQR_SYMBOLS;
+__exports.microQrVersionSize = microQrVersionSize;
+__exports.microQrSymbolNumber = microQrSymbolNumber;
+__exports.microQrBlockLayout = microQrBlockLayout;
+__exports.microQrDataCapacityBits = microQrDataCapacityBits;
+__exports.microQrFormatInfo = microQrFormatInfo;
+__exports.microQrDecodeFormatInfo = microQrDecodeFormatInfo;
+__exports.microQrFormatInfoPositions = microQrFormatInfoPositions;
+__exports.microQrFunctionModules = microQrFunctionModules;
+__exports.microQrReservedModules = microQrReservedModules;
+__exports.microQrFreeModuleCount = microQrFreeModuleCount;
+__exports.microQrDataModuleOrder = microQrDataModuleOrder;
+__exports.microQrMaskBit = microQrMaskBit;
+__exports.validateMicroQrTables = validateMicroQrTables;
+};
+
+__modules["microqr/encoder.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { BitWriter } = __require("core/bit-buffer.js");
+const { EncodeError } = __require("core/errors.js");
+const { GF256_QR } = __require("core/galois-field.js");
+const { rsEncode } = __require("core/reed-solomon.js");
+const { MICROQR_VERSIONS, microQrBlockLayout, microQrDataModuleOrder, microQrFormatInfo, microQrFormatInfoPositions, microQrMaskBit, microQrSymbolNumber, microQrVersionSize } = __require("microqr/tables.js");
+const MICROQR_ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const MODE = { numeric: 0, alphanumeric: 1, byte: 2, kanji: 3 };
+const MODE_MIN_VERSION = { numeric: 1, alphanumeric: 2, byte: 3, kanji: 3 };
+const COUNT_BITS = {
+  numeric: [0, 3, 4, 5, 6], alphanumeric: [0, 0, 3, 4, 5],
+  byte: [0, 0, 0, 4, 5], kanji: [0, 0, 0, 3, 4],
+};
+
+function parseVersion(value) {
+  if (value == null) return null;
+  const match = /^M?([1-4])$/i.exec(String(value));
+  if (!match) throw new EncodeError(`Micro QR: version must be M1-M4, got ${value}`);
+  return Number(match[1]);
+}
+
+function versionNumber(version) {
+  return typeof version === 'number' ? version : Number(String(version).slice(1));
+}
+
+function latin1Bytes(text) {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) {
+    const cp = text.charCodeAt(i);
+    if (cp > 0xff) throw new EncodeError('Micro QR: byte mode supports ISO-8859-1 only (ECI is unavailable)');
+    bytes[i] = cp;
+  }
+  return bytes;
+}
+
+let sjisReverseMap;
+
+function sjisToThirteenBits(sjis) {
+  const trail = sjis & 0xff;
+  if (trail < 0x40 || trail === 0x7f || trail > 0xfc) return -1;
+  let adjusted;
+  if (sjis >= 0x8140 && sjis <= 0x9ffc) adjusted = sjis - 0x8140;
+  else if (sjis >= 0xe040 && sjis <= 0xebbf) adjusted = sjis - 0xc140;
+  else return -1;
+  const packed = (adjusted >>> 8) * 0xc0 + (adjusted & 0xff);
+  return packed <= 0x1fff ? packed : -1;
+}
+
+function getSjisReverseMap() {
+  if (sjisReverseMap !== undefined) return sjisReverseMap;
+  let decoder;
+  try {
+    decoder = new TextDecoder('shift_jis', { fatal: true });
+    if (decoder.decode(new Uint8Array([0x82, 0xa0])) !== 'あ') return (sjisReverseMap = null);
+  } catch {
+    return (sjisReverseMap = null);
+  }
+  const result = new Map();
+  const bytes = new Uint8Array(2);
+  for (const [start, end] of [[0x8140, 0x9ffc], [0xe040, 0xebbf]]) {
+    for (let value = start; value <= end; value++) {
+      if (sjisToThirteenBits(value) < 0) continue;
+      bytes[0] = value >>> 8;
+      bytes[1] = value & 0xff;
+      let character;
+      try { character = decoder.decode(bytes); } catch { continue; }
+      if (Array.from(character).length === 1 && !result.has(character)) result.set(character, value);
+    }
+  }
+  sjisReverseMap = result;
+  return result;
+}
+
+function kanjiValues(text) {
+  const reverse = getSjisReverseMap();
+  if (!reverse) return null;
+  const values = [];
+  for (const character of text) {
+    const sjis = reverse.get(character);
+    if (sjis == null) return null;
+    values.push(sjisToThirteenBits(sjis));
+  }
+  return values;
+}
+
+function chooseMode(text, forced) {
+  const mode = forced == null ? (/^\d+$/.test(text) ? 'numeric' :
+    [...text].every((ch) => MICROQR_ALPHANUMERIC.includes(ch)) ? 'alphanumeric' :
+      kanjiValues(text) ? 'kanji' : 'byte') :
+    String(forced).toLowerCase();
+  if (!(mode in MODE)) throw new EncodeError(`Micro QR: unsupported mode "${forced}"`);
+  if (mode === 'numeric' && !/^\d+$/.test(text)) throw new EncodeError('Micro QR: numeric mode accepts digits only');
+  if (mode === 'alphanumeric' && ![...text].every((ch) => MICROQR_ALPHANUMERIC.includes(ch))) {
+    throw new EncodeError('Micro QR: alphanumeric mode contains an unsupported character');
+  }
+  if (mode === 'kanji' && !kanjiValues(text)) {
+    throw new EncodeError('Micro QR: kanji mode requires characters representable in the QR Shift_JIS ranges');
+  }
+  return mode;
+}
+
+function encodePayload(text, mode) {
+  const w = new BitWriter();
+  if (mode === 'numeric') {
+    for (let i = 0; i < text.length; i += 3) {
+      const n = Math.min(3, text.length - i);
+      w.put(Number(text.slice(i, i + n)), n === 3 ? 10 : n === 2 ? 7 : 4);
+    }
+  } else if (mode === 'alphanumeric') {
+    let i = 0;
+    for (; i + 1 < text.length; i += 2) {
+      w.put(MICROQR_ALPHANUMERIC.indexOf(text[i]) * 45 + MICROQR_ALPHANUMERIC.indexOf(text[i + 1]), 11);
+    }
+    if (i < text.length) w.put(MICROQR_ALPHANUMERIC.indexOf(text[i]), 6);
+  } else if (mode === 'byte') {
+    w.putBytes(latin1Bytes(text));
+  } else {
+    for (const value of kanjiValues(text)) w.put(value, 13);
+  }
+  return w;
+}
+
+function getBit(writer, index) {
+  return ((writer.bytes[index >>> 3] >>> (7 - (index & 7))) & 1) === 1;
+}
+
+function writeData(text, mode, version, layout) {
+  const numericVersion = versionNumber(version);
+  const payload = encodePayload(text, mode);
+  const writer = new BitWriter();
+  if (numericVersion > 1) writer.put(MODE[mode], numericVersion - 1);
+  const count = mode === 'byte' ? latin1Bytes(text).length : [...text].length;
+  const countWidth = COUNT_BITS[mode][numericVersion];
+  if (countWidth === 0 || count >= 2 ** countWidth) return null;
+  writer.put(count, countWidth);
+  for (let i = 0; i < payload.length; i++) writer.putBit(getBit(payload, i));
+  if (writer.length > layout.dataBits) return null;
+  for (let i = 0, n = Math.min(2 * numericVersion + 1, layout.dataBits - writer.length); i < n; i++) writer.putBit(false);
+  if (numericVersion !== 1 && numericVersion !== 3) {
+    while ((writer.length & 7) && writer.length < layout.dataBits) writer.putBit(false);
+  }
+  if (numericVersion === 1 || numericVersion === 3) {
+    while (writer.length < layout.dataBits) writer.putBit(false);
+    return writer;
+  }
+  let pad = 0;
+  while (writer.length + 8 <= layout.dataBits) writer.put(pad++ & 1 ? 0x11 : 0xec, 8);
+  while (writer.length < layout.dataBits) writer.putBit(false);
+  return writer;
+}
+
+function finalMessage(dataWriter, layout) {
+  const bytes = Array.from(dataWriter.toBytes());
+  if (layout.shortDataCodewordBits === 4) bytes[bytes.length - 1] &= 0xf0;
+  const ecc = rsEncode(bytes, layout.eccCodewords, GF256_QR, 0);
+  const out = [];
+  const full = layout.shortDataCodewordBits === 4 ? bytes.length - 1 : bytes.length;
+  for (let i = 0; i < full; i++) for (let b = 7; b >= 0; b--) out.push((bytes[i] >>> b) & 1);
+  if (layout.shortDataCodewordBits === 4) for (let b = 7; b >= 4; b--) out.push((bytes[bytes.length - 1] >>> b) & 1);
+  for (const value of ecc) for (let b = 7; b >= 0; b--) out.push((value >>> b) & 1);
+  return out;
+}
+
+function drawFunctions(matrix) {
+  const size = matrix.width;
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
+    const ring = x === 0 || x === 6 || y === 0 || y === 6;
+    const core = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+    matrix.setValue(x, y, ring || core);
+  }
+  for (let i = 0; i < 8; i++) { matrix.unset(7, i); matrix.unset(i, 7); }
+  for (let i = 8; i < size; i++) if ((i & 1) === 0) { matrix.set(i, 0); matrix.set(0, i); }
+}
+
+function microMaskScore(matrix) {
+  let right = 0, bottom = 0;
+  for (let i = 1; i < matrix.width; i++) {
+    if (matrix.get(matrix.width - 1, i)) right++;
+    if (matrix.get(i, matrix.height - 1)) bottom++;
+  }
+  return Math.min(right, bottom) * 16 + Math.max(right, bottom);
+}
+
+function buildMatrix(version, ecc, mask, bits) {
+  const matrix = new BitMatrix(microQrVersionSize(version));
+  drawFunctions(matrix);
+  const order = microQrDataModuleOrder(version);
+  for (let i = 0; i < bits.length; i++) {
+    const x = order[i * 2], y = order[i * 2 + 1];
+    matrix.setValue(x, y, (bits[i] === 1) !== microQrMaskBit(mask, x, y));
+  }
+  const format = microQrFormatInfo(microQrSymbolNumber(version, ecc), mask);
+  const positions = microQrFormatInfoPositions(matrix.width);
+  for (let i = 0; i < 15; i++) matrix.setValue(positions[i][0], positions[i][1], ((format >>> i) & 1) === 1);
+  return matrix;
+}
+function encodeMicroQR(text, options = {}) {
+  text = String(text);
+  if (!text) throw new EncodeError('Micro QR: payload must not be empty');
+  if (options.eci != null || options.gs1 === true) throw new EncodeError('Micro QR: ECI and GS1/FNC1 are unavailable');
+  const mode = chooseMode(text, options.mode);
+  const wantedVersion = parseVersion(options.version);
+  const wantedEcc = options.ecc == null ? null : String(options.ecc).toUpperCase();
+  if (wantedEcc === 'H') throw new EncodeError('Micro QR: error correction level H is unavailable');
+  if (options.mask != null && (!Number.isInteger(options.mask) || options.mask < 0 || options.mask > 3)) {
+    throw new EncodeError(`Micro QR: mask must be an integer 0-3, got ${options.mask}`);
+  }
+
+  let selected;
+  for (const version of MICROQR_VERSIONS) {
+    if (wantedVersion != null && version !== wantedVersion) continue;
+    const numericVersion = versionNumber(version);
+    if (numericVersion < MODE_MIN_VERSION[mode]) continue;
+    const levels = numericVersion === 1 ? ['DETECT'] : numericVersion < 4 ? ['L', 'M'] : ['L', 'M', 'Q'];
+    for (const ecc of levels) {
+      if (wantedEcc != null && ecc !== wantedEcc) continue;
+      const layout = microQrBlockLayout(version, ecc);
+      const data = writeData(text, mode, version, layout);
+      if (data) { selected = { version, ecc, layout, data }; break; }
+    }
+    if (selected) break;
+  }
+  if (!selected) throw new EncodeError('Micro QR: payload does not fit the requested version/error level');
+  const bits = finalMessage(selected.data, selected.layout);
+  if (options.mask != null) return buildMatrix(selected.version, selected.ecc, options.mask, bits);
+  let best, score = -1;
+  for (let mask = 0; mask < 4; mask++) {
+    const candidate = buildMatrix(selected.version, selected.ecc, mask, bits);
+    const candidateScore = microMaskScore(candidate);
+    if (candidateScore > score) { score = candidateScore; best = candidate; }
+  }
+  return best;
+}
+
+__exports.MICROQR_ALPHANUMERIC = MICROQR_ALPHANUMERIC;
+__exports.encodeMicroQR = encodeMicroQR;
+};
+
+__modules["microqr/decoder.js"] = function (__require, __exports) {
+/**
+ * Micro QR decoder for an already sampled M1-M4 module matrix.
+ *
+ * @module microqr/decoder
+ */
+const { ChecksumError, FormatError } = __require("core/errors.js");
+const { GF256_QR } = __require("core/galois-field.js");
+const { rsDecode } = __require("core/reed-solomon.js");
+const { microQrBlockLayout, microQrDataModuleOrder, microQrDecodeFormatInfo, microQrFormatInfoPositions, microQrMaskBit } = __require("microqr/tables.js");
+
+const ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const MODE_NAMES = ['numeric', 'alphanumeric', 'byte', 'kanji'];
+const COUNT_BITS = {
+  numeric: [0, 3, 4, 5, 6],
+  alphanumeric: [0, 0, 3, 4, 5],
+  byte: [0, 0, 0, 4, 5],
+  kanji: [0, 0, 0, 3, 4],
+};
+
+class LimitedBitReader {
+  constructor(bytes, limit) {
+    this.bytes = bytes;
+    this.limit = limit;
+    this.offset = 0;
+  }
+
+  available() { return this.limit - this.offset; }
+
+  read(count) {
+    if (!Number.isInteger(count) || count < 1 || count > 32 || count > this.available()) {
+      throw new FormatError(`Micro QR: needed ${count} bits, ${Math.max(0, this.available())} remain`);
+    }
+    let value = 0;
+    for (let i = 0; i < count; i++, this.offset++) {
+      value = (value << 1) | ((this.bytes[this.offset >>> 3] >>> (7 - (this.offset & 7))) & 1);
+    }
+    return value >>> 0;
+  }
+}
+
+function moduleAt(matrix, x, y, mirrored) {
+  return mirrored ? matrix.get(y, x) : matrix.get(x, y);
+}
+
+function readFormat(matrix, expectedVersion, mirrored) {
+  let bits = 0;
+  const positions = microQrFormatInfoPositions(matrix.width);
+  for (let i = 0; i < positions.length; i++) {
+    const [x, y] = positions[i];
+    if (moduleAt(matrix, x, y, mirrored)) bits |= 1 << i;
+  }
+  const format = microQrDecodeFormatInfo(bits);
+  if (!format) throw new FormatError('Micro QR: format information is unreadable');
+  if (format.version !== expectedVersion) {
+    throw new FormatError(
+      `Micro QR: format identifies ${format.version}, but the matrix dimension identifies ${expectedVersion}`,
+    );
+  }
+  return format;
+}
+
+function readCodewords(matrix, layout, mask, mirrored) {
+  const order = microQrDataModuleOrder(layout.version);
+  const data = new Array(layout.dataCodewords).fill(0);
+  const ecc = new Array(layout.eccCodewords).fill(0);
+  let streamOffset = 0;
+
+  const readBit = () => {
+    const x = order[streamOffset * 2];
+    const y = order[streamOffset * 2 + 1];
+    if (x === undefined || y === undefined) throw new FormatError('Micro QR: encoding region is truncated');
+    streamOffset++;
+    return moduleAt(matrix, x, y, mirrored) !== microQrMaskBit(mask, x, y) ? 1 : 0;
+  };
+  const readInto = (target, index, count, highBit = 7) => {
+    for (let bit = highBit; bit > highBit - count; bit--) target[index] |= readBit() << bit;
+  };
+
+  const fullData = layout.shortDataCodewordBits === 4 ? layout.dataCodewords - 1 : layout.dataCodewords;
+  for (let i = 0; i < fullData; i++) readInto(data, i, 8);
+  if (layout.shortDataCodewordBits === 4) readInto(data, data.length - 1, 4);
+  for (let i = 0; i < ecc.length; i++) readInto(ecc, i, 8);
+
+  if (streamOffset !== order.length / 2) {
+    throw new FormatError(`Micro QR: read ${streamOffset} of ${order.length / 2} encoding modules`);
+  }
+  return data.concat(ecc);
+}
+
+function correctCodewords(received, layout) {
+  const corrections = rsDecode(received, layout.eccCodewords, GF256_QR, 0);
+  if (layout.version === 'M1' && corrections !== 0) {
+    throw new ChecksumError('Micro QR: M1 provides error detection only');
+  }
+  return { data: Uint8Array.from(received.slice(0, layout.dataCodewords)), corrections };
+}
+
+function decodeKanjiValue(value) {
+  const combined = (Math.floor(value / 0xc0) << 8) | (value % 0xc0);
+  const sjis = combined + (combined < 0x1f00 ? 0x8140 : 0xc140);
+  const bytes = Uint8Array.of(sjis >>> 8, sjis & 0xff);
+  try {
+    return new TextDecoder('shift_jis', { fatal: true }).decode(bytes);
+  } catch {
+    throw new FormatError(`Micro QR: invalid Kanji value ${value}`);
+  }
+}
+
+function parsePayload(data, version, dataBits) {
+  const reader = new LimitedBitReader(data, dataBits);
+  const modeValue = version === 1 ? 0 : reader.read(version - 1);
+  if (modeValue > 3 || (version === 2 && modeValue > 1)) {
+    throw new FormatError(`Micro QR: mode indicator ${modeValue} is unavailable in M${version}`);
+  }
+  const mode = MODE_NAMES[modeValue];
+  const countWidth = COUNT_BITS[mode][version];
+  if (!countWidth) throw new FormatError(`Micro QR: ${mode} mode is unavailable in M${version}`);
+  const count = reader.read(countWidth);
+  if (count === 0) throw new FormatError('Micro QR: zero-length data segment');
+
+  let text = '';
+  const rawBytes = [];
+  if (mode === 'numeric') {
+    let remaining = count;
+    while (remaining >= 3) {
+      const value = reader.read(10);
+      if (value >= 1000) throw new FormatError(`Micro QR: invalid numeric triplet ${value}`);
+      text += String(value).padStart(3, '0');
+      remaining -= 3;
+    }
+    if (remaining === 2) {
+      const value = reader.read(7);
+      if (value >= 100) throw new FormatError(`Micro QR: invalid numeric pair ${value}`);
+      text += String(value).padStart(2, '0');
+    } else if (remaining === 1) {
+      const value = reader.read(4);
+      if (value >= 10) throw new FormatError(`Micro QR: invalid numeric digit ${value}`);
+      text += String(value);
+    }
+  } else if (mode === 'alphanumeric') {
+    let remaining = count;
+    while (remaining >= 2) {
+      const value = reader.read(11);
+      if (value >= 45 * 45) throw new FormatError(`Micro QR: invalid alphanumeric pair ${value}`);
+      text += ALPHANUMERIC[Math.floor(value / 45)] + ALPHANUMERIC[value % 45];
+      remaining -= 2;
+    }
+    if (remaining === 1) {
+      const value = reader.read(6);
+      if (value >= 45) throw new FormatError(`Micro QR: invalid alphanumeric value ${value}`);
+      text += ALPHANUMERIC[value];
+    }
+  } else if (mode === 'byte') {
+    for (let i = 0; i < count; i++) {
+      const value = reader.read(8);
+      rawBytes.push(value);
+      text += String.fromCharCode(value);
+    }
+  } else {
+    for (let i = 0; i < count; i++) text += decodeKanjiValue(reader.read(13));
+  }
+  return { text, bytes: Uint8Array.from(rawBytes), mode };
+}
+
+function decodeOrientation(matrix, expectedVersion, mirrored) {
+  const format = readFormat(matrix, expectedVersion, mirrored);
+  const layout = microQrBlockLayout(format.version, format.ecc);
+  const received = readCodewords(matrix, layout, format.mask, mirrored);
+  const { data, corrections } = correctCodewords(received, layout);
+  const payload = parsePayload(data, Number(format.version.slice(1)), layout.dataBits);
+  return {
+    text: payload.text,
+    bytes: payload.bytes,
+    mode: payload.mode,
+    version: format.version,
+    ecc: format.ecc,
+    mask: format.mask,
+    corrections,
+    formatCorrections: format.correctedBits,
+    mirrored,
+  };
+}
+
+/** Decode a sampled Micro QR Code symbol without its quiet zone. */
+function decodeMicroQR(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || typeof matrix.get !== 'function') {
+    throw new FormatError('Micro QR: no matrix supplied');
+  }
+  if (matrix.height !== matrix.width) {
+    throw new FormatError(`Micro QR: symbol must be square, got ${matrix.width}x${matrix.height}`);
+  }
+  const version = (matrix.width - 9) / 2;
+  if (!Number.isInteger(version) || version < 1 || version > 4) {
+    throw new FormatError(`Micro QR: ${matrix.width} modules is not a valid M1-M4 symbol size`);
+  }
+  const expectedVersion = `M${version}`;
+  try {
+    return decodeOrientation(matrix, expectedVersion, false);
+  } catch (primaryError) {
+    try {
+      return decodeOrientation(matrix, expectedVersion, true);
+    } catch {
+      throw primaryError;
+    }
+  }
+}
+__exports.ChecksumError = ChecksumError; __exports.FormatError = FormatError;
+
+__exports.decodeMicroQR = decodeMicroQR;
+};
+
+__modules["microqr/detector.js"] = function (__require, __exports) {
+/**
+ * Micro QR detection in binarized rasters.
+ *
+ * A Micro QR symbol has one 7x7 finder in its top-left corner. That alone is
+ * not enough to distinguish it from one corner of a normal QR Code, so every
+ * candidate is also required to have the Micro QR timing arms and a format
+ * word which the decoder accepts. The decoder is deliberately the final
+ * geometric arbiter; BCH and Reed--Solomon verification make accidental
+ * acceptance of ordinary square artwork very unlikely.
+ *
+ * Finder geometry supplies two local axes. Timing arms refine their lengths,
+ * while a small fourth-corner search lets projective sampling absorb mild
+ * perspective despite the format having no remote alignment pattern.
+ *
+ * @module microqr/detector
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { NotFoundError } = __require("core/errors.js");
+const { sampleQuad } = __require("image/grid-sampler.js");
+const { decodeMicroQR } = __require("microqr/decoder.js");
+
+/** Legal Micro QR side lengths (M1 through M4). */
+const DIMENSIONS = [11, 13, 15, 17];
+
+/** @typedef {{x:number, y:number}} Point */
+
+/**
+ * @typedef {object} Detection
+ * @property {Point[]} corners Outer corners in reading order.
+ * @property {number} dimension Side length in modules.
+ * @property {'M1'|'M2'|'M3'|'M4'} version
+ * @property {number} moduleSize Estimated pixels per module at the finder.
+ * @property {number} rotation Clockwise orientation of the source raster.
+ * @property {boolean} inverted Whether the detected symbol used inverted polarity.
+ * @property {BitMatrix} matrix Rectified, normally polarised module matrix.
+ */
+
+function rotateVector(vector) {
+  return { x: -vector.y, y: vector.x };
+}
+
+function add(point, a, av, b, bv) {
+  return { x: point.x + a.x * av + b.x * bv, y: point.y + a.y * av + b.y * bv };
+}
+
+function sample(image, point) {
+  const x = Math.round(point.x);
+  const y = Math.round(point.y);
+  if (x < 0 || y < 0 || x >= image.width || y >= image.height) return null;
+  return image.get(x, y);
+}
+
+function expectedFinder(x, y) {
+  return x === 0 || y === 0 || x === 6 || y === 6 ||
+    (x >= 2 && x <= 4 && y >= 2 && y <= 4);
+}
+
+/** Connected components matching one polarity, capped to plausible centre blocks. */
+function components(image, value) {
+  const seen = new Uint8Array(image.width * image.height);
+  const result = [];
+  const maximumArea = Math.max(16, Math.floor(image.width * image.height * 0.08));
+
+  for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+    const start = y * image.width + x;
+    if (seen[start] || image.get(x, y) !== value) continue;
+
+    const queueX = [x];
+    const queueY = [y];
+    seen[start] = 1;
+    let head = 0;
+    let minX = x; let maxX = x; let minY = y; let maxY = y;
+
+    while (head < queueX.length) {
+      const px = queueX[head];
+      const py = queueY[head++];
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+      for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= image.width || ny >= image.height) continue;
+        const index = ny * image.width + nx;
+        if (!seen[index] && image.get(nx, ny) === value) {
+          seen[index] = 1;
+          queueX.push(nx);
+          queueY.push(ny);
+        }
+      }
+    }
+
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const area = width * height;
+    if (queueX.length > maximumArea || Math.min(width, height) < 2) continue;
+    if (Math.max(width, height) > Math.min(width, height) * 1.7) continue;
+    if (queueX.length < area * 0.42) continue;
+    result.push({
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      width,
+      height,
+      pixels: queueX.length,
+    });
+  }
+
+  return result.sort((a, b) => b.pixels - a.pixels).slice(0, 256);
+}
+
+/** Score the complete 7x7 finder at module centres. */
+function finderScore(image, centre, u, v, pitch, inverted) {
+  let correct = 0;
+  let total = 0;
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
+    const actual = sample(image, add(centre, u, (x - 3) * pitch, v, (y - 3) * pitch));
+    if (actual === null) continue;
+    const wanted = inverted ? !expectedFinder(x, y) : expectedFinder(x, y);
+    if (actual === wanted) correct++;
+    total++;
+  }
+  return total === 49 ? correct / total : 0;
+}
+
+/** Validate separator, timing arms and a sparse quiet-zone outline. */
+function structureScore(image, centre, u, v, pitch, dimension, sx, sy, inverted) {
+  let correct = 0;
+  let total = 0;
+  const check = (x, y, dark) => {
+    const point = add(centre, u, (x - 3) * pitch * sx, v, (y - 3) * pitch * sy);
+    const actual = sample(image, point);
+    if (actual !== null && actual === (inverted ? !dark : dark)) correct++;
+    total++;
+  };
+
+  // The light separator lies between the finder and encoding region.
+  for (let i = 0; i <= 7; i++) {
+    check(7, i, false);
+    check(i, 7, false);
+  }
+  // Both timing arms start dark at coordinate 8 and alternate to the edge.
+  for (let i = 8; i < dimension; i++) {
+    check(i, 0, (i & 1) === 0);
+    check(0, i, (i & 1) === 0);
+  }
+  // A quiet-zone sample just beyond each edge rejects an isolated normal-QR
+  // finder and most decorative squares without requiring a perfect crop.
+  for (let i = 0; i < dimension; i += 2) {
+    check(i, -1.25, false);
+    check(-1.25, i, false);
+    check(i, dimension + 0.75, false);
+    check(dimension + 0.75, i, false);
+  }
+  return correct / total;
+}
+
+function invert(matrix) {
+  const out = matrix.clone();
+  for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.flip(x, y);
+  return out;
+}
+
+function orientationDegrees(u) {
+  const degrees = Math.atan2(u.y, u.x) * 180 / Math.PI;
+  return ((Math.round(degrees / 90) * 90) % 360 + 360) % 360;
+}
+
+function cornersFor(centre, u, v, pitch, dimension, sx, sy, dx = 0, dy = 0) {
+  const tl = add(centre, u, -3.5 * pitch, v, -3.5 * pitch);
+  const tr = add(tl, u, dimension * pitch * sx, v, 0);
+  const bl = add(tl, u, 0, v, dimension * pitch * sy);
+  const br = add(add(tr, v, dimension * pitch * sy, u, 0), u, dx * pitch, v, dy * pitch);
+  return [tl, tr, br, bl];
+}
+
+function candidateKey(detection) {
+  const centre = detection.finderCentre;
+  return `${Math.round(centre.x)},${Math.round(centre.y)},${detection.dimension}`;
+}
+
+function sameCandidate(left, right) {
+  if (left.dimension !== right.dimension) return false;
+  const centre = (detection) => detection.corners.reduce(
+    (sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }),
+    { x: 0, y: 0 },
+  );
+  const a = centre(left);
+  const b = centre(right);
+  const tolerance = Math.max(left.moduleSize, right.moduleSize) * 2;
+  return Math.hypot(a.x - b.x, a.y - b.y) < tolerance;
+}
+
+/**
+ * Find Micro QR symbols in a binarized raster.
+ *
+ * The search accepts arbitrary in-plane angles, including all quarter-turns.
+ * Non-integer scale is supported through centre sampling. Mild projective
+ * distortion is handled by searching the unconstrained fourth corner.
+ *
+ * @param {BitMatrix} binaryImage Set bit = dark.
+ * @returns {Detection[]} Best candidate first; empty when no symbol is found.
+ */
+function detectMicroQR(binaryImage) {
+  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+    throw new NotFoundError('detectMicroQR: no image supplied');
+  }
+
+  const detections = [];
+  const seen = new Set();
+
+  for (const inverted of [false, true]) {
+    for (const centre of components(binaryImage, !inverted)) {
+      for (let degrees = 0; degrees < 180; degrees += 3) {
+        const angle = degrees * Math.PI / 180;
+        const axis = { x: Math.cos(angle), y: Math.sin(angle) };
+        const perpendicular = rotateVector(axis);
+        const footprint = Math.abs(axis.x) + Math.abs(axis.y);
+        const pitch = ((centre.width + centre.height) / 2) / (3 * footprint);
+        if (pitch < 0.75) continue;
+
+        // The finder is rotationally symmetric; four turns decide which pair
+        // of arms points into the encoding region.
+        for (let turn = 0, u = axis, v = perpendicular; turn < 4; turn++) {
+          if (turn > 0) { u = v; v = { x: -u.y, y: u.x }; }
+          const fScore = finderScore(binaryImage, centre, u, v, pitch, inverted);
+          if (fScore < 0.9) continue;
+
+          for (const dimension of DIMENSIONS) {
+            const scales = [0.84, 0.92, 1, 1.08, 1.16];
+            const rankedX = scales.map((scale) => ({
+              scale,
+              score: structureScore(binaryImage, centre, u, v, pitch, dimension, scale, 1, inverted),
+            })).sort((a, b) => b.score - a.score).slice(0, 2);
+            const rankedY = scales.map((scale) => ({
+              scale,
+              score: structureScore(binaryImage, centre, u, v, pitch, dimension, 1, scale, inverted),
+            })).sort((a, b) => b.score - a.score).slice(0, 2);
+
+            for (const xs of rankedX) for (const ys of rankedY) {
+              const score = structureScore(binaryImage, centre, u, v, pitch, dimension, xs.scale, ys.scale, inverted);
+              if (score < 0.78) continue;
+
+              // With a single finder there is no direct bottom-right anchor.
+              // A compact search around the affine estimate lets the projective
+              // sampler account for convergence of the remote edges.
+              for (const delta of [[0, 0], [-0.75, 0], [0.75, 0], [0, -0.75], [0, 0.75],
+                [-0.75, -0.75], [0.75, -0.75], [-0.75, 0.75], [0.75, 0.75]]) {
+                const corners = cornersFor(
+                  centre, u, v, pitch, dimension, xs.scale, ys.scale, delta[0], delta[1]
+                );
+                let matrix;
+                try { matrix = sampleQuad(binaryImage, dimension, corners, score < 0.9); }
+                catch (error) { continue; }
+                if (inverted) matrix = invert(matrix);
+
+                try {
+                  const decoded = decodeMicroQR(matrix);
+                  const version = decoded.version ?? `M${(dimension - 9) / 2}`;
+                  const detection = {
+                    corners,
+                    dimension,
+                    version,
+                    moduleSize: pitch,
+                    rotation: orientationDegrees(u),
+                    inverted,
+                    matrix,
+                    finderCentre: { x: centre.x, y: centre.y },
+                    score: fScore + score,
+                  };
+                  const key = candidateKey(detection);
+                  if (!seen.has(key) && !detections.some((entry) => sameCandidate(entry, detection))) {
+                    seen.add(key);
+                    detections.push(detection);
+                  }
+                  // Decoder validation settled this dimension and orientation.
+                  break;
+                } catch (error) {
+                  /* Try the next perspective hypothesis. */
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  detections.sort((a, b) => b.score - a.score || b.moduleSize - a.moduleSize);
+  for (const detection of detections) {
+    delete detection.finderCentre;
+    delete detection.score;
+  }
+  return detections;
+}
+
+/**
+ * Detect and decode all Micro QR symbols in a binarized raster.
+ *
+ * @param {BitMatrix} binaryImage
+ * @returns {Array<object>}
+ */
+function detectAndDecodeMicroQR(binaryImage) {
+  let detections;
+  try { detections = detectMicroQR(binaryImage); }
+  catch (error) { return []; }
+
+  const results = [];
+  const seen = new Set();
+  for (const detection of detections) {
+    try {
+      const decoded = decodeMicroQR(detection.matrix);
+      const key = `${decoded.version ?? detection.version}|${decoded.text ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(Object.assign({
+        corners: detection.corners,
+        rotation: detection.rotation,
+        inverted: detection.inverted,
+      }, decoded));
+    } catch (error) {
+      /* A failed candidate is a normal no-symbol result. */
+    }
+  }
+  return results;
+}
+
+__exports.detectMicroQR = detectMicroQR;
+__exports.detectAndDecodeMicroQR = detectAndDecodeMicroQR;
+};
+
+__modules["microqr/index.js"] = function (__require, __exports) {
+/** Micro QR Code M1-M4 public module surface. @module microqr */
+const __reexport0 = __require("microqr/encoder.js"); __exports.encodeMicroQR = __reexport0.encodeMicroQR;
+const __reexport1 = __require("microqr/decoder.js"); __exports.decodeMicroQR = __reexport1.decodeMicroQR;
+const __reexport2 = __require("microqr/detector.js"); __exports.detectMicroQR = __reexport2.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport2.detectAndDecodeMicroQR;
+const __reexport3 = __require("microqr/tables.js"); __exports.validateMicroQrTables = __reexport3.validateMicroQrTables;
+
+
+};
+
+__modules["rmqr/tables.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("core/bit-matrix.js");
+
+/** The 32 rMQR dimensions in ISO/IEC 23941 order (width, height). */
+const RMQR_SIZES = Object.freeze([
+  [43, 7], [59, 7], [77, 7], [99, 7], [139, 7],
+  [43, 9], [59, 9], [77, 9], [99, 9], [139, 9],
+  [27, 11], [43, 11], [59, 11], [77, 11], [99, 11], [139, 11],
+  [27, 13], [43, 13], [59, 13], [77, 13], [99, 13], [139, 13],
+  [43, 15], [59, 15], [77, 15], [99, 15], [139, 15],
+  [43, 17], [59, 17], [77, 17], [99, 17], [139, 17],
+]);
+
+const REMAINDER_BITS = Object.freeze([0, 3, 5, 6, 1, 2, 3, 1, 4, 5, 2, 1, 0, 2, 7, 6, 4, 1, 6, 4, 3, 0, 1, 4, 6, 7, 2, 1, 2, 0, 3, 4]);
+const TOTAL_CODEWORDS = Object.freeze([13, 21, 32, 44, 68, 21, 33, 49, 66, 99, 15, 31, 47, 67, 89, 132, 21, 41, 60, 85, 113, 166, 51, 74, 103, 136, 199, 61, 88, 122, 160, 232]);
+
+// Each block is [number of blocks, total codewords per block, data codewords per block].
+const M_BLOCKS = [
+  [[1, 13, 6]], [[1, 21, 12]], [[1, 32, 20]], [[1, 44, 28]], [[1, 68, 44]],
+  [[1, 21, 12]], [[1, 33, 21]], [[1, 49, 31]], [[1, 66, 42]], [[1, 49, 31], [1, 50, 32]],
+  [[1, 15, 7]], [[1, 31, 19]], [[1, 47, 31]], [[1, 67, 43]], [[1, 44, 28], [1, 45, 29]], [[2, 66, 42]],
+  [[1, 21, 14]], [[1, 41, 27]], [[1, 60, 38]], [[1, 42, 26], [1, 43, 27]], [[1, 56, 36], [1, 57, 37]], [[2, 55, 35], [1, 56, 36]],
+  [[1, 51, 33]], [[1, 74, 48]], [[1, 51, 33], [1, 52, 34]], [[2, 68, 44]], [[2, 66, 42], [1, 67, 43]],
+  [[1, 60, 39]], [[2, 44, 28]], [[2, 61, 39]], [[2, 53, 33], [1, 54, 34]], [[4, 58, 38]],
+];
+const H_BLOCKS = [
+  [[1, 13, 3]], [[1, 21, 7]], [[1, 32, 10]], [[1, 44, 14]], [[2, 34, 12]],
+  [[1, 21, 7]], [[1, 33, 11]], [[1, 24, 8], [1, 25, 9]], [[2, 33, 11]], [[3, 33, 11]],
+  [[1, 15, 5]], [[1, 31, 11]], [[1, 23, 7], [1, 24, 8]], [[1, 33, 11], [1, 34, 12]], [[1, 44, 14], [1, 45, 15]], [[3, 44, 14]],
+  [[1, 21, 7]], [[1, 41, 13]], [[2, 30, 10]], [[1, 42, 14], [1, 43, 15]], [[1, 37, 11], [2, 38, 12]], [[2, 41, 13], [2, 42, 14]],
+  [[1, 25, 7], [1, 26, 8]], [[2, 37, 13]], [[2, 34, 10], [1, 35, 11]], [[4, 34, 12]], [[1, 39, 13], [4, 40, 14]],
+  [[1, 30, 10], [1, 31, 11]], [[2, 44, 14]], [[1, 40, 12], [2, 41, 13]], [[4, 40, 14]], [[2, 38, 12], [4, 39, 13]],
+];
+
+const COUNT_BITS = Object.freeze({
+  numeric: [4, 5, 6, 7, 7, 5, 6, 7, 7, 8, 4, 6, 7, 7, 8, 8, 5, 6, 7, 7, 8, 8, 7, 7, 8, 8, 9, 7, 8, 8, 8, 9],
+  alphanumeric: [3, 5, 5, 6, 6, 5, 5, 6, 6, 7, 4, 5, 6, 6, 7, 7, 5, 6, 6, 7, 7, 8, 6, 7, 7, 7, 8, 6, 7, 7, 8, 8],
+  byte: [3, 4, 5, 5, 6, 4, 5, 5, 6, 6, 3, 5, 5, 6, 6, 7, 4, 6, 6, 7, 7, 7, 6, 6, 7, 7, 7, 6, 6, 7, 7, 8],
+  kanji: [2, 3, 4, 5, 5, 3, 4, 5, 5, 6, 2, 4, 5, 5, 6, 6, 3, 5, 5, 6, 6, 7, 5, 5, 6, 6, 7, 5, 6, 6, 6, 7],
+});
+
+const ALIGNMENT_BY_WIDTH = Object.freeze({ 27: [], 43: [21], 59: [19, 39], 77: [25, 51], 99: [23, 49, 75], 139: [27, 55, 83, 111] });
+
+/** @param {number} version */
+function versionInfo(version) {
+  if (!Number.isInteger(version) || version < 1 || version > 32) throw new RangeError(`rMQR: version must be 1-32, got ${version}`);
+  const [width, height] = RMQR_SIZES[version - 1];
+  const blockTable = (ecc) => ecc === 'M' ? M_BLOCKS[version - 1] : H_BLOCKS[version - 1];
+  const blockLayout = (ecc) => {
+    if (ecc !== 'M' && ecc !== 'H') throw new RangeError(`rMQR: ECC must be M or H, got ${ecc}`);
+    const blocks = [];
+    for (const [count, total, data] of blockTable(ecc)) for (let i = 0; i < count; i++) blocks.push({ total, data, ecc: total - data });
+    return { blocks, totalCodewords: TOTAL_CODEWORDS[version - 1], totalDataCodewords: blocks.reduce((n, b) => n + b.data, 0), eccCodewords: blocks.reduce((n, b) => n + b.ecc, 0) };
+  };
+  return Object.freeze({ version, width, height, name: `R${height}x${width}`, indicator: version - 1, remainderBits: REMAINDER_BITS[version - 1], totalCodewords: TOTAL_CODEWORDS[version - 1], countBits(mode) { return COUNT_BITS[mode]?.[version - 1] ?? 0; }, blockLayout });
+}
+
+/** @param {number} width @param {number} height */
+function versionForSize(width, height) {
+  const i = RMQR_SIZES.findIndex(([w, h]) => w === width && h === height);
+  return i < 0 ? null : versionInfo(i + 1);
+}
+
+/** @param {number} version */
+function alignmentCoordinates(version) { return ALIGNMENT_BY_WIDTH[versionInfo(version).width] || []; }
+
+function bchRemainder(value) {
+  const generator = 0x1f25;
+  let v = value << 12;
+  while (v !== 0 && v.toString(2).length >= 13) v ^= generator << (v.toString(2).length - 13);
+  return v;
+}
+
+/** Unmasked 18-bit format sequence: 5-bit version indicator plus ECC bit. */
+function formatBits(version, ecc) {
+  const v = versionInfo(version);
+  if (ecc !== 'M' && ecc !== 'H') throw new RangeError(`rMQR: ECC must be M or H, got ${ecc}`);
+  const data = v.indicator | (ecc === 'H' ? 1 << 5 : 0);
+  return (data << 12) | bchRemainder(data);
+}
+const FORMAT_MASK_FINDER = 0b011111101010110010;
+const FORMAT_MASK_SUB = 0b100000101001111011;
+
+/** rMQR has one fixed mask: floor(y/2)+floor(x/3) even. */
+function maskBit(x, y) { return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0; }
+
+/** Function modules; set bits are non-data cells. */
+function functionModules(version) {
+  const v = versionInfo(version); const m = new BitMatrix(v.width, v.height); const { width: w, height: h } = v;
+  m.setRegion(0, 0, w, 1); m.setRegion(0, h - 1, w, 1); m.setRegion(0, 1, 1, h - 2); m.setRegion(w - 1, 1, 1, h - 2);
+  for (const cx of alignmentCoordinates(version)) { m.setRegion(cx - 1, 1, 3, 2); m.setRegion(cx - 1, h - 3, 3, 2); m.setRegion(cx, 3, 1, h - 6); }
+  m.setRegion(1, 1, 7, h === 7 ? 5 : 7); m.setRegion(8, 1, 3, 5); m.setRegion(11, 1, 1, 3);
+  m.setRegion(w - 5, h - 5, 4, 4); m.setRegion(w - 8, h - 6, 3, 5); m.setRegion(w - 5, h - 6, 3, 1);
+  m.set(w - 2, 1); if (h > 9) m.set(1, h - 2);
+  return m;
+}
+
+/** Data coordinates in the standard right-to-left two-column traversal. */
+function dataModuleOrder(version) {
+  const v = versionInfo(version); const fn = functionModules(version); const out = [];
+  let cx = v.width - 2, cy = v.height - 6, dy = -1;
+  // The data path starts beside the lower-right format area, then snakes
+  // through each pair of columns between the one-module outer border.
+  while (cx > 0) {
+    for (const xx of [cx, cx - 1]) if (!fn.get(xx, cy)) out.push([xx, cy]);
+    if (dy < 0 && cy === 1) { cx -= 2; dy = 1; }
+    else if (dy > 0 && cy === v.height - 2) { cx -= 2; dy = -1; }
+    else cy += dy;
+  }
+  return out;
+}
+function dataBitCapacity(version, ecc) { const b = versionInfo(version).blockLayout(ecc); return b.totalDataCodewords * 8; }
+function validateTables() {
+  const problems = [];
+  if (RMQR_SIZES.length !== 32) problems.push(`expected 32 sizes, got ${RMQR_SIZES.length}`);
+  for (let i = 1; i <= 32; i++) {
+    const v = versionInfo(i); const order = dataModuleOrder(i); const expected = v.totalCodewords * 8 + v.remainderBits;
+    if (order.length !== expected) problems.push(`${v.name}: data modules ${order.length}, expected ${expected}`);
+    for (const ecc of ['M', 'H']) { const b = v.blockLayout(ecc); if (b.totalCodewords !== v.totalCodewords) problems.push(`${v.name}-${ecc}: block total mismatch`); }
+  }
+  return problems;
+}
+
+__exports.RMQR_SIZES = RMQR_SIZES;
+__exports.versionInfo = versionInfo;
+__exports.versionForSize = versionForSize;
+__exports.alignmentCoordinates = alignmentCoordinates;
+__exports.formatBits = formatBits;
+__exports.FORMAT_MASK_FINDER = FORMAT_MASK_FINDER;
+__exports.FORMAT_MASK_SUB = FORMAT_MASK_SUB;
+__exports.maskBit = maskBit;
+__exports.functionModules = functionModules;
+__exports.dataModuleOrder = dataModuleOrder;
+__exports.dataBitCapacity = dataBitCapacity;
+__exports.validateTables = validateTables;
+};
+
+__modules["rmqr/encoder.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { BitWriter } = __require("core/bit-buffer.js");
+const { EncodeError } = __require("core/errors.js");
+const { GF256_QR } = __require("core/galois-field.js");
+const { rsEncode } = __require("core/reed-solomon.js");
+const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataBitCapacity, dataModuleOrder, formatBits, functionModules, maskBit, versionForSize, versionInfo } = __require("rmqr/tables.js");
+const ALPHANUMERIC_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const MODE = Object.freeze({ TERMINATOR: 0, NUMERIC: 1, ALPHANUMERIC: 2, BYTE: 3, KANJI: 4, FNC1: 5, FNC1_SECOND: 6, ECI: 7 });
+
+function utf8Bytes(text) { return new TextEncoder().encode(text); }
+function latin1Bytes(text) { const out = new Uint8Array(text.length); for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if (c > 255) throw new EncodeError('rMQR: text is not ISO-8859-1'); out[i] = c; } return out; }
+function isAlpha(text) { for (const ch of text) if (ALPHANUMERIC_CHARS.indexOf(ch) < 0) return false; return true; }
+function isNumeric(text) { return /^[0-9]*$/.test(text); }
+
+let sjisMap;
+function getSjisMap() {
+  if (sjisMap !== undefined) return sjisMap;
+  try {
+    const decoder = new TextDecoder('shift_jis', { fatal: true });
+    if (decoder.decode(new Uint8Array([0x82, 0xa0])) !== 'あ') return (sjisMap = null);
+    const map = new Map(); const buf = new Uint8Array(2);
+    for (const [lo, hi] of [[0x8140, 0x9ffc], [0xe040, 0xebbf]]) for (let sjis = lo; sjis <= hi; sjis++) {
+      const trail = sjis & 255; if (trail < 0x40 || trail === 0x7f || trail > 0xfc) continue;
+      buf[0] = sjis >> 8; buf[1] = trail; let text; try { text = decoder.decode(buf); } catch { continue; }
+      if (Array.from(text).length === 1 && !map.has(text)) map.set(text, sjis);
+    }
+    return (sjisMap = map);
+  } catch { return (sjisMap = null); }
+}
+function kanjiValue(ch) {
+  const sjis = getSjisMap()?.get(ch); if (sjis === undefined) return -1;
+  let v; if (sjis >= 0x8140 && sjis <= 0x9ffc) v = sjis - 0x8140; else if (sjis >= 0xe040 && sjis <= 0xebbf) v = sjis - 0xc140; else return -1;
+  return ((v >> 8) * 0xc0) + (v & 0xff);
+}
+
+function chooseMode(text, requested) {
+  if (requested === 'numeric' || requested === 'alphanumeric' || requested === 'byte' || requested === 'kanji') return requested;
+  if (isNumeric(text)) return 'numeric';
+  if (isAlpha(text)) return 'alphanumeric';
+  return 'byte';
+}
+
+function modeBits(mode) { return MODE[mode.toUpperCase()] ?? MODE.BYTE; }
+function charCount(mode, text, bytes) { return mode === 'byte' ? bytes.length : mode === 'kanji' ? Array.from(text).length : text.length; }
+function payloadBits(mode, text, bytes) {
+  if (mode === 'numeric') { let n = 0; for (let i = 0; i < text.length; i += 3) n += text.length - i >= 3 ? 10 : text.length - i === 2 ? 7 : 4; return n; }
+  if (mode === 'alphanumeric') return Math.floor(text.length / 2) * 11 + (text.length & 1 ? 6 : 0);
+  if (mode === 'kanji') return Array.from(text).length * 13;
+  return bytes.length * 8;
+}
+
+function putEci(writer, assignment) {
+  writer.put(MODE.ECI, 3);
+  if (assignment <= 127) writer.put(assignment, 8);
+  else if (assignment <= 16383) writer.put(0x8000 | assignment, 16);
+  else if (assignment <= 999999) writer.put(0xc00000 | assignment, 24);
+  else throw new EncodeError(`rMQR: invalid ECI assignment ${assignment}`);
+}
+
+function makeData(text, v, ecc, options) {
+  const requested = options.mode;
+  const mode = chooseMode(text, requested);
+  const charset = options.charset || (mode === 'byte' && Array.from(text).every((ch) => ch.charCodeAt(0) <= 255) ? 'iso-8859-1' : 'utf-8');
+  const bytes = mode === 'byte' ? (charset === 'iso-8859-1' ? latin1Bytes(text) : utf8Bytes(text)) : new Uint8Array();
+  const countBits = v.countBits(mode);
+  if (!countBits) throw new EncodeError(`rMQR: unsupported mode ${mode}`);
+  const writer = new BitWriter();
+  if (options.eci !== undefined) putEci(writer, options.eci);
+  else if (mode === 'byte' && charset === 'utf-8') putEci(writer, 26);
+  writer.put(modeBits(mode), 3); writer.put(charCount(mode, text, bytes), countBits); // header
+  if (mode === 'numeric') for (let i = 0; i < text.length; i += 3) { const s = text.slice(i, i + 3); writer.put(Number(s), s.length === 3 ? 10 : s.length === 2 ? 7 : 4); }
+  else if (mode === 'alphanumeric') for (let i = 0; i < text.length; i += 2) { const a = ALPHANUMERIC_CHARS.indexOf(text[i]); const b = i + 1 < text.length ? ALPHANUMERIC_CHARS.indexOf(text[i + 1]) : -1; if (a < 0 || (b < 0 && i + 1 < text.length)) throw new EncodeError('rMQR: invalid alphanumeric character'); writer.put(b < 0 ? a : a * 45 + b, b < 0 ? 6 : 11); }
+  else if (mode === 'kanji') for (const ch of Array.from(text)) { const value = kanjiValue(ch); if (value < 0) throw new EncodeError(`rMQR: character ${ch} is not encodable in Kanji mode`); writer.put(value, 13); }
+  else writer.putBytes(bytes);
+  const capacity = dataBitCapacity(v.version, ecc);
+  if (writer.length > capacity) throw new EncodeError(`rMQR: payload does not fit ${v.name}-${ecc}`);
+  if (writer.length + 3 <= capacity) writer.put(0, 3);
+  while (writer.length & 7) writer.putBit(false);
+  const dataBytes = v.blockLayout(ecc).totalDataCodewords;
+  let pad = 0xec; while (writer.toBytes().length < dataBytes) { writer.put(pad, 8); pad = pad === 0xec ? 0x11 : 0xec; }
+  return writer.toBytes();
+}
+
+function interleave(data, v, ecc) {
+  const layout = v.blockLayout(ecc); const blocks = []; let offset = 0;
+  for (const b of layout.blocks) { const d = Array.from(data.slice(offset, offset + b.data)); offset += b.data; blocks.push({ data: d, ecc: rsEncode(d, b.ecc, GF256_QR, 0) }); }
+  const out = []; const maxData = Math.max(...blocks.map((b) => b.data.length)); const maxEcc = Math.max(...blocks.map((b) => b.ecc.length));
+  for (let i = 0; i < maxData; i++) for (const b of blocks) if (i < b.data.length) out.push(b.data[i]);
+  for (let i = 0; i < maxEcc; i++) for (const b of blocks) if (i < b.ecc.length) out.push(b.ecc[i]);
+  return Uint8Array.from(out);
+}
+
+function drawFunctions(m, version) {
+  const v = versionInfo(version); const fn = functionModules(version); const { width: w, height: h } = v;
+  const setIfData = (x, y, on) => { if (!fn.get(x, y)) m.setValue(x, y, on); };
+  for (let x = 0; x < w; x++) { m.setValue(x, 0, (x & 1) === 0); m.setValue(x, h - 1, (x & 1) === 0); }
+  for (const x of [0, w - 1, ...new Set([...(awaitableAlignment(version))])]) for (let y = 0; y < h; y++) setIfData(x, y, (y & 1) === 0);
+  for (const cx of awaitableAlignment(version)) for (const y of [0, 1, h - 2, h - 1]) m.setValue(cx + (y === 0 || y === h - 1 ? 0 : 0), y, false);
+  // Alignment patterns (top and bottom).
+  for (const cx of awaitableAlignment(version)) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { const on = i === 0 || i === 2 || j === 0 || j === 2; m.setValue(cx + j - 1, i, on); m.setValue(cx + j - 1, h - 1 - i, on); }
+  // Finder and separator.
+  for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) m.setValue(j, i, i === 0 || i === 6 || j === 0 || j === 6 || (i >= 2 && i <= 4 && j >= 2 && j <= 4));
+  for (let n = 0; n < 8; n++) { if (n < h) m.setValue(7, n, false); if (h >= 9) m.setValue(n, 7, false); }
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) m.setValue(w - j - 1, h - i - 1, i === 0 || i === 4 || j === 0 || j === 4 || (i === 2 && j === 2));
+  m.set(w - 1, 0); m.set(w - 2, 0); m.set(w - 1, 1); if (h >= 11) { m.set(0, h - 1); m.set(1, h - 1); m.set(2, h - 1); m.set(0, h - 2); }
+}
+
+// Kept as a local helper so drawFunctions stays independent of mutable tables.
+function awaitableAlignment(version) { return ({ 27: [], 43: [21], 59: [19, 39], 77: [25, 51], 99: [23, 49, 75], 139: [27, 55, 83, 111] })[versionInfo(version).width] || []; }
+
+function drawFormat(m, version, ecc) {
+  const v = versionInfo(version); let bits = formatBits(version, ecc) ^ FORMAT_MASK_FINDER;
+  for (let n = 0; n < 18; n++) m.setValue(8 + Math.floor(n / 5), 1 + (n % 5), ((bits >>> n) & 1) !== 0);
+  bits = formatBits(version, ecc) ^ FORMAT_MASK_SUB;
+  for (let n = 0; n < 15; n++) m.setValue(v.width - 8 + Math.floor(n / 5), v.height - 6 + (n % 5), ((bits >>> n) & 1) !== 0);
+  for (let n = 15; n < 18; n++) m.setValue(v.width - 5 + (n - 15), v.height - 6, ((bits >>> n) & 1) !== 0);
+}
+
+function buildMatrix(version, ecc, codewords) {
+  const v = versionInfo(version); const m = new BitMatrix(v.width, v.height); drawFunctions(m, version); drawFormat(m, version, ecc);
+  const fn = functionModules(version); const order = dataModuleOrder(version); let bit = 0; for (const [x, y] of order) { let on = bit < codewords.length * 8 && ((codewords[bit >>> 3] >>> (7 - (bit & 7))) & 1) !== 0; if (maskBit(x, y)) on = !on; m.setValue(x, y, on); bit++; }
+  return m;
+}
+
+/** Encode text into a rMQR module matrix. */
+function encodeRMQR(text, options = {}) {
+  if (typeof text !== 'string' || text.length === 0) throw new EncodeError('rMQR: text must be a non-empty string');
+  const ecc = options.ecc || 'M'; if (ecc !== 'M' && ecc !== 'H') throw new EncodeError('rMQR: ECC must be M or H');
+  let forced = options.version; if (typeof forced === 'string') { const match = /^R(\d+)x(\d+)$/i.exec(forced); if (!match) throw new EncodeError(`rMQR: invalid version ${forced}`); const info = versionForSize(Number(match[2]), Number(match[1])); if (!info) throw new EncodeError(`rMQR: unsupported version ${forced}`); forced = info.version; }
+  if (forced !== undefined && (!Number.isInteger(forced) || forced < 1 || forced > 32)) throw new EncodeError('rMQR: version must be 1-32');
+  const versions = forced ? [forced] : Array.from({ length: 32 }, (_, i) => i + 1);
+  let selected = null;
+  for (const n of versions) { const v = versionInfo(n); try { const data = makeData(text, v, ecc, options); selected = { v, data }; break; } catch (error) { if (forced) throw error; } }
+  if (!selected) throw new EncodeError(`rMQR: text is too long for ECC ${ecc}`);
+  const codewords = interleave(selected.data, selected.v, ecc); const matrix = buildMatrix(selected.v.version, ecc, codewords); matrix.rmqr = { version: selected.v.version, name: selected.v.name, ecc }; return matrix;
+}
+__exports.MODE = MODE;
+
+__exports.ALPHANUMERIC_CHARS = ALPHANUMERIC_CHARS;
+__exports.encodeRMQR = encodeRMQR;
+};
+
+__modules["rmqr/decoder.js"] = function (__require, __exports) {
+const { BitReader } = __require("core/bit-buffer.js");
+const { ChecksumError, FormatError } = __require("core/errors.js");
+const { GF256_QR } = __require("core/galois-field.js");
+const { rsDecode } = __require("core/reed-solomon.js");
+const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataModuleOrder, functionModules, maskBit, versionForSize, versionInfo, formatBits } = __require("rmqr/tables.js");
+const { ALPHANUMERIC_CHARS, MODE } = __require("rmqr/encoder.js");
+
+function hamming(a, b) { let v = a ^ b, n = 0; while (v) { v &= v - 1; n++; } return n; }
+function readFormat(matrix, v) {
+  let a = 0; for (let n = 0; n < 18; n++) if (matrix.get(8 + Math.floor(n / 5), 1 + (n % 5))) a |= 1 << n;
+  let b = 0; for (let n = 0; n < 15; n++) if (matrix.get(v.width - 8 + Math.floor(n / 5), v.height - 6 + (n % 5))) b |= 1 << n;
+  for (let n = 15; n < 18; n++) if (matrix.get(v.width - 5 + (n - 15), v.height - 6)) b |= 1 << n;
+  const candidates = [];
+  for (let version = 1; version <= 32; version++) for (const ecc of ['M', 'H']) {
+    candidates.push({ version, ecc, finder: formatBits(version, ecc) ^ FORMAT_MASK_FINDER, sub: formatBits(version, ecc) ^ FORMAT_MASK_SUB });
+  }
+  let best = null;
+  for (const c of candidates) for (const [value, expected] of [[a, c.finder], [b, c.sub]]) { const distance = hamming(value, expected); if (!best || distance < best.distance) best = { ...c, distance }; }
+  if (!best || best.distance > 3) throw new FormatError('rMQR: format information is unreadable');
+  return best;
+}
+
+function readCodewords(matrix, v, mask, total) {
+  const order = dataModuleOrder(v.version); const out = new Uint8Array(total); let bit = 0;
+  for (const [x, y] of order) { if (bit >= total * 8) break; let on = matrix.get(x, y); if (maskBit(x, y)) on = !on; if (on) out[bit >>> 3] |= 0x80 >>> (bit & 7); bit++; }
+  return out;
+}
+
+function deinterleave(codewords, v, ecc) {
+  const blocks = v.blockLayout(ecc).blocks; const arrays = blocks.map((b) => new Array(b.total).fill(0)); let offset = 0;
+  const maxData = Math.max(...blocks.map((b) => b.data)); for (let i = 0; i < maxData; i++) for (let b = 0; b < blocks.length; b++) if (i < blocks[b].data) arrays[b][i] = codewords[offset++];
+  const maxEcc = Math.max(...blocks.map((b) => b.ecc)); for (let i = 0; i < maxEcc; i++) for (let b = 0; b < blocks.length; b++) if (i < blocks[b].ecc) arrays[b][blocks[b].data + i] = codewords[offset++];
+  const data = []; let corrections = 0;
+  for (let b = 0; b < arrays.length; b++) { corrections += rsDecode(arrays[b], blocks[b].ecc, GF256_QR, 0); data.push(...arrays[b].slice(0, blocks[b].data)); }
+  return { data: Uint8Array.from(data), corrections };
+}
+
+function decodeBytes(bytes, eci) {
+  try { return new TextDecoder(eci === 26 ? 'utf-8' : 'iso-8859-1', { fatal: false }).decode(bytes); } catch { return String.fromCharCode(...bytes); }
+}
+function parseSegments(data, v) {
+  const reader = new BitReader(data); let text = ''; const raw = []; let eci = 3; let mode;
+  while (reader.available() >= 3) {
+    const peek = (() => { const save = { byteOffset: reader.byteOffset, bitOffset: reader.bitOffset }; const n = reader.read(3); reader.byteOffset = save.byteOffset; reader.bitOffset = save.bitOffset; return n; })();
+    if (peek === 0) break;
+    mode = reader.read(3);
+    if (mode === MODE.ECI) { const first = reader.read(8); let value; if (!(first & 0x80)) value = first; else if ((first & 0xc0) === 0x80) value = ((first & 0x3f) << 8) | reader.read(8); else if ((first & 0xe0) === 0xc0) value = ((first & 0x1f) << 16) | reader.read(16); else throw new FormatError('rMQR: invalid ECI'); eci = value; continue; }
+    const kind = mode === MODE.NUMERIC ? 'numeric' : mode === MODE.ALPHANUMERIC ? 'alphanumeric' : mode === MODE.BYTE ? 'byte' : mode === MODE.KANJI ? 'kanji' : null;
+    if (!kind) throw new FormatError(`rMQR: unsupported mode ${mode}`);
+    const count = reader.read(v.countBits(kind));
+    if (kind === 'numeric') { let remaining = count; while (remaining >= 3) { const n = reader.read(10).toString().padStart(3, '0'); text += n; remaining -= 3; } if (remaining === 2) text += reader.read(7).toString().padStart(2, '0'); else if (remaining === 1) text += reader.read(4).toString(); }
+    else if (kind === 'alphanumeric') { let remaining = count; while (remaining >= 2) { const n = reader.read(11); text += ALPHANUMERIC_CHARS[Math.floor(n / 45)] + ALPHANUMERIC_CHARS[n % 45]; remaining -= 2; } if (remaining) text += ALPHANUMERIC_CHARS[reader.read(6)]; }
+    else if (kind === 'byte') { const b = new Uint8Array(count); for (let i = 0; i < count; i++) { b[i] = reader.read(8); raw.push(b[i]); } text += decodeBytes(b, eci); }
+    else { const bytes = new Uint8Array(count * 2); for (let i = 0; i < count; i++) { const n = reader.read(13); const v2 = n; const high = Math.floor(v2 / 0xc0); const low = v2 % 0xc0; const sjis = high < 0x1f ? 0x8140 + (high << 8) + low : 0xc140 + (high << 8) + low; bytes[i * 2] = sjis >> 8; bytes[i * 2 + 1] = sjis & 255; } try { text += new TextDecoder('shift_jis').decode(bytes); } catch { text += String.fromCharCode(...bytes); } }
+  }
+  return { text, bytes: Uint8Array.from(raw) };
+}
+
+/** Decode an exact rMQR module matrix (without quiet zone). */
+function decodeRMQR(matrix) {
+  if (!matrix || !matrix.width || !matrix.height) throw new FormatError('rMQR: no matrix supplied');
+  const v = versionForSize(matrix.width, matrix.height); if (!v) throw new FormatError(`rMQR: unsupported symbol size ${matrix.width}x${matrix.height}`);
+  const info = readFormat(matrix, v); if (info.version !== v.version) throw new FormatError('rMQR: format/version mismatch');
+  const codewords = readCodewords(matrix, v, 4, v.totalCodewords); const corrected = deinterleave(codewords, v, info.ecc); const parsed = parseSegments(corrected.data, v);
+  return { ...parsed, version: v.version, name: v.name, ecc: info.ecc, mask: 4, corrections: corrected.corrections };
+}
+__exports.ChecksumError = ChecksumError;
+
+__exports.decodeRMQR = decodeRMQR;
+};
+
+__modules["rmqr/detector.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { NotFoundError } = __require("core/errors.js");
+const { decodeRMQR } = __require("rmqr/decoder.js");
+const { versionForSize } = __require("rmqr/tables.js");
+
+function rotate90(source) {
+  const out = new BitMatrix(source.height, source.width);
+  for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) if (source.get(x, y)) out.set(source.height - 1 - y, x);
+  return out;
+}
+function rotate180(source) { const out = new BitMatrix(source.width, source.height); for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) if (source.get(x, y)) out.set(source.width - 1 - x, source.height - 1 - y); return out; }
+function rotate270(source) { return rotate90(rotate180(source)); }
+function crop(source, box) {
+  const out = new BitMatrix(box.width, box.height); for (let y = 0; y < box.height; y++) for (let x = 0; x < box.width; x++) if (source.get(box.x + x, box.y + y)) out.set(x, y); return out;
+}
+function sample(matrix, width, height, scale, offsetX, offsetY) {
+  const out = new BitMatrix(width, height); const half = Math.max(0, Math.floor(scale / 2));
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    let dark = 0, count = 0; const x0 = offsetX + x * scale, y0 = offsetY + y * scale;
+    for (let yy = 0; yy < scale; yy++) for (let xx = 0; xx < scale; xx++) { if (matrix.get(x0 + xx, y0 + yy)) dark++; count++; }
+    if (dark * 2 >= count) out.set(x, y);
+  }
+  return out;
+}
+function bounds(matrix) { return matrix.getBounds(); }
+
+/** Detect an axis-aligned, clean rMQR raster and return the exact module matrix. */
+function detectRMQR(image, options = {}) {
+  if (!image || !image.width || !image.height) throw new NotFoundError('rMQR: no raster supplied');
+  if (options.perspective) throw new NotFoundError('rMQR: perspective detection is not available for clean-raster mode');
+  const orientations = [image, rotate90(image), rotate180(image), rotate270(image)];
+  for (let rotation = 0; rotation < orientations.length; rotation++) {
+    const source = orientations[rotation]; const box = bounds(source); if (!box) continue;
+    for (let version = 1; version <= 32; version++) {
+      const v = versionForSize(box.width, box.height); // exact modules, scale 1
+      if (v && v.version === version) {
+        try { const matrix = crop(source, box); const result = decodeRMQR(matrix); return { matrix, result, rotation, corners: { x: box.x, y: box.y, width: box.width, height: box.height } }; } catch { /* try next orientation/candidate */ }
+      }
+      // Integer nearest-neighbour scale. The dark bounding box must still be an
+      // exact multiple of the standard geometry; this rejects arbitrary text.
+      const candidate = versionForSize(box.width, box.height);
+      if (candidate) continue;
+      const canonical = (awaitableVersion(version));
+      const wScale = box.width / canonical.width;
+      const hScale = box.height / canonical.height;
+      if (!Number.isInteger(wScale) || wScale < 1 || wScale !== hScale) continue;
+      const info = canonical;
+      try { const matrix = sample(source, info.width, info.height, wScale, box.x, box.y); const result = decodeRMQR(matrix); return { matrix, result, rotation, scale: wScale, corners: { x: box.x, y: box.y, width: box.width, height: box.height } }; } catch { /* continue */ }
+    }
+  }
+  throw new NotFoundError('rMQR: no clean axis-aligned symbol found');
+}
+
+function awaitableVersion(version) {
+  const sizes = [[43, 7], [59, 7], [77, 7], [99, 7], [139, 7], [43, 9], [59, 9], [77, 9], [99, 9], [139, 9], [27, 11], [43, 11], [59, 11], [77, 11], [99, 11], [139, 11], [27, 13], [43, 13], [59, 13], [77, 13], [99, 13], [139, 13], [43, 15], [59, 15], [77, 15], [99, 15], [139, 15], [43, 17], [59, 17], [77, 17], [99, 17], [139, 17]];
+  return { version, width: sizes[version - 1][0], height: sizes[version - 1][1] };
+}
+
+/** Detect and decode a raster in one call. */
+function detectAndDecodeRMQR(image, options = {}) { return detectRMQR(image, options).result; }
+
+__exports.detectRMQR = detectRMQR;
+__exports.detectAndDecodeRMQR = detectAndDecodeRMQR;
+};
+
+__modules["rmqr/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("rmqr/encoder.js"); __exports.encodeRMQR = __reexport0.encodeRMQR; __exports.ALPHANUMERIC_CHARS = __reexport0.ALPHANUMERIC_CHARS;
+const __reexport1 = __require("rmqr/decoder.js"); __exports.decodeRMQR = __reexport1.decodeRMQR;
+const __reexport2 = __require("rmqr/detector.js"); __exports.detectRMQR = __reexport2.detectRMQR; __exports.detectAndDecodeRMQR = __reexport2.detectAndDecodeRMQR;
+const __reexport3 = __require("rmqr/tables.js"); __exports.RMQR_SIZES = __reexport3.RMQR_SIZES; __exports.versionInfo = __reexport3.versionInfo; __exports.versionForSize = __reexport3.versionForSize; __exports.alignmentCoordinates = __reexport3.alignmentCoordinates; __exports.dataModuleOrder = __reexport3.dataModuleOrder; __exports.functionModules = __reexport3.functionModules; __exports.dataBitCapacity = __reexport3.dataBitCapacity; __exports.formatBits = __reexport3.formatBits; __exports.maskBit = __reexport3.maskBit; __exports.validateTables = __reexport3.validateTables;
+
+
+};
+
 __modules["render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -11513,6 +13039,8 @@ const qr = __require("qr/index.js");
 const aztec = __require("aztec/index.js");
 const pdf417 = __require("pdf417/index.js");
 const micropdf417 = __require("micropdf417/index.js");
+const microqr = __require("microqr/index.js");
+const rmqr = __require("rmqr/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -11528,6 +13056,8 @@ const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix
 const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
 const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
 const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
+const __reexport13 = __require("microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
+const __reexport14 = __require("rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
 
 /**
  * @typedef {object} FormatInfo
@@ -11563,6 +13093,10 @@ const pdf417CanEncode = typeof pdf417.encodePDF417 === 'function';
 const pdf417CanDecode = typeof pdf417.detectAndDecodePDF417 === 'function';
 const microPdf417CanEncode = typeof micropdf417.encodeMicroPDF417 === 'function';
 const microPdf417CanDecode = typeof micropdf417.detectAndDecodeMicroPDF417 === 'function';
+const microQrCanEncode = typeof microqr.encodeMicroQR === 'function';
+const microQrCanDecode = typeof microqr.detectAndDecodeMicroQR === 'function';
+const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
+const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
 
 /**
  * Every format this build supports.
@@ -11618,6 +13152,20 @@ function listFormats() {
     canRead: microPdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'microqr',
+    label: 'Micro QR Code',
+    canWrite: microQrCanEncode,
+    canRead: microQrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'rmqr',
+    label: 'rMQR Code',
+    canWrite: rmqrCanEncode,
+    canRead: rmqrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -11669,10 +13217,16 @@ function encode(text, options = {}) {
   if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
     return micropdf417.encodeMicroPDF417(value, options);
   }
+  if (format === 'microqr' || format === 'micro-qr') {
+    return microqr.encodeMicroQR(value, options);
+  }
+  if (format === 'rmqr' || format === 'r-mqr' || format === 'rectangular-micro-qr') {
+    return rmqr.encodeRMQR(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -11719,6 +13273,8 @@ function decode(image, options = {}) {
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
+  const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
+  const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -11795,6 +13351,25 @@ function decode(image, options = {}) {
       }
     }
 
+    if (wantMicroQR && microQrCanDecode) {
+      try {
+        for (const found of microqr.detectAndDecodeMicroQR(bits)) {
+          results.push({ ...found, format: 'microqr' });
+        }
+      } catch {
+        /* no Micro QR in this pass */
+      }
+    }
+
+    if (wantRMQR && rmqrCanDecode) {
+      try {
+        const found = rmqr.detectAndDecodeRMQR(bits);
+        if (found) results.push({ ...found, format: 'rmqr' });
+      } catch {
+        /* no rMQR in this pass */
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -11829,7 +13404,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.2.5';
+const VERSION = '1.3.0';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;

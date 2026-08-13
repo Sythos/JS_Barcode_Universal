@@ -4,7 +4,7 @@ UPC-E — format provenance and usability
 This file records where the UPC-E symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
@@ -20,7 +20,7 @@ SPECIFICATION
 
 ISO/IEC 15420 — EAN/UPC bar code symbology specification.
 GS1 General Specifications, GS1 AISBL — freely published; redistribution
-terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
+terms are GS1's own [LEGAL REVIEW]
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
 describes is not — an encoding scheme is a system, not a work of
@@ -31,7 +31,7 @@ redistribute or excerpt any specification document.
 PATENT STATUS
 --------------------------------------------------------------------------
 
-Shares the patent history of UPC-A; understood expired. [PATENT FAMILY REVIEW REQUIRED]
+Shares the patent history of UPC-A; understood expired. [LEGAL REVIEW]
 
 
 TRADEMARK
@@ -48,8 +48,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 UPC-E is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -62,8 +64,8 @@ is distributed under the MIT License with no additional restriction.
 References relied upon:
   - ISO/IEC 15420, ISO/IEC
   - GS1 General Specifications, GS1 AISBL — freely published;
-    redistribution terms are GS1's own [LICENSE TERMS REVIEW REQUIRED]
+    redistribution terms are GS1's own [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-Open review labels identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.

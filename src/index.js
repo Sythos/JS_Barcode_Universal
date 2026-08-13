@@ -56,6 +56,8 @@ import * as qr from './qr/index.js';
 import * as aztec from './aztec/index.js';
 import * as pdf417 from './pdf417/index.js';
 import * as micropdf417 from './micropdf417/index.js';
+import * as microqr from './microqr/index.js';
+import * as rmqr from './rmqr/index.js';
 
 export { BitMatrix };
 export {
@@ -78,6 +80,8 @@ export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from 
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
 } from './micropdf417/index.js';
+export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './microqr/index.js';
+export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './rmqr/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -113,6 +117,10 @@ const pdf417CanEncode = typeof pdf417.encodePDF417 === 'function';
 const pdf417CanDecode = typeof pdf417.detectAndDecodePDF417 === 'function';
 const microPdf417CanEncode = typeof micropdf417.encodeMicroPDF417 === 'function';
 const microPdf417CanDecode = typeof micropdf417.detectAndDecodeMicroPDF417 === 'function';
+const microQrCanEncode = typeof microqr.encodeMicroQR === 'function';
+const microQrCanDecode = typeof microqr.detectAndDecodeMicroQR === 'function';
+const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
+const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
 
 /**
  * Every format this build supports.
@@ -168,6 +176,20 @@ export function listFormats() {
     canRead: microPdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'microqr',
+    label: 'Micro QR Code',
+    canWrite: microQrCanEncode,
+    canRead: microQrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'rmqr',
+    label: 'rMQR Code',
+    canWrite: rmqrCanEncode,
+    canRead: rmqrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -219,10 +241,16 @@ export function encode(text, options = {}) {
   if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
     return micropdf417.encodeMicroPDF417(value, options);
   }
+  if (format === 'microqr' || format === 'micro-qr') {
+    return microqr.encodeMicroQR(value, options);
+  }
+  if (format === 'rmqr' || format === 'r-mqr' || format === 'rectangular-micro-qr') {
+    return rmqr.encodeRMQR(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -269,6 +297,8 @@ export function decode(image, options = {}) {
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
+  const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
+  const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -345,6 +375,25 @@ export function decode(image, options = {}) {
       }
     }
 
+    if (wantMicroQR && microQrCanDecode) {
+      try {
+        for (const found of microqr.detectAndDecodeMicroQR(bits)) {
+          results.push({ ...found, format: 'microqr' });
+        }
+      } catch {
+        /* no Micro QR in this pass */
+      }
+    }
+
+    if (wantRMQR && rmqrCanDecode) {
+      try {
+        const found = rmqr.detectAndDecodeRMQR(bits);
+        if (found) results.push({ ...found, format: 'rmqr' });
+      } catch {
+        /* no rMQR in this pass */
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -379,4 +428,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.2.5';
+export const VERSION = '1.3.0';

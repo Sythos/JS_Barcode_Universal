@@ -4,16 +4,16 @@ Aztec Code — format provenance and usability
 This file records where the Aztec Code symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
-It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items carrying a review label
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
 
 
 ORIGIN
 --------------------------------------------------------------------------
 
-Created by Andrew Longacre, Jr. of Welch Allyn in the 1990s. The inventor,
-assignee and public dedication are supported by the USPTO Official Gazette;
-ownership history outside that record remains [LEGAL REVIEW].
+Created by Andrew Longacre, Jr. of Welch Allyn in the 1990s. The exact
+attribution, ownership history and release terms have not been
+independently confirmed by the author. [LEGAL REVIEW]
 
 
 SPECIFICATION
@@ -32,16 +32,16 @@ redistribute or excerpt any specification document.
 PATENT STATUS
 --------------------------------------------------------------------------
 
-The original US patent was dedicated to the public, as recorded by the USPTO.
-International patent families, continuations and current effects remain
-[PATENT FAMILY REVIEW REQUIRED].
+The status of patents associated with Aztec Code, including any original
+rights-holder statements and their current effect, has not been
+independently confirmed by the author. [LEGAL REVIEW]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
 The current registration status and ownership of the words "Aztec Code"
-have not been independently established. [REGISTRY CHECK REQUIRED] The name is used
+have not been independently established. [LEGAL REVIEW] The name is used
 descriptively here and does not imply endorsement by any rights holder.
 
 A trademark does not restrict implementing a symbology. It restricts
@@ -53,8 +53,10 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 
 Aztec Code is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
-code and no constant table from any other barcode implementation was used,
-consulted or copied, under any licence.
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
 
 
 CONCLUSION
@@ -63,12 +65,12 @@ CONCLUSION
 This project's original implementation is distributed under the MIT
 License. The ISO/IEC reference establishes the technical standard; this
 engineering inventory does not claim to have resolved the patent or
-trademark entries that remain open for review.
+trademark entries that remain marked [LEGAL REVIEW].
 
 References relied upon:
   - ISO/IEC 24778:2024, ISO/IEC
   - Aztec Code origin, patent position and trademark status [LEGAL REVIEW]
 
-This is an engineering assessment, not legal advice. Open review labels
-identify claims that have not been independently confirmed by the author. If your
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
 use is commercially sensitive, obtain your own legal review.
