@@ -32,6 +32,7 @@ appendix carries the consolidated inventory these files expand on.
 | Pharmacode | [`pharmacode.license`](pharmacode.license) | 2 |
 | Micro QR Code | [`micro-qr.license`](micro-qr.license) | 2 |
 | rMQR Code | [`rmqr.license`](rmqr.license) | 2 |
+| Frame QR / Sythos Canvas QR profile | [`frameqr.license`](frameqr.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

@@ -58,6 +58,7 @@ import * as pdf417 from './pdf417/index.js';
 import * as micropdf417 from './micropdf417/index.js';
 import * as microqr from './microqr/index.js';
 import * as rmqr from './rmqr/index.js';
+import * as frameqr from './frameqr/index.js';
 
 export { BitMatrix };
 export {
@@ -82,6 +83,9 @@ export {
 } from './micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './rmqr/index.js';
+export {
+  encodeFrameQR, decodeFrameQR, detectFrameQR, detectAndDecodeFrameQR,
+} from './frameqr/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -121,6 +125,8 @@ const microQrCanEncode = typeof microqr.encodeMicroQR === 'function';
 const microQrCanDecode = typeof microqr.detectAndDecodeMicroQR === 'function';
 const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
 const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
+const frameQrCanEncode = typeof frameqr.encodeFrameQR === 'function';
+const frameQrCanDecode = typeof frameqr.detectAndDecodeFrameQR === 'function';
 
 /**
  * Every format this build supports.
@@ -190,6 +196,13 @@ export function listFormats() {
     canRead: rmqrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'frameqr',
+    label: 'Sythos Canvas QR profile',
+    canWrite: frameQrCanEncode,
+    canRead: frameQrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -220,6 +233,14 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
+ * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
+ * @param {number} [options.canvas.size] Odd canvas size in QR modules.
+ * @param {number} [options.canvas.width] Canvas width in QR modules.
+ * @param {number} [options.canvas.height] Canvas height in QR modules.
+ * @param {number} [options.canvas.centerX] Canvas centre X in QR modules.
+ * @param {number} [options.canvas.centerY] Canvas centre Y in QR modules.
+ * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
 export function encode(text, options = {}) {
@@ -247,10 +268,13 @@ export function encode(text, options = {}) {
   if (format === 'rmqr' || format === 'r-mqr' || format === 'rectangular-micro-qr') {
     return rmqr.encodeRMQR(value, options);
   }
+  if (format === 'frameqr' || format === 'frame-qr' || format === 'canvas-qr') {
+    return frameqr.encodeFrameQR(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -273,6 +297,9 @@ export function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
+ * @property {string} [profile] Sythos Canvas QR profile identifier.
+ * @property {boolean} [certified] Whether the profile is certified by its originator.
+ * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  */
 
 /**
@@ -287,6 +314,8 @@ export function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
+ * @param {object} [options.frameqr] Sythos Canvas QR detector options when
+ *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
 export function decode(image, options = {}) {
@@ -299,6 +328,7 @@ export function decode(image, options = {}) {
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
+  const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -394,6 +424,16 @@ export function decode(image, options = {}) {
       }
     }
 
+    if (wantFrameQR && frameQrCanDecode) {
+      try {
+        for (const found of frameqr.detectAndDecodeFrameQR(bits, options.frameqr ?? {})) {
+          results.push({ ...found, format: 'frameqr' });
+        }
+      } catch {
+        /* no Sythos Canvas QR profile in this pass */
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -428,4 +468,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.3.0';
+export const VERSION = '1.3.1';

@@ -135,6 +135,9 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
     rMQR           DENSO WAVE         standardised 2022 — MUCH NEWER; do NOT
                                       assume the older QR position covers it
                                                         [TO VERIFY — PRIORITY]
+    DENSO FrameQR  DENSO WAVE         proprietary product; public
+                                      material is not a native implementation
+                                                         [LEGAL REVIEW]
     Data Matrix    orig. RVSI/CiMatrix  ECC200 reported released for
                                       public use                   [TO VERIFY]
     PDF417         orig. Symbol Tech. reported released for
@@ -166,6 +169,7 @@ names and presents itself.
     -----------------------  -----------------------------------
     QR Code(R)               DENSO WAVE INCORPORATED
     Micro QR, rMQR           DENSO WAVE INCORPORATED
+    FrameQR(R)               DENSO WAVE INCORPORATED       [LEGAL REVIEW]
     Aztec Code               originally Welch Allyn      [TO VERIFY]
     MaxiCode                 United Parcel Service of America
     GS1, GS1 DataBar,
@@ -197,6 +201,9 @@ status too unclear to redistribute an implementation with confidence:
     Bokode .................. research project, unclear status
     Softstrip ............... obsolete, unclear status
     Ultracode ............... status unresolved            [TO VERIFY]
+    DENSO FrameQR ........... proprietary format; this project implements
+                              only a separate Sythos Canvas QR profile
+                                                         [LEGAL REVIEW]
 
 If any of these is later confirmed to be freely implementable and
 redistributable, it may move into scope — and this section must be updated in
@@ -211,4 +218,4 @@ change to the dependency set, the oracle tools, or the implemented format list
 MUST update this file in the same commit. A "[TO VERIFY]" marker may only be
 removed together with a citation recorded in NOTICE.md.
 
-Last reviewed: 2026-08-04
+Last reviewed: 2026-08-13

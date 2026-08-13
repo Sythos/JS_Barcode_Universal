@@ -73,9 +73,13 @@
   button:hover { filter: brightness(1.12); }
   #stage {
     min-height: 300px; display: flex; align-items: center; justify-content: center;
-    padding: 24px; background: #fff; border-radius: 8px; overflow: auto;
+    position: relative; padding: 24px; background: #fff; border-radius: 8px; overflow: auto;
   }
   #stage canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+  #stage .frame-art-preview {
+    position: absolute; z-index: 2; display: none; pointer-events: none;
+    object-fit: cover; object-position: center; transform-origin: center;
+  }
   .meta {
     margin-top: 14px; font-family: ui-monospace, monospace; font-size: 12px;
     color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap;
@@ -129,7 +133,7 @@
 
     <div id="plainWrap">
       <label for="text">Content</label>
-      <textarea id="text">https://example.com</textarea>
+      <textarea id="text">https://www.sythos.net/</textarea>
     </div>
 
     <div id="payloadWrap">
@@ -154,6 +158,24 @@
           <select id="version"><option value="">Auto</option></select>
         </div>
       </div>
+    </div>
+
+    <div id="frameOpts" style="display:none">
+      <p class="hint">Sythos Canvas QR profile: this is not certified DENSO FrameQR interoperability.</p>
+      <label for="frameCanvasShape">Canvas shape</label>
+      <select id="frameCanvasShape">
+        <option value="square" selected>Square</option>
+        <option value="circle">Circle</option>
+        <option value="diamond">Diamond</option>
+      </select>
+      <label for="frameCanvasSize">Canvas size (QR modules)</label>
+      <input type="number" id="frameCanvasSize" value="5" min="1" step="2">
+      <label for="frameCanvasUrl">Remote canvas image</label>
+      <input type="url" id="frameCanvasUrl" value="https://www.sythos.net/favicon.ico">
+      <p class="hint" id="frameArtworkStatus">
+        Fallback: https://www.sythos.net/apple-touch-icon.png. The asset is never copied locally.
+        CORS is required to include remote artwork in PNG output.
+      </p>
     </div>
 
     <div class="row">
@@ -185,7 +207,10 @@
   </div>
 
   <div class="panel">
-    <div id="stage"><canvas id="canvas"></canvas></div>
+    <div id="stage">
+      <canvas id="canvas"></canvas>
+      <img id="frameArtworkPreview" class="frame-art-preview" alt="" aria-hidden="true">
+    </div>
     <div class="meta" id="meta"></div>
     <div id="err"></div>
   </div>
@@ -200,16 +225,26 @@
   var el = function (id) { return document.getElementById(id); };
   var formatSel = el('format');
   var canvas = el('canvas');
+  var stage = el('stage');
+  var frameArtworkPreview = el('frameArtworkPreview');
+  var frameArtworkState = {
+    image: null,
+    url: '',
+    cors: false,
+    status: 'idle',
+    request: ''
+  };
 
   // Sensible sample content per format, so switching format never lands the
   // user on an "invalid payload" error they have to reverse-engineer.
   var SAMPLES = {
-    qr: 'https://www.sythos.net',
+    qr: 'https://www.sythos.net/',
     datamatrix: 'Data Matrix ECC 200',
     aztec: 'Aztec Code — UTF-8 👋',
     pdf417: 'PDF417 sample payload',
     microqr: '12345',
     rmqr: 'rMQR sample payload',
+    frameqr: 'https://www.sythos.net/',
     ean13: '5901234123457',
     ean8: '96385074',
     upca: '036000291452',
@@ -388,13 +423,13 @@
     {
       type: 'text', label: 'Plain text',
       fields: [
-        { id: 'text', label: 'Text', kind: 'textarea', value: 'https://example.com' }
+        { id: 'text', label: 'Text', kind: 'textarea', value: 'https://www.sythos.net/' }
       ]
     },
     {
       type: 'url', label: 'URL',
       fields: [
-        { id: 'url', label: 'URL', kind: 'url', value: 'https://sythos.net',
+        { id: 'url', label: 'URL', kind: 'url', value: 'https://www.sythos.net/',
           placeholder: 'example.com  (https:// added if missing)' }
       ]
     },
@@ -586,7 +621,9 @@
   }
 
   function currentPayload() {
-    if (formatSel.value !== 'qr') return el('text').value;
+    var isQRLike = formatSel.value === 'qr' || formatSel.value === 'frameqr';
+    if (!isQRLike) return el('text').value;
+    if (ctType === 'text') return el('text').value;
     var build = PAYLOAD_BUILDERS[ctType];
     return build ? build(ctValues[ctType]) : '';
   }
@@ -613,12 +650,92 @@
   var lastMatrix = null;
 
   function currentOptions() {
-    return {
+    var options = {
       format: formatSel.value,
       ecc: el('ecc').value,
       version: el('version').value ? Number(el('version').value) : undefined,
       checkDigit: true
     };
+    if (formatSel.value === 'frameqr') {
+      options.ecc = 'H';
+      options.canvas = {
+        shape: el('frameCanvasShape').value,
+        size: Math.max(1, Number(el('frameCanvasSize').value) || 5)
+      };
+    }
+    return options;
+  }
+
+  function frameArtworkOptions() {
+    var primary = String(el('frameCanvasUrl').value || '').trim();
+    return {
+      primary: primary || 'https://www.sythos.net/favicon.ico',
+      fallback: 'https://www.sythos.net/apple-touch-icon.png'
+    };
+  }
+
+  function frameArtworkStatus(text) {
+    el('frameArtworkStatus').textContent = text;
+  }
+
+  function loadFrameImage() {
+    if (formatSel.value !== 'frameqr') {
+      frameArtworkState.image = null;
+      frameArtworkState.status = 'idle';
+      frameArtworkPreview.style.display = 'none';
+      return;
+    }
+
+    var urls = frameArtworkOptions();
+    var request = urls.primary + '\n' + urls.fallback;
+    if (frameArtworkState.request === request && frameArtworkState.image) return;
+    frameArtworkState.request = request;
+    frameArtworkState.image = null;
+    frameArtworkState.url = '';
+    frameArtworkState.cors = false;
+    frameArtworkState.status = 'loading';
+    frameArtworkStatus('Loading remote artwork (CORS first; preview fallback if CORS is unavailable)…');
+
+    var candidates = [urls.primary, urls.fallback]
+      .filter(function (url, index, all) { return url && all.indexOf(url) === index; });
+    var candidateIndex = 0;
+
+    function attempt(url, cors) {
+      var image = new Image();
+      if (cors) image.crossOrigin = 'anonymous';
+      image.onload = function () {
+        if (request !== frameArtworkState.request) return;
+        frameArtworkState.image = image;
+        frameArtworkState.url = url;
+        frameArtworkState.cors = cors;
+        frameArtworkState.status = cors ? 'ready' : 'preview-only';
+        frameArtworkStatus(cors
+          ? 'Remote artwork loaded with CORS and will be embedded in PNG output.'
+          : 'Remote artwork is preview-only because the server did not allow CORS; PNG/SVG downloads keep the QR modules.');
+        renderFrameArtwork();
+      };
+      image.onerror = function () {
+        if (request !== frameArtworkState.request) return;
+        if (cors) {
+          // A no-CORS retry still permits an in-page preview without tainting
+          // the QR canvas, while keeping export behaviour deterministic.
+          attempt(url, false);
+          return;
+        }
+        candidateIndex += 1;
+        if (candidateIndex < candidates.length) {
+          attempt(candidates[candidateIndex], true);
+          return;
+        }
+        frameArtworkState.status = 'missing';
+        frameArtworkStatus('Remote artwork could not be loaded; the QR canvas remains usable without a local asset.');
+        renderFrameArtwork();
+      };
+      image.src = url;
+    }
+
+    if (candidates.length) attempt(candidates[0], true);
+    else frameArtworkState.status = 'missing';
   }
 
   function renderOptions() {
@@ -628,6 +745,124 @@
       dark: el('dark').value,
       light: el('light').value
     };
+  }
+
+  function frameArtworkGeometry(matrix, options) {
+    var frame = matrix && matrix.frameqr && matrix.frameqr.canvas;
+    if (!frame) return null;
+    var scale = options.scale;
+    var margin = options.margin;
+    var rotated = frame.angle === 90 || frame.angle === 270;
+    var width = (rotated ? frame.height : frame.width) * scale;
+    var height = (rotated ? frame.width : frame.height) * scale;
+    return {
+      frame: frame,
+      centerX: (margin + frame.centerX + 0.5) * scale,
+      centerY: (margin + frame.centerY + 0.5) * scale,
+      width: width,
+      height: height,
+      angle: frame.angle || 0
+    };
+  }
+
+  function clipFrameShape(ctx, geometry) {
+    var frame = geometry.frame;
+    var halfWidth = geometry.width / 2;
+    var halfHeight = geometry.height / 2;
+    ctx.beginPath();
+    if (frame.shape === 'circle') {
+      ctx.ellipse(0, 0, halfWidth, halfHeight, 0, 0, Math.PI * 2);
+    } else if (frame.shape === 'diamond') {
+      ctx.moveTo(0, -halfHeight);
+      ctx.lineTo(halfWidth, 0);
+      ctx.lineTo(0, halfHeight);
+      ctx.lineTo(-halfWidth, 0);
+      ctx.closePath();
+    } else {
+      ctx.rect(-halfWidth, -halfHeight, geometry.width, geometry.height);
+    }
+    ctx.clip();
+  }
+
+  function imageIsCorsSafe(image) {
+    try {
+      var probe = document.createElement('canvas');
+      probe.width = 1;
+      probe.height = 1;
+      var ctx = probe.getContext('2d');
+      if (!ctx) return false;
+      ctx.drawImage(image, 0, 0, 1, 1);
+      ctx.getImageData(0, 0, 1, 1);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function positionFramePreview(geometry) {
+    var image = frameArtworkState.image;
+    if (!image || !geometry) {
+      frameArtworkPreview.style.display = 'none';
+      return;
+    }
+    var stageRect = stage.getBoundingClientRect();
+    var canvasRect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width ? canvasRect.width / canvas.width : 1;
+    var scaleY = canvas.height ? canvasRect.height / canvas.height : 1;
+    var left = canvasRect.left - stageRect.left + (geometry.centerX - geometry.width / 2) * scaleX;
+    var top = canvasRect.top - stageRect.top + (geometry.centerY - geometry.height / 2) * scaleY;
+    frameArtworkPreview.src = image.src;
+    frameArtworkPreview.alt = 'Remote canvas artwork';
+    frameArtworkPreview.style.left = left + 'px';
+    frameArtworkPreview.style.top = top + 'px';
+    frameArtworkPreview.style.width = geometry.width * scaleX + 'px';
+    frameArtworkPreview.style.height = geometry.height * scaleY + 'px';
+    frameArtworkPreview.style.clipPath = geometry.frame.shape === 'circle'
+      ? 'ellipse(50% 50% at 50% 50%)'
+      : geometry.frame.shape === 'diamond'
+        ? 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)'
+        : 'inset(0)';
+    frameArtworkPreview.style.transform = 'rotate(' + geometry.angle + 'deg)';
+    frameArtworkPreview.style.display = 'block';
+  }
+
+  function renderFrameArtwork() {
+    var isFrameQR = formatSel.value === 'frameqr';
+    var geometry = frameArtworkGeometry(lastMatrix, renderOptions());
+    if (!isFrameQR || !geometry || !frameArtworkState.image) {
+      frameArtworkPreview.style.display = 'none';
+      return;
+    }
+
+    if (!frameArtworkState.cors || !imageIsCorsSafe(frameArtworkState.image)) {
+      frameArtworkState.cors = false;
+      if (frameArtworkState.status !== 'preview-only') {
+        frameArtworkState.status = 'preview-only';
+        frameArtworkStatus('Remote artwork is preview-only because the server did not allow CORS; PNG/SVG downloads keep the QR modules.');
+      }
+      positionFramePreview(geometry);
+      return;
+    }
+
+    frameArtworkPreview.style.display = 'none';
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var image = frameArtworkState.image;
+    var imageWidth = image.naturalWidth || image.width || geometry.width;
+    var imageHeight = image.naturalHeight || image.height || geometry.height;
+    var coverScale = Math.max(geometry.width / imageWidth, geometry.height / imageHeight);
+    ctx.save();
+    ctx.translate(geometry.centerX, geometry.centerY);
+    ctx.rotate((geometry.angle * Math.PI) / 180);
+    clipFrameShape(ctx, geometry);
+    ctx.drawImage(
+      image,
+      -imageWidth * coverScale / 2,
+      -imageHeight * coverScale / 2,
+      imageWidth * coverScale,
+      imageHeight * coverScale
+    );
+    ctx.restore();
   }
 
   // User-supplied strings never go through innerHTML.
@@ -642,12 +877,16 @@
   }
 
   function update() {
-    var isQR = formatSel.value === 'qr';
+    var isQR = formatSel.value === 'qr' || formatSel.value === 'frameqr';
+    var isFrameQR = formatSel.value === 'frameqr';
     el('qrOpts').style.display = isQR ? '' : 'none';
+    el('frameOpts').style.display = isFrameQR ? '' : 'none';
     el('ctWrap').style.display = isQR ? '' : 'none';
     ctFieldsEl.style.display = isQR ? '' : 'none';
     el('payloadWrap').style.display = isQR ? '' : 'none';
     el('plainWrap').style.display = isQR ? 'none' : '';
+    el('ecc').disabled = isFrameQR;
+    if (isFrameQR) el('ecc').value = 'H';
 
     var info = formats.filter(function (f) { return f.id === formatSel.value; })[0];
     el('formatHint').textContent = info
@@ -665,15 +904,26 @@
       lastMatrix = null;
       showError(String(e && e.message ? e.message : e));
       el('meta').innerHTML = '';
+      frameArtworkPreview.style.display = 'none';
       var ctx = canvas.getContext('2d');
       canvas.width = 10; canvas.height = 10;
       if (ctx) ctx.clearRect(0, 0, 10, 10);
       return;
     }
 
-    // renderToCanvasAuto tries WebGL2 first and falls back to the 2D context,
-    // reporting which one actually ran.
-    var out = B.renderToCanvasAuto(lastMatrix, canvas, renderOptions());
+    // Frame artwork is composited through a 2D context; do not commit the
+    // canvas to WebGL first because a canvas can own only one context type.
+    var renderOpts = renderOptions();
+    var out = isFrameQR
+      ? { backend: B.toCanvas(lastMatrix, canvas, renderOpts) ? '2d' : 'none' }
+      : B.renderToCanvasAuto(lastMatrix, canvas, renderOpts);
+
+    if (isFrameQR) {
+      loadFrameImage();
+      renderFrameArtwork();
+    } else {
+      frameArtworkPreview.style.display = 'none';
+    }
 
     el('meta').innerHTML =
       '<span>modules <b>' + lastMatrix.width + '×' + lastMatrix.height + '</b></span>' +
@@ -696,11 +946,31 @@
   el('download-svg').addEventListener('click', function () {
     if (!lastMatrix) return;
     var svg = B.toSVG(lastMatrix, renderOptions());
+    if (formatSel.value === 'frameqr' && frameArtworkState.image) {
+      frameArtworkStatus('SVG export contains the QR profile only; external artwork remains a remote preview and is not copied locally.');
+    }
     saveBlob(new Blob([svg], { type: 'image/svg+xml' }), formatSel.value + '.svg');
   });
 
   el('download-png').addEventListener('click', function () {
     if (!lastMatrix) return;
+    if (formatSel.value === 'frameqr' && frameArtworkState.cors) {
+      try {
+        canvas.toBlob(function (blob) {
+          if (blob) {
+            saveBlob(blob, formatSel.value + '.png');
+            return;
+          }
+          frameArtworkStatus('PNG export could not include remote artwork; exporting the QR profile without a local asset.');
+          B.toPNG(lastMatrix, renderOptions()).then(function (bytes) {
+            saveBlob(new Blob([bytes], { type: 'image/png' }), formatSel.value + '.png');
+          });
+        }, 'image/png');
+        return;
+      } catch (e) {
+        frameArtworkStatus('PNG export could not include remote artwork; exporting the QR profile without a local asset.');
+      }
+    }
     B.toPNG(lastMatrix, renderOptions()).then(function (bytes) {
       saveBlob(new Blob([bytes], { type: 'image/png' }), formatSel.value + '.png');
     });
@@ -726,6 +996,13 @@
   ['text', 'ecc', 'version', 'scale', 'margin', 'dark', 'light'].forEach(function (id) {
     el(id).addEventListener('input', update);
     el(id).addEventListener('change', update);
+  });
+  ['frameCanvasShape', 'frameCanvasSize', 'frameCanvasUrl'].forEach(function (id) {
+    el(id).addEventListener('input', update);
+    el(id).addEventListener('change', update);
+  });
+  window.addEventListener('resize', function () {
+    if (formatSel.value === 'frameqr' && !frameArtworkState.cors) renderFrameArtwork();
   });
 
   ctRender();

@@ -55,7 +55,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-22 formats write, 19 read; PDF417 image reading is now enabled after synthetic, black-box and
+23 formats write, 20 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -71,6 +71,7 @@ remain outside the validated robustness envelope.
 | **MicroPDF417** — 34 fixed variants, RAP geometry, Text/Byte/Numeric compaction, ECI 3/26, fixed GF(929) ECC, raster detector | ✅ write + read; perspective robustness pending |
 | **Micro QR** — M1–M4, Numeric/Alphanumeric/Byte/Kanji, BCH format, four masks, Reed–Solomon and detector | ✅ write + read; ECI/FNC1/Structured Append out of scope |
 | **rMQR** — 32 standard rectangular geometries, M/H ECC, Numeric/Alphanumeric/Byte/Kanji, ECI and detector | ✅ write + read; clean scaled raster and quarter-turn detector |
+| **Sythos Canvas QR profile** — bounded square/circle/diamond artwork canvas on QR Model 2 ECC-H; explicitly not DENSO FrameQR | ✅ write + read; clean raster detector |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -108,6 +109,7 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 - MicroPDF417 follow-through: black-box vectors plus a real-photo corpus; the current detector supports integer scale and quarter-turns, not arbitrary perspective.
 - Real-photo corpus with a **tracked pass-rate, not pass/fail** — a binary gate hides a regression from 94% to 71%.
 - Scoped legal review labels in `LICENSE` §3–5 are recorded with citations in `NOTICE.md`. Micro QR and rMQR provenance remains explicitly subject to standards, patent and trademark review.
+- Frame QR is deliberately scoped to the non-certified `sythos-canvas-qr/1` profile. DENSO FrameQR public material was consulted for the compatibility boundary, not as a native format definition; native DENSO interoperability remains unclaimed. ZXing was used only as an independent black-box validation tool, with no source code or tables copied or shipped.
 
 ---
 

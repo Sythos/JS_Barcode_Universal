@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.3.0
+ * Sythos Barcode Suite v1.3.1
  *
  * MIT License
  *
@@ -11781,6 +11781,755 @@ const __reexport3 = __require("rmqr/tables.js"); __exports.RMQR_SIZES = __reexpo
 
 };
 
+__modules["frameqr/tables.js"] = function (__require, __exports) {
+/**
+ * Structural contract for the Sythos Canvas QR profile.
+ *
+ * DENSO WAVE's public material describes FrameQR(R) as a proprietary symbol
+ * with a freely shaped canvas, dedicated generation/reading software and no
+ * compatibility with ordinary QR readers. It does not publish the bitstream,
+ * placement or error-correction rules required for an interoperable encoder.
+ * Consequently this module does not claim to implement DENSO FrameQR.
+ *
+ * The implementable profile below starts with an ISO/IEC 18004 QR Model 2
+ * symbol at level H and clears a bounded group of data modules. Its worst-case
+ * damage is calculated per Reed-Solomon block and must remain within the
+ * standard QR correction radius. Function modules are never canvas modules.
+ * This provides a deterministic, independently testable canvas QR profile, but
+ * it is explicitly non-certified and not a substitute for proprietary FrameQR
+ * generation or validation software.
+ *
+ * @module frameqr/tables
+ */
+const { blockLayout, dataModuleOrder, reservedModules, versionSize } = __require("qr/tables.js");
+
+/** Public identity and compatibility boundary of the implementable profile. */
+const FRAMEQR_PROFILE = Object.freeze({
+  id: 'sythos-canvas-qr/1',
+  name: 'Sythos Canvas QR profile',
+  certified: false,
+  densoFrameQrCompatible: false,
+  baseSymbology: 'QR Code Model 2',
+  requiredEcc: 'H',
+  standard: 'ISO/IEC 18004 QR Code baseline',
+});
+
+/** Canvas shapes whose module membership is fully deterministic. */
+const FRAMEQR_CANVAS_SHAPES = Object.freeze(['square', 'circle', 'diamond']);
+
+function oddAtMost(value, maximum) {
+  let n = Math.max(1, Math.min(maximum, Math.floor(value)));
+  if ((n & 1) === 0) n--;
+  return Math.max(1, n);
+}
+
+function assertSymbolSize(symbolSize) {
+  if (!Number.isInteger(symbolSize) || symbolSize < 21 || symbolSize > 177 || (symbolSize - 17) % 4 !== 0) {
+    throw new RangeError(`Frame QR profile: ${symbolSize} is not a QR Model 2 symbol size`);
+  }
+}
+
+/**
+ * Canonicalise a canvas request.
+ *
+ * Coordinates and dimensions are module units. Odd dimensions make the centre
+ * unambiguous. Only quarter turns are accepted because arbitrary-angle raster
+ * membership would depend on renderer-specific sampling.
+ *
+ * @param {number} symbolSize QR module width/height (21..177).
+ * @param {object} [canvas]
+ * @returns {{shape:string,centerX:number,centerY:number,width:number,height:number,angle:number}}
+ */
+function normalizeCanvasSpec(symbolSize, canvas = {}) {
+  assertSymbolSize(symbolSize);
+  if (canvas === null || typeof canvas !== 'object' || Array.isArray(canvas)) {
+    throw new TypeError('Frame QR profile: canvas must be an object');
+  }
+
+  const shape = String(canvas.shape ?? 'square').toLowerCase();
+  if (!FRAMEQR_CANVAS_SHAPES.includes(shape)) {
+    throw new RangeError(`Frame QR profile: unsupported canvas shape "${shape}"`);
+  }
+
+  const defaultSize = oddAtMost(Math.max(3, Math.round(symbolSize * 0.17)), symbolSize - 16);
+  const requestedSize = canvas.size;
+  const requestedWidth = canvas.width ?? requestedSize ?? defaultSize;
+  const requestedHeight = canvas.height ?? requestedSize ?? defaultSize;
+  const maximumDimension = symbolSize - 16;
+  for (const [name, value] of [['width', requestedWidth], ['height', requestedHeight]]) {
+    if (!Number.isFinite(Number(value)) || Number(value) < 1 || Number(value) > maximumDimension) {
+      throw new RangeError(
+        `Frame QR profile: canvas ${name} must be between 1 and ${maximumDimension} modules`
+      );
+    }
+  }
+  const width = oddAtMost(Number(requestedWidth), maximumDimension);
+  const height = oddAtMost(Number(requestedHeight), maximumDimension);
+  const centerX = Math.round(canvas.centerX ?? (symbolSize - 1) / 2);
+  const centerY = Math.round(canvas.centerY ?? (symbolSize - 1) / 2);
+  const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
+
+  if (![0, 90, 180, 270].includes(angle)) {
+    throw new RangeError('Frame QR profile: angle must be 0, 90, 180 or 270 degrees');
+  }
+  if (centerX < 8 || centerY < 8 || centerX >= symbolSize - 8 || centerY >= symbolSize - 8) {
+    throw new RangeError('Frame QR profile: canvas centre must remain inside the finder-pattern boundary');
+  }
+
+  return { shape, centerX, centerY, width, height, angle };
+}
+
+/**
+ * Enumerate canvas modules, including any overlaps with QR function modules.
+ * A conforming encoder rejects such overlaps rather than damaging function
+ * patterns.
+ *
+ * @param {number} symbolSize
+ * @param {object} [canvas]
+ * @returns {Array<[number, number]>}
+ */
+function canvasModules(symbolSize, canvas = {}) {
+  const spec = normalizeCanvasSpec(symbolSize, canvas);
+  const rotate = spec.angle === 90 || spec.angle === 270;
+  const width = rotate ? spec.height : spec.width;
+  const height = rotate ? spec.width : spec.height;
+  const halfWidth = (width - 1) / 2;
+  const halfHeight = (height - 1) / 2;
+  const modules = [];
+
+  for (let dy = -halfHeight; dy <= halfHeight; dy++) {
+    for (let dx = -halfWidth; dx <= halfWidth; dx++) {
+      const nx = halfWidth === 0 ? 0 : dx / halfWidth;
+      const ny = halfHeight === 0 ? 0 : dy / halfHeight;
+      let inside;
+      if (spec.shape === 'circle') inside = nx * nx + ny * ny <= 1 + Number.EPSILON;
+      else if (spec.shape === 'diamond') inside = Math.abs(nx) + Math.abs(ny) <= 1 + Number.EPSILON;
+      else inside = true;
+      if (inside) modules.push([spec.centerX + dx, spec.centerY + dy]);
+    }
+  }
+  return modules;
+}
+
+/** Build the interleaved-codeword to RS-block map used by QR Model 2. */
+function codewordBlockMap(layout) {
+  const dataCounts = new Array(layout.blockCount);
+  for (let block = 0; block < layout.blockCount; block++) {
+    dataCounts[block] = block < layout.group1Blocks
+      ? layout.group1DataCount
+      : layout.group2DataCount;
+  }
+
+  const map = [];
+  const maxData = Math.max(...dataCounts);
+  for (let i = 0; i < maxData; i++) {
+    for (let block = 0; block < layout.blockCount; block++) {
+      if (i < dataCounts[block]) map.push(block);
+    }
+  }
+  for (let i = 0; i < layout.eccPerBlock; i++) {
+    for (let block = 0; block < layout.blockCount; block++) map.push(block);
+  }
+  return map;
+}
+
+/**
+ * Calculate worst-case QR codeword damage caused by a canvas.
+ * A codeword is counted if any of its modules is touched. This is conservative:
+ * clearing an already-light module does no damage, but safety cannot depend on
+ * one payload or mask.
+ *
+ * @param {number} version QR version 1..40.
+ * @param {object} [canvas]
+ */
+function analyzeCanvasDamage(version, canvas = {}) {
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new RangeError(`Frame QR profile: version must be an integer 1-40, got ${version}`);
+  }
+  const symbolSize = versionSize(version);
+  const spec = normalizeCanvasSpec(symbolSize, canvas);
+  const modules = canvasModules(symbolSize, spec);
+  const reserved = reservedModules(version);
+  const reservedOverlaps = modules.filter(([x, y]) => reserved.get(x, y));
+
+  const moduleKeys = new Set(modules.map(([x, y]) => `${x},${y}`));
+  const order = dataModuleOrder(version);
+  const touchedCodewords = new Set();
+  for (let bit = 0; bit < order.length / 2; bit++) {
+    if (moduleKeys.has(`${order[bit * 2]},${order[bit * 2 + 1]}`)) touchedCodewords.add(bit >> 3);
+  }
+
+  const layout = blockLayout(version, 'H');
+  const blockMap = codewordBlockMap(layout);
+  const touchedByBlockSets = Array.from({ length: layout.blockCount }, () => new Set());
+  for (const codeword of touchedCodewords) {
+    const block = blockMap[codeword];
+    if (block !== undefined) touchedByBlockSets[block].add(codeword);
+  }
+  const touchedCodewordsByBlock = touchedByBlockSets.map((set) => set.size);
+  const correctionBudgetPerBlock = Math.floor(layout.eccPerBlock / 2);
+  const safe = reservedOverlaps.length === 0 &&
+    touchedCodewordsByBlock.every((count) => count <= correctionBudgetPerBlock);
+
+  return {
+    profile: FRAMEQR_PROFILE.id,
+    certified: false,
+    version,
+    symbolSize,
+    canvas: spec,
+    canvasModuleCount: modules.length,
+    reservedOverlaps,
+    touchedCodewordCount: touchedCodewords.size,
+    touchedCodewordsByBlock,
+    correctionBudgetPerBlock,
+    safe,
+  };
+}
+
+/** Validate a canvas and return the non-certifying structural analysis. */
+function validateCanvasSpec(version, canvas = {}) {
+  return analyzeCanvasDamage(version, canvas);
+}
+
+/** Self-check the fixed profile contract and representative QR geometries. */
+function validateFrameQrTables() {
+  const problems = [];
+  if (FRAMEQR_PROFILE.certified !== false || FRAMEQR_PROFILE.densoFrameQrCompatible !== false) {
+    problems.push('profile compatibility boundary must remain explicitly non-certified');
+  }
+  if (new Set(FRAMEQR_CANVAS_SHAPES).size !== FRAMEQR_CANVAS_SHAPES.length) {
+    problems.push('canvas shape identifiers must be unique');
+  }
+  for (const version of [1, 2, 3, 4, 7, 10, 20, 30, 40]) {
+    const size = versionSize(version);
+    const spec = normalizeCanvasSpec(size);
+    const modules = canvasModules(size, spec);
+    const unique = new Set(modules.map(([x, y]) => `${x},${y}`));
+    if (unique.size !== modules.length) problems.push(`v${version}: duplicate canvas modules`);
+    if (modules.some(([x, y]) => x < 0 || y < 0 || x >= size || y >= size)) {
+      problems.push(`v${version}: canvas escapes the symbol`);
+    }
+    const analysis = analyzeCanvasDamage(version, spec);
+    if (analysis.touchedCodewordsByBlock.length !== blockLayout(version, 'H').blockCount) {
+      problems.push(`v${version}: damage analysis block count mismatch`);
+    }
+  }
+  return problems;
+}
+
+__exports.FRAMEQR_PROFILE = FRAMEQR_PROFILE;
+__exports.FRAMEQR_CANVAS_SHAPES = FRAMEQR_CANVAS_SHAPES;
+__exports.normalizeCanvasSpec = normalizeCanvasSpec;
+__exports.canvasModules = canvasModules;
+__exports.analyzeCanvasDamage = analyzeCanvasDamage;
+__exports.validateCanvasSpec = validateCanvasSpec;
+__exports.validateFrameQrTables = validateFrameQrTables;
+};
+
+__modules["frameqr/encoder.js"] = function (__require, __exports) {
+/**
+ * Sythos Canvas QR profile encoder.
+ *
+ * This encoder deliberately builds on this project's QR Code implementation
+ * and then removes a conservatively bounded set of data modules for artwork.
+ * It is not an implementation of DENSO FrameQR and makes no interoperability
+ * claim for that proprietary format.
+ *
+ * @module frameqr/encoder
+ */
+const { EncodeError } = __require("core/errors.js");
+const { encodeQR } = __require("qr/encoder.js");
+const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec, validateCanvasSpec } = __require("frameqr/tables.js");
+
+/**
+ * @typedef {object} FrameQrEncodeOptions
+ * @property {'H'} [ecc] The profile always uses QR error correction H.
+ * @property {number} [version] Force a QR version 1-40.
+ * @property {number} [mask] Force a QR mask 0-7.
+ * @property {'auto'|'utf-8'|'iso-8859-1'} [charset] Byte mode interpretation.
+ * @property {boolean} [kanji] Allow QR kanji mode.
+ * @property {object} [canvas] Profile artwork reservation.
+ */
+
+function versionFor(matrix) {
+  return (matrix.width - 17) / 4;
+}
+
+function clearCanvas(matrix, modules) {
+  for (const [x, y] of modules) matrix.unset(x, y);
+}
+
+/**
+ * Encode a QR Code with a conservative artwork canvas according to the
+ * non-certified Sythos Canvas QR profile.
+ *
+ * The profile forces QR H error correction and rejects a canvas whenever its
+ * known codeword damage exceeds the per-block correction budget. When a
+ * version is not forced, the smallest QR version that holds both payload and
+ * safe canvas is selected. A decoder can reconstruct the reserved modules from
+ * the returned profile metadata.
+ *
+ * @param {string} text
+ * @param {FrameQrEncodeOptions} [options]
+ * @returns {import('../core/bit-matrix.js').BitMatrix}
+ * @throws {EncodeError} When the QR payload/options are invalid or the canvas
+ *   cannot safely fit the selected QR version.
+ */
+function encodeFrameQR(text, options = {}) {
+  if (typeof text !== 'string') {
+    throw new EncodeError('Sythos Canvas QR: text must be a string');
+  }
+  if (options.ecc !== undefined && options.ecc !== 'H') {
+    throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
+  }
+
+  const qrOptions = {
+    mask: options.mask,
+    charset: options.charset,
+    kanji: options.kanji,
+    ecc: 'H',
+  };
+  for (const key of Object.keys(qrOptions)) {
+    if (qrOptions[key] === undefined) delete qrOptions[key];
+  }
+
+  const versions = options.version === undefined
+    ? Array.from({ length: 40 }, (_, index) => index + 1)
+    : [options.version];
+  let capacityError = null;
+  let unsafeAnalysis = null;
+  let selected = null;
+
+  for (const version of versions) {
+    let matrix;
+    try {
+      matrix = encodeQR(text, { ...qrOptions, version });
+    } catch (error) {
+      capacityError = error;
+      continue;
+    }
+
+    let canvas;
+    let analysis;
+    try {
+      canvas = normalizeCanvasSpec(matrix.width, options.canvas);
+      analysis = validateCanvasSpec(versionFor(matrix), canvas);
+    } catch (error) {
+      if (error instanceof EncodeError) throw error;
+      throw new EncodeError(`Sythos Canvas QR: invalid canvas: ${error.message}`);
+    }
+    if (!analysis.safe) {
+      unsafeAnalysis = analysis;
+      continue;
+    }
+    selected = { matrix, canvas };
+    break;
+  }
+
+  if (!selected) {
+    if (unsafeAnalysis) {
+      throw new EncodeError(
+        'Sythos Canvas QR: canvas is not safe for the selected QR version; ' +
+        `it touches ${unsafeAnalysis.touchedCodewordCount} codewords and has ` +
+        `a per-block correction budget of ${unsafeAnalysis.correctionBudgetPerBlock}`
+      );
+    }
+    if (capacityError) throw capacityError;
+    throw new EncodeError('Sythos Canvas QR: unable to select a QR version');
+  }
+
+  const { matrix, canvas } = selected;
+  clearCanvas(matrix, canvasModules(matrix.width, canvas));
+  matrix.frameqr = {
+    profile: FRAMEQR_PROFILE.id,
+    certified: false,
+    canvas,
+  };
+  return matrix;
+}
+
+__exports.encodeFrameQR = encodeFrameQR;
+};
+
+__modules["frameqr/decoder.js"] = function (__require, __exports) {
+/**
+ * Decoder for the Sythos Canvas QR profile.
+ *
+ * This is intentionally not a DENSO FrameQR decoder. The profile is a QR
+ * symbol with a bounded artwork reservation and an explicit `frameqr` marker.
+ * A normal QR matrix is rejected unless a detector (or another trusted
+ * caller) supplies the profile and explicitly opts in to an unmarked matrix.
+ *
+ * The QR decoder is deliberately kept as the single payload decoder. It can
+ * repair the bounded modules removed for the canvas because the encoder fixes
+ * error correction to H and validates the reservation before clearing it.
+ *
+ * @module frameqr/decoder
+ */
+const { FormatError } = __require("core/errors.js");
+const { decodeQR } = __require("qr/decoder.js");
+const { FRAMEQR_PROFILE, normalizeCanvasSpec, validateCanvasSpec, analyzeCanvasDamage } = __require("frameqr/tables.js");
+
+/** @param {unknown} value @returns {boolean} */
+function isObject(value) {
+  return value !== null && typeof value === 'object';
+}
+
+/**
+ * Return the profile marker attached by the encoder. Older callers sometimes
+ * use camel case, so accepting it here is harmless while the emitted marker
+ * remains the canonical `frameqr` property.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @returns {object|null}
+ */
+function markerOf(matrix) {
+  const marker = matrix && (matrix.frameqr ?? matrix.frameQR);
+  return isObject(marker) ? marker : null;
+}
+
+/** @param {unknown} profile @returns {boolean} */
+function isExpectedProfile(profile) {
+  if (profile === FRAMEQR_PROFILE.id) return true;
+  return isObject(profile) && profile.id === FRAMEQR_PROFILE.id;
+}
+
+/**
+ * Normalize and validate the canvas metadata. Validation functions in the
+ * table module throw on invalid input; a few consumers also return `false` or
+ * a problem list, so those forms are handled defensively here.
+ *
+ * @param {number} symbolSize
+ * @param {number} version
+ * @param {object} canvas
+ * @returns {{canvas: object, damage: object}}
+ */
+function validateCanvas(symbolSize, version, canvas) {
+  if (!isObject(canvas)) throw new FormatError('Sythos Canvas QR: canvas metadata is missing');
+
+  let normalized;
+  try {
+    normalized = normalizeCanvasSpec(symbolSize, canvas);
+    const validation = validateCanvasSpec(version, normalized);
+    if (
+      validation === false ||
+      (Array.isArray(validation) && validation.length > 0) ||
+      (isObject(validation) && validation.valid === false) ||
+      (isObject(validation) && validation.safe === false)
+    ) {
+      throw new Error('canvas geometry is outside the profile limits');
+    }
+  } catch (error) {
+    if (error instanceof FormatError) throw error;
+    throw new FormatError(`Sythos Canvas QR: invalid canvas metadata: ${error.message}`);
+  }
+
+  let damage;
+  try {
+    damage = analyzeCanvasDamage(version, normalized);
+  } catch (error) {
+    throw new FormatError(`Sythos Canvas QR: cannot analyse canvas damage: ${error.message}`);
+  }
+  return { canvas: normalized, damage };
+}
+
+/**
+ * Resolve the profile marker and canvas from the matrix/options pair.
+ *
+ * `allowUnmarked` is deliberately opt-in. It exists for a detector that has
+ * already verified the canvas signature after sampling a photograph; it is
+ * not enabled by the public default and therefore cannot silently relabel an
+ * ordinary QR Code as FrameQR.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @param {object} options
+ * @returns {{profile: string, canvas: object, damage: object, certified: false}}
+ */
+function resolveProfile(matrix, options) {
+  const marker = markerOf(matrix);
+  const suppliedProfile = options.profile;
+  const markerProfile = marker ? marker.profile : undefined;
+  if (markerProfile !== undefined && suppliedProfile !== undefined) {
+    const markerId = isObject(markerProfile) ? markerProfile.id : markerProfile;
+    const suppliedId = isObject(suppliedProfile) ? suppliedProfile.id : suppliedProfile;
+    if (markerId !== suppliedId) {
+      throw new FormatError('Sythos Canvas QR: matrix and requested profile markers disagree');
+    }
+  }
+  const profile = markerProfile ?? suppliedProfile;
+
+  if (!isExpectedProfile(profile)) {
+    throw new FormatError(
+      'Sythos Canvas QR: profile marker is missing or is not the Sythos Canvas QR profile'
+    );
+  }
+  if (marker && marker.certified === true) {
+    throw new FormatError(
+      'Sythos Canvas QR: certified FrameQR input is not supported by this profile decoder'
+    );
+  }
+  if (!marker && !options.allowUnmarked) {
+    throw new FormatError(
+      'Sythos Canvas QR: unmarked QR matrix rejected; provide a verified profile marker'
+    );
+  }
+
+  const markerCanvas = marker ? marker.canvas : undefined;
+  const canvas = options.canvas ?? markerCanvas;
+  const version = (matrix.width - 17) / 4;
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new FormatError(`Sythos Canvas QR: invalid QR symbol size ${matrix.width}`);
+  }
+  const checked = validateCanvas(matrix.width, version, canvas);
+  if (markerCanvas && options.canvas) {
+    let marked;
+    try {
+      marked = normalizeCanvasSpec(matrix.width, markerCanvas);
+    } catch (error) {
+      throw new FormatError(`Sythos Canvas QR: invalid marker canvas: ${error.message}`);
+    }
+    const fields = ['shape', 'centerX', 'centerY', 'width', 'height', 'angle'];
+    if (fields.some((field) => marked[field] !== checked.canvas[field])) {
+      throw new FormatError('Sythos Canvas QR: matrix and requested canvas metadata disagree');
+    }
+  }
+  return {
+    profile: FRAMEQR_PROFILE.id,
+    canvas: checked.canvas,
+    damage: checked.damage,
+    certified: false,
+  };
+}
+
+/**
+ * Decode a Sythos Canvas QR matrix.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ *   Square QR modules, normally returned by `encodeFrameQR` or a FrameQR
+ *   detector. The encoder's `frameqr` metadata is required by default.
+ * @param {object} [options]
+ * @param {object} [options.canvas] Explicit canvas metadata for a sampled
+ *   matrix when the source marker was not preserved.
+ * @param {string|object} [options.profile] Expected profile identifier.
+ * @param {boolean} [options.allowUnmarked=false] Explicit detector opt-in for
+ *   a matrix whose marker was lost during image sampling.
+ * @returns {import('../qr/decoder.js').DecodeResult & {
+ *   format: 'frameqr', profile: string, certified: false,
+ *   frame: object, canvas: object, canvasDamage: object
+ * }}
+ * @throws {FormatError} If the profile marker/canvas is invalid or the input
+ *   is an ordinary QR Code.
+ */
+function decodeFrameQR(matrix, options = {}) {
+  if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
+    throw new FormatError('Sythos Canvas QR: no matrix supplied');
+  }
+  if (matrix.width !== matrix.height) {
+    throw new FormatError(
+      `Sythos Canvas QR: symbol must be square, got ${matrix.width}x${matrix.height}`
+    );
+  }
+
+  const profile = resolveProfile(matrix, options);
+  let decoded;
+  try {
+    decoded = decodeQR(matrix);
+  } catch (error) {
+    // Preserve the original QR/RS error when possible, but give callers a
+    // profile-specific context without exposing implementation details.
+    if (error instanceof FormatError) {
+      throw new FormatError(`Sythos Canvas QR: payload is not recoverable: ${error.message}`);
+    }
+    throw error;
+  }
+
+  return {
+    ...decoded,
+    format: 'frameqr',
+    profile: profile.profile,
+    certified: profile.certified,
+    frame: profile.canvas,
+    canvas: profile.canvas,
+    canvasDamage: profile.damage,
+  };
+}
+__exports.isExpectedProfile = isExpectedProfile;
+
+__exports.decodeFrameQR = decodeFrameQR;
+};
+
+__modules["frameqr/detector.js"] = function (__require, __exports) {
+/**
+ * Detector for the non-certified Sythos Canvas QR profile.
+ *
+ * The profile deliberately reuses QR Model 2 geometry. Finder localisation and
+ * projective sampling therefore use the QR detector; the additional profile
+ * check is the light canvas signature. A sampled image cannot carry the
+ * encoder's in-memory marker, so the detector reconstructs the expected
+ * metadata, verifies that every reserved canvas module is light, and only then
+ * opts into the profile decoder. This rejects ordinary QR symbols whose centre
+ * merely happens to contain a plausible payload.
+ *
+ * Detection is verified for clean binarized rasters, integer scaling, quiet
+ * zones, and in-plane quarter turns. Arbitrary photographic perspective is not
+ * claimed by this module.
+ *
+ * @module frameqr/detector
+ */
+const { NotFoundError } = __require("core/errors.js");
+const { sampleQuad } = __require("image/grid-sampler.js");
+const { detectQR } = __require("qr/detector.js");
+const { decodeFrameQR } = __require("frameqr/decoder.js");
+const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec } = __require("frameqr/tables.js");
+
+/** @typedef {{x:number, y:number}} Point */
+
+/** @typedef {object} FrameQRDetection
+ * @property {Point[]} corners Outer corners in reading order.
+ * @property {number} dimension QR modules per side.
+ * @property {number} version QR Model 2 version.
+ * @property {number} moduleSize Estimated pixels per module.
+ * @property {number} rotation Clockwise in-plane orientation in degrees.
+ * @property {BitMatrix} matrix Rectified profile matrix.
+ * @property {object} canvas Normalized canvas specification.
+ * @property {string} profile Profile identifier.
+ * @property {false} certified Always false for this implementation.
+ */
+
+function orientationDegrees(corners) {
+  const [tl, tr] = corners;
+  const angle = Math.atan2(tr.y - tl.y, tr.x - tl.x) * 180 / Math.PI;
+  return ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+}
+/**
+ * Return the number of canvas modules that are dark in a sampled matrix.
+ *
+ * Encoded profile symbols clear the whole reserved canvas. A non-zero count
+ * means either a normal QR symbol or a raster whose canvas was overwritten by
+ * artwork; both are rejected because decoding that image would be speculative.
+ */
+function canvasDarkCount(matrix, canvas) {
+  let dark = 0;
+  for (const [x, y] of canvasModules(matrix.width, canvas)) {
+    if (matrix.get(x, y)) dark++;
+  }
+  return dark;
+}
+
+function sameCandidate(left, right) {
+  if (left.dimension !== right.dimension) return false;
+  const a = left.corners[0];
+  const b = right.corners[0];
+  return Math.hypot(a.x - b.x, a.y - b.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
+}
+
+/**
+ * Detect Sythos Canvas QR symbols in a binarized raster.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
+ * @param {object} [options]
+ * @param {object} [options.canvas] Explicit canvas metadata for non-default
+ *   shapes/size. Without it, the profile's canonical centered square is used.
+ * @param {boolean} [options.voting=false] Use majority sampling per module.
+ * @returns {FrameQRDetection[]} Best candidate first; empty when no verified
+ *   profile signature is found.
+ */
+function detectFrameQR(binaryImage, options = {}) {
+  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+    throw new NotFoundError('detectFrameQR: no image supplied');
+  }
+
+  let candidates;
+  try { candidates = detectQR(binaryImage); } catch { return []; }
+  const detections = [];
+
+  for (const candidate of candidates) {
+    // QR detector dimensions are already constrained to legal Model 2 sizes.
+    let canvas;
+    try { canvas = normalizeCanvasSpec(candidate.dimension, options.canvas); }
+    catch { continue; }
+
+    for (const voting of [Boolean(options.voting), !Boolean(options.voting)]) {
+      let matrix;
+      try { matrix = sampleQuad(binaryImage, candidate.dimension, candidate.corners, voting); }
+      catch { continue; }
+
+      // The signature check is intentionally strict. It prevents an ordinary
+      // QR symbol from being relabelled as Canvas QR by the decoder's explicit
+      // allowUnmarked escape hatch.
+      if (canvasDarkCount(matrix, canvas) !== 0) continue;
+
+      const marked = matrix;
+      marked.frameqr = {
+        profile: FRAMEQR_PROFILE.id,
+        certified: false,
+        canvas,
+      };
+      let decoded;
+      try {
+        decoded = decodeFrameQR(marked, {
+          profile: FRAMEQR_PROFILE.id,
+          canvas,
+          allowUnmarked: true,
+        });
+      } catch { continue; }
+
+      const detection = {
+        corners: candidate.corners,
+        dimension: candidate.dimension,
+        version: candidate.version,
+        moduleSize: candidate.moduleSize,
+        rotation: orientationDegrees(candidate.corners),
+        matrix: marked,
+        canvas,
+        profile: FRAMEQR_PROFILE.id,
+        certified: false,
+        result: decoded,
+      };
+      if (!detections.some((entry) => sameCandidate(entry, detection))) detections.push(detection);
+      break;
+    }
+  }
+
+  detections.sort((a, b) => b.moduleSize - a.moduleSize);
+  return detections;
+}
+
+/**
+ * Detect and decode all verified Canvas QR symbols in one call.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
+ * @param {object} [options]
+ * @returns {Array<object>}
+ */
+function detectAndDecodeFrameQR(binaryImage, options = {}) {
+  let detections;
+  try { detections = detectFrameQR(binaryImage, options); } catch { return []; }
+  const results = [];
+  const seen = new Set();
+  for (const detection of detections) {
+    const result = detection.result;
+    const key = `${result.version}|${result.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({ ...result, corners: detection.corners, rotation: detection.rotation });
+  }
+  return results;
+}
+
+__exports.detectFrameQR = detectFrameQR;
+__exports.detectAndDecodeFrameQR = detectAndDecodeFrameQR;
+};
+
+__modules["frameqr/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("frameqr/encoder.js"); __exports.encodeFrameQR = __reexport0.encodeFrameQR;
+const __reexport1 = __require("frameqr/decoder.js"); __exports.decodeFrameQR = __reexport1.decodeFrameQR;
+const __reexport2 = __require("frameqr/detector.js"); __exports.detectFrameQR = __reexport2.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport2.detectAndDecodeFrameQR;
+const __reexport3 = __require("frameqr/tables.js"); __exports.FRAMEQR_PROFILE = __reexport3.FRAMEQR_PROFILE; __exports.FRAMEQR_CANVAS_SHAPES = __reexport3.FRAMEQR_CANVAS_SHAPES; __exports.canvasModules = __reexport3.canvasModules; __exports.normalizeCanvasSpec = __reexport3.normalizeCanvasSpec; __exports.analyzeCanvasDamage = __reexport3.analyzeCanvasDamage; __exports.validateCanvasSpec = __reexport3.validateCanvasSpec; __exports.validateFrameQrTables = __reexport3.validateFrameQrTables;
+
+
+};
+
 __modules["render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -13041,6 +13790,7 @@ const pdf417 = __require("pdf417/index.js");
 const micropdf417 = __require("micropdf417/index.js");
 const microqr = __require("microqr/index.js");
 const rmqr = __require("rmqr/index.js");
+const frameqr = __require("frameqr/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -13058,6 +13808,7 @@ const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __re
 const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
 const __reexport13 = __require("microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
 const __reexport14 = __require("rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
+const __reexport15 = __require("frameqr/index.js"); __exports.encodeFrameQR = __reexport15.encodeFrameQR; __exports.decodeFrameQR = __reexport15.decodeFrameQR; __exports.detectFrameQR = __reexport15.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport15.detectAndDecodeFrameQR;
 
 /**
  * @typedef {object} FormatInfo
@@ -13097,6 +13848,8 @@ const microQrCanEncode = typeof microqr.encodeMicroQR === 'function';
 const microQrCanDecode = typeof microqr.detectAndDecodeMicroQR === 'function';
 const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
 const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
+const frameQrCanEncode = typeof frameqr.encodeFrameQR === 'function';
+const frameQrCanDecode = typeof frameqr.detectAndDecodeFrameQR === 'function';
 
 /**
  * Every format this build supports.
@@ -13166,6 +13919,13 @@ function listFormats() {
     canRead: rmqrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'frameqr',
+    label: 'Sythos Canvas QR profile',
+    canWrite: frameQrCanEncode,
+    canRead: frameQrCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -13196,6 +13956,14 @@ function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
+ * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
+ * @param {number} [options.canvas.size] Odd canvas size in QR modules.
+ * @param {number} [options.canvas.width] Canvas width in QR modules.
+ * @param {number} [options.canvas.height] Canvas height in QR modules.
+ * @param {number} [options.canvas.centerX] Canvas centre X in QR modules.
+ * @param {number} [options.canvas.centerY] Canvas centre Y in QR modules.
+ * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
 function encode(text, options = {}) {
@@ -13223,10 +13991,13 @@ function encode(text, options = {}) {
   if (format === 'rmqr' || format === 'r-mqr' || format === 'rectangular-micro-qr') {
     return rmqr.encodeRMQR(value, options);
   }
+  if (format === 'frameqr' || format === 'frame-qr' || format === 'canvas-qr') {
+    return frameqr.encodeFrameQR(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -13249,6 +14020,9 @@ function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
+ * @property {string} [profile] Sythos Canvas QR profile identifier.
+ * @property {boolean} [certified] Whether the profile is certified by its originator.
+ * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  */
 
 /**
@@ -13263,6 +14037,8 @@ function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
+ * @param {object} [options.frameqr] Sythos Canvas QR detector options when
+ *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
 function decode(image, options = {}) {
@@ -13275,6 +14051,7 @@ function decode(image, options = {}) {
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
+  const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
 
   const source = LuminanceSource.fromImageData(image);
@@ -13370,6 +14147,16 @@ function decode(image, options = {}) {
       }
     }
 
+    if (wantFrameQR && frameQrCanDecode) {
+      try {
+        for (const found of frameqr.detectAndDecodeFrameQR(bits, options.frameqr ?? {})) {
+          results.push({ ...found, format: 'frameqr' });
+        }
+      } catch {
+        /* no Sythos Canvas QR profile in this pass */
+      }
+    }
+
     if (wantOneD) {
       const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
       for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
@@ -13404,7 +14191,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;

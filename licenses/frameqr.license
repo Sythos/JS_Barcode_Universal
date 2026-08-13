@@ -1,0 +1,84 @@
+Frame QR / Sythos Canvas QR profile — format provenance and usability
+==========================================================================
+
+This file records where the Frame QR / Sythos Canvas QR profile symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+DENSO WAVE publicly describes FrameQR(R) as a proprietary QR-family
+product with a freely shaped canvas and dedicated generation and reading
+software. The public material does not publish the complete bitstream,
+placement or error-correction rules required for native interoperability.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+DENSO WAVE public FrameQR material, including the product overview
+and the public announcement. The proprietary format definition is not
+reproduced here. This project implements the separate Sythos Canvas QR
+profile on an ISO/IEC 18004 QR Model 2 baseline.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+DENSO WAVE's FrameQR patent position, licensing terms and complete
+patent-family status have not been independently established. The public
+product material is not treated as a licence to implement native FrameQR.
+[LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+FrameQR and Frame QR are associated with DENSO WAVE and may be protected
+marks. This project uses the name only to explain the compatibility
+boundary and does not claim endorsement or native DENSO compatibility.
+[LEGAL REVIEW]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+Frame QR / Sythos Canvas QR profile is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+The distributed implementation is the original, non-certified Sythos
+Canvas QR profile `sythos-canvas-qr/1`, not DENSO FrameQR. It reserves a
+bounded artwork canvas inside a QR Model 2 ECC-H symbol and does not claim
+native FrameQR interoperability. Third-party software cited here was used
+exclusively as an independent verification and cross-checking tool; no
+third-party source code or table is copied or shipped. [LEGAL REVIEW]
+
+References relied upon:
+  - DENSO WAVE FrameQR overview, https://www.qrcode.com/en/codes/frameqr.html
+  - DENSO WAVE FrameQR product page, https://www.denso-wave.com/en/system/qr/product/frame.html
+  - DENSO WAVE FrameQR announcement, https://www.denso-wave.com/en/adcd/info/detail__272.html
+  - ZXing Java 3.5.3 independent black-box capability check; FRAME_QR is not an exposed native format
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.
