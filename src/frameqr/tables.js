@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@
  */
 
 /**
- * Structural contract for the Sythos Canvas QR profile.
+ * Structural contract for FrameQR Code.
  *
  * DENSO WAVE's public material describes FrameQR(R) as a proprietary symbol
  * with a freely shaped canvas, dedicated generation/reading software and no
@@ -41,7 +42,7 @@
  * symbol at level H and clears a bounded group of data modules. Its worst-case
  * damage is calculated per Reed-Solomon block and must remain within the
  * standard QR correction radius. Function modules are never canvas modules.
- * This provides a deterministic, independently testable canvas QR profile, but
+ * This provides a deterministic, independently testable FrameQR Code profile, but
  * it is explicitly non-certified and not a substitute for proprietary FrameQR
  * generation or validation software.
  *
@@ -58,7 +59,7 @@ import {
 /** Public identity and compatibility boundary of the implementable profile. */
 export const FRAMEQR_PROFILE = Object.freeze({
   id: 'sythos-canvas-qr/1',
-  name: 'Sythos Canvas QR profile',
+  name: 'FrameQR Code',
   certified: false,
   densoFrameQrCompatible: false,
   baseSymbology: 'QR Code Model 2',
@@ -77,7 +78,7 @@ function oddAtMost(value, maximum) {
 
 function assertSymbolSize(symbolSize) {
   if (!Number.isInteger(symbolSize) || symbolSize < 21 || symbolSize > 177 || (symbolSize - 17) % 4 !== 0) {
-    throw new RangeError(`Frame QR profile: ${symbolSize} is not a QR Model 2 symbol size`);
+    throw new RangeError(`FrameQR Code: ${symbolSize} is not a QR Model 2 symbol size`);
   }
 }
 
@@ -95,12 +96,12 @@ function assertSymbolSize(symbolSize) {
 export function normalizeCanvasSpec(symbolSize, canvas = {}) {
   assertSymbolSize(symbolSize);
   if (canvas === null || typeof canvas !== 'object' || Array.isArray(canvas)) {
-    throw new TypeError('Frame QR profile: canvas must be an object');
+    throw new TypeError('FrameQR Code: canvas must be an object');
   }
 
   const shape = String(canvas.shape ?? 'square').toLowerCase();
   if (!FRAMEQR_CANVAS_SHAPES.includes(shape)) {
-    throw new RangeError(`Frame QR profile: unsupported canvas shape "${shape}"`);
+    throw new RangeError(`FrameQR Code: unsupported canvas shape "${shape}"`);
   }
 
   const defaultSize = oddAtMost(Math.max(3, Math.round(symbolSize * 0.17)), symbolSize - 16);
@@ -111,7 +112,7 @@ export function normalizeCanvasSpec(symbolSize, canvas = {}) {
   for (const [name, value] of [['width', requestedWidth], ['height', requestedHeight]]) {
     if (!Number.isFinite(Number(value)) || Number(value) < 1 || Number(value) > maximumDimension) {
       throw new RangeError(
-        `Frame QR profile: canvas ${name} must be between 1 and ${maximumDimension} modules`
+        `FrameQR Code: canvas ${name} must be between 1 and ${maximumDimension} modules`
       );
     }
   }
@@ -122,10 +123,10 @@ export function normalizeCanvasSpec(symbolSize, canvas = {}) {
   const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
 
   if (![0, 90, 180, 270].includes(angle)) {
-    throw new RangeError('Frame QR profile: angle must be 0, 90, 180 or 270 degrees');
+    throw new RangeError('FrameQR Code: angle must be 0, 90, 180 or 270 degrees');
   }
   if (centerX < 8 || centerY < 8 || centerX >= symbolSize - 8 || centerY >= symbolSize - 8) {
-    throw new RangeError('Frame QR profile: canvas centre must remain inside the finder-pattern boundary');
+    throw new RangeError('FrameQR Code: canvas centre must remain inside the finder-pattern boundary');
   }
 
   return { shape, centerX, centerY, width, height, angle };
@@ -196,7 +197,7 @@ function codewordBlockMap(layout) {
  */
 export function analyzeCanvasDamage(version, canvas = {}) {
   if (!Number.isInteger(version) || version < 1 || version > 40) {
-    throw new RangeError(`Frame QR profile: version must be an integer 1-40, got ${version}`);
+    throw new RangeError(`FrameQR Code: version must be an integer 1-40, got ${version}`);
   }
   const symbolSize = versionSize(version);
   const spec = normalizeCanvasSpec(symbolSize, canvas);

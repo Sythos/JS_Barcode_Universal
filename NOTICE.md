@@ -3,10 +3,10 @@
 ## Origin of this code
 
 The JavaScript implementation and integration work in this repository is
-original work by Sythos. No third-party barcode source code is copied into or
-shipped by this package. Public or normative format values may be represented
-in original Sythos data structures, with provenance and legal-review status
-recorded where required.
+original work by **Sythos (https://www.sythos.net)**. No third-party barcode
+source code is copied into or shipped by this package. Public or normative
+format values may be represented in original Sythos data structures, with
+provenance and legal-review status recorded where required.
 
 The symbologies are implemented from **published descriptions of the formats**
 (which are systems and facts, not works of authorship) and from **constant

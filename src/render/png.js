@@ -23,6 +23,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  * SPDX-License-Identifier: MIT
  *
  * Original work. No code from any other barcode implementation.

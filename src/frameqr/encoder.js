@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@
  */
 
 /**
- * Sythos Canvas QR profile encoder.
+ * FrameQR Code encoder.
  *
  * This encoder deliberately builds on this project's QR Code implementation
  * and then removes a conservatively bounded set of data modules for artwork.
@@ -68,7 +69,7 @@ function clearCanvas(matrix, modules) {
 
 /**
  * Encode a QR Code with a conservative artwork canvas according to the
- * non-certified Sythos Canvas QR profile.
+ * non-certified FrameQR Code profile.
  *
  * The profile forces QR H error correction and rejects a canvas whenever its
  * known codeword damage exceeds the per-block correction budget. When a
@@ -84,10 +85,10 @@ function clearCanvas(matrix, modules) {
  */
 export function encodeFrameQR(text, options = {}) {
   if (typeof text !== 'string') {
-    throw new EncodeError('Sythos Canvas QR: text must be a string');
+    throw new EncodeError('FrameQR Code: text must be a string');
   }
   if (options.ecc !== undefined && options.ecc !== 'H') {
-    throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
+    throw new EncodeError('FrameQR Code: ecc is fixed to H for this profile');
   }
 
   const qrOptions = {
@@ -123,7 +124,7 @@ export function encodeFrameQR(text, options = {}) {
       analysis = validateCanvasSpec(versionFor(matrix), canvas);
     } catch (error) {
       if (error instanceof EncodeError) throw error;
-      throw new EncodeError(`Sythos Canvas QR: invalid canvas: ${error.message}`);
+      throw new EncodeError(`FrameQR Code: invalid canvas: ${error.message}`);
     }
     if (!analysis.safe) {
       unsafeAnalysis = analysis;
@@ -136,13 +137,13 @@ export function encodeFrameQR(text, options = {}) {
   if (!selected) {
     if (unsafeAnalysis) {
       throw new EncodeError(
-        'Sythos Canvas QR: canvas is not safe for the selected QR version; ' +
+        'FrameQR Code: canvas is not safe for the selected QR version; ' +
         `it touches ${unsafeAnalysis.touchedCodewordCount} codewords and has ` +
         `a per-block correction budget of ${unsafeAnalysis.correctionBudgetPerBlock}`
       );
     }
     if (capacityError) throw capacityError;
-    throw new EncodeError('Sythos Canvas QR: unable to select a QR version');
+    throw new EncodeError('FrameQR Code: unable to select a QR version');
   }
 
   const { matrix, canvas } = selected;

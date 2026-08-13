@@ -1,3 +1,8 @@
+/*!
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
+ * SPDX-License-Identifier: MIT
+ */
+
 /* Compact PDF417 public module exports. */
 
 export {

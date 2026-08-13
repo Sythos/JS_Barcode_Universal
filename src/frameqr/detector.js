@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@
  */
 
 /**
- * Detector for the non-certified Sythos Canvas QR profile.
+ * Detector for the non-certified FrameQR Code profile.
  *
  * The profile deliberately reuses QR Model 2 geometry. Finder localisation and
  * projective sampling therefore use the QR detector; the additional profile
@@ -98,7 +99,7 @@ function sameCandidate(left, right) {
 }
 
 /**
- * Detect Sythos Canvas QR symbols in a binarized raster.
+ * Detect FrameQR Code symbols in a binarized raster.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
  * @param {object} [options]

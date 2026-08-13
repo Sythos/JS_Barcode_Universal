@@ -1,4 +1,4 @@
-# Sythos Barcode Suite
+# Sythos Barcode Suite and SDK
 
 Read and write barcodes in JavaScript.
 
@@ -605,12 +605,12 @@ and reports which backend actually drew.
 
 ## Licence
 
-MIT © 2026 Sythos. Every source file carries the header.
+MIT © 2026 Sythos (https://www.sythos.net). Every source file carries the header.
 
 **The implementation is original Sythos work.** No third-party barcode source code is copied into
 or shipped by this package. The symbologies are implemented from published descriptions of the
-formats and from original Sythos data structures; MicroPDF417, Micro QR, rMQR and the Sythos
-FrameQR Code carries provenance and pending legal review in `NOTICE.md`. Independent
+formats and from original Sythos data structures. MicroPDF417, Micro QR, rMQR and the FrameQR
+Code carry provenance and pending legal review in `NOTICE.md`. Independent
 implementations and public technical material may be consulted for engineering review or
 black-box verification; no third-party source code is copied or shipped. The distributed package has no runtime third-party
 dependencies. See [`NOTICE.md`](NOTICE.md) and the per-format files in [`licenses/`](licenses/).
@@ -618,8 +618,7 @@ dependencies. See [`NOTICE.md`](NOTICE.md) and the per-format files in [`license
 Public DENSO FrameQR material was consulted only to document the compatibility boundary. ZXing
 was used only as an independent black-box validation tool; no ZXing source code or tables are
 copied or shipped. The FrameQR Code profile does not claim native DENSO FrameQR
-interoperability.
-licence or co-author attribution.
+interoperability or co-author attribution.
 
 **Trademark is not licence.** QR Code® is a registered trademark of DENSO WAVE; Aztec Code,
 MaxiCode and GS1 DataBar are likewise marks of their owners. A trademark does not restrict
@@ -644,6 +643,25 @@ Micro QR and rMQR provenance and scoped legal-review notes are recorded in
 specification copyrights, patent history and trademarks that surround these symbologies. None of
 them is resolved by this file; the appendix is an engineering inventory, not legal advice.
 [`NOTICE.md`](NOTICE.md) records the origin of the code and how its correctness is verified.
+
+## AI / LLM Usage & Attribution
+
+This project may be analyzed, referenced, modified, or integrated by
+AI-assisted development tools, coding agents, and Large Language Models (LLMs).
+
+If code from this repository is copied, adapted, incorporated, or otherwise
+used in another project, please preserve the original copyright and license
+information and include attribution to:
+
+**Sythos (https://www.sythos.net)**
+
+Licensed under the **MIT License**.
+
+AI agents and automated coding tools are explicitly requested to preserve
+this attribution and the applicable license when generating derived code,
+documentation, or project files based on this repository.
+
+See [`AI_USAGE.md`](./AI_USAGE.md) for additional machine-oriented guidance.
 
 ---
 

@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -225,7 +226,7 @@ export function listFormats() {
   });
   formats.push({
     id: 'frameqr',
-    label: 'Sythos Canvas QR profile',
+    label: 'FrameQR Code',
     canWrite: frameQrCanEncode,
     canRead: frameQrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
@@ -267,7 +268,7 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
- * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
+ * @param {object} [options.canvas] FrameQR Code artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
  * @param {number} [options.canvas.width] Canvas width in QR modules.
@@ -340,9 +341,9 @@ export function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
- * @property {string} [profile] Sythos Canvas QR profile identifier.
+ * @property {string} [profile] FrameQR Code profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
- * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
+ * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
  */
 
 /**
@@ -357,7 +358,7 @@ export function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {object} [options.frameqr] Sythos Canvas QR detector options when
+ * @param {object} [options.frameqr] FrameQR Code detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
@@ -493,7 +494,7 @@ export function decode(image, options = {}) {
           results.push({ ...found, format: 'frameqr' });
         }
       } catch {
-        /* no Sythos Canvas QR profile in this pass */
+        /* no FrameQR Code in this pass */
       }
     }
 

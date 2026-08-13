@@ -2,7 +2,10 @@
   "name": "@sythos/js_barcode_universal",
   "version": "1.4.0",
   "description": "Read and write barcodes in JavaScript with zero runtime dependencies. QR Code, Micro QR, rMQR, FrameQR Code, Aztec Code and Rune, PDF417 variants, GS1 DataBar Omnidirectional/Truncated, EAN supplements and one-dimensional formats.",
-  "author": "Sythos",
+  "author": {
+    "name": "Sythos",
+    "url": "https://www.sythos.net"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./src/index.js",
@@ -48,7 +51,8 @@
     "licenses",
     "LICENSE",
     "NOTICE.md",
-    "README.md"
+    "README.md",
+    "AI_USAGE.md"
   ],
   "keywords": [
     "barcode",
