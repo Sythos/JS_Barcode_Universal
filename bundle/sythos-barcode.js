@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.5.2
+ * Sythos Barcode Suite v1.5.3
  *
  * MIT License
  *
@@ -16761,10 +16761,41 @@ function decode(image, options = {}) {
 
   // De-duplicate: the same symbol is often read on several scan rows.
   const seen = new Set();
-  return results.filter((r) => {
+  const unique = results.filter((r) => {
     const key = `${r.format}:${r.text}`;
     if (seen.has(key)) return false;
     seen.add(key);
+    return true;
+  });
+
+  // On large clean rasters, hybrid thresholding can erase otherwise uniform
+  // QR/PDF417 modules. Keep auto/hybrid as the primary strategy, then make one
+  // focused global retry only when the complete primary pass found nothing.
+  // This deliberately leaves an explicit global request single-pass.
+  const retryFormats = formats
+    ? formats.filter((format) => {
+      const id = String(format).toLowerCase();
+      return id === 'qr' || id === 'qrcode'
+        || id === 'pdf417' || id === 'pdf-417'
+        || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417';
+    })
+    : ['qr', 'pdf417', 'compactpdf417'];
+  const shouldRetryGlobal = unique.length === 0
+    && (binarizer === 'auto' || binarizer === 'hybrid')
+    && retryFormats.length > 0;
+
+  if (!shouldRetryGlobal) return unique;
+
+  const fallback = decode(image, {
+    ...options,
+    formats: retryFormats,
+    binarizer: 'global',
+  });
+  const fallbackSeen = new Set();
+  return [...unique, ...fallback].filter((r) => {
+    const key = `${r.format}:${r.text}`;
+    if (fallbackSeen.has(key)) return false;
+    fallbackSeen.add(key);
     return true;
   });
 }
@@ -16783,7 +16814,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.5.2';
+const VERSION = '1.5.3';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;

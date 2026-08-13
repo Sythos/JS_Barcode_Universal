@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.2"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.3"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -501,6 +501,8 @@ decodeStrict(image, options?) → Result        // throws NotFoundError instead 
 and go faster), `tryHarder` (retry inverted, default `true`), `binarizer`
 (`'global' | 'hybrid' | 'auto'`). A `Result` carries at least `text` and `format`; QR results also
 carry `bytes`, `version` and `ecc`.
+
+For larger clean QR Code and PDF417 rasters, `auto` and `hybrid` retain their primary local-threshold pass and retry once with the global threshold only when that pass finds no result. An explicit `binarizer: 'global'` request remains single-pass.
 
 ```js
 listFormats() → { id, label, canWrite, canRead, kind }[]
