@@ -226,7 +226,7 @@ time.
 | MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
 | Micro QR Code | `microqr` | 2D | ✅ | ✅ |
 | rMQR Code | `rmqr` | 2D | ✅ | ✅ |
-| Sythos Canvas QR profile (non-certified; not DENSO FrameQR) | `frameqr` | 2D | ✅ | ✅ |
+| FrameQR Code | `frameqr` | 2D | ✅ | ✅ |
 
 Twenty-three formats, all writable, twenty readable. **Code 11, MSI Plessey and Pharmacode remain
 write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
@@ -349,13 +349,13 @@ const symbol = encodeRMQR('rMQR SAMPLE', { ecc: 'M' });
 console.log(decodeRMQR(symbol).text);
 ```
 
-### Sythos Canvas QR profile
+### FrameQR Code
 
-`frameqr` is an explicitly scoped, non-certified Sythos profile: it reserves a bounded square,
-circle or diamond artwork canvas inside an ECC-H QR Model 2 symbol. It is **not** a native DENSO
-FrameQR encoder or decoder, and the package makes no DENSO interoperability claim. The profile
-can be read from clean rendered rasters and is exposed through the normal `encode`/`decode` API
-and the `frameqr` subpath.
+`frameqr` is an explicitly scoped, non-certified FrameQR Code profile: it reserves a bounded
+square, circle or diamond artwork canvas inside an ECC-H QR Model 2 symbol. It is **not** a native
+DENSO FrameQR encoder or decoder, and the package makes no DENSO interoperability claim. The
+profile can be read from clean rendered rasters and is exposed through the normal `encode`/`decode`
+API and the `frameqr` subpath.
 
 ```js
 import { encodeFrameQR, decodeFrameQR } from '@sythos/js_barcode_universal/frameqr';
@@ -427,9 +427,9 @@ MicroPDF417 accepts `compaction: 'auto' | 'text' | 'byte' | 'numeric'`, ECI 3 or
 compaction, and optional `columns`, `rowHeight` and `aspectRatio` constraints.
 Micro QR accepts `version: 'M1' | 'M2' | 'M3' | 'M4'`, its legal ECC level and mask; its
 unsupported ECI, FNC1/GS1 and Structured Append features are rejected explicitly. rMQR accepts
-`ecc: 'M' | 'H'`, optional geometry/version constraints and ECI for byte payloads. The Sythos
-Canvas QR profile accepts `canvas: { shape: 'square' | 'circle' | 'diamond', size, width,
-height, centerX, centerY, angle }`; it is non-certified and separate from DENSO FrameQR.
+`ecc: 'M' | 'H'`, optional geometry/version constraints and ECI for byte payloads. The FrameQR
+Code profile accepts `canvas: { shape: 'square' | 'circle' | 'diamond', size, width, height,
+centerX, centerY, angle }`; it is non-certified and separate from DENSO FrameQR.
 
 ```js
 encode('5901234123457', { format: 'ean13' })
@@ -577,14 +577,14 @@ MIT © 2026 Sythos. Every source file carries the header.
 **The implementation is original Sythos work.** No third-party barcode source code is copied into
 or shipped by this package. The symbologies are implemented from published descriptions of the
 formats and from original Sythos data structures; MicroPDF417, Micro QR, rMQR and the Sythos
-Canvas QR profile carry provenance and pending legal review in `NOTICE.md`. Independent
+FrameQR Code carries provenance and pending legal review in `NOTICE.md`. Independent
 implementations and public technical material may be consulted for engineering review or
 black-box verification; no third-party source code is copied or shipped. The distributed package has no runtime third-party
 dependencies. See [`NOTICE.md`](NOTICE.md) and the per-format files in [`licenses/`](licenses/).
 
 Public DENSO FrameQR material was consulted only to document the compatibility boundary. ZXing
 was used only as an independent black-box validation tool; no ZXing source code or tables are
-copied or shipped. The Sythos Canvas QR profile does not claim native DENSO FrameQR
+copied or shipped. The FrameQR Code profile does not claim native DENSO FrameQR
 interoperability.
 licence or co-author attribution.
 
