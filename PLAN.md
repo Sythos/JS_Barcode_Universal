@@ -111,6 +111,25 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 - Scoped legal review labels in `LICENSE` §3–5 are recorded with citations in `NOTICE.md`. Micro QR and rMQR provenance remains explicitly subject to standards, patent and trademark review.
 - Frame QR is deliberately scoped to the non-certified `sythos-canvas-qr/1` profile. DENSO FrameQR public material was consulted for the compatibility boundary, not as a native format definition; native DENSO interoperability remains unclaimed. ZXing was used only as an independent black-box validation tool, with no source code or tables copied or shipped.
 
+### DENSO-licensed formats excluded from this SDK
+
+**SQRC** and **Face Authentication SQRC** are DENSO formats subject to DENSO
+licensing and are deliberately not included in this SDK. Their proprietary
+data rules, authentication semantics and licensing terms are outside the
+scope of the MIT implementation and cannot be redistributed here as native
+encoder or decoder support.
+
+Users who obtain an appropriate licence directly from DENSO may adapt the
+SDK's generic QR, Reed–Solomon, rendering and image-processing routines for
+their licensed integration. Any such adaptation must remain subject to the
+applicable DENSO licence; this project does not grant, imply or replace that
+licence.
+
+Official references:
+
+- [DENSO Face Authentication SQRC](https://www.denso-wave.com/en/system/qr/product/facesqrc.html)
+- [DENSO SQRC](https://www.denso-wave.com/en/system/qr/product/sqrc.html)
+
 ---
 
 ## 2. On GPU acceleration
