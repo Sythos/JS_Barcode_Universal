@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.3.1
+ * Sythos Barcode Suite v1.4.0
  *
  * MIT License
  *
@@ -1822,6 +1822,413 @@ __exports.encodeMSI = encodeMSI;
 __exports.encodePharmacode = encodePharmacode;
 };
 
+__modules["oned/addons.js"] = function (__require, __exports) {
+/**
+ * UPC/EAN two- and five-digit supplements.
+ *
+ * Supplements are small symbols printed to the right of an EAN/UPC symbol.
+ * They use the ordinary EAN odd/even digit patterns, a 1011 start guard and
+ * 01 separators between digits. EAN-2 selects its parity from the numeric
+ * value modulo four. EAN-5 derives a checksum from the five digits and uses
+ * that value to select one of ten parity rows.
+ *
+ * This module intentionally keeps supplements separate from the base EAN/UPC
+ * writers. `composeEANAddon` and the `*WithAddon` helpers are opt-in; existing
+ * EAN/UPC APIs continue to return their original one-row matrices unchanged.
+ *
+ * @module oned/addons
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError, FormatError } = __require("core/errors.js");
+const { EAN_L, EAN_G } = __require("oned/patterns.js");
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE } = __require("oned/writers.js");
+
+/** EAN-2 parity rows, indexed by the two-digit value modulo four. */
+const EAN2_PARITY = Object.freeze([
+  'AA', 'AB', 'BA', 'BB',
+]);
+
+/** EAN-5 parity rows, indexed by the supplemental checksum. */
+const EAN5_PARITY = Object.freeze([
+  'BBAAA', 'BABAA', 'BAABA', 'BAAAB', 'ABBAA',
+  'AABBA', 'AAABB', 'ABABA', 'ABAAB', 'AABAB',
+]);
+
+/** Start guard used by both UPC/EAN supplemental symbols. */
+const EAN_ADDON_START = '1011';
+
+/** Separator inserted between adjacent supplemental digits. */
+const EAN_ADDON_SEPARATOR = '01';
+const EAN2_WIDTH = EAN_ADDON_START.length + 2 * 7 + EAN_ADDON_SEPARATOR.length;
+const EAN5_WIDTH = EAN_ADDON_START.length + 5 * 7 + EAN_ADDON_SEPARATOR.length * 4;
+
+/**
+ * @param {unknown} value
+ * @param {number} length
+ * @param {string} format
+ * @returns {string}
+ */
+function normalizeDigits(value, length, format) {
+  const digits = String(value);
+  if (!new RegExp(`^[0-9]{${length}}$`).test(digits)) {
+    throw new EncodeError(`${format}: payload must contain exactly ${length} digits`);
+  }
+  return digits;
+}
+
+/**
+ * EAN-5 supplemental checksum.
+ *
+ * The first, third and fifth digits carry weight three; the second and fourth
+ * carry weight nine. The checksum is not printed as a sixth digit: it selects
+ * the odd/even parity row for the five encoded digits.
+ *
+ * @param {string|number} value Five digits.
+ * @returns {number} Checksum value, 0-9.
+ */
+function ean5Checksum(value) {
+  const digits = normalizeDigits(value, 5, 'EAN-5');
+  const weighted =
+    3 * (Number(digits[0]) + Number(digits[2]) + Number(digits[4])) +
+    9 * (Number(digits[1]) + Number(digits[3]));
+  return weighted % 10;
+}
+
+/** Alias for callers that use the EAN family check-digit terminology. */
+const ean5CheckDigit = ean5Checksum;
+
+/**
+ * Resolve the EAN-2 parity row for a payload.
+ *
+ * @param {string|number} value Two digits.
+ * @returns {string} Two-character A/B parity row.
+ */
+function ean2Parity(value) {
+  const digits = normalizeDigits(value, 2, 'EAN-2');
+  return EAN2_PARITY[Number(digits) % 4];
+}
+
+/**
+ * Resolve the EAN-5 parity row for a payload.
+ *
+ * @param {string|number} value Five digits.
+ * @returns {string} Five-character A/B parity row.
+ */
+function ean5Parity(value) {
+  return EAN5_PARITY[ean5Checksum(value)];
+}
+
+/**
+ * Expand an A/B parity row into EAN digit patterns.
+ *
+ * @param {string} digits
+ * @param {string} parity
+ * @returns {string}
+ */
+function encodeDigitPatterns(digits, parity) {
+  let modules = EAN_ADDON_START;
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0) modules += EAN_ADDON_SEPARATOR;
+    const table = parity[i] === 'A' ? EAN_L : EAN_G;
+    modules += table[Number(digits[i])];
+  }
+  return modules;
+}
+
+/**
+ * Turn a module string into a one-row matrix and attach immutable source
+ * metadata for composition/rendering callers.
+ *
+ * @param {string} modules
+ * @param {{format: string, text: string, parity: string, checksum?: number}} metadata
+ * @returns {BitMatrix}
+ */
+function toAddonMatrix(modules, metadata) {
+  const matrix = new BitMatrix(modules.length, 1);
+  for (let x = 0; x < modules.length; x++) {
+    if (modules[x] === '1') matrix.set(x, 0);
+  }
+  matrix.eanAddon = Object.freeze({ ...metadata });
+  return matrix;
+}
+
+/**
+ * Encode an EAN-2 supplement.
+ *
+ * @param {string|number} value Exactly two decimal digits.
+ * @returns {BitMatrix} A 20-module, one-row supplement.
+ */
+function encodeEAN2(value) {
+  const digits = normalizeDigits(value, 2, 'EAN-2');
+  const parity = ean2Parity(digits);
+  const matrix = toAddonMatrix(encodeDigitPatterns(digits, parity), {
+    format: 'ean2',
+    text: digits,
+    parity,
+  });
+  if (matrix.width !== EAN2_WIDTH) {
+    throw new EncodeError(`EAN-2: internal width is ${matrix.width}, expected ${EAN2_WIDTH}`);
+  }
+  return matrix;
+}
+
+/**
+ * Encode an EAN-5 supplement.
+ *
+ * @param {string|number} value Exactly five decimal digits.
+ * @returns {BitMatrix} A 47-module, one-row supplement.
+ */
+function encodeEAN5(value) {
+  const digits = normalizeDigits(value, 5, 'EAN-5');
+  const checksum = ean5Checksum(digits);
+  const parity = EAN5_PARITY[checksum];
+  const matrix = toAddonMatrix(encodeDigitPatterns(digits, parity), {
+    format: 'ean5',
+    text: digits,
+    parity,
+    checksum,
+  });
+  if (matrix.width !== EAN5_WIDTH) {
+    throw new EncodeError(`EAN-5: internal width is ${matrix.width}, expected ${EAN5_WIDTH}`);
+  }
+  return matrix;
+}
+
+/**
+ * Encode either supported supplement length.
+ *
+ * @param {string|number} value Two or five decimal digits.
+ * @returns {BitMatrix}
+ */
+function encodeEANAddon(value) {
+  const digits = String(value);
+  if (digits.length === 2) return encodeEAN2(digits);
+  if (digits.length === 5) return encodeEAN5(digits);
+  throw new EncodeError('EAN add-on: payload must contain exactly two or five digits');
+}
+
+/** Alias using the spelling used by some EAN documentation. */
+const encodeEANAddOn = encodeEANAddon;
+
+/**
+ * @param {BitMatrix} matrix
+ * @param {number} offset
+ * @param {string} pattern
+ * @returns {boolean}
+ */
+function matches(matrix, offset, pattern) {
+  if (offset < 0 || offset + pattern.length > matrix.width) return false;
+  for (let i = 0; i < pattern.length; i++) {
+    if ((matrix.get(offset + i, 0) ? '1' : '0') !== pattern[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * @param {BitMatrix} matrix
+ * @param {number} start
+ * @param {2|5} digitCount
+ * @returns {{format:string,text:string,parity:string,checksum?:number,end:number}|null}
+ */
+function decodeAt(matrix, start, digitCount) {
+  const width = digitCount === 2 ? EAN2_WIDTH : EAN5_WIDTH;
+  if (!matches(matrix, start, EAN_ADDON_START)) return null;
+  if (start > 0 && matrix.get(start - 1, 0)) return null;
+
+  let offset = start + EAN_ADDON_START.length;
+  let text = '';
+  let parity = '';
+
+  for (let i = 0; i < digitCount; i++) {
+    let found = null;
+    for (let digit = 0; digit < 10; digit++) {
+      for (const [letter, table] of [['A', EAN_L], ['B', EAN_G]]) {
+        if (matches(matrix, offset, table[digit]) &&
+            (!found || found.letter !== letter || found.digit !== digit)) {
+          if (found) return null;
+          found = { digit, letter };
+        }
+      }
+    }
+    if (!found) return null;
+    text += String(found.digit);
+    parity += found.letter;
+    offset += 7;
+    if (i < digitCount - 1) {
+      if (!matches(matrix, offset, EAN_ADDON_SEPARATOR)) return null;
+      offset += EAN_ADDON_SEPARATOR.length;
+    }
+  }
+
+  if (offset - start !== width) return null;
+  if (digitCount === 2) {
+    if (EAN2_PARITY[Number(text) % 4] !== parity) return null;
+    return { format: 'ean2', text, parity, end: offset };
+  }
+
+  const checksum = ean5Checksum(text);
+  if (EAN5_PARITY[checksum] !== parity) return null;
+  return { format: 'ean5', text, parity, checksum, end: offset };
+}
+
+/**
+ * Validate and decode an EAN-2 supplement. A leading quiet zone is accepted;
+ * the decoder searches the row for a valid start guard so a composed base
+ * EAN/UPC matrix can be passed directly as well.
+ *
+ * @param {BitMatrix} matrix One-row, module-aligned supplement or composition.
+ * @returns {{format:'ean2',text:string,parity:string}}
+ * @throws {FormatError} When no valid supplement is found.
+ */
+function decodeEAN2(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || matrix.height !== 1) {
+    throw new FormatError('EAN-2: expected a one-row module matrix');
+  }
+  for (let start = 0; start + EAN2_WIDTH <= matrix.width; start++) {
+    const result = decodeAt(matrix, start, 2);
+    if (result) {
+      const { end, ...publicResult } = result;
+      void end;
+      return publicResult;
+    }
+  }
+  throw new FormatError('EAN-2: start, parity or digit pattern is invalid');
+}
+
+/**
+ * Validate and decode an EAN-5 supplement.
+ *
+ * @param {BitMatrix} matrix One-row, module-aligned supplement or composition.
+ * @returns {{format:'ean5',text:string,parity:string,checksum:number}}
+ * @throws {FormatError} When no valid supplement is found.
+ */
+function decodeEAN5(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || matrix.height !== 1) {
+    throw new FormatError('EAN-5: expected a one-row module matrix');
+  }
+  for (let start = 0; start + EAN5_WIDTH <= matrix.width; start++) {
+    const result = decodeAt(matrix, start, 5);
+    if (result) {
+      const { end, ...publicResult } = result;
+      void end;
+      return publicResult;
+    }
+  }
+  throw new FormatError('EAN-5: start, parity, checksum or digit pattern is invalid');
+}
+
+/**
+ * Decode either supported supplement length.
+ *
+ * @param {BitMatrix} matrix One-row, module-aligned supplement or composition.
+ * @returns {{format:'ean2'|'ean5',text:string,parity:string,checksum?:number}}
+ * @throws {FormatError} When neither supplement grammar matches.
+ */
+function decodeEANAddon(matrix) {
+  try {
+    return decodeEAN5(matrix);
+  } catch (fiveError) {
+    try {
+      return decodeEAN2(matrix);
+    } catch (twoError) {
+      throw new FormatError(`EAN add-on: ${fiveError.message}; ${twoError.message}`);
+    }
+  }
+}
+
+/** Alias using the spelling used by some EAN documentation. */
+const decodeEANAddOn = decodeEANAddon;
+
+/**
+ * Join a base EAN/UPC matrix and a supplement with the standard quiet gap.
+ *
+ * The helper does not alter either input. By default it inserts nine light
+ * modules, the conventional separation between the base symbol and an add-on.
+ * The result carries the supplement metadata under `eanAddon` for renderers or
+ * callers that need to label the composed symbol.
+ *
+ * @param {BitMatrix} base Base EAN/UPC matrix.
+ * @param {BitMatrix|string|number} addon Add-on matrix or two/five digits.
+ * @param {{gap?:number}} [options]
+ * @returns {BitMatrix}
+ */
+function composeEANAddon(base, addon, options = {}) {
+  if (!base || !Number.isInteger(base.width) || base.height !== 1) {
+    throw new TypeError('EAN add-on: base must be a one-row module matrix');
+  }
+  const addonMatrix = typeof addon === 'string' || typeof addon === 'number'
+    ? encodeEANAddon(addon)
+    : addon;
+  if (!addonMatrix || !Number.isInteger(addonMatrix.width) || addonMatrix.height !== 1) {
+    throw new TypeError('EAN add-on: supplement must be a one-row module matrix or digits');
+  }
+
+  const gap = options.gap === undefined ? 9 : Number(options.gap);
+  if (!Number.isInteger(gap) || gap < 1) {
+    throw new EncodeError(`EAN add-on: gap must be a positive integer, got ${options.gap}`);
+  }
+
+  const result = new BitMatrix(base.width + gap + addonMatrix.width, 1);
+  for (let x = 0; x < base.width; x++) if (base.get(x, 0)) result.set(x, 0);
+  for (let x = 0; x < addonMatrix.width; x++) {
+    if (addonMatrix.get(x, 0)) result.set(base.width + gap + x, 0);
+  }
+  if (addonMatrix.eanAddon) result.eanAddon = { ...addonMatrix.eanAddon, gap };
+  return result;
+}
+
+/**
+ * Compose an EAN-13 symbol with an EAN-2 or EAN-5 supplement.
+ *
+ * @param {string} value Base EAN-13 payload.
+ * @param {string|number} addon Two or five supplemental digits.
+ * @param {{gap?:number}} [options]
+ * @returns {BitMatrix}
+ */
+function encodeEAN13WithAddon(value, addon, options = {}) {
+  return composeEANAddon(encodeEAN13(value), addon, options);
+}
+
+/** @see encodeEAN13WithAddon */
+function encodeEAN8WithAddon(value, addon, options = {}) {
+  return composeEANAddon(encodeEAN8(value), addon, options);
+}
+
+/** @see encodeEAN13WithAddon */
+function encodeUPCAWithAddon(value, addon, options = {}) {
+  return composeEANAddon(encodeUPCA(value), addon, options);
+}
+
+/** @see encodeEAN13WithAddon */
+function encodeUPCEWithAddon(value, addon, options = {}) {
+  return composeEANAddon(encodeUPCE(value), addon, options);
+}
+
+__exports.EAN2_PARITY = EAN2_PARITY;
+__exports.EAN5_PARITY = EAN5_PARITY;
+__exports.EAN_ADDON_START = EAN_ADDON_START;
+__exports.EAN_ADDON_SEPARATOR = EAN_ADDON_SEPARATOR;
+__exports.EAN2_WIDTH = EAN2_WIDTH;
+__exports.EAN5_WIDTH = EAN5_WIDTH;
+__exports.ean5Checksum = ean5Checksum;
+__exports.ean5CheckDigit = ean5CheckDigit;
+__exports.ean2Parity = ean2Parity;
+__exports.ean5Parity = ean5Parity;
+__exports.encodeEAN2 = encodeEAN2;
+__exports.encodeEAN5 = encodeEAN5;
+__exports.encodeEANAddon = encodeEANAddon;
+__exports.encodeEANAddOn = encodeEANAddOn;
+__exports.decodeEAN2 = decodeEAN2;
+__exports.decodeEAN5 = decodeEAN5;
+__exports.decodeEANAddon = decodeEANAddon;
+__exports.decodeEANAddOn = decodeEANAddOn;
+__exports.composeEANAddon = composeEANAddon;
+__exports.encodeEAN13WithAddon = encodeEAN13WithAddon;
+__exports.encodeEAN8WithAddon = encodeEAN8WithAddon;
+__exports.encodeUPCAWithAddon = encodeUPCAWithAddon;
+__exports.encodeUPCEWithAddon = encodeUPCEWithAddon;
+};
+
 __modules["oned/reader.js"] = function (__require, __exports) {
 /**
  * Linear barcode reading.
@@ -2715,7 +3122,10 @@ __modules["oned/index.js"] = function (__require, __exports) {
  * Linear symbologies.
  *
  * @module oned
- */const __reexport0 = __require("oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;const __reexport1 = __require("oned/reader.js"); __exports.decodeOneD = __reexport1.decodeOneD; __exports.decodeOneDStrict = __reexport1.decodeOneDStrict; __exports.patternVariance = __reexport1.patternVariance; __exports.recordPattern = __reexport1.recordPattern; __exports.toNarrowWidePattern = __reexport1.toNarrowWidePattern;const __reexport2 = __require("oned/patterns.js"); __exports.validateTables = __reexport2.validateTables;const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("oned/writers.js");
+ */const __reexport0 = __require("oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport1 = __require("oned/addons.js"); __exports.EAN2_PARITY = __reexport1.EAN2_PARITY; __exports.EAN5_PARITY = __reexport1.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport1.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport1.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport1.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport1.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport1.ean2Parity; __exports.ean5Checksum = __reexport1.ean5Checksum; __exports.ean5CheckDigit = __reexport1.ean5CheckDigit; __exports.ean5Parity = __reexport1.ean5Parity; __exports.encodeEAN2 = __reexport1.encodeEAN2; __exports.encodeEAN5 = __reexport1.encodeEAN5; __exports.encodeEANAddon = __reexport1.encodeEANAddon; __exports.encodeEANAddOn = __reexport1.encodeEANAddOn; __exports.decodeEAN2 = __reexport1.decodeEAN2; __exports.decodeEAN5 = __reexport1.decodeEAN5; __exports.decodeEANAddon = __reexport1.decodeEANAddon; __exports.decodeEANAddOn = __reexport1.decodeEANAddOn; __exports.composeEANAddon = __reexport1.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport1.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport1.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport1.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport1.encodeUPCEWithAddon;
+const __reexport2 = __require("oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;const __reexport3 = __require("oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("oned/writers.js");
+const { encodeEAN2, encodeEAN5 } = __require("oned/addons.js");
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -2746,6 +3156,11 @@ __modules["oned/index.js"] = function (__require, __exports) {
   code11: { encode: encodeCode11, readable: false, label: 'Code 11' },
   msi: { encode: encodeMSI, readable: false, label: 'MSI Plessey' },
   pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
+  // Supplements are writable standalone matrices, but their reader is
+  // intentionally exposed through the EAN/UPC add-on helpers rather than the
+  // generic one-dimensional scan pipeline.
+  ean2: { encode: encodeEAN2, readable: false, label: 'EAN-2 supplement' },
+  ean5: { encode: encodeEAN5, readable: false, label: 'EAN-5 supplement' },
 };
 
 __exports.ONED_FORMATS = ONED_FORMATS;
@@ -11782,7 +12197,7 @@ const __reexport3 = __require("rmqr/tables.js"); __exports.RMQR_SIZES = __reexpo
 
 __modules["frameqr/tables.js"] = function (__require, __exports) {
 /**
- * Structural contract for FrameQR Code.
+ * Structural contract for the Sythos Canvas QR profile.
  *
  * DENSO WAVE's public material describes FrameQR(R) as a proprietary symbol
  * with a freely shaped canvas, dedicated generation/reading software and no
@@ -11794,7 +12209,7 @@ __modules["frameqr/tables.js"] = function (__require, __exports) {
  * symbol at level H and clears a bounded group of data modules. Its worst-case
  * damage is calculated per Reed-Solomon block and must remain within the
  * standard QR correction radius. Function modules are never canvas modules.
- * This provides a deterministic, independently testable FrameQR Code profile, but
+ * This provides a deterministic, independently testable canvas QR profile, but
  * it is explicitly non-certified and not a substitute for proprietary FrameQR
  * generation or validation software.
  *
@@ -11805,7 +12220,7 @@ const { blockLayout, dataModuleOrder, reservedModules, versionSize } = __require
 /** Public identity and compatibility boundary of the implementable profile. */
 const FRAMEQR_PROFILE = Object.freeze({
   id: 'sythos-canvas-qr/1',
-  name: 'FrameQR Code',
+  name: 'Sythos Canvas QR profile',
   certified: false,
   densoFrameQrCompatible: false,
   baseSymbology: 'QR Code Model 2',
@@ -11824,7 +12239,7 @@ function oddAtMost(value, maximum) {
 
 function assertSymbolSize(symbolSize) {
   if (!Number.isInteger(symbolSize) || symbolSize < 21 || symbolSize > 177 || (symbolSize - 17) % 4 !== 0) {
-    throw new RangeError(`FrameQR Code: ${symbolSize} is not a QR Model 2 symbol size`);
+    throw new RangeError(`Frame QR profile: ${symbolSize} is not a QR Model 2 symbol size`);
   }
 }
 
@@ -11842,12 +12257,12 @@ function assertSymbolSize(symbolSize) {
 function normalizeCanvasSpec(symbolSize, canvas = {}) {
   assertSymbolSize(symbolSize);
   if (canvas === null || typeof canvas !== 'object' || Array.isArray(canvas)) {
-    throw new TypeError('FrameQR Code: canvas must be an object');
+    throw new TypeError('Frame QR profile: canvas must be an object');
   }
 
   const shape = String(canvas.shape ?? 'square').toLowerCase();
   if (!FRAMEQR_CANVAS_SHAPES.includes(shape)) {
-    throw new RangeError(`FrameQR Code: unsupported canvas shape "${shape}"`);
+    throw new RangeError(`Frame QR profile: unsupported canvas shape "${shape}"`);
   }
 
   const defaultSize = oddAtMost(Math.max(3, Math.round(symbolSize * 0.17)), symbolSize - 16);
@@ -11858,7 +12273,7 @@ function normalizeCanvasSpec(symbolSize, canvas = {}) {
   for (const [name, value] of [['width', requestedWidth], ['height', requestedHeight]]) {
     if (!Number.isFinite(Number(value)) || Number(value) < 1 || Number(value) > maximumDimension) {
       throw new RangeError(
-        `FrameQR Code: canvas ${name} must be between 1 and ${maximumDimension} modules`
+        `Frame QR profile: canvas ${name} must be between 1 and ${maximumDimension} modules`
       );
     }
   }
@@ -11869,10 +12284,10 @@ function normalizeCanvasSpec(symbolSize, canvas = {}) {
   const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
 
   if (![0, 90, 180, 270].includes(angle)) {
-    throw new RangeError('FrameQR Code: angle must be 0, 90, 180 or 270 degrees');
+    throw new RangeError('Frame QR profile: angle must be 0, 90, 180 or 270 degrees');
   }
   if (centerX < 8 || centerY < 8 || centerX >= symbolSize - 8 || centerY >= symbolSize - 8) {
-    throw new RangeError('FrameQR Code: canvas centre must remain inside the finder-pattern boundary');
+    throw new RangeError('Frame QR profile: canvas centre must remain inside the finder-pattern boundary');
   }
 
   return { shape, centerX, centerY, width, height, angle };
@@ -11943,7 +12358,7 @@ function codewordBlockMap(layout) {
  */
 function analyzeCanvasDamage(version, canvas = {}) {
   if (!Number.isInteger(version) || version < 1 || version > 40) {
-    throw new RangeError(`FrameQR Code: version must be an integer 1-40, got ${version}`);
+    throw new RangeError(`Frame QR profile: version must be an integer 1-40, got ${version}`);
   }
   const symbolSize = versionSize(version);
   const spec = normalizeCanvasSpec(symbolSize, canvas);
@@ -12027,7 +12442,7 @@ __exports.validateFrameQrTables = validateFrameQrTables;
 
 __modules["frameqr/encoder.js"] = function (__require, __exports) {
 /**
- * FrameQR Code encoder.
+ * Sythos Canvas QR profile encoder.
  *
  * This encoder deliberately builds on this project's QR Code implementation
  * and then removes a conservatively bounded set of data modules for artwork.
@@ -12060,7 +12475,7 @@ function clearCanvas(matrix, modules) {
 
 /**
  * Encode a QR Code with a conservative artwork canvas according to the
- * non-certified FrameQR Code profile.
+ * non-certified Sythos Canvas QR profile.
  *
  * The profile forces QR H error correction and rejects a canvas whenever its
  * known codeword damage exceeds the per-block correction budget. When a
@@ -12076,10 +12491,10 @@ function clearCanvas(matrix, modules) {
  */
 function encodeFrameQR(text, options = {}) {
   if (typeof text !== 'string') {
-    throw new EncodeError('FrameQR Code: text must be a string');
+    throw new EncodeError('Sythos Canvas QR: text must be a string');
   }
   if (options.ecc !== undefined && options.ecc !== 'H') {
-    throw new EncodeError('FrameQR Code: ecc is fixed to H for this profile');
+    throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
   }
 
   const qrOptions = {
@@ -12115,7 +12530,7 @@ function encodeFrameQR(text, options = {}) {
       analysis = validateCanvasSpec(versionFor(matrix), canvas);
     } catch (error) {
       if (error instanceof EncodeError) throw error;
-      throw new EncodeError(`FrameQR Code: invalid canvas: ${error.message}`);
+      throw new EncodeError(`Sythos Canvas QR: invalid canvas: ${error.message}`);
     }
     if (!analysis.safe) {
       unsafeAnalysis = analysis;
@@ -12128,13 +12543,13 @@ function encodeFrameQR(text, options = {}) {
   if (!selected) {
     if (unsafeAnalysis) {
       throw new EncodeError(
-        'FrameQR Code: canvas is not safe for the selected QR version; ' +
+        'Sythos Canvas QR: canvas is not safe for the selected QR version; ' +
         `it touches ${unsafeAnalysis.touchedCodewordCount} codewords and has ` +
         `a per-block correction budget of ${unsafeAnalysis.correctionBudgetPerBlock}`
       );
     }
     if (capacityError) throw capacityError;
-    throw new EncodeError('FrameQR Code: unable to select a QR version');
+    throw new EncodeError('Sythos Canvas QR: unable to select a QR version');
   }
 
   const { matrix, canvas } = selected;
@@ -12152,7 +12567,7 @@ __exports.encodeFrameQR = encodeFrameQR;
 
 __modules["frameqr/decoder.js"] = function (__require, __exports) {
 /**
- * Decoder for FrameQR Code.
+ * Decoder for the Sythos Canvas QR profile.
  *
  * This is intentionally not a DENSO FrameQR decoder. The profile is a QR
  * symbol with a bounded artwork reservation and an explicit `frameqr` marker.
@@ -12204,7 +12619,7 @@ function isExpectedProfile(profile) {
  * @returns {{canvas: object, damage: object}}
  */
 function validateCanvas(symbolSize, version, canvas) {
-  if (!isObject(canvas)) throw new FormatError('FrameQR Code: canvas metadata is missing');
+  if (!isObject(canvas)) throw new FormatError('Sythos Canvas QR: canvas metadata is missing');
 
   let normalized;
   try {
@@ -12220,14 +12635,14 @@ function validateCanvas(symbolSize, version, canvas) {
     }
   } catch (error) {
     if (error instanceof FormatError) throw error;
-    throw new FormatError(`FrameQR Code: invalid canvas metadata: ${error.message}`);
+    throw new FormatError(`Sythos Canvas QR: invalid canvas metadata: ${error.message}`);
   }
 
   let damage;
   try {
     damage = analyzeCanvasDamage(version, normalized);
   } catch (error) {
-    throw new FormatError(`FrameQR Code: cannot analyse canvas damage: ${error.message}`);
+    throw new FormatError(`Sythos Canvas QR: cannot analyse canvas damage: ${error.message}`);
   }
   return { canvas: normalized, damage };
 }
@@ -12252,24 +12667,24 @@ function resolveProfile(matrix, options) {
     const markerId = isObject(markerProfile) ? markerProfile.id : markerProfile;
     const suppliedId = isObject(suppliedProfile) ? suppliedProfile.id : suppliedProfile;
     if (markerId !== suppliedId) {
-      throw new FormatError('FrameQR Code: matrix and requested profile markers disagree');
+      throw new FormatError('Sythos Canvas QR: matrix and requested profile markers disagree');
     }
   }
   const profile = markerProfile ?? suppliedProfile;
 
   if (!isExpectedProfile(profile)) {
     throw new FormatError(
-      'FrameQR Code: profile marker is missing or is not a FrameQR Code symbol'
+      'Sythos Canvas QR: profile marker is missing or is not the Sythos Canvas QR profile'
     );
   }
   if (marker && marker.certified === true) {
     throw new FormatError(
-      'FrameQR Code: certified FrameQR input is not supported by this profile decoder'
+      'Sythos Canvas QR: certified FrameQR input is not supported by this profile decoder'
     );
   }
   if (!marker && !options.allowUnmarked) {
     throw new FormatError(
-      'FrameQR Code: unmarked QR matrix rejected; provide a verified profile marker'
+      'Sythos Canvas QR: unmarked QR matrix rejected; provide a verified profile marker'
     );
   }
 
@@ -12277,7 +12692,7 @@ function resolveProfile(matrix, options) {
   const canvas = options.canvas ?? markerCanvas;
   const version = (matrix.width - 17) / 4;
   if (!Number.isInteger(version) || version < 1 || version > 40) {
-    throw new FormatError(`FrameQR Code: invalid QR symbol size ${matrix.width}`);
+    throw new FormatError(`Sythos Canvas QR: invalid QR symbol size ${matrix.width}`);
   }
   const checked = validateCanvas(matrix.width, version, canvas);
   if (markerCanvas && options.canvas) {
@@ -12285,11 +12700,11 @@ function resolveProfile(matrix, options) {
     try {
       marked = normalizeCanvasSpec(matrix.width, markerCanvas);
     } catch (error) {
-      throw new FormatError(`FrameQR Code: invalid marker canvas: ${error.message}`);
+      throw new FormatError(`Sythos Canvas QR: invalid marker canvas: ${error.message}`);
     }
     const fields = ['shape', 'centerX', 'centerY', 'width', 'height', 'angle'];
     if (fields.some((field) => marked[field] !== checked.canvas[field])) {
-      throw new FormatError('FrameQR Code: matrix and requested canvas metadata disagree');
+      throw new FormatError('Sythos Canvas QR: matrix and requested canvas metadata disagree');
     }
   }
   return {
@@ -12301,7 +12716,7 @@ function resolveProfile(matrix, options) {
 }
 
 /**
- * Decode a FrameQR Code matrix.
+ * Decode a Sythos Canvas QR matrix.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  *   Square QR modules, normally returned by `encodeFrameQR` or a FrameQR
@@ -12321,11 +12736,11 @@ function resolveProfile(matrix, options) {
  */
 function decodeFrameQR(matrix, options = {}) {
   if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
-    throw new FormatError('FrameQR Code: no matrix supplied');
+    throw new FormatError('Sythos Canvas QR: no matrix supplied');
   }
   if (matrix.width !== matrix.height) {
     throw new FormatError(
-      `FrameQR Code: symbol must be square, got ${matrix.width}x${matrix.height}`
+      `Sythos Canvas QR: symbol must be square, got ${matrix.width}x${matrix.height}`
     );
   }
 
@@ -12337,7 +12752,7 @@ function decodeFrameQR(matrix, options = {}) {
     // Preserve the original QR/RS error when possible, but give callers a
     // profile-specific context without exposing implementation details.
     if (error instanceof FormatError) {
-      throw new FormatError(`FrameQR Code: payload is not recoverable: ${error.message}`);
+      throw new FormatError(`Sythos Canvas QR: payload is not recoverable: ${error.message}`);
     }
     throw error;
   }
@@ -12359,7 +12774,7 @@ __exports.decodeFrameQR = decodeFrameQR;
 
 __modules["frameqr/detector.js"] = function (__require, __exports) {
 /**
- * Detector for the non-certified FrameQR Code profile.
+ * Detector for the non-certified Sythos Canvas QR profile.
  *
  * The profile deliberately reuses QR Model 2 geometry. Finder localisation and
  * projective sampling therefore use the QR detector; the additional profile
@@ -12423,7 +12838,7 @@ function sameCandidate(left, right) {
 }
 
 /**
- * Detect FrameQR Code symbols in a binarized raster.
+ * Detect Sythos Canvas QR symbols in a binarized raster.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
  * @param {object} [options]
@@ -12525,6 +12940,1669 @@ const __reexport0 = __require("frameqr/encoder.js"); __exports.encodeFrameQR = _
 const __reexport1 = __require("frameqr/decoder.js"); __exports.decodeFrameQR = __reexport1.decodeFrameQR;
 const __reexport2 = __require("frameqr/detector.js"); __exports.detectFrameQR = __reexport2.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport2.detectAndDecodeFrameQR;
 const __reexport3 = __require("frameqr/tables.js"); __exports.FRAMEQR_PROFILE = __reexport3.FRAMEQR_PROFILE; __exports.FRAMEQR_CANVAS_SHAPES = __reexport3.FRAMEQR_CANVAS_SHAPES; __exports.canvasModules = __reexport3.canvasModules; __exports.normalizeCanvasSpec = __reexport3.normalizeCanvasSpec; __exports.analyzeCanvasDamage = __reexport3.analyzeCanvasDamage; __exports.validateCanvasSpec = __reexport3.validateCanvasSpec; __exports.validateFrameQrTables = __reexport3.validateFrameQrTables;
+
+
+};
+
+__modules["aztecrune/tables.js"] = function (__require, __exports) {
+/**
+ * Aztec Rune geometry.
+ *
+ * Aztec Rune is the 11x11, one-byte member of the Aztec family. Two 4-bit
+ * data words and five 4-bit Reed-Solomon check words are XORed with the fixed
+ * Aztec Rune mask and written clockwise on the outer data ring. The finder and
+ * corner orientation marks are independent of the value.
+ *
+ * The constants below are derived from the public Aztec Code specification and
+ * are kept separate from the general Aztec implementation so a normal Aztec
+ * decoder can never accidentally treat an 11x11 Rune as a regular symbol.
+ *
+ * @module aztecrune/tables
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { fieldForWordSize } = __require("aztec/tables.js");
+const AZTEC_RUNE_SIZE = 11;
+const AZTEC_RUNE_DATA_BITS = 8;
+const AZTEC_RUNE_WORD_SIZE = 4;
+const AZTEC_RUNE_DATA_CODEWORDS = 2;
+const AZTEC_RUNE_ECC_CODEWORDS = 5;
+const AZTEC_RUNE_TOTAL_CODEWORDS = AZTEC_RUNE_DATA_CODEWORDS + AZTEC_RUNE_ECC_CODEWORDS;
+const AZTEC_RUNE_MASK = 0b1010;
+
+/**
+ * Data-module coordinates in wire order: clockwise, starting at the top.
+ * Every side contributes seven modules, for 28 bits in total.
+ */
+const AZTEC_RUNE_DATA_POSITIONS = Object.freeze([
+  ...Array.from({ length: 7 }, (_, i) => [i + 2, 0]),
+  ...Array.from({ length: 7 }, (_, i) => [10, i + 2]),
+  ...Array.from({ length: 7 }, (_, i) => [8 - i, 10]),
+  ...Array.from({ length: 7 }, (_, i) => [0, 8 - i]),
+].map(([x, y]) => Object.freeze([x, y])));
+
+const DATA_KEYS = new Set(AZTEC_RUNE_DATA_POSITIONS.map(([x, y]) => `${x},${y}`));
+
+/** @param {number} x @param {number} y @returns {boolean} */
+function isAztecRuneDataPosition(x, y) {
+  return DATA_KEYS.has(`${x},${y}`);
+}
+/**
+ * Return the value of a structural module. Data positions return `null`.
+ * The bull's-eye has five square rings including its one-module centre; its
+ * even-radius rings are dark. The four corner groups are the orientation marks
+ * described by the Aztec Rune specification.
+ *
+ * @param {number} x @param {number} y
+ * @returns {boolean|null}
+ */
+function aztecRuneStructuralValue(x, y) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= AZTEC_RUNE_SIZE || y >= AZTEC_RUNE_SIZE) {
+    return null;
+  }
+  if (isAztecRuneDataPosition(x, y)) return null;
+
+  const distance = Math.max(Math.abs(x - 5), Math.abs(y - 5));
+  if (distance <= 4) return (distance & 1) === 0;
+
+  // Corner orientation groups, clockwise from the upper-left corner:
+  // three dark, white-dark-dark, dark-white-white, three white.
+  if ((x === 0 && y <= 1) || (y === 0 && x <= 1)) return true;
+  if ((x === 10 && y <= 1) || (y === 0 && x === 10)) return true;
+  if (x === 9 && y === 0) return false;
+  if (x === 10 && y === 10) return false;
+  if (y === 10 && x >= 0 && x <= 1) return false;
+  if (x === 0 && y >= 9) return false;
+  if (x === 10 && y === 9) return true;
+
+  // All non-data cells are covered by the bull's-eye or the four corners.
+  return false;
+}
+
+/** Build only the fixed finder/orientation structure. */
+function buildAztecRuneStructure() {
+  const matrix = new BitMatrix(AZTEC_RUNE_SIZE);
+  for (let y = 0; y < AZTEC_RUNE_SIZE; y++) {
+    for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
+      const value = aztecRuneStructuralValue(x, y);
+      if (value === true) matrix.set(x, y);
+    }
+  }
+  return matrix;
+}
+
+/** Return the field used by Rune data/check words. */
+function aztecRuneField() {
+  return fieldForWordSize(AZTEC_RUNE_WORD_SIZE);
+}
+
+/** Validate the fixed Rune contract and coordinate layout. */
+function validateAztecRuneTables() {
+  const problems = [];
+  if (AZTEC_RUNE_SIZE !== 11) problems.push('Rune symbol size must be 11');
+  if (AZTEC_RUNE_TOTAL_CODEWORDS * AZTEC_RUNE_WORD_SIZE !== 28) problems.push('Rune outer ring must carry 28 bits');
+  if (AZTEC_RUNE_DATA_POSITIONS.length !== 28) problems.push('Rune data ring must contain 28 modules');
+  if (new Set(AZTEC_RUNE_DATA_POSITIONS.map(([x, y]) => `${x},${y}`)).size !== 28) problems.push('Rune data coordinates must be unique');
+  const structure = buildAztecRuneStructure();
+  for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
+    if (isAztecRuneDataPosition(x, y)) continue;
+    const expected = aztecRuneStructuralValue(x, y) === true;
+    if (structure.get(x, y) !== expected) problems.push(`Rune structure mismatch at ${x},${y}`);
+  }
+  return problems;
+}
+
+__exports.AZTEC_RUNE_SIZE = AZTEC_RUNE_SIZE;
+__exports.AZTEC_RUNE_DATA_BITS = AZTEC_RUNE_DATA_BITS;
+__exports.AZTEC_RUNE_WORD_SIZE = AZTEC_RUNE_WORD_SIZE;
+__exports.AZTEC_RUNE_DATA_CODEWORDS = AZTEC_RUNE_DATA_CODEWORDS;
+__exports.AZTEC_RUNE_ECC_CODEWORDS = AZTEC_RUNE_ECC_CODEWORDS;
+__exports.AZTEC_RUNE_TOTAL_CODEWORDS = AZTEC_RUNE_TOTAL_CODEWORDS;
+__exports.AZTEC_RUNE_MASK = AZTEC_RUNE_MASK;
+__exports.AZTEC_RUNE_DATA_POSITIONS = AZTEC_RUNE_DATA_POSITIONS;
+__exports.isAztecRuneDataPosition = isAztecRuneDataPosition;
+__exports.aztecRuneStructuralValue = aztecRuneStructuralValue;
+__exports.buildAztecRuneStructure = buildAztecRuneStructure;
+__exports.aztecRuneField = aztecRuneField;
+__exports.validateAztecRuneTables = validateAztecRuneTables;
+};
+
+__modules["aztecrune/encoder.js"] = function (__require, __exports) {
+/**
+ * Aztec Rune encoder.
+ *
+ * A Rune carries exactly one byte. Numeric strings are accepted for convenient
+ * human-readable input and are normalized to the canonical three-digit text;
+ * binary callers can pass one byte in an ArrayBuffer or typed-array view.
+ *
+ * @module aztecrune/encoder
+ */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { rsEncode } = __require("core/reed-solomon.js");
+const { AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, buildAztecRuneStructure } = __require("aztecrune/tables.js");
+
+/** @param {unknown} value @returns {number} */
+function normalizeAztecRuneValue(value) {
+  if (typeof value === 'number') {
+    if (Number.isInteger(value) && value >= 0 && value <= 255) return value;
+    throw new EncodeError('Aztec Rune: numeric value must be an integer from 0 to 255');
+  }
+
+  if (typeof value === 'string') {
+    if (!/^\d{1,3}$/.test(value)) throw new EncodeError('Aztec Rune: text input must contain one to three decimal digits');
+    const numeric = Number(value);
+    if (numeric > 255) throw new EncodeError('Aztec Rune: decimal value must be from 000 to 255');
+    return numeric;
+  }
+
+  let bytes = null;
+  if (value instanceof ArrayBuffer) bytes = new Uint8Array(value);
+  else if (ArrayBuffer.isView(value)) bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  if (bytes) {
+    if (bytes.length !== 1) throw new EncodeError('Aztec Rune: binary input must contain exactly one byte');
+    return bytes[0];
+  }
+  throw new EncodeError('Aztec Rune: expected a number, decimal string or one-byte binary value');
+}
+
+/** @param {number} value @returns {number[]} */
+function codewordsForValue(value) {
+  const data = [value >>> 4, value & 0x0f];
+  const parity = rsEncode(data, AZTEC_RUNE_ECC_CODEWORDS, aztecRuneField(), 1);
+  return data.concat(parity).map((word) => word ^ AZTEC_RUNE_MASK);
+}
+
+/** @param {BitMatrix} matrix @param {number[]} codewords */
+function writeDataRing(matrix, codewords) {
+  for (let word = 0; word < codewords.length; word++) {
+    for (let bit = 0; bit < 4; bit++) {
+      const at = word * 4 + bit;
+      const [x, y] = AZTEC_RUNE_DATA_POSITIONS[at];
+      matrix.setValue(x, y, ((codewords[word] >>> (3 - bit)) & 1) !== 0);
+    }
+  }
+}
+
+/**
+ * Encode one byte as an Aztec Rune.
+ *
+ * @param {number|string|ArrayBuffer|ArrayBufferView} value
+ * @param {{inverted?: boolean}} [options]
+ * @returns {import('../core/bit-matrix.js').BitMatrix & {
+ *   format: 'aztecrune', value: number, inverted: boolean
+ * }}
+ */
+function encodeAztecRune(value, options = {}) {
+  const numeric = normalizeAztecRuneValue(value);
+  if (options.inverted !== undefined && typeof options.inverted !== 'boolean') {
+    throw new EncodeError('Aztec Rune: inverted must be boolean');
+  }
+  const inverted = options.inverted === true;
+  const matrix = buildAztecRuneStructure();
+  writeDataRing(matrix, codewordsForValue(numeric));
+  if (inverted) {
+    for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) matrix.flip(x, y);
+  }
+  matrix.format = 'aztecrune';
+  matrix.value = numeric;
+  matrix.inverted = inverted;
+  return matrix;
+}
+__exports.codewordsForValue = codewordsForValue;
+
+__exports.normalizeAztecRuneValue = normalizeAztecRuneValue;
+__exports.encodeAztecRune = encodeAztecRune;
+};
+
+__modules["aztecrune/decoder.js"] = function (__require, __exports) {
+/**
+ * Aztec Rune decoder.
+ *
+ * The input is a square 11x11 module matrix. Structural modules are checked
+ * before the seven masked GF(16) codewords are Reed-Solomon corrected. The
+ * decoder tries the four in-plane quarter turns and both polarities, allowing
+ * it to consume an oriented sampled image while still rejecting ordinary
+ * Aztec/QR matrices.
+ *
+ * @module aztecrune/decoder
+ */
+const { FormatError } = __require("core/errors.js");
+const { rsDecode } = __require("core/reed-solomon.js");
+const { AZTEC_RUNE_DATA_CODEWORDS, AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, aztecRuneStructuralValue } = __require("aztecrune/tables.js");
+
+/** @param {import('../core/bit-matrix.js').BitMatrix} source @param {number} turns */
+function rotateClockwise(source, turns) {
+  let current = source.clone();
+  for (let turn = 0; turn < turns; turn++) {
+    const out = new source.constructor(current.height, current.width);
+    for (let y = 0; y < current.height; y++) for (let x = 0; x < current.width; x++) {
+      if (current.get(x, y)) out.set(current.height - 1 - y, x);
+    }
+    current = out;
+  }
+  return current;
+}
+
+/** @param {import('../core/bit-matrix.js').BitMatrix} matrix */
+function invert(matrix) {
+  const out = matrix.clone();
+  for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.flip(x, y);
+  return out;
+}
+
+/** @param {import('../core/bit-matrix.js').BitMatrix} matrix @param {boolean} inverted */
+function structureMatches(matrix, inverted) {
+  for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
+    const expected = aztecRuneStructuralValue(x, y);
+    if (expected === null) continue;
+    if (matrix.get(x, y) !== (inverted ? !expected : expected)) return false;
+  }
+  return true;
+}
+
+/** @param {import('../core/bit-matrix.js').BitMatrix} matrix @param {boolean} inverted */
+function readCodewords(matrix, inverted) {
+  const words = new Array(2 + AZTEC_RUNE_ECC_CODEWORDS).fill(0);
+  for (let at = 0; at < AZTEC_RUNE_DATA_POSITIONS.length; at++) {
+    const [x, y] = AZTEC_RUNE_DATA_POSITIONS[at];
+    const bit = matrix.get(x, y) !== inverted;
+    words[at >>> 2] = (words[at >>> 2] << 1) | (bit ? 1 : 0);
+  }
+  return words.map((word) => word ^ AZTEC_RUNE_MASK);
+}
+
+/** @param {number} value @param {boolean} inverted @param {number} rotation @param {number} corrections */
+function result(value, inverted, rotation, corrections) {
+  return {
+    format: 'aztecrune',
+    value,
+    text: String(value).padStart(3, '0'),
+    bytes: Uint8Array.of(value),
+    dimension: AZTEC_RUNE_SIZE,
+    inverted,
+    rotation,
+    corrections,
+  };
+}
+
+/**
+ * Decode a square Aztec Rune matrix.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @param {{inverted?: boolean|'auto', rotation?: number|'auto'}} [options]
+ * @returns {{format:'aztecrune',value:number,text:string,bytes:Uint8Array,dimension:number,inverted:boolean,rotation:number,corrections:number}}
+ * @throws {FormatError} For non-Rune geometry, structure or uncorrectable data.
+ */
+function decodeAztecRune(matrix, options = {}) {
+  if (!matrix || matrix.width !== AZTEC_RUNE_SIZE || matrix.height !== AZTEC_RUNE_SIZE) {
+    throw new FormatError(`Aztec Rune: expected an ${AZTEC_RUNE_SIZE}x${AZTEC_RUNE_SIZE} module matrix`);
+  }
+  const invertedModes = options.inverted === true ? [true] : options.inverted === false ? [false] : [false, true];
+  const rotations = Number.isInteger(options.rotation)
+    ? [((options.rotation % 360) + 360) % 360]
+    : [0, 90, 180, 270];
+
+  let checksumError = null;
+  for (const requestedRotation of rotations) {
+    if (requestedRotation % 90 !== 0) continue;
+    // To canonicalize an input rotated clockwise by k degrees, rotate it
+    // counter-clockwise by k. `turns` is the clockwise operation we apply.
+    const turns = (4 - requestedRotation / 90) % 4;
+    const canonicalRotation = requestedRotation;
+    const rotated = turns === 0 ? matrix.clone() : rotateClockwise(matrix, turns);
+    for (const inverted of invertedModes) {
+      const canonical = inverted ? invert(rotated) : rotated;
+      if (!structureMatches(canonical, false)) continue;
+      const words = readCodewords(canonical, false);
+      try {
+        const corrections = rsDecode(words, AZTEC_RUNE_ECC_CODEWORDS, aztecRuneField(), 1);
+        const value = (words[0] << 4) | words[1];
+        return result(value, inverted, canonicalRotation, corrections);
+      } catch (error) {
+        checksumError = error;
+      }
+    }
+  }
+
+  if (checksumError) {
+    throw new FormatError(`Aztec Rune: Reed-Solomon check failed: ${checksumError.message}`);
+  }
+  throw new FormatError('Aztec Rune: structural pattern or orientation is invalid');
+}
+__exports.readCodewords = readCodewords; __exports.structureMatches = structureMatches;
+
+__exports.decodeAztecRune = decodeAztecRune;
+};
+
+__modules["aztecrune/detector.js"] = function (__require, __exports) {
+/**
+ * Detector for Aztec Rune symbols.
+ *
+ * Rune has a fixed 11x11 geometry and a distinctive five-ring bull's-eye. This
+ * detector targets binarized, module-aligned rasters (including an integer
+ * scale, quiet zone and quarter turns). Arbitrary perspective and severe blur
+ * remain detector-level limitations; callers needing those conditions should
+ * pass a rectified 11x11 matrix to decodeAztecRune.
+ *
+ * @module aztecrune/detector
+ */
+const { NotFoundError } = __require("core/errors.js");
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { decodeAztecRune } = __require("aztecrune/decoder.js");
+const { AZTEC_RUNE_SIZE } = __require("aztecrune/tables.js");
+
+/** @typedef {{x:number,y:number}} Point */
+
+/**
+ * Find connected components of a polarity. Components touching the image
+ * border are ignored when they exceed the plausible module area; this avoids
+ * returning the light background as a candidate while retaining an inverted
+ * Rune's isolated light centre module.
+ */
+function components(image, value) {
+  const width = image.width;
+  const height = image.height;
+  const seen = new Uint8Array(width * height);
+  const limit = Math.max(64, Math.floor(width * height * 0.04));
+  const found = [];
+
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const start = y * width + x;
+    if (seen[start] || image.get(x, y) !== value) continue;
+    const queue = [[x, y]];
+    seen[start] = 1;
+    let head = 0;
+    let minX = x; let maxX = x; let minY = y; let maxY = y;
+    let count = 0;
+    let touchesBorder = false;
+
+    while (head < queue.length) {
+      const [px, py] = queue[head++];
+      count++;
+      minX = Math.min(minX, px); maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py); maxY = Math.max(maxY, py);
+      if (px === 0 || py === 0 || px === width - 1 || py === height - 1) touchesBorder = true;
+      for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const at = ny * width + nx;
+        if (!seen[at] && image.get(nx, ny) === value) {
+          seen[at] = 1;
+          queue.push([nx, ny]);
+        }
+      }
+    }
+
+    const boxWidth = maxX - minX + 1;
+    const boxHeight = maxY - minY + 1;
+    if (count <= limit && !touchesBorder &&
+      Math.abs(boxWidth - boxHeight) <= Math.max(1, Math.ceil(Math.max(boxWidth, boxHeight) * 0.35)) &&
+      count >= boxWidth * boxHeight * 0.45) {
+      found.push({ x: (minX + maxX) / 2, y: (minY + maxY) / 2, width: boxWidth, height: boxHeight, count });
+    }
+  }
+  return found.sort((a, b) => b.count - a.count);
+}
+/** @param {import('../core/bit-matrix.js').BitMatrix} image @param {Point} center @param {number} pitch */
+function sample(image, center, pitch) {
+  const matrix = new BitMatrix(AZTEC_RUNE_SIZE);
+  for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
+    const px = Math.round(center.x + (x - 5) * pitch);
+    const py = Math.round(center.y + (y - 5) * pitch);
+    if (px >= 0 && py >= 0 && px < image.width && py < image.height && image.get(px, py)) matrix.set(x, y);
+  }
+  return matrix;
+}
+
+function corners(center, pitch) {
+  const half = AZTEC_RUNE_SIZE * pitch / 2;
+  return [
+    { x: center.x - half, y: center.y - half },
+    { x: center.x + half, y: center.y - half },
+    { x: center.x + half, y: center.y + half },
+    { x: center.x - half, y: center.y + half },
+  ];
+}
+
+function sameCandidate(left, right) {
+  return Math.hypot(left.center.x - right.center.x, left.center.y - right.center.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
+}
+
+/**
+ * Detect the most prominent Aztec Rune in a binarized image.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
+ * @returns {{corners:Point[],dimension:11,moduleSize:number,matrix:BitMatrix,result:object}|null}
+ */
+function detectAztecRune(binaryImage) {
+  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+    throw new NotFoundError('detectAztecRune: no image supplied');
+  }
+  const candidates = [];
+  for (const value of [true, false]) {
+    for (const component of components(binaryImage, value)) {
+      const pitch = (component.width + component.height) / 2;
+      if (pitch < 0.8) continue;
+      const matrix = sample(binaryImage, component, pitch);
+      let decoded;
+      try { decoded = decodeAztecRune(matrix); } catch { continue; }
+      const candidate = {
+        center: component,
+        corners: corners(component, pitch),
+        dimension: AZTEC_RUNE_SIZE,
+        moduleSize: pitch,
+        matrix,
+        result: decoded,
+      };
+      if (!candidates.some((entry) => sameCandidate(entry, candidate))) candidates.push(candidate);
+    }
+  }
+  candidates.sort((a, b) => b.moduleSize - a.moduleSize);
+  const best = candidates[0];
+  if (!best) return null;
+  delete best.center;
+  return best;
+}
+
+/** Detect and decode one Aztec Rune, or return `null` when none is verified. */
+function detectAndDecodeAztecRune(binaryImage) {
+  let detection;
+  try { detection = detectAztecRune(binaryImage); } catch { return null; }
+  if (!detection) return null;
+  return { ...detection.result, corners: detection.corners, moduleSize: detection.moduleSize };
+}
+
+__exports.detectAztecRune = detectAztecRune;
+__exports.detectAndDecodeAztecRune = detectAndDecodeAztecRune;
+};
+
+__modules["aztecrune/index.js"] = function (__require, __exports) {
+/** Aztec Rune entry points. @module aztecrune */
+const __reexport0 = __require("aztecrune/encoder.js"); __exports.encodeAztecRune = __reexport0.encodeAztecRune; __exports.normalizeAztecRuneValue = __reexport0.normalizeAztecRuneValue;
+const __reexport1 = __require("aztecrune/decoder.js"); __exports.decodeAztecRune = __reexport1.decodeAztecRune;
+const __reexport2 = __require("aztecrune/detector.js"); __exports.detectAztecRune = __reexport2.detectAztecRune; __exports.detectAndDecodeAztecRune = __reexport2.detectAndDecodeAztecRune;
+const __reexport3 = __require("aztecrune/tables.js"); __exports.AZTEC_RUNE_SIZE = __reexport3.AZTEC_RUNE_SIZE; __exports.AZTEC_RUNE_DATA_BITS = __reexport3.AZTEC_RUNE_DATA_BITS; __exports.AZTEC_RUNE_WORD_SIZE = __reexport3.AZTEC_RUNE_WORD_SIZE; __exports.AZTEC_RUNE_DATA_CODEWORDS = __reexport3.AZTEC_RUNE_DATA_CODEWORDS; __exports.AZTEC_RUNE_ECC_CODEWORDS = __reexport3.AZTEC_RUNE_ECC_CODEWORDS; __exports.AZTEC_RUNE_TOTAL_CODEWORDS = __reexport3.AZTEC_RUNE_TOTAL_CODEWORDS; __exports.AZTEC_RUNE_MASK = __reexport3.AZTEC_RUNE_MASK; __exports.AZTEC_RUNE_DATA_POSITIONS = __reexport3.AZTEC_RUNE_DATA_POSITIONS; __exports.aztecRuneStructuralValue = __reexport3.aztecRuneStructuralValue; __exports.buildAztecRuneStructure = __reexport3.buildAztecRuneStructure; __exports.aztecRuneField = __reexport3.aztecRuneField; __exports.validateAztecRuneTables = __reexport3.validateAztecRuneTables;
+
+
+};
+
+__modules["compactpdf417/tables.js"] = function (__require, __exports) {
+/**
+ * Compact (truncated) PDF417 layout.
+ *
+ * Compact PDF417 is a geometric variant of PDF417, not a new high-level
+ * compaction mode. It keeps the same codeword, cluster, row-indicator,
+ * Reed–Solomon and Text/Byte/Numeric compaction rules, while omitting each
+ * row's right row indicator and replacing the normal stop pattern with a
+ * single dark module. The resulting symbol remains distinguishable from the
+ * ordinary PDF417 layout by its width and row terminator.
+ *
+ * @module compactpdf417/tables
+ */
+const { EncodeError } = __require("core/errors.js");
+
+/** PDF417 start pattern, in module widths. */
+const COMPACT_PDF417_START = '81111113';
+
+/** Binary module representation of the start pattern. */
+const COMPACT_PDF417_START_BITS = '11111111010101000';
+
+/** Compact PDF417's reduced stop is one dark module. */
+const COMPACT_PDF417_STOP_MODULES = 1;
+
+/** Minimum/maximum number of rows and data columns. */
+const COMPACT_PDF417_LIMITS = Object.freeze({
+  minRows: 3,
+  maxRows: 90,
+  minColumns: 1,
+  maxColumns: 30,
+  maxCodewords: 928,
+});
+
+/**
+ * Return the printed width in modules for a compact symbol.
+ *
+ * 17 start + 17 left indicator + 17 per codeword column + 1 reduced stop.
+ * @param {number} columns
+ */
+function compactPdf417Width(columns) {
+  if (!Number.isInteger(columns) || columns < 1 || columns > 30) {
+    throw new RangeError(`Compact PDF417: columns must be an integer in 1..30, got ${columns}`);
+  }
+  return 35 + columns * 17;
+}
+
+/**
+ * Validate a compact matrix geometry and return its dimensions.
+ *
+ * @param {number} width
+ * @param {number} height
+ * @param {number} rowHeight
+ */
+function compactPdf417Geometry(width, height, rowHeight = 3) {
+  if (!Number.isInteger(width) || !Number.isInteger(height)) {
+    throw new RangeError('Compact PDF417: matrix dimensions must be integers');
+  }
+  if (!Number.isInteger(rowHeight) || rowHeight < 1) {
+    throw new RangeError('Compact PDF417: rowHeight must be a positive integer');
+  }
+  if ((width - 35) % 17 !== 0) {
+    throw new RangeError(`Compact PDF417: width ${width} does not match the compact layout`);
+  }
+  const columns = (width - 35) / 17;
+  const rows = height / rowHeight;
+  if (!Number.isInteger(rows) || rows < 3 || rows > 90) {
+    throw new RangeError(`Compact PDF417: rows must be an integer in 3..90, got ${rows}`);
+  }
+  if (columns < 1 || columns > 30) {
+    throw new RangeError(`Compact PDF417: columns must be an integer in 1..30, got ${columns}`);
+  }
+  return { rows, columns, rowHeight, width, height };
+}
+
+/**
+ * Validate encoder dimensions before codeword packing.
+ * @param {object} options
+ */
+function validateCompactPdf417Options(options = {}) {
+  const { minRows, maxRows, minColumns, maxColumns } = COMPACT_PDF417_LIMITS;
+  const rowHeight = options.rowHeight ?? 3;
+  if (!Number.isInteger(rowHeight) || rowHeight < 3) {
+    throw new EncodeError('Compact PDF417: rowHeight must be an integer of at least 3');
+  }
+  for (const [name, value, min, max] of [
+    ['rows', options.rows, minRows, maxRows],
+    ['columns', options.columns, minColumns, maxColumns],
+  ]) {
+    if (value !== undefined && (!Number.isInteger(value) || value < min || value > max)) {
+      throw new EncodeError(`Compact PDF417: ${name} must be an integer in ${min}..${max}`);
+    }
+  }
+  if (options.aspectRatio !== undefined &&
+      (!Number.isFinite(options.aspectRatio) || options.aspectRatio <= 0)) {
+    throw new EncodeError('Compact PDF417: aspectRatio must be positive');
+  }
+  return rowHeight;
+}
+
+/**
+ * The row indicator values used by ordinary PDF417 are retained unchanged.
+ * Compact symbols omit only the right indicator, so the left indicator still
+ * carries the row group, row count, error-correction level and column count.
+ */
+function compactPdf417Indicators(row, rows, columns, level) {
+  const group = Math.floor(row / 3);
+  const y = Math.floor((rows - 1) / 3);
+  const z = level * 3 + (rows - 1) % 3;
+  const v = columns - 1;
+  if (row % 3 === 0) return 30 * group + y;
+  if (row % 3 === 1) return 30 * group + z;
+  return 30 * group + v;
+}
+
+/**
+ * Return all standard ECC levels which agree with the observed left
+ * indicators. This is kept as a table helper so decoder and tests share the
+ * same compact-layout rule.
+ */
+function compactPdf417MatchingLevels(leftIndicators, rows, columns) {
+  const matches = [];
+  for (let level = 0; level <= 8; level++) {
+    if (leftIndicators.every((value, row) =>
+      value === compactPdf417Indicators(row, rows, columns, level))) matches.push(level);
+  }
+  return matches;
+}
+
+/** Validate representative layout invariants. */
+function validateCompactPdf417Tables() {
+  const problems = [];
+  for (const columns of [1, 2, 3, 10, 30]) {
+    const width = compactPdf417Width(columns);
+    if (width !== 35 + columns * 17) problems.push(`columns ${columns}: width mismatch`);
+  }
+  for (const rows of [3, 4, 5, 6, 90]) {
+    const left = Array.from({ length: rows }, (_, row) => compactPdf417Indicators(row, rows, 3, 2));
+    if (compactPdf417MatchingLevels(left, rows, 3).length !== 1) {
+      problems.push(`rows ${rows}: row indicators do not identify one ECC level`);
+    }
+  }
+  return problems;
+}
+
+__exports.COMPACT_PDF417_START = COMPACT_PDF417_START;
+__exports.COMPACT_PDF417_START_BITS = COMPACT_PDF417_START_BITS;
+__exports.COMPACT_PDF417_STOP_MODULES = COMPACT_PDF417_STOP_MODULES;
+__exports.COMPACT_PDF417_LIMITS = COMPACT_PDF417_LIMITS;
+__exports.compactPdf417Width = compactPdf417Width;
+__exports.compactPdf417Geometry = compactPdf417Geometry;
+__exports.validateCompactPdf417Options = validateCompactPdf417Options;
+__exports.compactPdf417Indicators = compactPdf417Indicators;
+__exports.compactPdf417MatchingLevels = compactPdf417MatchingLevels;
+__exports.validateCompactPdf417Tables = validateCompactPdf417Tables;
+};
+
+__modules["compactpdf417/encoder.js"] = function (__require, __exports) {
+/** Compact PDF417 (truncated PDF417) encoder. @module compactpdf417/encoder */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { compactPdf417 } = __require("pdf417/compaction.js");
+const { pdf417ErrorCorrection, pdf417EccLength } = __require("pdf417/error-correction.js");
+const { pdf417PatternForCodeword } = __require("pdf417/tables.js");
+const { COMPACT_PDF417_START, compactPdf417Indicators, compactPdf417Width, validateCompactPdf417Options } = __require("compactpdf417/tables.js");
+
+function appendWidths(matrix, y, x, sequence, height) {
+  let dark = true;
+  for (const digit of sequence) {
+    const width = digit.charCodeAt(0) - 48;
+    if (!Number.isInteger(width) || width < 1 || width > 8) {
+      throw new EncodeError('Compact PDF417: invalid module-width sequence');
+    }
+    if (dark) matrix.setRegion(x, y, width, height);
+    x += width;
+    dark = !dark;
+  }
+  return x;
+}
+
+function patternSequence(pattern) {
+  return pattern.toString(2).padStart(17, '0').replace(/0+|1+/g, (run) => String(run.length));
+}
+
+function dimensions(needed, level, options, rowHeight) {
+  const ecc = pdf417EccLength(level);
+  let best = null;
+  for (let rows = options.rows ?? 3; rows <= (options.rows ?? 90); rows++) {
+    for (let columns = options.columns ?? 1; columns <= (options.columns ?? 30); columns++) {
+      if (rows * columns > 928 || rows * columns - ecc < needed) continue;
+      const ratio = compactPdf417Width(columns) / (rows * rowHeight);
+      const score = (rows * columns - ecc - needed) * 10 +
+        Math.abs(ratio - (options.aspectRatio ?? 3));
+      if (!best || score < best.score) best = { rows, columns, score };
+    }
+  }
+  if (!best) {
+    throw new EncodeError(
+      'Compact PDF417: payload does not fit the requested dimensions and error correction level'
+    );
+  }
+  return best;
+}
+
+/**
+ * Encode Compact PDF417.
+ *
+ * High-level Text/Byte/Numeric compaction is intentionally delegated to the
+ * existing PDF417 compaction implementation. `compact` here describes only
+ * the physical truncated layout: right row indicators are omitted and the
+ * stop pattern is reduced to one dark module.
+ *
+ * @param {string|Uint8Array|number[]} value
+ * @param {object} [options]
+ * @returns {import('../core/bit-matrix.js').BitMatrix}
+ */
+function encodeCompactPDF417(value, options = {}) {
+  const rowHeight = validateCompactPdf417Options(options);
+  const level = options.eccLevel ?? 2;
+  if (!Number.isInteger(level) || level < 0 || level > 8) {
+    throw new EncodeError('Compact PDF417: eccLevel must be an integer in 0..8');
+  }
+
+  const payload = compactPdf417(value, { compaction: options.compaction, charset: options.charset });
+  const { rows, columns } = dimensions(payload.length + 1, level, options, rowHeight);
+  const eccLength = pdf417EccLength(level);
+  const dataLength = rows * columns - eccLength;
+  const data = [dataLength, ...payload];
+  while (data.length < dataLength) data.push(900);
+  const codewords = data.concat(pdf417ErrorCorrection(data, level));
+
+  const matrix = new BitMatrix(compactPdf417Width(columns), rows * rowHeight);
+  for (let row = 0; row < rows; row++) {
+    const y = row * rowHeight;
+    const cluster = (row % 3) * 3;
+    let x = appendWidths(matrix, y, 0, COMPACT_PDF417_START, rowHeight);
+    const left = compactPdf417Indicators(row, rows, columns, level);
+    x = appendWidths(matrix, y, x, patternSequence(pdf417PatternForCodeword(left, cluster)), rowHeight);
+    for (let column = 0; column < columns; column++) {
+      const codeword = codewords[row * columns + column];
+      x = appendWidths(matrix, y, x,
+        patternSequence(pdf417PatternForCodeword(codeword, cluster)), rowHeight);
+    }
+    // Compact PDF417 terminates every row with one dark module, not the normal
+    // right indicator plus 18-module stop pattern.
+    matrix.setRegion(x, y, 1, rowHeight);
+    x++;
+    if (x !== matrix.width) throw new EncodeError('Compact PDF417: internal row width mismatch');
+  }
+
+  matrix.compactPdf417 = {
+    rows,
+    columns,
+    eccLevel: level,
+    rowHeight,
+    codewords,
+    layout: 'compact',
+  };
+  return matrix;
+}
+__exports.compactPdf417Dimensions = dimensions;
+
+__exports.encodeCompactPDF417 = encodeCompactPDF417;
+};
+
+__modules["compactpdf417/decoder.js"] = function (__require, __exports) {
+/** Compact PDF417 decoder. @module compactpdf417/decoder */
+const { FormatError } = __require("core/errors.js");
+const { decodePdf417CompactionDetailed } = __require("pdf417/compaction.js");
+const { pdf417CorrectErrors, pdf417EccLength } = __require("pdf417/error-correction.js");
+const { pdf417CodewordForPattern } = __require("pdf417/tables.js");
+const { COMPACT_PDF417_START_BITS, compactPdf417Geometry, compactPdf417Indicators, compactPdf417MatchingLevels } = __require("compactpdf417/tables.js");
+
+function bits(matrix, y, x, width) {
+  let value = 0;
+  for (let index = 0; index < width; index++) value = (value << 1) | (matrix.get(x + index, y) ? 1 : 0);
+  return value;
+}
+
+function patternString(matrix, y, x, width) {
+  return bits(matrix, y, x, width).toString(2).padStart(width, '0');
+}
+
+/**
+ * Decode a compact/truncated PDF417 module matrix.
+ *
+ * The high-level payload uses the normal PDF417 Text/Byte/Numeric compaction
+ * rules. This function only changes the physical row parser: no right row
+ * indicator is expected and the final module of each row must be dark.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} matrix
+ * @param {object} [options]
+ * @param {number} [options.rowHeight]
+ */
+function decodeCompactPDF417(matrix, options = {}) {
+  if (!matrix?.width || !matrix?.height) throw new FormatError('Compact PDF417: no matrix supplied');
+  const rowHeight = options.rowHeight ?? matrix.compactPdf417?.rowHeight ?? 3;
+  let geometry;
+  try { geometry = compactPdf417Geometry(matrix.width, matrix.height, rowHeight); }
+  catch (error) { throw new FormatError(error.message); }
+
+  const { rows, columns } = geometry;
+  const all = [];
+  const erasures = [];
+  const leftIndicators = [];
+
+  for (let row = 0; row < rows; row++) {
+    const y = row * rowHeight;
+    if (patternString(matrix, y, 0, 17) !== COMPACT_PDF417_START_BITS) {
+      throw new FormatError('Compact PDF417: missing start pattern');
+    }
+    const cluster = (row % 3) * 3;
+    const leftDecoded = pdf417CodewordForPattern(bits(matrix, y, 17, 17));
+    if (!leftDecoded || leftDecoded.cluster !== cluster) {
+      throw new FormatError('Compact PDF417: invalid left row indicator');
+    }
+    leftIndicators.push(leftDecoded.codeword);
+
+    const dataStart = 34;
+    const stopX = dataStart + columns * 17;
+    if (!matrix.get(stopX, y)) throw new FormatError('Compact PDF417: missing reduced stop module');
+    for (let column = 0; column < columns; column++) {
+      const decoded = pdf417CodewordForPattern(bits(matrix, y, dataStart + column * 17, 17));
+      if (!decoded || decoded.cluster !== cluster) {
+        erasures.push(all.length);
+        all.push(0);
+      } else {
+        all.push(decoded.codeword);
+      }
+    }
+  }
+
+  const levels = compactPdf417MatchingLevels(leftIndicators, rows, columns);
+  if (levels.length !== 1) throw new FormatError('Compact PDF417: row indicator mismatch');
+  const level = levels[0];
+  const eccLength = pdf417EccLength(level);
+  if (all.length <= eccLength) throw new FormatError('Compact PDF417: insufficient codewords for ECC');
+
+  const corrected = all.slice();
+  const corrections = pdf417CorrectErrors(corrected, level, erasures);
+  const length = corrected[0];
+  if (length < 1 || length > corrected.length - eccLength) {
+    throw new FormatError('Compact PDF417: invalid symbol length descriptor');
+  }
+  const payload = corrected.slice(1, length);
+  const decoded = decodePdf417CompactionDetailed(payload);
+  return {
+    ...decoded,
+    format: 'compact-pdf417',
+    compact: true,
+    codewords: corrected,
+    rows,
+    columns,
+    eccLevel: level,
+    rowHeight,
+    corrections,
+  };
+}
+
+__exports.decodeCompactPDF417 = decodeCompactPDF417;
+};
+
+__modules["compactpdf417/detector.js"] = function (__require, __exports) {
+/** Compact PDF417 detector for clean, integer-scaled rasters. @module compactpdf417/detector */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { compactPdf417Width } = __require("compactpdf417/tables.js");
+const { decodeCompactPDF417 } = __require("compactpdf417/decoder.js");
+
+function rotateClockwise(source) {
+  const out = new BitMatrix(source.height, source.width);
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      if (source.get(x, y)) out.set(source.height - 1 - y, x);
+    }
+  }
+  return out;
+}
+function cropAndDownsample(source, box, width, height, scale) {
+  const out = new BitMatrix(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dark = 0;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          if (source.get(box.x + x * scale + dx, box.y + y * scale + dy)) dark++;
+        }
+      }
+      if (dark * 2 >= scale * scale) out.set(x, y);
+    }
+  }
+  return out;
+}
+
+function cornersFor(box) {
+  return [
+    { x: box.x, y: box.y },
+    { x: box.x + box.width, y: box.y },
+    { x: box.x + box.width, y: box.y + box.height },
+    { x: box.x, y: box.y + box.height },
+  ];
+}
+
+function mapCorners(corners, toOriginal) {
+  return corners.map((point) => toOriginal(point));
+}
+
+/**
+ * Detect one Compact PDF417 symbol in a binarized raster.
+ *
+ * The clean-raster detector uses the dark bounding box and enumerates legal
+ * compact widths, integer module scales, row counts and row heights. It is
+ * deliberately conservative: arbitrary perspective, non-integer resampling,
+ * grayscale thresholding and damaged stop bars belong to a future photo
+ * detector and are not claimed here.
+ *
+ * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
+ * @param {object} [options]
+ * @param {number} [options.rowHeight] Restrict the row-height search.
+ * @returns {object|null}
+ */
+function detectCompactPDF417(binaryImage, options = {}) {
+  if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function') return null;
+
+  let oriented = binaryImage;
+  let toOriginal = (point) => ({ x: point.x, y: point.y });
+  for (let rotation = 0; rotation < 4; rotation++) {
+    const bounds = oriented.getBounds();
+    if (bounds) {
+      for (let columns = 1; columns <= 30; columns++) {
+        const width = compactPdf417Width(columns);
+        const scale = bounds.width / width;
+        if (!Number.isInteger(scale) || scale < 1) continue;
+        const baseHeight = bounds.height / scale;
+        const rowHeights = Number.isInteger(options.rowHeight)
+          ? [options.rowHeight]
+          : Array.from({ length: 18 }, (_, index) => index + 3);
+        for (const rowHeight of rowHeights) {
+          if (!Number.isInteger(baseHeight / rowHeight)) continue;
+          const rows = baseHeight / rowHeight;
+          if (rows < 3 || rows > 90) continue;
+          const matrix = cropAndDownsample(oriented, bounds, width, baseHeight, scale);
+          try {
+            const result = decodeCompactPDF417(matrix, { rowHeight });
+            const corners = mapCorners(cornersFor(bounds), toOriginal);
+            return {
+              ...result,
+              matrix,
+              corners,
+              rotation: rotation * 90,
+              moduleSize: scale,
+              compact: true,
+            };
+          } catch {
+            // Try another geometry; a standard PDF417 or random artwork should
+            // never be accepted unless the compact decoder validates every row.
+          }
+        }
+      }
+    }
+
+    const previous = oriented;
+    const previousToOriginal = toOriginal;
+    oriented = rotateClockwise(previous);
+    toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
+  }
+  return null;
+}
+function detectAndDecodeCompactPDF417(binaryImage, options = {}) {
+  return detectCompactPDF417(binaryImage, options);
+}
+
+__exports.detectCompactPDF417 = detectCompactPDF417;
+__exports.detectAndDecodeCompactPDF417 = detectAndDecodeCompactPDF417;
+};
+
+__modules["compactpdf417/index.js"] = function (__require, __exports) {
+/* Compact PDF417 public module exports. */
+const __reexport0 = __require("compactpdf417/tables.js"); __exports.COMPACT_PDF417_START = __reexport0.COMPACT_PDF417_START; __exports.COMPACT_PDF417_START_BITS = __reexport0.COMPACT_PDF417_START_BITS; __exports.COMPACT_PDF417_STOP_MODULES = __reexport0.COMPACT_PDF417_STOP_MODULES; __exports.COMPACT_PDF417_LIMITS = __reexport0.COMPACT_PDF417_LIMITS; __exports.compactPdf417Width = __reexport0.compactPdf417Width; __exports.compactPdf417Geometry = __reexport0.compactPdf417Geometry; __exports.compactPdf417Indicators = __reexport0.compactPdf417Indicators; __exports.compactPdf417MatchingLevels = __reexport0.compactPdf417MatchingLevels; __exports.validateCompactPdf417Options = __reexport0.validateCompactPdf417Options; __exports.validateCompactPdf417Tables = __reexport0.validateCompactPdf417Tables;
+const __reexport1 = __require("compactpdf417/encoder.js"); __exports.encodeCompactPDF417 = __reexport1.encodeCompactPDF417; __exports.compactPdf417Dimensions = __reexport1.compactPdf417Dimensions;
+const __reexport2 = __require("compactpdf417/decoder.js"); __exports.decodeCompactPDF417 = __reexport2.decodeCompactPDF417;
+const __reexport3 = __require("compactpdf417/detector.js"); __exports.detectCompactPDF417 = __reexport3.detectCompactPDF417; __exports.detectAndDecodeCompactPDF417 = __reexport3.detectAndDecodeCompactPDF417;
+
+
+};
+
+__modules["databar/tables.js"] = function (__require, __exports) {
+/**
+ * Static GS1 DataBar facts used by the GTIN compaction codec.
+ *
+ * The numbers in the DataBar-14 group tables are the public tables in
+ * ISO/IEC 24724:2011, clauses 5.2.2 and 5.2.3. They describe values, not a
+ * third-party implementation. Pattern construction deliberately belongs in
+ * the renderer/encoder layer so this module stays a small, auditable contract.
+ *
+ * @module databar/tables
+ */
+
+const group = (first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal) => Object.freeze({
+  first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal,
+});
+
+/** The four GTIN-only layouts sharing the DataBar-14 compaction rules. */
+const DATABAR14_VARIANTS = Object.freeze({
+  omnidirectional: Object.freeze({ id: 'omnidirectional', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: true }),
+  truncated: Object.freeze({ id: 'truncated', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: false }),
+  stacked: Object.freeze({ id: 'stacked', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: false }),
+  'stacked-omnidirectional': Object.freeze({ id: 'stacked-omnidirectional', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: true }),
+});
+
+/** GS1 DataBar Limited is a distinct two-character symbology. */
+const DATABAR_LIMITED_VARIANT = Object.freeze({
+  id: 'limited', rows: 1, checksumModulus: 89, pointOfSale: false,
+  permittedIndicatorDigits: Object.freeze([0, 1]),
+});
+
+/** (16,4) outside character groups, ISO/IEC 24724:2011 Table 1. */
+const DATABAR14_OUTSIDE_GROUPS = Object.freeze([
+  group(0, 160, 0, 12, 4, 8, 1, 161, 1),
+  group(161, 960, 161, 10, 6, 6, 3, 80, 10),
+  group(961, 2014, 961, 8, 8, 4, 5, 31, 34),
+  group(2015, 2714, 2015, 6, 10, 3, 6, 10, 70),
+  group(2715, 2840, 2715, 4, 12, 1, 8, 1, 126),
+]);
+
+/** (15,4) inside character groups, ISO/IEC 24724:2011 Table 2. */
+const DATABAR14_INSIDE_GROUPS = Object.freeze([
+  group(0, 335, 0, 5, 10, 2, 7, 4, 84),
+  group(336, 1035, 336, 7, 8, 4, 5, 20, 35),
+  group(1036, 1515, 1036, 9, 6, 6, 3, 48, 10),
+  group(1516, 1596, 1516, 11, 4, 8, 1, 81, 1),
+]);
+
+/** Number of values carried by an inside (15,4) character. */
+const DATABAR14_INSIDE_RADIX = 1597;
+/** Number of values carried by one outside/inside character pair. */
+const DATABAR14_PAIR_RADIX = 4537077;
+/** Stand-alone and composite DataBar-14 payload domain, including linkage. */
+const DATABAR14_SYMBOL_LIMIT = 20000000000000n;
+
+/** GS1 DataBar Limited divides its 13 data digits into two character values. */
+const DATABAR_LIMITED_PAIR_RADIX = 2013571;
+/** Offset that switches a DataBar Limited value from stand-alone to composite. */
+const DATABAR_LIMITED_LINKAGE_OFFSET = 2015133531096n;
+/** DataBar Limited carries GTIN values whose first digit is zero or one. */
+const DATABAR_LIMITED_DATA_LIMIT = 2000000000000n;
+
+/** Locate the value group that an outside or inside character belongs to. */
+function dataBar14GroupFor(value, kind) {
+  if (!Number.isInteger(value)) throw new TypeError('GS1 DataBar character value must be an integer');
+  const groups = kind === 'outside' ? DATABAR14_OUTSIDE_GROUPS
+    : kind === 'inside' ? DATABAR14_INSIDE_GROUPS : null;
+  if (!groups) throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
+  const found = groups.find((entry) => value >= entry.first && value <= entry.last);
+  if (!found) throw new RangeError(`GS1 DataBar ${kind} character value ${value} is out of range`);
+  return found;
+}
+/** Check the independently represented table identities. */
+function validateDataBarTables() {
+  const problems = [];
+  const validateGroups = (name, groups, expectedLast) => {
+    let next = 0;
+    for (const entry of groups) {
+      if (entry.first !== next) problems.push(`${name}: gap before ${entry.first}`);
+      if (entry.last < entry.first) problems.push(`${name}: inverted range ${entry.first}-${entry.last}`);
+      if (entry.oddTotal * entry.evenTotal !== entry.last - entry.first + 1) {
+        problems.push(`${name}: combination count mismatch at ${entry.first}`);
+      }
+      next = entry.last + 1;
+    }
+    if (next - 1 !== expectedLast) problems.push(`${name}: final value is ${next - 1}, expected ${expectedLast}`);
+  };
+  validateGroups('outside', DATABAR14_OUTSIDE_GROUPS, 2840);
+  validateGroups('inside', DATABAR14_INSIDE_GROUPS, 1596);
+  if (DATABAR14_PAIR_RADIX !== 2841 * DATABAR14_INSIDE_RADIX) problems.push('pair radix mismatch');
+  if (DATABAR14_SYMBOL_LIMIT !== 2n * 10000000000000n) problems.push('symbol limit mismatch');
+  if (DATABAR_LIMITED_LINKAGE_OFFSET !== BigInt(DATABAR_LIMITED_PAIR_RADIX) * 1000776n) {
+    problems.push('limited linkage offset mismatch');
+  }
+  return problems;
+}
+
+__exports.DATABAR14_VARIANTS = DATABAR14_VARIANTS;
+__exports.DATABAR_LIMITED_VARIANT = DATABAR_LIMITED_VARIANT;
+__exports.DATABAR14_OUTSIDE_GROUPS = DATABAR14_OUTSIDE_GROUPS;
+__exports.DATABAR14_INSIDE_GROUPS = DATABAR14_INSIDE_GROUPS;
+__exports.DATABAR14_INSIDE_RADIX = DATABAR14_INSIDE_RADIX;
+__exports.DATABAR14_PAIR_RADIX = DATABAR14_PAIR_RADIX;
+__exports.DATABAR14_SYMBOL_LIMIT = DATABAR14_SYMBOL_LIMIT;
+__exports.DATABAR_LIMITED_PAIR_RADIX = DATABAR_LIMITED_PAIR_RADIX;
+__exports.DATABAR_LIMITED_LINKAGE_OFFSET = DATABAR_LIMITED_LINKAGE_OFFSET;
+__exports.DATABAR_LIMITED_DATA_LIMIT = DATABAR_LIMITED_DATA_LIMIT;
+__exports.dataBar14GroupFor = dataBar14GroupFor;
+__exports.validateDataBarTables = validateDataBarTables;
+};
+
+__modules["databar/codec.js"] = function (__require, __exports) {
+/**
+ * GTIN validation and numeric compaction for GS1 DataBar GTIN-only symbols.
+ *
+ * This is intentionally not a bar-pattern encoder. It emits the exact symbol
+ * character values required by ISO/IEC 24724:2011; a later encoder can turn
+ * those values into widths without reinterpreting a GTIN or linkage flag.
+ *
+ * @module databar/codec
+ */
+const { DATABAR14_INSIDE_RADIX, DATABAR14_PAIR_RADIX, DATABAR14_SYMBOL_LIMIT, DATABAR_LIMITED_DATA_LIMIT, DATABAR_LIMITED_LINKAGE_OFFSET, DATABAR_LIMITED_PAIR_RADIX } = __require("databar/tables.js");
+
+const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
+
+function digits(value, label) {
+  const text = String(value);
+  if (!/^\d+$/.test(text)) throw new TypeError(`${label} must contain only decimal digits`);
+  return text;
+}
+
+function asCharacterValue(value, label, maximum) {
+  if (!Number.isInteger(value) || value < 0 || value > maximum) {
+    throw new RangeError(`${label} must be an integer from 0 to ${maximum}`);
+  }
+  return value;
+}
+
+/** Calculate the GS1 modulo-10 check digit for a GTIN body. */
+function gtinCheckDigit(body) {
+  const text = digits(body, 'GTIN body');
+  if (text.length < 1 || text.length > 13) throw new RangeError('GTIN body must contain 1 to 13 digits');
+  let sum = 0;
+  for (let i = text.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
+    sum += Number(text[i]) * weight;
+  }
+  return String((10 - (sum % 10)) % 10);
+}
+
+/** Return a checked 14-digit GTIN, preserving only its standardized digits. */
+function normalizeGTIN(value) {
+  const input = digits(value, 'GTIN');
+  if (!GTIN_LENGTHS.has(input.length)) {
+    throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
+  }
+  if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
+    throw new RangeError(`GTIN check digit is invalid for ${input}`);
+  }
+  return input.padStart(14, '0');
+}
+
+/** Build a checked GTIN-14 from its thirteen-digit data body. */
+function makeGTIN14(body) {
+  const input = digits(body, 'GTIN-14 body');
+  if (input.length > 13) throw new RangeError('GTIN-14 body must contain at most 13 digits');
+  const padded = input.padStart(13, '0');
+  return padded + gtinCheckDigit(padded);
+}
+
+function gtinFromSymbolValue(symbolValue) {
+  const value = BigInt(symbolValue);
+  if (value < 0n || value >= DATABAR14_SYMBOL_LIMIT) throw new RangeError('GS1 DataBar-14 symbol value is out of range');
+  const linkage = value >= 10000000000000n;
+  const body = (linkage ? value - 10000000000000n : value).toString().padStart(13, '0');
+  return { linkage, gtin: body + gtinCheckDigit(body) };
+}
+
+/**
+ * Compact a GTIN into the four values shared by Omnidirectional, Truncated,
+ * Stacked and Stacked Omnidirectional. The `physicalCharacters` sequence is
+ * left-to-right on a linear DataBar-14 row: 1, 2, 4, 3.
+ */
+function encodeDataBar14GTIN(value, options = {}) {
+  const gtin = normalizeGTIN(value);
+  const linkage = options.linkage === true;
+  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+    throw new TypeError('GS1 DataBar linkage must be a boolean');
+  }
+  const dataBody = gtin.slice(0, -1);
+  const symbolValue = BigInt(dataBody) + (linkage ? 10000000000000n : 0n);
+  const leftPair = symbolValue / BigInt(DATABAR14_PAIR_RADIX);
+  const rightPair = symbolValue % BigInt(DATABAR14_PAIR_RADIX);
+  const outerLeft = Number(leftPair / BigInt(DATABAR14_INSIDE_RADIX));
+  const innerLeft = Number(leftPair % BigInt(DATABAR14_INSIDE_RADIX));
+  const outerRight = Number(rightPair / BigInt(DATABAR14_INSIDE_RADIX));
+  const innerRight = Number(rightPair % BigInt(DATABAR14_INSIDE_RADIX));
+
+  return Object.freeze({
+    gtin, linkage, symbolValue, leftPair, rightPair,
+    logicalCharacters: Object.freeze({ outerLeft, innerLeft, outerRight, innerRight }),
+    physicalCharacters: Object.freeze([outerLeft, innerLeft, innerRight, outerRight]),
+  });
+}
+
+/** Reconstruct and validate a GTIN from the four DataBar-14 character values. */
+function decodeDataBar14GTIN(values) {
+  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar-14 characters must be an object');
+  const outerLeft = asCharacterValue(values.outerLeft, 'outerLeft', 2840);
+  const innerLeft = asCharacterValue(values.innerLeft, 'innerLeft', 1596);
+  const outerRight = asCharacterValue(values.outerRight, 'outerRight', 2840);
+  const innerRight = asCharacterValue(values.innerRight, 'innerRight', 1596);
+  const leftPair = BigInt(outerLeft) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerLeft);
+  const rightPair = BigInt(outerRight) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerRight);
+  return Object.freeze({
+    ...gtinFromSymbolValue(leftPair * BigInt(DATABAR14_PAIR_RADIX) + rightPair),
+    leftPair, rightPair,
+  });
+}
+
+/** Compact a DataBar Limited-eligible GTIN into its two data character values. */
+function encodeDataBarLimitedGTIN(value, options = {}) {
+  const gtin = normalizeGTIN(value);
+  const linkage = options.linkage === true;
+  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+    throw new TypeError('GS1 DataBar linkage must be a boolean');
+  }
+  const dataBody = BigInt(gtin.slice(0, -1));
+  if (dataBody >= DATABAR_LIMITED_DATA_LIMIT) {
+    throw new RangeError('GS1 DataBar Limited requires a GTIN whose indicator digit is 0 or 1');
+  }
+  const symbolValue = dataBody + (linkage ? DATABAR_LIMITED_LINKAGE_OFFSET : 0n);
+  const left = Number(symbolValue / BigInt(DATABAR_LIMITED_PAIR_RADIX));
+  const right = Number(symbolValue % BigInt(DATABAR_LIMITED_PAIR_RADIX));
+  return Object.freeze({ gtin, linkage, symbolValue, left, right });
+}
+
+/** Reconstruct and validate a GTIN from DataBar Limited data character values. */
+function decodeDataBarLimitedGTIN(values) {
+  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar Limited characters must be an object');
+  const left = asCharacterValue(values.left, 'left', 1994036);
+  const right = asCharacterValue(values.right, 'right', DATABAR_LIMITED_PAIR_RADIX - 1);
+  let symbolValue = BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right);
+  const linkage = symbolValue >= DATABAR_LIMITED_LINKAGE_OFFSET;
+  if (linkage) symbolValue -= DATABAR_LIMITED_LINKAGE_OFFSET;
+  if (symbolValue < 0n || symbolValue >= DATABAR_LIMITED_DATA_LIMIT) {
+    throw new RangeError('GS1 DataBar Limited character values do not encode a permitted GTIN');
+  }
+  const body = symbolValue.toString().padStart(13, '0');
+  return Object.freeze({ linkage, gtin: body + gtinCheckDigit(body), symbolValue: BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right) });
+}
+
+/** GS1 transmitted form for the GTIN-only DataBar variants. */
+function dataBarGtinTransmission(value) {
+  return `]e001${normalizeGTIN(value)}`;
+}
+
+__exports.gtinCheckDigit = gtinCheckDigit;
+__exports.normalizeGTIN = normalizeGTIN;
+__exports.makeGTIN14 = makeGTIN14;
+__exports.encodeDataBar14GTIN = encodeDataBar14GTIN;
+__exports.decodeDataBar14GTIN = decodeDataBar14GTIN;
+__exports.encodeDataBarLimitedGTIN = encodeDataBarLimitedGTIN;
+__exports.decodeDataBarLimitedGTIN = decodeDataBarLimitedGTIN;
+__exports.dataBarGtinTransmission = dataBarGtinTransmission;
+};
+
+__modules["databar/gs1.js"] = function (__require, __exports) {
+/** GS1 element-string codec used by GS1 DataBar Expanded. @module databar/gs1 */
+const { EncodeError, FormatError } = __require("core/errors.js");
+const GS1_SEPARATOR = '\x1d';
+
+const EXACT = new Map([
+  ['00', [18, true]], ['01', [14, true]], ['02', [14, true]],
+  ['10', [20, false]], ['11', [6, true]], ['12', [6, true]],
+  ['13', [6, true]], ['15', [6, true]], ['16', [6, true]],
+  ['17', [6, true]], ['20', [2, true]], ['21', [20, false]],
+  ['22', [29, false]], ['30', [8, false]], ['37', [8, false]],
+  ['240', [30, false]], ['241', [30, false]], ['242', [6, false]],
+  ['243', [20, false]], ['250', [30, false]], ['251', [30, false]],
+  ['253', [30, false]], ['254', [20, false]], ['255', [13, true]],
+  ['400', [30, false]], ['401', [30, false]], ['402', [17, true]],
+  ['403', [30, false]], ['410', [13, true]], ['411', [13, true]],
+  ['412', [13, true]], ['413', [13, true]], ['414', [13, true]],
+  ['415', [13, true]], ['416', [13, true]], ['417', [13, true]],
+  ['420', [20, false]], ['421', [15, false]], ['422', [3, true]],
+  ['423', [15, false]], ['424', [3, true]], ['425', [3, true]],
+  ['426', [3, true]], ['427', [3, false]],
+  ['7001', [13, true]], ['7002', [30, false]], ['7003', [10, true]],
+  ['7004', [4, false]], ['7005', [12, false]], ['7006', [6, true]],
+  ['7007', [12, false]], ['7008', [3, false]], ['7009', [10, false]],
+  ['7010', [2, false]], ['7020', [20, false]], ['7021', [20, false]],
+  ['7022', [20, false]], ['710', [20, false]], ['711', [20, false]],
+  ['712', [20, false]], ['713', [20, false]], ['714', [20, false]],
+  ['715', [20, false]],
+  ['8001', [14, true]], ['8002', [20, false]], ['8003', [30, false]],
+  ['8004', [30, false]], ['8005', [6, true]], ['8006', [18, true]],
+  ['8007', [34, false]], ['8008', [12, false]], ['8009', [50, false]],
+  ['8010', [30, false]], ['8011', [12, false]], ['8012', [20, false]],
+  ['8013', [30, false]], ['8017', [18, true]], ['8018', [18, true]],
+  ['8019', [10, false]], ['8020', [25, false]], ['8026', [18, true]],
+  ['8110', [70, false]], ['8111', [4, true]], ['8112', [70, false]],
+  ['8200', [70, false]],
+]);
+
+function rangedAI(ai) {
+  if (/^31[0-6]\d$/.test(ai) || /^32[0-7]\d$/.test(ai) ||
+      /^33[0-7]\d$/.test(ai) || /^34[0-9]\d$/.test(ai) ||
+      /^35[0-7]\d$/.test(ai) || /^36[0-9]\d$/.test(ai)) return [6, true];
+  if (/^390\d$/.test(ai) || /^392\d$/.test(ai)) return [15, false];
+  if (/^391\d$/.test(ai) || /^393\d$/.test(ai)) return [18, false];
+  if (/^394\d$/.test(ai)) return [4, true];
+  if (/^395\d$/.test(ai)) return [6, true];
+  if (/^703\d$/.test(ai) || /^723\d$/.test(ai)) return [30, false];
+  return undefined;
+}
+function gs1AIInfo(ai) {
+  if (typeof ai !== 'string' || !/^\d{2,4}$/.test(ai)) return undefined;
+  const spec = EXACT.get(ai) || rangedAI(ai);
+  if (!spec) return undefined;
+  return { ai, length: spec[0], fixed: spec[1] };
+}
+
+function assertCharacters(value, label, ErrorType) {
+  if (/[^\x20-\x7e]/.test(value)) {
+    throw new ErrorType(`GS1: ${label} contains a character outside the GS1 element-string character set`);
+  }
+}
+
+function validateElement(ai, value, ErrorType) {
+  const info = gs1AIInfo(ai);
+  if (!info) throw new ErrorType(`GS1: unsupported or invalid Application Identifier ${ai}`);
+  if (value.length === 0) throw new ErrorType(`GS1: AI ${ai} must not be empty`);
+  if (info.fixed ? value.length !== info.length : value.length > info.length) {
+    const expectation = info.fixed ? `exactly ${info.length}` : `at most ${info.length}`;
+    throw new ErrorType(`GS1: AI ${ai} requires ${expectation} characters`);
+  }
+  assertCharacters(value, `AI ${ai}`, ErrorType);
+  return { ai, value, fixed: info.fixed };
+}
+function parseGS1ElementString(input) {
+  if (typeof input !== 'string' || input.length === 0) {
+    throw new EncodeError('GS1: element string must be a non-empty string');
+  }
+  const elements = [];
+  let offset = 0;
+  while (offset < input.length) {
+    const match = /^\((\d{2,4})\)/.exec(input.slice(offset));
+    if (!match) throw new EncodeError(`GS1: expected an Application Identifier at offset ${offset}`);
+    const ai = match[1];
+    offset += match[0].length;
+    const next = input.indexOf('(', offset);
+    const end = next < 0 ? input.length : next;
+    elements.push(validateElement(ai, input.slice(offset, end), EncodeError));
+    offset = end;
+  }
+  return elements;
+}
+function encodeGS1ElementString(input) {
+  const elements = Array.isArray(input)
+    ? input.map(({ ai, value }) => validateElement(String(ai), String(value), EncodeError))
+    : parseGS1ElementString(input);
+  return elements.map((element, index) =>
+    `${element.ai}${element.value}${!element.fixed && index + 1 < elements.length ? GS1_SEPARATOR : ''}`
+  ).join('');
+}
+
+function matchAIAt(data, offset) {
+  for (const length of [4, 3, 2]) {
+    const ai = data.slice(offset, offset + length);
+    if (gs1AIInfo(ai)) return ai;
+  }
+  return undefined;
+}
+function decodeGS1ElementString(data) {
+  if (typeof data !== 'string' || data.length === 0) {
+    throw new FormatError('GS1: encoded data must be a non-empty string');
+  }
+  const elements = [];
+  let offset = 0;
+  while (offset < data.length) {
+    if (data[offset] === GS1_SEPARATOR) {
+      throw new FormatError(`GS1: unexpected separator at offset ${offset}`);
+    }
+    const ai = matchAIAt(data, offset);
+    if (!ai) throw new FormatError(`GS1: unknown Application Identifier at offset ${offset}`);
+    offset += ai.length;
+    const info = gs1AIInfo(ai);
+    let value;
+    if (info.fixed) {
+      value = data.slice(offset, offset + info.length);
+      if (value.length !== info.length || value.includes(GS1_SEPARATOR)) {
+        throw new FormatError(`GS1: truncated fixed-length AI ${ai}`);
+      }
+      offset += info.length;
+    } else {
+      const separator = data.indexOf(GS1_SEPARATOR, offset);
+      const end = separator < 0 ? data.length : separator;
+      value = data.slice(offset, end);
+      offset = separator < 0 ? data.length : separator + 1;
+    }
+    elements.push(validateElement(ai, value, FormatError));
+  }
+  return elements;
+}
+function formatGS1Elements(elements) {
+  return elements.map(({ ai, value }) => `(${ai})${value}`).join('');
+}
+
+__exports.GS1_SEPARATOR = GS1_SEPARATOR;
+__exports.gs1AIInfo = gs1AIInfo;
+__exports.parseGS1ElementString = parseGS1ElementString;
+__exports.encodeGS1ElementString = encodeGS1ElementString;
+__exports.decodeGS1ElementString = decodeGS1ElementString;
+__exports.formatGS1Elements = formatGS1Elements;
+};
+
+__modules["databar/patterns.js"] = function (__require, __exports) {
+/** Mathematical width construction for GS1 DataBar characters. @module databar/patterns */
+const { dataBar14GroupFor } = __require("databar/tables.js");
+
+function combinations(n, r) {
+  if (n < r || r < 0) return 0;
+  if (r === 0 || n === r) return 1;
+  let result = 1;
+  const k = Math.min(r, n - r);
+  for (let i = 1; i <= k; i++) result = result * (n - k + i) / i;
+  return result;
+}
+
+/**
+ * Unrank one constrained positive composition.
+ *
+ * The rank is the GS1 DataBar symbol-character value inside its group. This
+ * implementation follows the combinatorial definition directly: it counts
+ * every remaining admissible suffix rather than storing third-party patterns.
+ */
+function dataBarWidths(rank, modules, elements, maximumWidth, noNarrow) {
+  if (!Number.isInteger(rank) || rank < 0) throw new RangeError('GS1 DataBar width rank must be non-negative');
+  const widths = new Array(elements).fill(0);
+  let remaining = modules;
+  let narrowMask = 0;
+
+  for (let bar = 0; bar < elements - 1; bar++) {
+    let count = 0;
+    for (let width = 1; ; width++) {
+      narrowMask |= width === 1 ? 1 << bar : 0;
+      count = combinations(remaining - width - 1, elements - bar - 2);
+
+      if (noNarrow && narrowMask === 0 && remaining - width - (elements - bar - 1) >= elements - bar - 1) {
+        count -= combinations(remaining - width - (elements - bar), elements - bar - 2);
+      }
+
+      if (elements - bar - 1 > 1) {
+        let tooWide = 0;
+        for (let last = remaining - width - (elements - bar - 2); last > maximumWidth; last--) {
+          tooWide += combinations(remaining - width - last - 1, elements - bar - 3);
+        }
+        count -= tooWide * (elements - 1 - bar);
+      } else if (remaining - width > maximumWidth) {
+        count--;
+      }
+
+      if (rank < count) {
+        widths[bar] = width;
+        remaining -= width;
+        break;
+      }
+      rank -= count;
+      narrowMask &= ~(1 << bar);
+    }
+  }
+  widths[elements - 1] = remaining;
+  if (rank !== 0 || widths.some((width) => width < 1 || width > maximumWidth)) {
+    throw new RangeError('GS1 DataBar width rank exceeds its character group');
+  }
+  return widths;
+}
+
+/** Convert one DataBar-14 character value into its eight alternating widths. */
+function dataBar14CharacterWidths(value, kind) {
+  const group = dataBar14GroupFor(value, kind);
+  const offset = value - group.gsum;
+  const outside = kind === 'outside';
+  const oddRank = outside ? Math.floor(offset / group.evenTotal) : offset % group.oddTotal;
+  const evenRank = outside ? offset % group.evenTotal : Math.floor(offset / group.oddTotal);
+  const odd = dataBarWidths(oddRank, group.oddModules, 4, group.oddWidest, !outside);
+  const even = dataBarWidths(evenRank, group.evenModules, 4, group.evenWidest, outside);
+  const result = [];
+  for (let i = 0; i < 4; i++) result.push(odd[i], even[i]);
+  return result;
+}
+
+const inverseCharacterMaps = new Map();
+
+/** Recover a character value from its canonical eight-width representation. */
+function dataBar14ValueForWidths(widths, kind) {
+  if (!Array.isArray(widths) || widths.length !== 8 || widths.some((width) => !Number.isInteger(width) || width < 1)) {
+    throw new TypeError('GS1 DataBar character widths must contain eight positive integers');
+  }
+  if (kind !== 'outside' && kind !== 'inside') throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
+  let inverse = inverseCharacterMaps.get(kind);
+  if (!inverse) {
+    inverse = new Map();
+    const maximum = kind === 'outside' ? 2840 : 1596;
+    for (let value = 0; value <= maximum; value++) {
+      inverse.set(dataBar14CharacterWidths(value, kind).join(','), value);
+    }
+    inverseCharacterMaps.set(kind, inverse);
+  }
+  const value = inverse.get(widths.join(','));
+  if (value === undefined) throw new RangeError(`Invalid GS1 DataBar ${kind} character widths`);
+  return value;
+}
+
+/** Nine finder patterns, expressed as normative five-element widths. */
+const DATABAR14_FINDERS = Object.freeze([
+  Object.freeze([3, 8, 2, 1, 1]), Object.freeze([3, 5, 5, 1, 1]),
+  Object.freeze([3, 3, 7, 1, 1]), Object.freeze([3, 1, 9, 1, 1]),
+  Object.freeze([2, 7, 4, 1, 1]), Object.freeze([2, 5, 6, 1, 1]),
+  Object.freeze([2, 3, 8, 1, 1]), Object.freeze([1, 5, 7, 1, 1]),
+  Object.freeze([1, 3, 9, 1, 1]),
+]);
+
+/** Weight sequence generated as powers of three modulo 79. */
+const DATABAR14_CHECKSUM_WEIGHTS = Object.freeze(Array.from({ length: 32 }, (_, index) => {
+  let value = 1;
+  for (let i = 0; i < index; i++) value = (value * 3) % 79;
+  return value;
+}));
+
+__exports.dataBarWidths = dataBarWidths;
+__exports.dataBar14CharacterWidths = dataBar14CharacterWidths;
+__exports.dataBar14ValueForWidths = dataBar14ValueForWidths;
+__exports.DATABAR14_FINDERS = DATABAR14_FINDERS;
+__exports.DATABAR14_CHECKSUM_WEIGHTS = DATABAR14_CHECKSUM_WEIGHTS;
+};
+
+__modules["databar/encoder.js"] = function (__require, __exports) {
+/** GS1 DataBar Omnidirectional and Truncated encoder. @module databar/encoder */
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { EncodeError } = __require("core/errors.js");
+const { encodeDataBar14GTIN } = __require("databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths } = __require("databar/patterns.js");
+
+function finderIndexes(characters) {
+  const widths = characters.map((value, index) =>
+    dataBar14CharacterWidths(value, index === 0 || index === 3 ? 'outside' : 'inside')
+  );
+  let checksum = 0;
+  const weightOffsets = [0, 8, 24, 16];
+  for (let character = 0; character < 4; character++) {
+    for (let element = 0; element < 8; element++) {
+      checksum += widths[character][element] * DATABAR14_CHECKSUM_WEIGHTS[weightOffsets[character] + element];
+    }
+  }
+  checksum %= 79;
+  if (checksum >= 8) checksum++;
+  if (checksum >= 72) checksum++;
+  return { widths, checksum, left: Math.floor(checksum / 9), right: checksum % 9 };
+}
+
+function widthsToMatrix(widths, height) {
+  const width = widths.reduce((sum, value) => sum + value, 0);
+  const matrix = new BitMatrix(width, height);
+  let dark = false;
+  let x = 0;
+  for (const run of widths) {
+    if (dark) matrix.setRegion(x, 0, run, height);
+    x += run;
+    dark = !dark;
+  }
+  return matrix;
+}
+
+/** Encode a checked GTIN as DataBar Omnidirectional or Truncated. */
+function encodeDataBar14(value, options = {}) {
+  const variant = options.variant ?? 'omnidirectional';
+  if (variant !== 'omnidirectional' && variant !== 'truncated') {
+    throw new EncodeError('GS1 DataBar-14 physical encoder currently supports omnidirectional and truncated');
+  }
+  const height = options.height ?? (variant === 'omnidirectional' ? 33 : 13);
+  if (!Number.isInteger(height) || height < (variant === 'omnidirectional' ? 33 : 13)) {
+    throw new EncodeError(`GS1 DataBar ${variant} height is below its normative minimum`);
+  }
+  const compacted = encodeDataBar14GTIN(value, { linkage: options.linkage });
+  const characters = compacted.physicalCharacters;
+  const check = finderIndexes(characters);
+  const widths = [1, 1];
+  widths.push(...check.widths[0]);
+  widths.push(...DATABAR14_FINDERS[check.left]);
+  widths.push(...check.widths[1].slice().reverse());
+  widths.push(...check.widths[2]);
+  widths.push(...DATABAR14_FINDERS[check.right].slice().reverse());
+  widths.push(...check.widths[3].slice().reverse());
+  widths.push(1, 1);
+  const matrix = widthsToMatrix(widths, height);
+  matrix.databar = Object.freeze({ variant, gtin: compacted.gtin, linkage: compacted.linkage, checksum: check.checksum });
+  return matrix;
+}
+
+__exports.encodeDataBar14 = encodeDataBar14;
+};
+
+__modules["databar/decoder.js"] = function (__require, __exports) {
+/** Clean-matrix decoder for GS1 DataBar Omnidirectional and Truncated. @module databar/decoder */
+const { ChecksumError, FormatError } = __require("core/errors.js");
+const { decodeDataBar14GTIN } = __require("databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14ValueForWidths } = __require("databar/patterns.js");
+
+function sampledRuns(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
+    throw new TypeError('GS1 DataBar decoder expects a BitMatrix-like value');
+  }
+  if (matrix.width % 96 !== 0) throw new FormatError('GS1 DataBar-14 matrix width must be an integer multiple of 96 modules');
+  const scale = matrix.width / 96;
+  const y = Math.floor(matrix.height / 2);
+  const bits = Array.from({ length: 96 }, (_, x) => matrix.get(x * scale + Math.floor(scale / 2), y));
+  if (bits[0] || !bits[95]) throw new FormatError('GS1 DataBar-14 guard pattern is invalid');
+  const runs = [];
+  let current = bits[0];
+  let length = 0;
+  for (const bit of bits) {
+    if (bit === current) length++;
+    else {
+      runs.push(length);
+      current = bit;
+      length = 1;
+    }
+  }
+  runs.push(length);
+  if (runs.length !== 46 || runs[0] !== 1 || runs[1] !== 1 || runs[44] !== 1 || runs[45] !== 1) {
+    throw new FormatError('GS1 DataBar-14 element count or guard widths are invalid');
+  }
+  return runs;
+}
+
+function finderIndex(widths) {
+  const key = widths.join(',');
+  return DATABAR14_FINDERS.findIndex((candidate) => candidate.join(',') === key);
+}
+
+function expectedChecksum(widths) {
+  const offsets = [0, 8, 24, 16];
+  let checksum = 0;
+  for (let character = 0; character < 4; character++) {
+    for (let element = 0; element < 8; element++) {
+      checksum += widths[character][element] * DATABAR14_CHECKSUM_WEIGHTS[offsets[character] + element];
+    }
+  }
+  checksum %= 79;
+  if (checksum >= 8) checksum++;
+  if (checksum >= 72) checksum++;
+  return checksum;
+}
+
+/** Decode a clean or integer-scaled 96-module DataBar-14 matrix. */
+function decodeDataBar14(matrix) {
+  const runs = sampledRuns(matrix);
+  const widths = [
+    runs.slice(2, 10),
+    runs.slice(15, 23).slice().reverse(),
+    runs.slice(23, 31),
+    runs.slice(36, 44).slice().reverse(),
+  ];
+  const leftFinder = finderIndex(runs.slice(10, 15));
+  const rightFinder = finderIndex(runs.slice(31, 36).slice().reverse());
+  if (leftFinder < 0 || rightFinder < 0) throw new FormatError('GS1 DataBar-14 finder pattern is invalid');
+  const encodedChecksum = leftFinder * 9 + rightFinder;
+  if (encodedChecksum !== expectedChecksum(widths)) throw new ChecksumError('GS1 DataBar-14 checksum mismatch');
+
+  const outerLeft = dataBar14ValueForWidths(widths[0], 'outside');
+  const innerLeft = dataBar14ValueForWidths(widths[1], 'inside');
+  const innerRight = dataBar14ValueForWidths(widths[2], 'inside');
+  const outerRight = dataBar14ValueForWidths(widths[3], 'outside');
+  const decoded = decodeDataBar14GTIN({ outerLeft, innerLeft, outerRight, innerRight });
+  return Object.freeze({
+    format: 'databar-omnidirectional',
+    text: decoded.gtin,
+    gtin: decoded.gtin,
+    linkage: decoded.linkage,
+    symbologyIdentifier: ']e0',
+  });
+}
+
+__exports.decodeDataBar14 = decodeDataBar14;
+};
+
+__modules["databar/index.js"] = function (__require, __exports) {
+/** Verified GS1 DataBar data-layer primitives. @module databar */
+const __reexport0 = __require("databar/codec.js"); __exports.dataBarGtinTransmission = __reexport0.dataBarGtinTransmission; __exports.decodeDataBar14GTIN = __reexport0.decodeDataBar14GTIN; __exports.decodeDataBarLimitedGTIN = __reexport0.decodeDataBarLimitedGTIN; __exports.encodeDataBar14GTIN = __reexport0.encodeDataBar14GTIN; __exports.encodeDataBarLimitedGTIN = __reexport0.encodeDataBarLimitedGTIN; __exports.gtinCheckDigit = __reexport0.gtinCheckDigit; __exports.makeGTIN14 = __reexport0.makeGTIN14; __exports.normalizeGTIN = __reexport0.normalizeGTIN;
+const __reexport1 = __require("databar/gs1.js"); __exports.GS1_SEPARATOR = __reexport1.GS1_SEPARATOR; __exports.decodeGS1ElementString = __reexport1.decodeGS1ElementString; __exports.encodeGS1ElementString = __reexport1.encodeGS1ElementString; __exports.formatGS1Elements = __reexport1.formatGS1Elements; __exports.gs1AIInfo = __reexport1.gs1AIInfo; __exports.parseGS1ElementString = __reexport1.parseGS1ElementString;
+const __reexport2 = __require("databar/tables.js"); __exports.DATABAR14_VARIANTS = __reexport2.DATABAR14_VARIANTS; __exports.DATABAR_LIMITED_VARIANT = __reexport2.DATABAR_LIMITED_VARIANT; __exports.dataBar14GroupFor = __reexport2.dataBar14GroupFor; __exports.validateDataBarTables = __reexport2.validateDataBarTables;
+const __reexport3 = __require("databar/encoder.js"); __exports.encodeDataBar14 = __reexport3.encodeDataBar14;
+const __reexport4 = __require("databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14;
+const __reexport5 = __require("databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport5.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport5.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport5.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport5.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport5.dataBarWidths;
 
 
 };
@@ -13790,6 +15868,9 @@ const micropdf417 = __require("micropdf417/index.js");
 const microqr = __require("microqr/index.js");
 const rmqr = __require("rmqr/index.js");
 const frameqr = __require("frameqr/index.js");
+const aztecRune = __require("aztecrune/index.js");
+const compactPdf417 = __require("compactpdf417/index.js");
+const databar = __require("databar/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -13803,7 +15884,12 @@ const __reexport7 = __require("render/index.js"); __exports.renderToCanvasAutoAs
 const __reexport8 = __require("qr/index.js"); __exports.encodeQR = __reexport8.encodeQR; __exports.decodeQR = __reexport8.decodeQR; __exports.detectQR = __reexport8.detectQR; __exports.detectAndDecodeQR = __reexport8.detectAndDecodeQR;
 const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
 const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
+Object.assign(__exports, __require("aztecrune/index.js"));
 const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
+Object.assign(__exports, __require("compactpdf417/index.js"));
+// DataBar currently exposes verified GS1 data-layer codecs only; physical
+// symbol rendering and image detection remain deliberately out of scope.
+Object.assign(__exports, __require("databar/index.js"));
 const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
 const __reexport13 = __require("microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
 const __reexport14 = __require("rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
@@ -13849,6 +15935,11 @@ const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
 const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
 const frameQrCanEncode = typeof frameqr.encodeFrameQR === 'function';
 const frameQrCanDecode = typeof frameqr.detectAndDecodeFrameQR === 'function';
+const aztecRuneCanEncode = typeof aztecRune.encodeAztecRune === 'function';
+const aztecRuneCanDecode = typeof aztecRune.detectAndDecodeAztecRune === 'function';
+const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'function';
+const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
+const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
 
 /**
  * Every format this build supports.
@@ -13891,10 +15982,24 @@ function listFormats() {
     kind: /** @type {'2D'} */ ('2D'),
   });
   formats.push({
+    id: 'aztecrune',
+    label: 'Aztec Rune',
+    canWrite: aztecRuneCanEncode,
+    canRead: aztecRuneCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
     id: 'pdf417',
     label: 'PDF417',
     canWrite: pdf417CanEncode,
     canRead: pdf417CanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'compactpdf417',
+    label: 'Compact PDF417',
+    canWrite: compactPdf417CanEncode,
+    canRead: compactPdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
   formats.push({
@@ -13920,10 +16025,17 @@ function listFormats() {
   });
   formats.push({
     id: 'frameqr',
-    label: 'FrameQR Code',
+    label: 'Sythos Canvas QR profile',
     canWrite: frameQrCanEncode,
     canRead: frameQrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'gs1databar14',
+    label: 'GS1 DataBar Omnidirectional / Truncated',
+    canWrite: dataBarCanEncode,
+    canRead: false,
+    kind: /** @type {'1D'} */ ('1D'),
   });
 
   return formats;
@@ -13955,7 +16067,7 @@ function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
- * @param {object} [options.canvas] FrameQR Code artwork reservation.
+ * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
  * @param {number} [options.canvas.width] Canvas width in QR modules.
@@ -13978,8 +16090,14 @@ function encode(text, options = {}) {
   if (format === 'aztec' || format === 'aztec-code') {
     return aztec.encodeAztec(value, options);
   }
+  if (format === 'aztecrune' || format === 'aztec-rune' || format === 'rune') {
+    return aztecRune.encodeAztecRune(value, options);
+  }
   if (format === 'pdf417' || format === 'pdf-417') {
     return pdf417.encodePDF417(value, options);
+  }
+  if (format === 'compactpdf417' || format === 'compact-pdf417' || format === 'compact-pdf-417') {
+    return compactPdf417.encodeCompactPDF417(value, options);
   }
   if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
     return micropdf417.encodeMicroPDF417(value, options);
@@ -13993,10 +16111,13 @@ function encode(text, options = {}) {
   if (format === 'frameqr' || format === 'frame-qr' || format === 'canvas-qr') {
     return frameqr.encodeFrameQR(value, options);
   }
+  if (format === 'gs1databar14' || format === 'gs1-databar14' || format === 'databar') {
+    return databar.encodeDataBar14(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -14019,9 +16140,9 @@ function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
- * @property {string} [profile] FrameQR Code profile identifier.
+ * @property {string} [profile] Sythos Canvas QR profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
- * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
+ * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  */
 
 /**
@@ -14036,7 +16157,7 @@ function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {object} [options.frameqr] FrameQR Code detector options when
+ * @param {object} [options.frameqr] Sythos Canvas QR detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
@@ -14046,7 +16167,9 @@ function decode(image, options = {}) {
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
+  const wantAztecRune = !want || want.has('aztecrune') || want.has('aztec-rune') || want.has('rune');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
+  const wantCompactPDF417 = !want || want.has('compactpdf417') || want.has('compact-pdf417') || want.has('compact-pdf-417');
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
@@ -14103,12 +16226,30 @@ function decode(image, options = {}) {
       }
     }
 
+    if (wantAztecRune && aztecRuneCanDecode) {
+      try {
+        const found = aztecRune.detectAndDecodeAztecRune(bits);
+        if (found) results.push({ ...found, format: 'aztecrune' });
+      } catch {
+        /* no Aztec Rune in this pass */
+      }
+    }
+
     if (wantPDF417 && pdf417CanDecode) {
       try {
         const found = pdf417.detectAndDecodePDF417(bits);
         if (found) results.push({ ...found, format: 'pdf417' });
       } catch {
         /* no PDF417 in this pass */
+      }
+    }
+
+    if (wantCompactPDF417 && compactPdf417CanDecode) {
+      try {
+        const found = compactPdf417.detectAndDecodeCompactPDF417(bits);
+        if (found) results.push({ ...found, format: 'compactpdf417' });
+      } catch {
+        /* no Compact PDF417 in this pass */
       }
     }
 
@@ -14152,7 +16293,7 @@ function decode(image, options = {}) {
           results.push({ ...found, format: 'frameqr' });
         }
       } catch {
-        /* no FrameQR Code in this pass */
+        /* no Sythos Canvas QR profile in this pass */
       }
     }
 
@@ -14190,7 +16331,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.3.1';
+const VERSION = '1.4.0';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;
@@ -14202,22 +16343,69 @@ __exports.VERSION = VERSION;
 const __entry = __require("index.js");
 export default __entry;
 export const {
+  AZTEC_RUNE_DATA_BITS,
+  AZTEC_RUNE_DATA_CODEWORDS,
+  AZTEC_RUNE_DATA_POSITIONS,
+  AZTEC_RUNE_ECC_CODEWORDS,
+  AZTEC_RUNE_MASK,
+  AZTEC_RUNE_SIZE,
+  AZTEC_RUNE_TOTAL_CODEWORDS,
+  AZTEC_RUNE_WORD_SIZE,
   BarcodeError,
   BitMatrix,
+  COMPACT_PDF417_LIMITS,
+  COMPACT_PDF417_START,
+  COMPACT_PDF417_START_BITS,
+  COMPACT_PDF417_STOP_MODULES,
   ChecksumError,
+  DATABAR14_CHECKSUM_WEIGHTS,
+  DATABAR14_FINDERS,
+  DATABAR14_VARIANTS,
+  DATABAR_LIMITED_VARIANT,
+  EAN2_PARITY,
+  EAN2_WIDTH,
+  EAN5_PARITY,
+  EAN5_WIDTH,
+  EAN_ADDON_SEPARATOR,
+  EAN_ADDON_START,
   EncodeError,
   FormatError,
+  GS1_SEPARATOR,
   LuminanceSource,
   NotFoundError,
   ONED_FORMATS,
   VERSION,
+  aztecRuneField,
+  aztecRuneStructuralValue,
   binarize,
   binarizeGlobal,
   binarizeHybrid,
+  buildAztecRuneStructure,
+  compactPdf417Dimensions,
+  compactPdf417Geometry,
+  compactPdf417Indicators,
+  compactPdf417MatchingLevels,
+  compactPdf417Width,
+  composeEANAddon,
+  dataBar14CharacterWidths,
+  dataBar14GroupFor,
+  dataBar14ValueForWidths,
+  dataBarGtinTransmission,
+  dataBarWidths,
   decode,
   decodeAztec,
+  decodeAztecRune,
+  decodeCompactPDF417,
+  decodeDataBar14,
+  decodeDataBar14GTIN,
+  decodeDataBarLimitedGTIN,
   decodeDataMatrix,
+  decodeEAN2,
+  decodeEAN5,
+  decodeEANAddOn,
+  decodeEANAddon,
   decodeFrameQR,
+  decodeGS1ElementString,
   decodeMicroPDF417,
   decodeMicroQR,
   decodeOneD,
@@ -14227,6 +16415,8 @@ export const {
   decodeRMQR,
   decodeStrict,
   detectAndDecodeAztec,
+  detectAndDecodeAztecRune,
+  detectAndDecodeCompactPDF417,
   detectAndDecodeDataMatrix,
   detectAndDecodeFrameQR,
   detectAndDecodeMicroPDF417,
@@ -14235,6 +16425,8 @@ export const {
   detectAndDecodeQR,
   detectAndDecodeRMQR,
   detectAztec,
+  detectAztecRune,
+  detectCompactPDF417,
   detectDataMatrix,
   detectFrameQR,
   detectMicroPDF417,
@@ -14243,17 +16435,33 @@ export const {
   detectQR,
   detectRMQR,
   ean13CheckDigit,
+  ean2Parity,
+  ean5CheckDigit,
+  ean5Checksum,
+  ean5Parity,
   encode,
   encodeAztec,
+  encodeAztecRune,
   encodeCodabar,
   encodeCode11,
   encodeCode128,
   encodeCode39,
   encodeCode93,
+  encodeCompactPDF417,
+  encodeDataBar14,
+  encodeDataBar14GTIN,
+  encodeDataBarLimitedGTIN,
   encodeDataMatrix,
   encodeEAN13,
+  encodeEAN13WithAddon,
+  encodeEAN2,
+  encodeEAN5,
   encodeEAN8,
+  encodeEAN8WithAddon,
+  encodeEANAddOn,
+  encodeEANAddon,
   encodeFrameQR,
+  encodeGS1ElementString,
   encodeISBN,
   encodeITF,
   encodeITF14,
@@ -14265,10 +16473,19 @@ export const {
   encodeQR,
   encodeRMQR,
   encodeUPCA,
+  encodeUPCAWithAddon,
   encodeUPCE,
+  encodeUPCEWithAddon,
+  formatGS1Elements,
+  gs1AIInfo,
+  gtinCheckDigit,
   isWebGL2Available,
   isWebGPUAvailable,
   listFormats,
+  makeGTIN14,
+  normalizeAztecRuneValue,
+  normalizeGTIN,
+  parseGS1ElementString,
   patternVariance,
   recordPattern,
   renderToCanvasAuto,
@@ -14280,5 +16497,9 @@ export const {
   toPNGDataURI,
   toSVG,
   toSVGDataURI,
+  validateAztecRuneTables,
+  validateCompactPdf417Options,
+  validateCompactPdf417Tables,
+  validateDataBarTables,
   validateTables
 } = __entry;

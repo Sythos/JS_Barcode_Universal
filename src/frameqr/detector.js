@@ -29,7 +29,7 @@
  */
 
 /**
- * Detector for the non-certified FrameQR Code profile.
+ * Detector for the non-certified Sythos Canvas QR profile.
  *
  * The profile deliberately reuses QR Model 2 geometry. Finder localisation and
  * projective sampling therefore use the QR detector; the additional profile
@@ -98,7 +98,7 @@ function sameCandidate(left, right) {
 }
 
 /**
- * Detect FrameQR Code symbols in a binarized raster.
+ * Detect Sythos Canvas QR symbols in a binarized raster.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage Set bit = dark.
  * @param {object} [options]

@@ -13,8 +13,10 @@ appendix carries the consolidated inventory these files expand on.
 | Aztec Code | [`aztec-code.license`](aztec-code.license) | 2 |
 | QR Code | [`qr-code.license`](qr-code.license) | 2 |
 | Data Matrix ECC 200 | [`data-matrix.license`](data-matrix.license) | 2 |
+| Aztec Rune | [`aztec-rune.license`](aztec-rune.license) | 2 |
 | PDF417 | [`pdf417.license`](pdf417.license) | 2 |
 | MicroPDF417 | [`micropdf417.license`](micropdf417.license) | 2 |
+| Compact PDF417 | [`compact-pdf417.license`](compact-pdf417.license) | 2 |
 | EAN-13 | [`ean-13.license`](ean-13.license) | 2 |
 | EAN-8 | [`ean-8.license`](ean-8.license) | 2 |
 | UPC-A | [`upc-a.license`](upc-a.license) | 2 |
@@ -30,9 +32,12 @@ appendix carries the consolidated inventory these files expand on.
 | Code 11 | [`code-11.license`](code-11.license) | 2 |
 | MSI Plessey | [`msi-plessey.license`](msi-plessey.license) | 2 |
 | Pharmacode | [`pharmacode.license`](pharmacode.license) | 2 |
+| EAN-2 supplement | [`ean-2.license`](ean-2.license) | 2 |
+| EAN-5 supplement | [`ean-5.license`](ean-5.license) | 2 |
 | Micro QR Code | [`micro-qr.license`](micro-qr.license) | 2 |
 | rMQR Code | [`rmqr.license`](rmqr.license) | 2 |
 | FrameQR Code | [`frameqr.license`](frameqr.license) | 2 |
+| GS1 DataBar data-layer codecs | [`gs1-databar.license`](gs1-databar.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

@@ -43,6 +43,17 @@ export {
 } from './writers.js';
 
 export {
+  EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH,
+  EAN_ADDON_START, EAN_ADDON_SEPARATOR,
+  ean2Parity, ean5Checksum, ean5CheckDigit, ean5Parity,
+  encodeEAN2, encodeEAN5, encodeEANAddon, encodeEANAddOn,
+  decodeEAN2, decodeEAN5, decodeEANAddon, decodeEANAddOn,
+  composeEANAddon,
+  encodeEAN13WithAddon, encodeEAN8WithAddon,
+  encodeUPCAWithAddon, encodeUPCEWithAddon,
+} from './addons.js';
+
+export {
   decodeOneD, decodeOneDStrict,
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
@@ -55,6 +66,7 @@ import {
   encodeITF, encodeITF14, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode,
 } from './writers.js';
+import { encodeEAN2, encodeEAN5 } from './addons.js';
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -86,4 +98,9 @@ export const ONED_FORMATS = {
   code11: { encode: encodeCode11, readable: false, label: 'Code 11' },
   msi: { encode: encodeMSI, readable: false, label: 'MSI Plessey' },
   pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
+  // Supplements are writable standalone matrices, but their reader is
+  // intentionally exposed through the EAN/UPC add-on helpers rather than the
+  // generic one-dimensional scan pipeline.
+  ean2: { encode: encodeEAN2, readable: false, label: 'EAN-2 supplement' },
+  ean5: { encode: encodeEAN5, readable: false, label: 'EAN-5 supplement' },
 };

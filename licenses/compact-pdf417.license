@@ -1,0 +1,76 @@
+Compact PDF417 — format provenance and usability
+==========================================================================
+
+This file records where the Compact PDF417 symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Compact PDF417 is the truncated PDF417 geometry: the standard PDF417 data
+and error-correction family with the right row indicator omitted and a
+reduced stop pattern.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 15438:2015 — PDF417 bar code symbology specification.
+Independent runtimes were used only as black-box verification tools; no
+third-party source code or table is shipped.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+Compact PDF417 inherits the historical PDF417 patent landscape. US
+5,243,655 and US 5,304,786 and related families require a
+jurisdiction-by-jurisdiction review. [LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+The current registration status and ownership of "Compact PDF417" have not
+been independently established. [LEGAL REVIEW]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+Compact PDF417 is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+This project's original Compact PDF417 implementation is distributed under
+the MIT License. The engineering implementation is not a certification or
+legal clearance. [LEGAL REVIEW]
+
+References relied upon:
+  - ISO/IEC 15438:2015, ISO/IEC
+  - ZXing-C++ black-box validation, https://github.com/zxing-cpp/zxing-cpp
+  - US 5,243,655, USPTO patent record
+  - US 5,304,786, USPTO patent record
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

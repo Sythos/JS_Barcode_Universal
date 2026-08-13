@@ -99,7 +99,10 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
 | `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `decodeDataMatrix`, `detectDataMatrix`, `detectAndDecodeDataMatrix` |
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec`, `decodeAztec`, `detectAztec`, `detectAndDecodeAztec` |
+| `@sythos/js_barcode_universal/aztecrune` | `encodeAztecRune`, `decodeAztecRune`, `detectAztecRune`, `detectAndDecodeAztecRune` |
 | `@sythos/js_barcode_universal/pdf417` | `encodePDF417`, `decodePDF417`, `detectPDF417`, `detectAndDecodePDF417` |
+| `@sythos/js_barcode_universal/compactpdf417` | `encodeCompactPDF417`, `decodeCompactPDF417`, `detectCompactPDF417`, `detectAndDecodeCompactPDF417` |
+| `@sythos/js_barcode_universal/databar` | GS1 DataBar GTIN/AI codecs plus Omnidirectional/Truncated physical helpers |
 | `@sythos/js_barcode_universal/micropdf417` | `encodeMicroPDF417`, `decodeMicroPDF417`, `detectMicroPDF417`, `detectAndDecodeMicroPDF417` |
 | `@sythos/js_barcode_universal/microqr` | `encodeMicroQR`, `decodeMicroQR`, `detectMicroQR`, `detectAndDecodeMicroQR` |
 | `@sythos/js_barcode_universal/rmqr` | `encodeRMQR`, `decodeRMQR`, `detectRMQR`, `detectAndDecodeRMQR` |
@@ -115,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.3.1"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.3.1"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.4.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.4.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -227,9 +230,14 @@ time.
 | Micro QR Code | `microqr` | 2D | ✅ | ✅ |
 | rMQR Code | `rmqr` | 2D | ✅ | ✅ |
 | FrameQR Code | `frameqr` | 2D | ✅ | ✅ |
+| Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
+| Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
+| GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | — |
+| EAN-2 supplement | `ean2` | 1D | ✅ | — |
+| EAN-5 supplement | `ean5` | 1D | ✅ | — |
 
-Twenty-three formats, all writable, twenty readable. **Code 11, MSI Plessey and Pharmacode remain
-write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
+Twenty-eight listed formats are writable and twenty-two are readable. **Code 11, MSI Plessey,
+Pharmacode, EAN-2, EAN-5 and GS1 DataBar remain write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
 camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
 validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
 tests; external black-box vectors from ZXing 3.5.3 and bwip-js also pass in both directions.
@@ -371,9 +379,34 @@ falls back to `https://www.sythos.net/apple-touch-icon.png`. The image is never 
 repository; if browser CORS prevents safe compositing, the page keeps a preview overlay and
 exports the QR symbol without embedding the remote artwork.
 
+### Aztec Rune, Compact PDF417 and EAN supplements
+
+`aztecrune` implements the fixed 11×11 Rune values 0–255 with clean raster
+detection, inversion and quarter-turn handling. Its matrices were compared
+exhaustively with ZXing-C++ as an independent black-box runtime; no ZXing
+source or table is shipped.
+
+`compactpdf417` implements the truncated PDF417 geometry with Text, Byte and
+Numeric compaction. It has a clean raster detector and direct matrix decoder.
+
+EAN-2 and EAN-5 are writable supplements exposed by the `oned` subpath and by
+the generic `ean2` and `ean5` format IDs. They are intentionally not generic
+standalone camera-reader formats; use the composition helpers with an EAN/UPC
+base symbol.
+
+### GS1 DataBar
+
+The `databar` subpath exposes original GS1 GTIN/AI codecs plus physical
+Omnidirectional and Truncated writers and clean-matrix decoders. Four GTIN
+vectors were compared bit-for-bit with Zint 2.16.0 as a black box. Limited,
+Stacked, Stacked Omnidirectional and Expanded physical layouts remain planned;
+their data-layer helpers do not imply complete scanner support.
+
 ### Not implemented
 
-**GS1 DataBar and MaxiCode are not implemented** — neither writing nor reading. Data Matrix ECC
+GS1 DataBar physical support currently covers Omnidirectional and Truncated writing plus clean
+matrix decoding; Limited, Stacked and Expanded physical layouts remain planned. MaxiCode is
+not implemented. Data Matrix ECC
 200 is implemented for its classic square and rectangular symbols;
 DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining symbologies.
 

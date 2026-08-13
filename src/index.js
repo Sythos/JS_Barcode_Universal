@@ -59,6 +59,9 @@ import * as micropdf417 from './micropdf417/index.js';
 import * as microqr from './microqr/index.js';
 import * as rmqr from './rmqr/index.js';
 import * as frameqr from './frameqr/index.js';
+import * as aztecRune from './aztecrune/index.js';
+import * as compactPdf417 from './compactpdf417/index.js';
+import * as databar from './databar/index.js';
 
 export { BitMatrix };
 export {
@@ -77,7 +80,12 @@ export {
   encodeDataMatrix, decodeDataMatrix, detectDataMatrix, detectAndDecodeDataMatrix,
 } from './datamatrix/index.js';
 export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './aztec/index.js';
+export * from './aztecrune/index.js';
 export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './pdf417/index.js';
+export * from './compactpdf417/index.js';
+// DataBar currently exposes verified GS1 data-layer codecs only; physical
+// symbol rendering and image detection remain deliberately out of scope.
+export * from './databar/index.js';
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
 } from './micropdf417/index.js';
@@ -127,6 +135,11 @@ const rmqrCanEncode = typeof rmqr.encodeRMQR === 'function';
 const rmqrCanDecode = typeof rmqr.detectAndDecodeRMQR === 'function';
 const frameQrCanEncode = typeof frameqr.encodeFrameQR === 'function';
 const frameQrCanDecode = typeof frameqr.detectAndDecodeFrameQR === 'function';
+const aztecRuneCanEncode = typeof aztecRune.encodeAztecRune === 'function';
+const aztecRuneCanDecode = typeof aztecRune.detectAndDecodeAztecRune === 'function';
+const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'function';
+const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
+const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
 
 /**
  * Every format this build supports.
@@ -169,10 +182,24 @@ export function listFormats() {
     kind: /** @type {'2D'} */ ('2D'),
   });
   formats.push({
+    id: 'aztecrune',
+    label: 'Aztec Rune',
+    canWrite: aztecRuneCanEncode,
+    canRead: aztecRuneCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
     id: 'pdf417',
     label: 'PDF417',
     canWrite: pdf417CanEncode,
     canRead: pdf417CanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'compactpdf417',
+    label: 'Compact PDF417',
+    canWrite: compactPdf417CanEncode,
+    canRead: compactPdf417CanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
   formats.push({
@@ -198,10 +225,17 @@ export function listFormats() {
   });
   formats.push({
     id: 'frameqr',
-    label: 'FrameQR Code',
+    label: 'Sythos Canvas QR profile',
     canWrite: frameQrCanEncode,
     canRead: frameQrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
+  });
+  formats.push({
+    id: 'gs1databar14',
+    label: 'GS1 DataBar Omnidirectional / Truncated',
+    canWrite: dataBarCanEncode,
+    canRead: false,
+    kind: /** @type {'1D'} */ ('1D'),
   });
 
   return formats;
@@ -233,7 +267,7 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
- * @param {object} [options.canvas] FrameQR Code artwork reservation.
+ * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
  * @param {number} [options.canvas.width] Canvas width in QR modules.
@@ -256,8 +290,14 @@ export function encode(text, options = {}) {
   if (format === 'aztec' || format === 'aztec-code') {
     return aztec.encodeAztec(value, options);
   }
+  if (format === 'aztecrune' || format === 'aztec-rune' || format === 'rune') {
+    return aztecRune.encodeAztecRune(value, options);
+  }
   if (format === 'pdf417' || format === 'pdf-417') {
     return pdf417.encodePDF417(value, options);
+  }
+  if (format === 'compactpdf417' || format === 'compact-pdf417' || format === 'compact-pdf-417') {
+    return compactPdf417.encodeCompactPDF417(value, options);
   }
   if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
     return micropdf417.encodeMicroPDF417(value, options);
@@ -271,10 +311,13 @@ export function encode(text, options = {}) {
   if (format === 'frameqr' || format === 'frame-qr' || format === 'canvas-qr') {
     return frameqr.encodeFrameQR(value, options);
   }
+  if (format === 'gs1databar14' || format === 'gs1-databar14' || format === 'databar') {
+    return databar.encodeDataBar14(value, options);
+  }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'pdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -297,9 +340,9 @@ export function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
- * @property {string} [profile] FrameQR Code profile identifier.
+ * @property {string} [profile] Sythos Canvas QR profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
- * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
+ * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  */
 
 /**
@@ -314,7 +357,7 @@ export function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {object} [options.frameqr] FrameQR Code detector options when
+ * @param {object} [options.frameqr] Sythos Canvas QR detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
@@ -324,7 +367,9 @@ export function decode(image, options = {}) {
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
   const wantAztec = !want || want.has('aztec') || want.has('aztec-code');
+  const wantAztecRune = !want || want.has('aztecrune') || want.has('aztec-rune') || want.has('rune');
   const wantPDF417 = !want || want.has('pdf417') || want.has('pdf-417');
+  const wantCompactPDF417 = !want || want.has('compactpdf417') || want.has('compact-pdf417') || want.has('compact-pdf-417');
   const wantMicroPDF417 = !want || want.has('micropdf417') || want.has('micro-pdf417') || want.has('micro-pdf-417');
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
@@ -381,12 +426,30 @@ export function decode(image, options = {}) {
       }
     }
 
+    if (wantAztecRune && aztecRuneCanDecode) {
+      try {
+        const found = aztecRune.detectAndDecodeAztecRune(bits);
+        if (found) results.push({ ...found, format: 'aztecrune' });
+      } catch {
+        /* no Aztec Rune in this pass */
+      }
+    }
+
     if (wantPDF417 && pdf417CanDecode) {
       try {
         const found = pdf417.detectAndDecodePDF417(bits);
         if (found) results.push({ ...found, format: 'pdf417' });
       } catch {
         /* no PDF417 in this pass */
+      }
+    }
+
+    if (wantCompactPDF417 && compactPdf417CanDecode) {
+      try {
+        const found = compactPdf417.detectAndDecodeCompactPDF417(bits);
+        if (found) results.push({ ...found, format: 'compactpdf417' });
+      } catch {
+        /* no Compact PDF417 in this pass */
       }
     }
 
@@ -430,7 +493,7 @@ export function decode(image, options = {}) {
           results.push({ ...found, format: 'frameqr' });
         }
       } catch {
-        /* no FrameQR Code in this pass */
+        /* no Sythos Canvas QR profile in this pass */
       }
     }
 
@@ -468,4 +531,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.3.1';
+export const VERSION = '1.4.0';

@@ -29,7 +29,7 @@
  */
 
 /**
- * Decoder for FrameQR Code.
+ * Decoder for the Sythos Canvas QR profile.
  *
  * This is intentionally not a DENSO FrameQR decoder. The profile is a QR
  * symbol with a bounded artwork reservation and an explicit `frameqr` marker.
@@ -87,7 +87,7 @@ function isExpectedProfile(profile) {
  * @returns {{canvas: object, damage: object}}
  */
 function validateCanvas(symbolSize, version, canvas) {
-  if (!isObject(canvas)) throw new FormatError('FrameQR Code: canvas metadata is missing');
+  if (!isObject(canvas)) throw new FormatError('Sythos Canvas QR: canvas metadata is missing');
 
   let normalized;
   try {
@@ -103,14 +103,14 @@ function validateCanvas(symbolSize, version, canvas) {
     }
   } catch (error) {
     if (error instanceof FormatError) throw error;
-    throw new FormatError(`FrameQR Code: invalid canvas metadata: ${error.message}`);
+    throw new FormatError(`Sythos Canvas QR: invalid canvas metadata: ${error.message}`);
   }
 
   let damage;
   try {
     damage = analyzeCanvasDamage(version, normalized);
   } catch (error) {
-    throw new FormatError(`FrameQR Code: cannot analyse canvas damage: ${error.message}`);
+    throw new FormatError(`Sythos Canvas QR: cannot analyse canvas damage: ${error.message}`);
   }
   return { canvas: normalized, damage };
 }
@@ -135,24 +135,24 @@ function resolveProfile(matrix, options) {
     const markerId = isObject(markerProfile) ? markerProfile.id : markerProfile;
     const suppliedId = isObject(suppliedProfile) ? suppliedProfile.id : suppliedProfile;
     if (markerId !== suppliedId) {
-      throw new FormatError('FrameQR Code: matrix and requested profile markers disagree');
+      throw new FormatError('Sythos Canvas QR: matrix and requested profile markers disagree');
     }
   }
   const profile = markerProfile ?? suppliedProfile;
 
   if (!isExpectedProfile(profile)) {
     throw new FormatError(
-      'FrameQR Code: profile marker is missing or is not a FrameQR Code symbol'
+      'Sythos Canvas QR: profile marker is missing or is not the Sythos Canvas QR profile'
     );
   }
   if (marker && marker.certified === true) {
     throw new FormatError(
-      'FrameQR Code: certified FrameQR input is not supported by this profile decoder'
+      'Sythos Canvas QR: certified FrameQR input is not supported by this profile decoder'
     );
   }
   if (!marker && !options.allowUnmarked) {
     throw new FormatError(
-      'FrameQR Code: unmarked QR matrix rejected; provide a verified profile marker'
+      'Sythos Canvas QR: unmarked QR matrix rejected; provide a verified profile marker'
     );
   }
 
@@ -160,7 +160,7 @@ function resolveProfile(matrix, options) {
   const canvas = options.canvas ?? markerCanvas;
   const version = (matrix.width - 17) / 4;
   if (!Number.isInteger(version) || version < 1 || version > 40) {
-    throw new FormatError(`FrameQR Code: invalid QR symbol size ${matrix.width}`);
+    throw new FormatError(`Sythos Canvas QR: invalid QR symbol size ${matrix.width}`);
   }
   const checked = validateCanvas(matrix.width, version, canvas);
   if (markerCanvas && options.canvas) {
@@ -168,11 +168,11 @@ function resolveProfile(matrix, options) {
     try {
       marked = normalizeCanvasSpec(matrix.width, markerCanvas);
     } catch (error) {
-      throw new FormatError(`FrameQR Code: invalid marker canvas: ${error.message}`);
+      throw new FormatError(`Sythos Canvas QR: invalid marker canvas: ${error.message}`);
     }
     const fields = ['shape', 'centerX', 'centerY', 'width', 'height', 'angle'];
     if (fields.some((field) => marked[field] !== checked.canvas[field])) {
-      throw new FormatError('FrameQR Code: matrix and requested canvas metadata disagree');
+      throw new FormatError('Sythos Canvas QR: matrix and requested canvas metadata disagree');
     }
   }
   return {
@@ -184,7 +184,7 @@ function resolveProfile(matrix, options) {
 }
 
 /**
- * Decode a FrameQR Code matrix.
+ * Decode a Sythos Canvas QR matrix.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  *   Square QR modules, normally returned by `encodeFrameQR` or a FrameQR
@@ -204,11 +204,11 @@ function resolveProfile(matrix, options) {
  */
 export function decodeFrameQR(matrix, options = {}) {
   if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
-    throw new FormatError('FrameQR Code: no matrix supplied');
+    throw new FormatError('Sythos Canvas QR: no matrix supplied');
   }
   if (matrix.width !== matrix.height) {
     throw new FormatError(
-      `FrameQR Code: symbol must be square, got ${matrix.width}x${matrix.height}`
+      `Sythos Canvas QR: symbol must be square, got ${matrix.width}x${matrix.height}`
     );
   }
 
@@ -220,7 +220,7 @@ export function decodeFrameQR(matrix, options = {}) {
     // Preserve the original QR/RS error when possible, but give callers a
     // profile-specific context without exposing implementation details.
     if (error instanceof FormatError) {
-      throw new FormatError(`FrameQR Code: payload is not recoverable: ${error.message}`);
+      throw new FormatError(`Sythos Canvas QR: payload is not recoverable: ${error.message}`);
     }
     throw error;
   }

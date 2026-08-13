@@ -1,0 +1,74 @@
+EAN-5 supplement — format provenance and usability
+==========================================================================
+
+This file records where the EAN-5 supplement symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+EAN-5 is the five-digit EAN/UPC add-on symbol used as a supplement to a
+primary EAN or UPC symbol. This implementation covers the published 3/9
+checksum, parity and guard geometry.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 15420 — EAN/UPC bar code symbology specification.
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [LEGAL REVIEW]
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+The originating patents date from the 1970s-1980s and are understood to
+have expired long ago. [LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"GS1" and its symbology names are trademarks of GS1 AISBL.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+EAN-5 supplement is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+The original add-on implementation is distributed under the MIT License.
+Generic camera read capability remains intentionally separate from the
+direct matrix helper.
+
+References relied upon:
+  - ISO/IEC 15420, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [LEGAL REVIEW]
+  - ZXing-C++ add-on black-box check, https://github.com/zxing-cpp/zxing-cpp
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

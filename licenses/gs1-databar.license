@@ -1,0 +1,81 @@
+GS1 DataBar data-layer codecs — format provenance and usability
+==========================================================================
+
+This file records where the GS1 DataBar data-layer codecs symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+GS1 DataBar is a family of seven GS1 linear symbologies defined by ISO/IEC
+24724 and GS1 specifications. This release contains original GTIN and GS1
+element-string data-layer codecs; physical bar-pattern support is limited
+to the variants explicitly listed by the package.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 24724 — GS1 DataBar bar code symbology specification.
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [LEGAL REVIEW]
+GS1 public DataBar overview,
+https://www.gs1.org/standards/barcodes/databar
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+GS1's intellectual-property policy and third-party patent declarations
+require a dedicated review for deployed implementations. No unconditional
+patent-free or public-domain claim is made. [LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"GS1" and its symbology names are trademarks of GS1 AISBL. "GS1 DataBar"
+is used descriptively with attribution and does not imply endorsement or
+certification.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+GS1 DataBar data-layer codecs is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+Only original Sythos DataBar code is distributed under the MIT License.
+Unsupported physical variants and conformance questions are intentionally
+not presented as completed capability. [LEGAL REVIEW]
+
+References relied upon:
+  - ISO/IEC 24724, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [LEGAL REVIEW]
+  - GS1 DataBar overview, https://www.gs1.org/standards/barcodes/databar
+  - GS1 IP policy, https://ref.gs1.org/gs1/ip-policy/
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

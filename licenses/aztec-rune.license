@@ -1,0 +1,76 @@
+Aztec Rune — format provenance and usability
+==========================================================================
+
+This file records where the Aztec Rune symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Aztec Rune is the fixed 11-module, eight-bit companion form of the Aztec
+Code family. This implementation is limited to the published Rune value
+range 0-255.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 24778:2024 — Aztec Code bar code symbology specification.
+ZXing-C++ was used only as an independent black-box runtime oracle; no
+source code or table is copied or shipped.
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+Historical public-domain reports exist for Aztec symbologies, but no
+primary AIM waiver or complete patent-family review was located for Rune
+specifically. [LEGAL REVIEW]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+The current registration status and ownership of "Aztec Rune" have not
+been independently established. [LEGAL REVIEW] The name is used
+descriptively and does not imply endorsement.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+Aztec Rune is implemented here from published descriptions of the format,
+which are systems and facts rather than works of authorship. No source
+code or constant table from any other barcode implementation is copied or
+shipped. Public technical material and independent implementations may be
+consulted for engineering review or black-box verification; provenance is
+recorded in NOTICE.md.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+This project's original Aztec Rune implementation is distributed under the
+MIT License. This inventory is not a legal opinion that every historical
+or current patent claim is exhausted. [LEGAL REVIEW]
+
+References relied upon:
+  - ISO/IEC 24778:2024, ISO/IEC
+  - ZXing-C++ black-box validation, https://github.com/zxing-cpp/zxing-cpp
+  - Aztec Rune patent and trademark scope [LEGAL REVIEW]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.
