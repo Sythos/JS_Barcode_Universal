@@ -532,4 +532,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.4.0';
+export const VERSION = '1.4.1';
