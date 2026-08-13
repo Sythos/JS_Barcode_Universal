@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +24,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  * SPDX-License-Identifier: MIT
  *
  * Original work. No code from any other barcode implementation.
@@ -464,6 +464,11 @@ export function encodeCode128(value, options = {}) {
   if (gs1) codes.push(CODE128_FNC1);
 
   while (i < value.length) {
+    if (gs1 && value[i] === '\x1d') {
+      codes.push(CODE128_FNC1);
+      i++;
+      continue;
+    }
     const run = digitRun(i);
     const atEnd = i + run === value.length;
     const worthC = run >= 6 || (i === 0 && run >= 4) || (atEnd && run >= 4);

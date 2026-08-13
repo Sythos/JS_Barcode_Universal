@@ -55,7 +55,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-28 listed formats write, 22 read; PDF417 image reading is now enabled after synthetic, black-box and
+28 listed formats write, 27 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -64,7 +64,7 @@ remain outside the validated robustness envelope.
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
 | **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, Pharmacode | ✅ 32 tests |
-| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar | ✅ phantom-free |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, EAN-2/5 parent-bound supplements, GS1 DataBar-14 | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
@@ -74,14 +74,25 @@ remain outside the validated robustness envelope.
 | **Micro QR** — M1–M4, Numeric/Alphanumeric/Byte/Kanji, BCH format, four masks, Reed–Solomon and detector | ✅ write + read; ECI/FNC1/Structured Append out of scope |
 | **rMQR** — 32 standard rectangular geometries, M/H ECC, Numeric/Alphanumeric/Byte/Kanji, ECI and detector | ✅ write + read; clean scaled raster and quarter-turn detector |
 | **FrameQR Code** — bounded square/circle/diamond artwork canvas on QR Model 2 ECC-H; explicitly not DENSO FrameQR | ✅ write + read; clean raster detector |
-| **GS1 DataBar Omnidirectional / Truncated** — GTIN-14, linkage, Mod-79, physical writer and clean decoder | ✅ write + clean matrix read; other physical variants pending |
-| **EAN-2 / EAN-5 supplements** — parity, guards, checksum and composition helpers | ✅ write + direct matrix helper; generic camera read not advertised |
+| **GS1 DataBar Omnidirectional / Truncated** — GTIN-14, linkage, Mod-79, physical writer, scanline and clean decoder | ✅ write + image read; other physical variants pending |
+| **EAN-2 / EAN-5 supplements** — parity, guards, checksum, composition and parent-bound image reader | ✅ write + attached image read |
+| **GS1 semantic layer** — FNC1 classification and shared Application Identifier parser | ✅ GS1-128 and DataBar-14 |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
 | **Packaging** — scoped npm package `@sythos/js_barcode_universal`, per-format `licenses/` | ✅ install-verified |
 
 The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime field GF(929)** — which PDF417 uses. Addition, subtraction and negation are methods, never an inlined `^`.
+
+### Image-reading completion gate (M0–M14)
+
+The incremental 1D completion workflow is green: Code 11, MSI Plessey, parent-bound EAN-2/EAN-5,
+GS1-128 classification plus Application Identifier parsing, and GS1 DataBar-14
+Omnidirectional/Truncated scanline decoding are integrated without replacing the existing reader.
+The regression and false-positive corpus contains **285 passing tests**. A local benchmark of
+the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
+no dispatch rewrite was necessary. Pharmacode remains deliberately `readable: false` because its
+unframed narrow/wide grammar is unsafe for generic image autodetection.
 
 ### PDF417 status gate
 

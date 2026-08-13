@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.4.1"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.4.1"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.0"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -219,8 +219,8 @@ time.
 | ITF (Interleaved 2 of 5) | `itf` | 1D | ✅ | ✅ |
 | ITF-14 | `itf14` | 1D | ✅ | ✅ [^1] |
 | Codabar | `codabar` | 1D | ✅ | ✅ |
-| Code 11 | `code11` | 1D | ✅ | — |
-| MSI Plessey | `msi` | 1D | ✅ | — |
+| Code 11 | `code11` | 1D | ✅ | ✅ |
+| MSI Plessey | `msi` | 1D | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
@@ -232,24 +232,37 @@ time.
 | FrameQR Code | `frameqr` | 2D | ✅ | ✅ |
 | Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
 | Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
-| GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | — |
-| EAN-2 supplement | `ean2` | 1D | ✅ | — |
-| EAN-5 supplement | `ean5` | 1D | ✅ | — |
+| GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | ✅ |
+| EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
+| EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Twenty-eight listed formats are writable and twenty-two are readable. **Code 11, MSI Plessey,
-Pharmacode, EAN-2, EAN-5 and GS1 DataBar remain write-only in the generic image pipeline.** PDF417 exposes direct matrix decoding, automatic
+Twenty-eight listed formats are writable and twenty-seven are readable (EAN-2 and EAN-5 are
+parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
+pipeline.** Code 11 and MSI Plessey use the scanline reader; GS1 DataBar uses the
+Omnidirectional/Truncated scanline layer over the verified GTIN decoder. PDF417 exposes direct matrix decoding, automatic
 camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
 validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
 tests; external black-box vectors from ZXing 3.5.3 and bwip-js also pass in both directions.
 Text and Numeric vectors are covered bidirectionally; binary byte-for-byte interop remains
 explicitly unclaimed until a dedicated external byte corpus is added.
 
-[^1]: `gs1128`, `itf14` and `isbn` are sub-variants that share a decoder with their base format, so
-they decode under that base id: a GS1-128 comes back as `code128`, an ITF-14 as `itf`, and an ISBN
-as `ean13`. The payload is intact either way — a GS1-128 *is* a Code 128 with a leading FNC1, an
-ITF-14 *is* an ITF fixed at fourteen digits, and an ISBN barcode *is* an EAN-13 with a 978/979
-prefix. Match on `result.format === 'code128'` rather than `'gs1128'`, or a
-condition on the sub-variant id will silently never fire.
+[^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
+and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is
+present and exposes `gs1`, `symbologyIdentifier` and parsed `elements` metadata. The payload is
+intact either way — an ITF-14 is an ITF fixed at fourteen digits, and an ISBN barcode is an EAN-13
+with a 978/979 prefix.
+
+[^2]: EAN-2 and EAN-5 are recognized only when attached to a validated EAN-13, EAN-8, UPC-A or
+UPC-E parent; they are not independent generic retail-symbol readers.
+
+### Code 11 and MSI Plessey image reading
+
+The generic image pipeline now recognizes Code 11 and MSI Plessey through the existing
+scanline reader. Check-digit validation is opt-in with `decode(image, { checkDigit: true })`;
+without that option the physical grammar is still required, while the literal check character is
+preserved for MSI and reliably stripped for Code 11 when its C/K grammar is unambiguous. The
+reader keeps Pharmacode write-only because its unframed narrow/wide grammar is not safe for
+unrestricted image autodetection.
 
 ### Data Matrix ECC 200
 
@@ -390,22 +403,22 @@ source or table is shipped.
 Numeric compaction. It has a clean raster detector and direct matrix decoder.
 
 EAN-2 and EAN-5 are writable supplements exposed by the `oned` subpath and by
-the generic `ean2` and `ean5` format IDs. They are intentionally not generic
-standalone camera-reader formats; use the composition helpers with an EAN/UPC
-base symbol.
+the generic `ean2` and `ean5` format IDs. The image reader recognizes them only
+when attached to a validated EAN/UPC parent; use the composition helpers with
+an EAN/UPC base symbol.
 
 ### GS1 DataBar
 
 The `databar` subpath exposes original GS1 GTIN/AI codecs plus physical
-Omnidirectional and Truncated writers and clean-matrix decoders. Four GTIN
+Omnidirectional and Truncated writers, scanline readers and clean-matrix decoders. Four GTIN
 vectors were compared bit-for-bit with Zint 2.16.0 as a black box. Limited,
 Stacked, Stacked Omnidirectional and Expanded physical layouts remain planned;
 their data-layer helpers do not imply complete scanner support.
 
 ### Not implemented
 
-GS1 DataBar physical support currently covers Omnidirectional and Truncated writing plus clean
-matrix decoding; Limited, Stacked and Expanded physical layouts remain planned. MaxiCode is
+GS1 DataBar physical support currently covers Omnidirectional and Truncated writing plus
+scanline and clean-matrix decoding; Limited, Stacked and Expanded physical layouts remain planned. MaxiCode is
 not implemented. Data Matrix ECC
 200 is implemented for its classic square and rectangular symbols;
 DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining symbologies.

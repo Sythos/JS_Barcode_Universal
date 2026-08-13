@@ -36,8 +36,8 @@ appendix carries the consolidated inventory these files expand on.
 | EAN-5 supplement | [`ean-5.license`](ean-5.license) | 2 |
 | Micro QR Code | [`micro-qr.license`](micro-qr.license) | 2 |
 | rMQR Code | [`rmqr.license`](rmqr.license) | 2 |
-| FrameQR Code | [`frameqr.license`](frameqr.license) | 2 |
-| GS1 DataBar data-layer codecs | [`gs1-databar.license`](gs1-databar.license) | 2 |
+| Frame QR / Sythos Canvas QR profile | [`frameqr.license`](frameqr.license) | 2 |
+| GS1 DataBar Omnidirectional / Truncated | [`gs1-databar.license`](gs1-databar.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

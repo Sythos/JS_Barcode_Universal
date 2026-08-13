@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +24,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  * SPDX-License-Identifier: MIT
  *
  * Original work. No code from any other barcode implementation.
@@ -56,6 +56,7 @@ export {
 
 export {
   decodeOneD, decodeOneDStrict,
+  decodeCode11, decodeMSI,
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
 
@@ -77,7 +78,7 @@ import { encodeEAN2, encodeEAN5 } from './addons.js';
  * so the two lists legitimately differ and the API says so rather than
  * failing at runtime.
  *
- * @type {Record<string, {encode: Function, readable: boolean, label: string}>}
+ * @type {Record<string, {encode: Function, readable: boolean, label: string, role?: string}>}
  */
 export const ONED_FORMATS = {
   ean13: { encode: encodeEAN13, readable: true, label: 'EAN-13' },
@@ -96,12 +97,11 @@ export const ONED_FORMATS = {
   itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
   itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
   codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
-  code11: { encode: encodeCode11, readable: false, label: 'Code 11' },
-  msi: { encode: encodeMSI, readable: false, label: 'MSI Plessey' },
+  code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
+  msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
   pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
-  // Supplements are writable standalone matrices, but their reader is
-  // intentionally exposed through the EAN/UPC add-on helpers rather than the
-  // generic one-dimensional scan pipeline.
-  ean2: { encode: encodeEAN2, readable: false, label: 'EAN-2 supplement' },
-  ean5: { encode: encodeEAN5, readable: false, label: 'EAN-5 supplement' },
+  // Supplements are reported as readable capabilities, but the image reader
+  // only accepts them when attached to a validated EAN/UPC parent symbol.
+  ean2: { encode: encodeEAN2, readable: true, role: 'supplement', label: 'EAN-2 supplement' },
+  ean5: { encode: encodeEAN5, readable: true, role: 'supplement', label: 'EAN-5 supplement' },
 };

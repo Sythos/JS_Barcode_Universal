@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +24,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  * SPDX-License-Identifier: MIT
  *
  * Original work. No code from any other barcode implementation.
@@ -59,7 +59,7 @@ export {
 } from './tables.js';
 
 export { encodeDataBar14 } from './encoder.js';
-export { decodeDataBar14 } from './decoder.js';
+export { decodeDataBar14, decodeDataBar14Scanline } from './decoder.js';
 export {
   DATABAR14_CHECKSUM_WEIGHTS,
   DATABAR14_FINDERS,

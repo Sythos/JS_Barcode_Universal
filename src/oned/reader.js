@@ -4,6 +4,7 @@
  * MIT License
  *
  * Copyright (c) 2026 Sythos
+ * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +24,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * SPDX-FileCopyrightText: 2026 Sythos (https://www.sythos.net)
  * SPDX-License-Identifier: MIT
  *
  * Original work. No code from any other barcode implementation.
@@ -58,8 +58,14 @@ import {
   CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C,
   CODE128_SHIFT,
   ITF, CODABAR, CODABAR_START_STOP,
+  CODE11, CODE11_START_STOP, MSI_START, MSI_STOP, MSI_BIT,
 } from './patterns.js';
 import { ean13CheckDigit, upceToUpcaBody } from './writers.js';
+import {
+  EAN2_PARITY, EAN5_PARITY, EAN_ADDON_START, EAN_ADDON_SEPARATOR,
+  ean5Checksum,
+} from './addons.js';
+import { decodeDataBar14Scanline } from '../databar/decoder.js';
 
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -232,6 +238,14 @@ const CODABAR_BITS = Object.fromEntries(
   Object.entries(CODABAR).map(([k, v]) => [nwToBits(v), k])
 );
 const ITF_BITS = Object.fromEntries(ITF.map((v, i) => [nwToBits(v), i]));
+const CODE11_BITS = Object.fromEntries(
+  Object.entries(CODE11).flatMap(([ch, value]) => {
+    const bits = nwToBits(value);
+    return [[`${bits}:1`, ch], [`${bits}:2`, ch]];
+  })
+);
+const CODE11_START_BITS = nwToBits(CODE11_START_STOP);
+const CODE11_CHARSET = '0123456789-';
 
 /**
  * Shortest ITF payload treated as a real read.
@@ -317,7 +331,8 @@ function decodeEANFamily(row) {
       digits.push(d.digit);
       offset = d.end;
     }
-    if (!matchAt(row, offset, START_END_PATTERN)) return null;
+    const trailing = matchAt(row, offset, START_END_PATTERN);
+    if (!trailing) return null;
 
     const parityStr = [];
     for (let i = 0; i < 6; i++) parityStr.push((parityBits >> (5 - i)) & 1 ? 'G' : 'L');
@@ -328,9 +343,10 @@ function decodeEANFamily(row) {
     if (Number(text[12]) !== ean13CheckDigit(text.slice(0, 12))) return null;
 
     // A leading zero means this was printed as UPC-A.
-    return first === 0
+    const result = first === 0
       ? { format: 'upca', text: text.slice(1) }
       : { format: 'ean13', text };
+    return attachEANAddon(result, row, trailing.end);
   }
 
   return null;
@@ -365,11 +381,12 @@ function decodeEAN8(row) {
     digits.push(d.digit);
     offset = d.end;
   }
-  if (!matchAt(row, offset, START_END_PATTERN)) return null;
+  const trailing = matchAt(row, offset, START_END_PATTERN);
+  if (!trailing) return null;
 
   const text = digits.join('');
   if (Number(text[7]) !== ean13CheckDigit(text.slice(0, 7))) return null;
-  return { format: 'ean8', text };
+  return attachEANAddon({ format: 'ean8', text }, row, trailing.end);
 }
 
 /**
@@ -396,7 +413,8 @@ function decodeUPCE(row) {
   // Six digits and then the end guard, in that order and nothing between. The
   // EAN readers above match their trailing guard; this one used to stop at the
   // last digit, which let it report a symbol it had never seen the end of.
-  if (!matchAt(row, offset, UPCE_END_PATTERN)) return null;
+  const trailing = matchAt(row, offset, UPCE_END_PATTERN);
+  if (!trailing) return null;
 
   const parityStr = [];
   for (let i = 0; i < 6; i++) parityStr.push((parityBits >> (5 - i)) & 1 ? 'E' : 'O');
@@ -413,7 +431,7 @@ function decodeUPCE(row) {
   const body = digits.join('');
   if (ean13CheckDigit(upceToUpcaBody(0, body)) !== check) return null;
 
-  return { format: 'upce', text: '0' + body + String(check) };
+  return attachEANAddon({ format: 'upce', text: '0' + body + String(check) }, row, trailing.end);
 }
 
 /* ------------------------------------------------------------------ *
@@ -482,6 +500,256 @@ function matchAt(row, start, pattern) {
   let width = 0;
   for (const c of counters) width += c;
   return { end: start + width };
+}
+
+/* ------------------------------------------------------------------ *
+ * EAN supplements
+ * ------------------------------------------------------------------ */
+
+/**
+ * Decode a supplement immediately following a validated EAN/UPC symbol.
+ * The caller supplies the end of the parent trailing guard, so a supplement
+ * can never be accepted as an unrelated standalone linear symbol.
+ *
+ * @param {Uint8Array} row
+ * @param {number} baseEnd
+ * @param {2|5} digitCount
+ * @returns {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number, end:number}|null}
+ */
+function decodeEANSupplementRow(row, baseEnd, digitCount) {
+  const guard = findGuard(row, baseEnd, [1, 1, 2], false);
+  if (!guard || guard.start - baseEnd < 4) return null;
+
+  let offset = guard.end;
+  let text = '';
+  let parity = '';
+
+  for (let i = 0; i < digitCount; i++) {
+    const digit = decodeEANDigit(row, offset, false);
+    if (!digit) return null;
+    text += String(digit.digit);
+    parity += digit.even ? 'B' : 'A';
+    offset = digit.end;
+
+    if (i + 1 < digitCount) {
+      const separator = matchAt(row, offset, [1, 1]);
+      if (!separator) return null;
+      offset = separator.end;
+    }
+  }
+
+  if (digitCount === 2) {
+    if (EAN2_PARITY[Number(text) % 4] !== parity) return null;
+    return { format: 'ean2', text, parity, end: offset };
+  }
+
+  const checksum = ean5Checksum(text);
+  if (EAN5_PARITY[checksum] !== parity) return null;
+  return { format: 'ean5', text, parity, checksum, end: offset };
+}
+
+/**
+ * Attach the longest valid supplement to a base result. EAN-5 is attempted
+ * first so its prefix cannot be reported as a shorter EAN-2 symbol.
+ *
+ * @param {object} base
+ * @param {Uint8Array} row
+ * @param {number} baseEnd
+ * @returns {object}
+ */
+function attachEANAddon(base, row, baseEnd) {
+  const addon = decodeEANSupplementRow(row, baseEnd, 5)
+    ?? decodeEANSupplementRow(row, baseEnd, 2);
+  if (!addon) return base;
+  const { end, ...publicAddon } = addon;
+  void end;
+  return { ...base, addon: publicAddon };
+}
+
+/* ------------------------------------------------------------------ *
+ * Code 11 and MSI/Plessey
+ * ------------------------------------------------------------------ */
+
+/** @param {number[]} counters @returns {number} */
+function counterTotal(counters) {
+  return counters.reduce((sum, value) => sum + value, 0);
+}
+
+/**
+ * Apply the Code 11 C/K checksum grammar used by the writer.
+ *
+ * @param {string} encoded
+ * @param {boolean|undefined} requested
+ * @returns {string|null}
+ */
+function finalizeCode11(encoded, requested) {
+  const weighted = (text, maxWeight) => {
+    let sum = 0;
+    for (let i = 0; i < text.length; i++) {
+      const weight = ((text.length - 1 - i) % maxWeight) + 1;
+      sum += weight * CODE11_CHARSET.indexOf(text[i]);
+    }
+    return sum;
+  };
+  const validC = (text) => {
+    if (text.length < 2) return null;
+    const body = text.slice(0, -1);
+    const expected = CODE11_CHARSET[weighted(body, 10) % 11];
+    return text[text.length - 1] === expected ? body : null;
+  };
+  const validCK = (text) => {
+    if (text.length < 12) return null;
+    const body = text.slice(0, -2);
+    const c = text[text.length - 2];
+    const k = text[text.length - 1];
+    const expectedC = CODE11_CHARSET[weighted(body, 10) % 11];
+    if (c !== expectedC) return null;
+    const expectedK = CODE11_CHARSET[weighted(body + c, 9) % 11];
+    return k === expectedK ? body : null;
+  };
+
+  if (requested === false) return encoded;
+  if (requested === true) {
+    const checked = encoded.length >= 12 ? validCK(encoded) : validC(encoded);
+    return checked;
+  }
+
+  // With no explicit option, strip checks only when the complete grammar is
+  // unambiguous; otherwise preserve the literal payload.
+  return validCK(encoded) ?? validC(encoded) ?? encoded;
+}
+
+/**
+ * Decode Code 11 from one binarized scanline.
+ *
+ * @param {Uint8Array} row
+ * @param {object} [options]
+ * @param {boolean} [options.checkDigit]
+ * @returns {{format:'code11', text:string}|null}
+ */
+export function decodeCode11(row, options = {}) {
+  const counters = new Array(5).fill(0);
+  let start = null;
+  for (let i = 0; i < row.length; i++) {
+    if (row[i] !== 1 || (i > 0 && row[i - 1] === 1)) continue;
+    if (!recordPattern(row, i, counters)) continue;
+    if (toNarrowWidePattern(counters, 2) === CODE11_START_BITS) {
+      start = { position: i, end: i + counterTotal(counters), scale: counterTotal(counters) / 9 };
+      break;
+    }
+  }
+  if (!start) return null;
+
+  let offset = start.end;
+  while (offset < row.length && row[offset] === 0) offset++;
+  let encoded = '';
+
+  for (let count = 0; count < 160 && offset < row.length; count++) {
+    if (!recordPattern(row, offset, counters)) return null;
+    const width = counterTotal(counters);
+    const stop = toNarrowWidePattern(counters, 2);
+    if (stop === CODE11_START_BITS) {
+      if (encoded.length === 0) return null;
+      const stopEnd = offset + width;
+      let nextDark = stopEnd;
+      while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+      if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(start.scale * 3))) {
+        return null;
+      }
+      const text = finalizeCode11(encoded, options.checkDigit);
+      return text == null ? null : { format: 'code11', text };
+    }
+
+    let character = null;
+    for (const expectedWide of [1, 2]) {
+      const bits = toNarrowWidePattern(counters, expectedWide);
+      if (bits < 0) continue;
+      const candidate = CODE11_BITS[`${bits}:${expectedWide}`];
+      if (candidate !== undefined) {
+        character = candidate;
+        break;
+      }
+    }
+    if (character == null) return null;
+    encoded += character;
+    if (encoded.length > 128) return null;
+    offset += width;
+    while (offset < row.length && row[offset] === 0) offset++;
+  }
+  return null;
+}
+
+/** @param {string} encoded @param {boolean|undefined} requested */
+function finalizeMSI(encoded, requested) {
+  if (requested !== true) return encoded;
+  if (encoded.length < 2) return null;
+  const body = encoded.slice(0, -1);
+  let odd = '';
+  for (let i = body.length - 1; i >= 0; i -= 2) odd = body[i] + odd;
+  const doubled = String(Number(odd) * 2);
+  let sum = 0;
+  for (const ch of doubled) sum += Number(ch);
+  for (let i = body.length - 2; i >= 0; i -= 2) sum += Number(body[i]);
+  const expected = String((10 - (sum % 10)) % 10);
+  return encoded.endsWith(expected) ? body : null;
+}
+
+/**
+ * Decode MSI/Plessey from one binarized scanline.
+ *
+ * @param {Uint8Array} row
+ * @param {object} [options]
+ * @param {boolean} [options.checkDigit]
+ * @returns {{format:'msi', text:string}|null}
+ */
+export function decodeMSI(row, options = {}) {
+  const start = findGuard(row, 0, [2, 1], false);
+  if (!start) return null;
+  const scale = (start.end - start.start) / 3;
+  if (!(scale >= 1)) return null;
+
+  let offset = start.end;
+  let encoded = '';
+  const bitPatterns = [
+    { pattern: [1, 2], bit: '0' },
+    { pattern: [2, 1], bit: '1' },
+  ];
+
+  for (let digitIndex = 0; digitIndex < 80; digitIndex++) {
+    const stop = matchAt(row, offset, [1, 2, 1]);
+    if (stop && encoded.length > 0) {
+      let nextDark = stop.end;
+      while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+      if (nextDark === row.length ||
+          nextDark - stop.end >= Math.max(3, Math.ceil(scale * 3))) {
+        if (encoded.length < 6 && !(options.formats && options.formats.includes('msi'))) {
+          return null;
+        }
+        const text = finalizeMSI(encoded, options.checkDigit);
+        return text == null ? null : { format: 'msi', text };
+      }
+    }
+
+    let nibble = '';
+    for (let bitIndex = 0; bitIndex < 4; bitIndex++) {
+      let matched = null;
+      for (const candidate of bitPatterns) {
+        const found = matchAt(row, offset, candidate.pattern);
+        if (found) {
+          matched = { ...candidate, end: found.end };
+          break;
+        }
+      }
+      if (!matched) return null;
+      nibble += matched.bit;
+      offset = matched.end;
+    }
+
+    const digit = Number.parseInt(nibble, 2);
+    if (digit > 9) return null;
+    encoded += String(digit);
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -556,8 +824,11 @@ function decodeCode128(row) {
     : start.code === CODE128_START_B ? 'B' : 'C';
   let shifted = null;
   let text = '';
+  const fnc1AtStart = dataValues[0] === CODE128_FNC1;
+  const fnc1Positions = [];
 
-  for (const value of dataValues) {
+  for (let dataIndex = 0; dataIndex < dataValues.length; dataIndex++) {
+    const value = dataValues[dataIndex];
     const active = shifted || mode;
     shifted = null;
 
@@ -565,7 +836,13 @@ function decodeCode128(row) {
     if (value === CODE128_CODE_B && mode !== 'B') { mode = 'B'; continue; }
     if (value === CODE128_CODE_C) { mode = 'C'; continue; }
     if (value === CODE128_SHIFT) { shifted = mode === 'A' ? 'B' : 'A'; continue; }
-    if (value === CODE128_FNC1) { continue; }
+    if (value === CODE128_FNC1) {
+      if (dataIndex > 0) {
+        fnc1Positions.push(text.length);
+        text += '\x1d';
+      }
+      continue;
+    }
     if (value >= 96 && value <= 102) { continue; } // other function characters
 
     if (active === 'C') {
@@ -578,6 +855,16 @@ function decodeCode128(row) {
   }
 
   if (text.length === 0) return null;
+  if (fnc1AtStart) {
+    return {
+      format: 'gs1128',
+      text,
+      gs1: true,
+      symbologyIdentifier: ']C1',
+      fnc1AtStart: true,
+      fnc1Positions,
+    };
+  }
   return { format: 'code128', text };
 }
 
@@ -722,6 +1009,7 @@ function decodeCode93(row) {
 function decodeITF(row) {
   const start = findGuard(row, 0, [1, 1, 1, 1], false);
   if (!start) return null;
+  const startScale = (start.end - start.start) / 4;
 
   let offset = start.end;
   const digits = [];
@@ -767,6 +1055,10 @@ function decodeITF(row) {
   const stop = new Array(3).fill(0);
   if (!recordPattern(row, offset, stop)) return null;
   if (toNarrowWidePattern(stop, 1) !== 0b100) return null;
+  const stopEnd = offset + counterTotal(stop);
+  let nextDark = stopEnd;
+  while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+  if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(startScale * 3))) return null;
 
   return { format: 'itf', text: digits.join('') };
 }
@@ -841,6 +1133,9 @@ const DECODERS = [
   ['ean8', decodeEAN8],
   ['upce', decodeUPCE],
   ['code128', decodeCode128],
+  ['code11', decodeCode11],
+  ['msi', decodeMSI],
+  ['gs1databar14', decodeDataBar14Scanline],
   ['code39', decodeCode39],
   ['code93', decodeCode93],
   ['itf', decodeITF],
@@ -860,7 +1155,16 @@ const DECODERS = [
 export function decodeOneD(image, options = {}) {
   const { formats = null, rows = 15, tryHarder = true } = options;
   const enabled = formats ? new Set(formats) : null;
-  const active = DECODERS.filter(([id]) => !enabled || enabled.has(id));
+  const active = DECODERS.filter(([id]) => {
+    if (!enabled) return true;
+    if (enabled.has(id)) return true;
+    if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
+      return enabled.has('ean2') || enabled.has('ean5');
+    }
+    if (id === 'code128') return enabled.has('gs1128');
+    if (id === 'gs1databar14') return enabled.has('databar') || enabled.has('gs1-databar14');
+    return false;
+  });
   if (active.length === 0) return [];
 
   const results = [];
@@ -891,9 +1195,23 @@ export function decodeOneD(image, options = {}) {
           result = null; // a malformed candidate is not an error
         }
         if (!result) continue;
-        if (enabled && !enabled.has(result.format)) continue;
+        if (enabled) {
+          const addonRequested = enabled.has('ean2') || enabled.has('ean5');
+          const isEANBase = result.format === 'ean13' || result.format === 'ean8' ||
+            result.format === 'upca' || result.format === 'upce';
+          if (isEANBase && addonRequested) {
+            if (!result.addon || !enabled.has(result.addon.format)) continue;
+          } else if (result.format === 'gs1128') {
+            if (!enabled.has('gs1128') && !enabled.has('code128')) continue;
+          } else if (result.format === 'gs1databar14') {
+            if (!enabled.has('gs1databar14') && !enabled.has('databar') && !enabled.has('gs1-databar14')) continue;
+          } else if (!enabled.has(result.format)) {
+            continue;
+          }
+        }
 
-        const key = `${result.format}:${result.text}`;
+        const addonKey = result.addon ? `:${result.addon.format}:${result.addon.text}` : '';
+        const key = `${result.format}:${result.text}${addonKey}`;
         if (seen.has(key)) continue;
         seen.add(key);
         results.push({ ...result, row: y });

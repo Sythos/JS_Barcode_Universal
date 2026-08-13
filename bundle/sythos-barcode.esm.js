@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.4.1
+ * Sythos Barcode Suite v1.5.0
  *
  * MIT License
  *
@@ -1527,6 +1527,11 @@ function encodeCode128(value, options = {}) {
   if (gs1) codes.push(CODE128_FNC1);
 
   while (i < value.length) {
+    if (gs1 && value[i] === '\x1d') {
+      codes.push(CODE128_FNC1);
+      i++;
+      continue;
+    }
     const run = digitRun(i);
     const atEnd = i + run === value.length;
     const worthC = run >= 6 || (i === 0 && run >= 4) || (atEnd && run >= 4);
@@ -2229,6 +2234,578 @@ __exports.encodeUPCAWithAddon = encodeUPCAWithAddon;
 __exports.encodeUPCEWithAddon = encodeUPCEWithAddon;
 };
 
+__modules["databar/tables.js"] = function (__require, __exports) {
+/**
+ * Static GS1 DataBar facts used by the GTIN compaction codec.
+ *
+ * The numbers in the DataBar-14 group tables are the public tables in
+ * ISO/IEC 24724:2011, clauses 5.2.2 and 5.2.3. They describe values, not a
+ * third-party implementation. Pattern construction deliberately belongs in
+ * the renderer/encoder layer so this module stays a small, auditable contract.
+ *
+ * @module databar/tables
+ */
+
+const group = (first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal) => Object.freeze({
+  first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal,
+});
+
+/** The four GTIN-only layouts sharing the DataBar-14 compaction rules. */
+const DATABAR14_VARIANTS = Object.freeze({
+  omnidirectional: Object.freeze({ id: 'omnidirectional', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: true }),
+  truncated: Object.freeze({ id: 'truncated', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: false }),
+  stacked: Object.freeze({ id: 'stacked', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: false }),
+  'stacked-omnidirectional': Object.freeze({ id: 'stacked-omnidirectional', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: true }),
+});
+
+/** GS1 DataBar Limited is a distinct two-character symbology. */
+const DATABAR_LIMITED_VARIANT = Object.freeze({
+  id: 'limited', rows: 1, checksumModulus: 89, pointOfSale: false,
+  permittedIndicatorDigits: Object.freeze([0, 1]),
+});
+
+/** (16,4) outside character groups, ISO/IEC 24724:2011 Table 1. */
+const DATABAR14_OUTSIDE_GROUPS = Object.freeze([
+  group(0, 160, 0, 12, 4, 8, 1, 161, 1),
+  group(161, 960, 161, 10, 6, 6, 3, 80, 10),
+  group(961, 2014, 961, 8, 8, 4, 5, 31, 34),
+  group(2015, 2714, 2015, 6, 10, 3, 6, 10, 70),
+  group(2715, 2840, 2715, 4, 12, 1, 8, 1, 126),
+]);
+
+/** (15,4) inside character groups, ISO/IEC 24724:2011 Table 2. */
+const DATABAR14_INSIDE_GROUPS = Object.freeze([
+  group(0, 335, 0, 5, 10, 2, 7, 4, 84),
+  group(336, 1035, 336, 7, 8, 4, 5, 20, 35),
+  group(1036, 1515, 1036, 9, 6, 6, 3, 48, 10),
+  group(1516, 1596, 1516, 11, 4, 8, 1, 81, 1),
+]);
+
+/** Number of values carried by an inside (15,4) character. */
+const DATABAR14_INSIDE_RADIX = 1597;
+/** Number of values carried by one outside/inside character pair. */
+const DATABAR14_PAIR_RADIX = 4537077;
+/** Stand-alone and composite DataBar-14 payload domain, including linkage. */
+const DATABAR14_SYMBOL_LIMIT = 20000000000000n;
+
+/** GS1 DataBar Limited divides its 13 data digits into two character values. */
+const DATABAR_LIMITED_PAIR_RADIX = 2013571;
+/** Offset that switches a DataBar Limited value from stand-alone to composite. */
+const DATABAR_LIMITED_LINKAGE_OFFSET = 2015133531096n;
+/** DataBar Limited carries GTIN values whose first digit is zero or one. */
+const DATABAR_LIMITED_DATA_LIMIT = 2000000000000n;
+
+/** Locate the value group that an outside or inside character belongs to. */
+function dataBar14GroupFor(value, kind) {
+  if (!Number.isInteger(value)) throw new TypeError('GS1 DataBar character value must be an integer');
+  const groups = kind === 'outside' ? DATABAR14_OUTSIDE_GROUPS
+    : kind === 'inside' ? DATABAR14_INSIDE_GROUPS : null;
+  if (!groups) throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
+  const found = groups.find((entry) => value >= entry.first && value <= entry.last);
+  if (!found) throw new RangeError(`GS1 DataBar ${kind} character value ${value} is out of range`);
+  return found;
+}
+/** Check the independently represented table identities. */
+function validateDataBarTables() {
+  const problems = [];
+  const validateGroups = (name, groups, expectedLast) => {
+    let next = 0;
+    for (const entry of groups) {
+      if (entry.first !== next) problems.push(`${name}: gap before ${entry.first}`);
+      if (entry.last < entry.first) problems.push(`${name}: inverted range ${entry.first}-${entry.last}`);
+      if (entry.oddTotal * entry.evenTotal !== entry.last - entry.first + 1) {
+        problems.push(`${name}: combination count mismatch at ${entry.first}`);
+      }
+      next = entry.last + 1;
+    }
+    if (next - 1 !== expectedLast) problems.push(`${name}: final value is ${next - 1}, expected ${expectedLast}`);
+  };
+  validateGroups('outside', DATABAR14_OUTSIDE_GROUPS, 2840);
+  validateGroups('inside', DATABAR14_INSIDE_GROUPS, 1596);
+  if (DATABAR14_PAIR_RADIX !== 2841 * DATABAR14_INSIDE_RADIX) problems.push('pair radix mismatch');
+  if (DATABAR14_SYMBOL_LIMIT !== 2n * 10000000000000n) problems.push('symbol limit mismatch');
+  if (DATABAR_LIMITED_LINKAGE_OFFSET !== BigInt(DATABAR_LIMITED_PAIR_RADIX) * 1000776n) {
+    problems.push('limited linkage offset mismatch');
+  }
+  return problems;
+}
+
+__exports.DATABAR14_VARIANTS = DATABAR14_VARIANTS;
+__exports.DATABAR_LIMITED_VARIANT = DATABAR_LIMITED_VARIANT;
+__exports.DATABAR14_OUTSIDE_GROUPS = DATABAR14_OUTSIDE_GROUPS;
+__exports.DATABAR14_INSIDE_GROUPS = DATABAR14_INSIDE_GROUPS;
+__exports.DATABAR14_INSIDE_RADIX = DATABAR14_INSIDE_RADIX;
+__exports.DATABAR14_PAIR_RADIX = DATABAR14_PAIR_RADIX;
+__exports.DATABAR14_SYMBOL_LIMIT = DATABAR14_SYMBOL_LIMIT;
+__exports.DATABAR_LIMITED_PAIR_RADIX = DATABAR_LIMITED_PAIR_RADIX;
+__exports.DATABAR_LIMITED_LINKAGE_OFFSET = DATABAR_LIMITED_LINKAGE_OFFSET;
+__exports.DATABAR_LIMITED_DATA_LIMIT = DATABAR_LIMITED_DATA_LIMIT;
+__exports.dataBar14GroupFor = dataBar14GroupFor;
+__exports.validateDataBarTables = validateDataBarTables;
+};
+
+__modules["databar/codec.js"] = function (__require, __exports) {
+/**
+ * GTIN validation and numeric compaction for GS1 DataBar GTIN-only symbols.
+ *
+ * This is intentionally not a bar-pattern encoder. It emits the exact symbol
+ * character values required by ISO/IEC 24724:2011; a later encoder can turn
+ * those values into widths without reinterpreting a GTIN or linkage flag.
+ *
+ * @module databar/codec
+ */
+const { DATABAR14_INSIDE_RADIX, DATABAR14_PAIR_RADIX, DATABAR14_SYMBOL_LIMIT, DATABAR_LIMITED_DATA_LIMIT, DATABAR_LIMITED_LINKAGE_OFFSET, DATABAR_LIMITED_PAIR_RADIX } = __require("databar/tables.js");
+
+const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
+
+function digits(value, label) {
+  const text = String(value);
+  if (!/^\d+$/.test(text)) throw new TypeError(`${label} must contain only decimal digits`);
+  return text;
+}
+
+function asCharacterValue(value, label, maximum) {
+  if (!Number.isInteger(value) || value < 0 || value > maximum) {
+    throw new RangeError(`${label} must be an integer from 0 to ${maximum}`);
+  }
+  return value;
+}
+
+/** Calculate the GS1 modulo-10 check digit for a GTIN body. */
+function gtinCheckDigit(body) {
+  const text = digits(body, 'GTIN body');
+  if (text.length < 1 || text.length > 13) throw new RangeError('GTIN body must contain 1 to 13 digits');
+  let sum = 0;
+  for (let i = text.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
+    sum += Number(text[i]) * weight;
+  }
+  return String((10 - (sum % 10)) % 10);
+}
+
+/** Return a checked 14-digit GTIN, preserving only its standardized digits. */
+function normalizeGTIN(value) {
+  const input = digits(value, 'GTIN');
+  if (!GTIN_LENGTHS.has(input.length)) {
+    throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
+  }
+  if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
+    throw new RangeError(`GTIN check digit is invalid for ${input}`);
+  }
+  return input.padStart(14, '0');
+}
+
+/** Build a checked GTIN-14 from its thirteen-digit data body. */
+function makeGTIN14(body) {
+  const input = digits(body, 'GTIN-14 body');
+  if (input.length > 13) throw new RangeError('GTIN-14 body must contain at most 13 digits');
+  const padded = input.padStart(13, '0');
+  return padded + gtinCheckDigit(padded);
+}
+
+function gtinFromSymbolValue(symbolValue) {
+  const value = BigInt(symbolValue);
+  if (value < 0n || value >= DATABAR14_SYMBOL_LIMIT) throw new RangeError('GS1 DataBar-14 symbol value is out of range');
+  const linkage = value >= 10000000000000n;
+  const body = (linkage ? value - 10000000000000n : value).toString().padStart(13, '0');
+  return { linkage, gtin: body + gtinCheckDigit(body) };
+}
+
+/**
+ * Compact a GTIN into the four values shared by Omnidirectional, Truncated,
+ * Stacked and Stacked Omnidirectional. The `physicalCharacters` sequence is
+ * left-to-right on a linear DataBar-14 row: 1, 2, 4, 3.
+ */
+function encodeDataBar14GTIN(value, options = {}) {
+  const gtin = normalizeGTIN(value);
+  const linkage = options.linkage === true;
+  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+    throw new TypeError('GS1 DataBar linkage must be a boolean');
+  }
+  const dataBody = gtin.slice(0, -1);
+  const symbolValue = BigInt(dataBody) + (linkage ? 10000000000000n : 0n);
+  const leftPair = symbolValue / BigInt(DATABAR14_PAIR_RADIX);
+  const rightPair = symbolValue % BigInt(DATABAR14_PAIR_RADIX);
+  const outerLeft = Number(leftPair / BigInt(DATABAR14_INSIDE_RADIX));
+  const innerLeft = Number(leftPair % BigInt(DATABAR14_INSIDE_RADIX));
+  const outerRight = Number(rightPair / BigInt(DATABAR14_INSIDE_RADIX));
+  const innerRight = Number(rightPair % BigInt(DATABAR14_INSIDE_RADIX));
+
+  return Object.freeze({
+    gtin, linkage, symbolValue, leftPair, rightPair,
+    logicalCharacters: Object.freeze({ outerLeft, innerLeft, outerRight, innerRight }),
+    physicalCharacters: Object.freeze([outerLeft, innerLeft, innerRight, outerRight]),
+  });
+}
+
+/** Reconstruct and validate a GTIN from the four DataBar-14 character values. */
+function decodeDataBar14GTIN(values) {
+  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar-14 characters must be an object');
+  const outerLeft = asCharacterValue(values.outerLeft, 'outerLeft', 2840);
+  const innerLeft = asCharacterValue(values.innerLeft, 'innerLeft', 1596);
+  const outerRight = asCharacterValue(values.outerRight, 'outerRight', 2840);
+  const innerRight = asCharacterValue(values.innerRight, 'innerRight', 1596);
+  const leftPair = BigInt(outerLeft) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerLeft);
+  const rightPair = BigInt(outerRight) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerRight);
+  return Object.freeze({
+    ...gtinFromSymbolValue(leftPair * BigInt(DATABAR14_PAIR_RADIX) + rightPair),
+    leftPair, rightPair,
+  });
+}
+
+/** Compact a DataBar Limited-eligible GTIN into its two data character values. */
+function encodeDataBarLimitedGTIN(value, options = {}) {
+  const gtin = normalizeGTIN(value);
+  const linkage = options.linkage === true;
+  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+    throw new TypeError('GS1 DataBar linkage must be a boolean');
+  }
+  const dataBody = BigInt(gtin.slice(0, -1));
+  if (dataBody >= DATABAR_LIMITED_DATA_LIMIT) {
+    throw new RangeError('GS1 DataBar Limited requires a GTIN whose indicator digit is 0 or 1');
+  }
+  const symbolValue = dataBody + (linkage ? DATABAR_LIMITED_LINKAGE_OFFSET : 0n);
+  const left = Number(symbolValue / BigInt(DATABAR_LIMITED_PAIR_RADIX));
+  const right = Number(symbolValue % BigInt(DATABAR_LIMITED_PAIR_RADIX));
+  return Object.freeze({ gtin, linkage, symbolValue, left, right });
+}
+
+/** Reconstruct and validate a GTIN from DataBar Limited data character values. */
+function decodeDataBarLimitedGTIN(values) {
+  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar Limited characters must be an object');
+  const left = asCharacterValue(values.left, 'left', 1994036);
+  const right = asCharacterValue(values.right, 'right', DATABAR_LIMITED_PAIR_RADIX - 1);
+  let symbolValue = BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right);
+  const linkage = symbolValue >= DATABAR_LIMITED_LINKAGE_OFFSET;
+  if (linkage) symbolValue -= DATABAR_LIMITED_LINKAGE_OFFSET;
+  if (symbolValue < 0n || symbolValue >= DATABAR_LIMITED_DATA_LIMIT) {
+    throw new RangeError('GS1 DataBar Limited character values do not encode a permitted GTIN');
+  }
+  const body = symbolValue.toString().padStart(13, '0');
+  return Object.freeze({ linkage, gtin: body + gtinCheckDigit(body), symbolValue: BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right) });
+}
+
+/** GS1 transmitted form for the GTIN-only DataBar variants. */
+function dataBarGtinTransmission(value) {
+  return `]e001${normalizeGTIN(value)}`;
+}
+
+__exports.gtinCheckDigit = gtinCheckDigit;
+__exports.normalizeGTIN = normalizeGTIN;
+__exports.makeGTIN14 = makeGTIN14;
+__exports.encodeDataBar14GTIN = encodeDataBar14GTIN;
+__exports.decodeDataBar14GTIN = decodeDataBar14GTIN;
+__exports.encodeDataBarLimitedGTIN = encodeDataBarLimitedGTIN;
+__exports.decodeDataBarLimitedGTIN = decodeDataBarLimitedGTIN;
+__exports.dataBarGtinTransmission = dataBarGtinTransmission;
+};
+
+__modules["databar/patterns.js"] = function (__require, __exports) {
+/** Mathematical width construction for GS1 DataBar characters. @module databar/patterns */
+const { dataBar14GroupFor } = __require("databar/tables.js");
+
+function combinations(n, r) {
+  if (n < r || r < 0) return 0;
+  if (r === 0 || n === r) return 1;
+  let result = 1;
+  const k = Math.min(r, n - r);
+  for (let i = 1; i <= k; i++) result = result * (n - k + i) / i;
+  return result;
+}
+
+/**
+ * Unrank one constrained positive composition.
+ *
+ * The rank is the GS1 DataBar symbol-character value inside its group. This
+ * implementation follows the combinatorial definition directly: it counts
+ * every remaining admissible suffix rather than storing third-party patterns.
+ */
+function dataBarWidths(rank, modules, elements, maximumWidth, noNarrow) {
+  if (!Number.isInteger(rank) || rank < 0) throw new RangeError('GS1 DataBar width rank must be non-negative');
+  const widths = new Array(elements).fill(0);
+  let remaining = modules;
+  let narrowMask = 0;
+
+  for (let bar = 0; bar < elements - 1; bar++) {
+    let count = 0;
+    for (let width = 1; ; width++) {
+      narrowMask |= width === 1 ? 1 << bar : 0;
+      count = combinations(remaining - width - 1, elements - bar - 2);
+
+      if (noNarrow && narrowMask === 0 && remaining - width - (elements - bar - 1) >= elements - bar - 1) {
+        count -= combinations(remaining - width - (elements - bar), elements - bar - 2);
+      }
+
+      if (elements - bar - 1 > 1) {
+        let tooWide = 0;
+        for (let last = remaining - width - (elements - bar - 2); last > maximumWidth; last--) {
+          tooWide += combinations(remaining - width - last - 1, elements - bar - 3);
+        }
+        count -= tooWide * (elements - 1 - bar);
+      } else if (remaining - width > maximumWidth) {
+        count--;
+      }
+
+      if (rank < count) {
+        widths[bar] = width;
+        remaining -= width;
+        break;
+      }
+      rank -= count;
+      narrowMask &= ~(1 << bar);
+    }
+  }
+  widths[elements - 1] = remaining;
+  if (rank !== 0 || widths.some((width) => width < 1 || width > maximumWidth)) {
+    throw new RangeError('GS1 DataBar width rank exceeds its character group');
+  }
+  return widths;
+}
+
+/** Convert one DataBar-14 character value into its eight alternating widths. */
+function dataBar14CharacterWidths(value, kind) {
+  const group = dataBar14GroupFor(value, kind);
+  const offset = value - group.gsum;
+  const outside = kind === 'outside';
+  const oddRank = outside ? Math.floor(offset / group.evenTotal) : offset % group.oddTotal;
+  const evenRank = outside ? offset % group.evenTotal : Math.floor(offset / group.oddTotal);
+  const odd = dataBarWidths(oddRank, group.oddModules, 4, group.oddWidest, !outside);
+  const even = dataBarWidths(evenRank, group.evenModules, 4, group.evenWidest, outside);
+  const result = [];
+  for (let i = 0; i < 4; i++) result.push(odd[i], even[i]);
+  return result;
+}
+
+const inverseCharacterMaps = new Map();
+
+/** Recover a character value from its canonical eight-width representation. */
+function dataBar14ValueForWidths(widths, kind) {
+  if (!Array.isArray(widths) || widths.length !== 8 || widths.some((width) => !Number.isInteger(width) || width < 1)) {
+    throw new TypeError('GS1 DataBar character widths must contain eight positive integers');
+  }
+  if (kind !== 'outside' && kind !== 'inside') throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
+  let inverse = inverseCharacterMaps.get(kind);
+  if (!inverse) {
+    inverse = new Map();
+    const maximum = kind === 'outside' ? 2840 : 1596;
+    for (let value = 0; value <= maximum; value++) {
+      inverse.set(dataBar14CharacterWidths(value, kind).join(','), value);
+    }
+    inverseCharacterMaps.set(kind, inverse);
+  }
+  const value = inverse.get(widths.join(','));
+  if (value === undefined) throw new RangeError(`Invalid GS1 DataBar ${kind} character widths`);
+  return value;
+}
+
+/** Nine finder patterns, expressed as normative five-element widths. */
+const DATABAR14_FINDERS = Object.freeze([
+  Object.freeze([3, 8, 2, 1, 1]), Object.freeze([3, 5, 5, 1, 1]),
+  Object.freeze([3, 3, 7, 1, 1]), Object.freeze([3, 1, 9, 1, 1]),
+  Object.freeze([2, 7, 4, 1, 1]), Object.freeze([2, 5, 6, 1, 1]),
+  Object.freeze([2, 3, 8, 1, 1]), Object.freeze([1, 5, 7, 1, 1]),
+  Object.freeze([1, 3, 9, 1, 1]),
+]);
+
+/** Weight sequence generated as powers of three modulo 79. */
+const DATABAR14_CHECKSUM_WEIGHTS = Object.freeze(Array.from({ length: 32 }, (_, index) => {
+  let value = 1;
+  for (let i = 0; i < index; i++) value = (value * 3) % 79;
+  return value;
+}));
+
+__exports.dataBarWidths = dataBarWidths;
+__exports.dataBar14CharacterWidths = dataBar14CharacterWidths;
+__exports.dataBar14ValueForWidths = dataBar14ValueForWidths;
+__exports.DATABAR14_FINDERS = DATABAR14_FINDERS;
+__exports.DATABAR14_CHECKSUM_WEIGHTS = DATABAR14_CHECKSUM_WEIGHTS;
+};
+
+__modules["databar/decoder.js"] = function (__require, __exports) {
+/** Clean-matrix decoder for GS1 DataBar Omnidirectional and Truncated. @module databar/decoder */
+const { ChecksumError, FormatError } = __require("core/errors.js");
+const { BitMatrix } = __require("core/bit-matrix.js");
+const { decodeDataBar14GTIN } = __require("databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14ValueForWidths } = __require("databar/patterns.js");
+
+function sampledRuns(matrix) {
+  if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
+    throw new TypeError('GS1 DataBar decoder expects a BitMatrix-like value');
+  }
+  if (matrix.width % 96 !== 0) throw new FormatError('GS1 DataBar-14 matrix width must be an integer multiple of 96 modules');
+  const scale = matrix.width / 96;
+  const y = Math.floor(matrix.height / 2);
+  const bits = Array.from({ length: 96 }, (_, x) => matrix.get(x * scale + Math.floor(scale / 2), y));
+  if (bits[0] || !bits[95]) throw new FormatError('GS1 DataBar-14 guard pattern is invalid');
+  const runs = [];
+  let current = bits[0];
+  let length = 0;
+  for (const bit of bits) {
+    if (bit === current) length++;
+    else {
+      runs.push(length);
+      current = bit;
+      length = 1;
+    }
+  }
+  runs.push(length);
+  if (runs.length !== 46 || runs[0] !== 1 || runs[1] !== 1 || runs[44] !== 1 || runs[45] !== 1) {
+    throw new FormatError('GS1 DataBar-14 element count or guard widths are invalid');
+  }
+  return runs;
+}
+
+function finderIndex(widths) {
+  const key = widths.join(',');
+  return DATABAR14_FINDERS.findIndex((candidate) => candidate.join(',') === key);
+}
+
+function expectedChecksum(widths) {
+  const offsets = [0, 8, 24, 16];
+  let checksum = 0;
+  for (let character = 0; character < 4; character++) {
+    for (let element = 0; element < 8; element++) {
+      checksum += widths[character][element] * DATABAR14_CHECKSUM_WEIGHTS[offsets[character] + element];
+    }
+  }
+  checksum %= 79;
+  if (checksum >= 8) checksum++;
+  if (checksum >= 72) checksum++;
+  return checksum;
+}
+
+/** Decode a clean or integer-scaled 96-module DataBar-14 matrix. */
+function decodeDataBar14(matrix) {
+  const runs = sampledRuns(matrix);
+  const widths = [
+    runs.slice(2, 10),
+    runs.slice(15, 23).slice().reverse(),
+    runs.slice(23, 31),
+    runs.slice(36, 44).slice().reverse(),
+  ];
+  const leftFinder = finderIndex(runs.slice(10, 15));
+  const rightFinder = finderIndex(runs.slice(31, 36).slice().reverse());
+  if (leftFinder < 0 || rightFinder < 0) throw new FormatError('GS1 DataBar-14 finder pattern is invalid');
+  const encodedChecksum = leftFinder * 9 + rightFinder;
+  if (encodedChecksum !== expectedChecksum(widths)) throw new ChecksumError('GS1 DataBar-14 checksum mismatch');
+
+  const outerLeft = dataBar14ValueForWidths(widths[0], 'outside');
+  const innerLeft = dataBar14ValueForWidths(widths[1], 'inside');
+  const innerRight = dataBar14ValueForWidths(widths[2], 'inside');
+  const outerRight = dataBar14ValueForWidths(widths[3], 'outside');
+  const decoded = decodeDataBar14GTIN({ outerLeft, innerLeft, outerRight, innerRight });
+  return Object.freeze({
+    format: 'databar-omnidirectional',
+    text: decoded.gtin,
+    gtin: decoded.gtin,
+    linkage: decoded.linkage,
+    symbologyIdentifier: ']e0',
+  });
+}
+
+/**
+ * Extract alternating runs from a binarized scanline.
+ * @param {Uint8Array} row
+ * @returns {{widths:number[], dark:boolean}[]}
+ */
+function scanlineRuns(row) {
+  if (!row || row.length < 96) return [];
+  const runs = [];
+  let dark = row[0] === 1;
+  let start = 0;
+  for (let x = 1; x < row.length; x++) {
+    const nextDark = row[x] === 1;
+    if (nextDark === dark) continue;
+    runs.push({ width: x - start, dark });
+    start = x;
+    dark = nextDark;
+  }
+  runs.push({ width: row.length - start, dark });
+  return runs;
+}
+
+/**
+ * Normalize a candidate's pixel runs to the 96 logical DataBar modules.
+ * Rounding is followed by a small conservation pass so mild non-integer
+ * scaling does not change the total symbol width.
+ * @param {number[]} raw
+ * @returns {number[]|null}
+ */
+function normalizeScanlineWidths(raw) {
+  const total = raw.reduce((sum, width) => sum + width, 0);
+  if (total <= 0) return null;
+  const scale = total / 96;
+  if (scale < 0.5) return null;
+  const widths = raw.map((width) => Math.max(1, Math.round(width / scale)));
+  let delta = 96 - widths.reduce((sum, width) => sum + width, 0);
+  while (delta !== 0) {
+    if (delta > 0) {
+      let index = 0;
+      for (let i = 1; i < widths.length; i++) if (raw[i] > raw[index]) index = i;
+      widths[index]++;
+      delta--;
+    } else {
+      let index = -1;
+      for (let i = 0; i < widths.length; i++) {
+        if (widths[i] <= 1) continue;
+        if (index < 0 || raw[i] / widths[i] > raw[index] / widths[index]) index = i;
+      }
+      if (index < 0) return null;
+      widths[index]--;
+      delta++;
+    }
+  }
+  if (widths[0] !== 1 || widths[widths.length - 1] !== 1) return null;
+  return widths;
+}
+
+/** Build a 96-module row from normalized alternating runs. */
+function matrixFromRuns(widths, darkFirst) {
+  const matrix = new BitMatrix(96, 1);
+  let x = 0;
+  let dark = darkFirst;
+  for (const width of widths) {
+    if (dark) for (let i = 0; i < width; i++) matrix.set(x + i, 0);
+    x += width;
+    dark = !dark;
+  }
+  return matrix;
+}
+
+/**
+ * Decode GS1 DataBar-14 from one raster scanline. This is the image layer over
+ * the existing clean 96-module decoder; it recognizes both Omnidirectional
+ * and Truncated symbols because their horizontal pattern is identical.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'gs1databar14', text:string, gtin:string, gs1:boolean, linkage:boolean, symbologyIdentifier:string, elements:Array}|null}
+ */
+function decodeDataBar14Scanline(row) {
+  const runs = scanlineRuns(row);
+  for (let start = 0; start + 46 <= runs.length; start++) {
+    if (runs[start].dark) continue;
+    const candidate = runs.slice(start, start + 46);
+    if (start + 46 < runs.length && runs[start + 46].dark) continue;
+    const widths = normalizeScanlineWidths(candidate.map((run) => run.width));
+    if (!widths) continue;
+    try {
+      const decoded = decodeDataBar14(matrixFromRuns(widths, false));
+      return {
+        ...decoded,
+        format: 'gs1databar14',
+        gs1: true,
+        elements: [{ ai: '01', value: decoded.gtin, fixed: true }],
+      };
+    } catch {
+      // Try the next light-run candidate in the scanline.
+    }
+  }
+  return null;
+}
+
+__exports.decodeDataBar14 = decodeDataBar14;
+__exports.decodeDataBar14Scanline = decodeDataBar14Scanline;
+};
+
 __modules["oned/reader.js"] = function (__require, __exports) {
 /**
  * Linear barcode reading.
@@ -2250,8 +2827,10 @@ __modules["oned/reader.js"] = function (__require, __exports) {
  * @module oned/reader
  */
 const { NotFoundError } = __require("core/errors.js");
-const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET, CODE93, CODE93_VALUES, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT, ITF, CODABAR, CODABAR_START_STOP } = __require("oned/patterns.js");
+const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET, CODE93, CODE93_VALUES, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_START, MSI_STOP, MSI_BIT } = __require("oned/patterns.js");
 const { ean13CheckDigit, upceToUpcaBody } = __require("oned/writers.js");
+const { EAN2_PARITY, EAN5_PARITY, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean5Checksum } = __require("oned/addons.js");
+const { decodeDataBar14Scanline } = __require("databar/decoder.js");
 
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -2424,6 +3003,14 @@ const CODABAR_BITS = Object.fromEntries(
   Object.entries(CODABAR).map(([k, v]) => [nwToBits(v), k])
 );
 const ITF_BITS = Object.fromEntries(ITF.map((v, i) => [nwToBits(v), i]));
+const CODE11_BITS = Object.fromEntries(
+  Object.entries(CODE11).flatMap(([ch, value]) => {
+    const bits = nwToBits(value);
+    return [[`${bits}:1`, ch], [`${bits}:2`, ch]];
+  })
+);
+const CODE11_START_BITS = nwToBits(CODE11_START_STOP);
+const CODE11_CHARSET = '0123456789-';
 
 /**
  * Shortest ITF payload treated as a real read.
@@ -2509,7 +3096,8 @@ function decodeEANFamily(row) {
       digits.push(d.digit);
       offset = d.end;
     }
-    if (!matchAt(row, offset, START_END_PATTERN)) return null;
+    const trailing = matchAt(row, offset, START_END_PATTERN);
+    if (!trailing) return null;
 
     const parityStr = [];
     for (let i = 0; i < 6; i++) parityStr.push((parityBits >> (5 - i)) & 1 ? 'G' : 'L');
@@ -2520,9 +3108,10 @@ function decodeEANFamily(row) {
     if (Number(text[12]) !== ean13CheckDigit(text.slice(0, 12))) return null;
 
     // A leading zero means this was printed as UPC-A.
-    return first === 0
+    const result = first === 0
       ? { format: 'upca', text: text.slice(1) }
       : { format: 'ean13', text };
+    return attachEANAddon(result, row, trailing.end);
   }
 
   return null;
@@ -2557,11 +3146,12 @@ function decodeEAN8(row) {
     digits.push(d.digit);
     offset = d.end;
   }
-  if (!matchAt(row, offset, START_END_PATTERN)) return null;
+  const trailing = matchAt(row, offset, START_END_PATTERN);
+  if (!trailing) return null;
 
   const text = digits.join('');
   if (Number(text[7]) !== ean13CheckDigit(text.slice(0, 7))) return null;
-  return { format: 'ean8', text };
+  return attachEANAddon({ format: 'ean8', text }, row, trailing.end);
 }
 
 /**
@@ -2588,7 +3178,8 @@ function decodeUPCE(row) {
   // Six digits and then the end guard, in that order and nothing between. The
   // EAN readers above match their trailing guard; this one used to stop at the
   // last digit, which let it report a symbol it had never seen the end of.
-  if (!matchAt(row, offset, UPCE_END_PATTERN)) return null;
+  const trailing = matchAt(row, offset, UPCE_END_PATTERN);
+  if (!trailing) return null;
 
   const parityStr = [];
   for (let i = 0; i < 6; i++) parityStr.push((parityBits >> (5 - i)) & 1 ? 'E' : 'O');
@@ -2605,7 +3196,7 @@ function decodeUPCE(row) {
   const body = digits.join('');
   if (ean13CheckDigit(upceToUpcaBody(0, body)) !== check) return null;
 
-  return { format: 'upce', text: '0' + body + String(check) };
+  return attachEANAddon({ format: 'upce', text: '0' + body + String(check) }, row, trailing.end);
 }
 
 /* ------------------------------------------------------------------ *
@@ -2674,6 +3265,256 @@ function matchAt(row, start, pattern) {
   let width = 0;
   for (const c of counters) width += c;
   return { end: start + width };
+}
+
+/* ------------------------------------------------------------------ *
+ * EAN supplements
+ * ------------------------------------------------------------------ */
+
+/**
+ * Decode a supplement immediately following a validated EAN/UPC symbol.
+ * The caller supplies the end of the parent trailing guard, so a supplement
+ * can never be accepted as an unrelated standalone linear symbol.
+ *
+ * @param {Uint8Array} row
+ * @param {number} baseEnd
+ * @param {2|5} digitCount
+ * @returns {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number, end:number}|null}
+ */
+function decodeEANSupplementRow(row, baseEnd, digitCount) {
+  const guard = findGuard(row, baseEnd, [1, 1, 2], false);
+  if (!guard || guard.start - baseEnd < 4) return null;
+
+  let offset = guard.end;
+  let text = '';
+  let parity = '';
+
+  for (let i = 0; i < digitCount; i++) {
+    const digit = decodeEANDigit(row, offset, false);
+    if (!digit) return null;
+    text += String(digit.digit);
+    parity += digit.even ? 'B' : 'A';
+    offset = digit.end;
+
+    if (i + 1 < digitCount) {
+      const separator = matchAt(row, offset, [1, 1]);
+      if (!separator) return null;
+      offset = separator.end;
+    }
+  }
+
+  if (digitCount === 2) {
+    if (EAN2_PARITY[Number(text) % 4] !== parity) return null;
+    return { format: 'ean2', text, parity, end: offset };
+  }
+
+  const checksum = ean5Checksum(text);
+  if (EAN5_PARITY[checksum] !== parity) return null;
+  return { format: 'ean5', text, parity, checksum, end: offset };
+}
+
+/**
+ * Attach the longest valid supplement to a base result. EAN-5 is attempted
+ * first so its prefix cannot be reported as a shorter EAN-2 symbol.
+ *
+ * @param {object} base
+ * @param {Uint8Array} row
+ * @param {number} baseEnd
+ * @returns {object}
+ */
+function attachEANAddon(base, row, baseEnd) {
+  const addon = decodeEANSupplementRow(row, baseEnd, 5)
+    ?? decodeEANSupplementRow(row, baseEnd, 2);
+  if (!addon) return base;
+  const { end, ...publicAddon } = addon;
+  void end;
+  return { ...base, addon: publicAddon };
+}
+
+/* ------------------------------------------------------------------ *
+ * Code 11 and MSI/Plessey
+ * ------------------------------------------------------------------ */
+
+/** @param {number[]} counters @returns {number} */
+function counterTotal(counters) {
+  return counters.reduce((sum, value) => sum + value, 0);
+}
+
+/**
+ * Apply the Code 11 C/K checksum grammar used by the writer.
+ *
+ * @param {string} encoded
+ * @param {boolean|undefined} requested
+ * @returns {string|null}
+ */
+function finalizeCode11(encoded, requested) {
+  const weighted = (text, maxWeight) => {
+    let sum = 0;
+    for (let i = 0; i < text.length; i++) {
+      const weight = ((text.length - 1 - i) % maxWeight) + 1;
+      sum += weight * CODE11_CHARSET.indexOf(text[i]);
+    }
+    return sum;
+  };
+  const validC = (text) => {
+    if (text.length < 2) return null;
+    const body = text.slice(0, -1);
+    const expected = CODE11_CHARSET[weighted(body, 10) % 11];
+    return text[text.length - 1] === expected ? body : null;
+  };
+  const validCK = (text) => {
+    if (text.length < 12) return null;
+    const body = text.slice(0, -2);
+    const c = text[text.length - 2];
+    const k = text[text.length - 1];
+    const expectedC = CODE11_CHARSET[weighted(body, 10) % 11];
+    if (c !== expectedC) return null;
+    const expectedK = CODE11_CHARSET[weighted(body + c, 9) % 11];
+    return k === expectedK ? body : null;
+  };
+
+  if (requested === false) return encoded;
+  if (requested === true) {
+    const checked = encoded.length >= 12 ? validCK(encoded) : validC(encoded);
+    return checked;
+  }
+
+  // With no explicit option, strip checks only when the complete grammar is
+  // unambiguous; otherwise preserve the literal payload.
+  return validCK(encoded) ?? validC(encoded) ?? encoded;
+}
+
+/**
+ * Decode Code 11 from one binarized scanline.
+ *
+ * @param {Uint8Array} row
+ * @param {object} [options]
+ * @param {boolean} [options.checkDigit]
+ * @returns {{format:'code11', text:string}|null}
+ */
+function decodeCode11(row, options = {}) {
+  const counters = new Array(5).fill(0);
+  let start = null;
+  for (let i = 0; i < row.length; i++) {
+    if (row[i] !== 1 || (i > 0 && row[i - 1] === 1)) continue;
+    if (!recordPattern(row, i, counters)) continue;
+    if (toNarrowWidePattern(counters, 2) === CODE11_START_BITS) {
+      start = { position: i, end: i + counterTotal(counters), scale: counterTotal(counters) / 9 };
+      break;
+    }
+  }
+  if (!start) return null;
+
+  let offset = start.end;
+  while (offset < row.length && row[offset] === 0) offset++;
+  let encoded = '';
+
+  for (let count = 0; count < 160 && offset < row.length; count++) {
+    if (!recordPattern(row, offset, counters)) return null;
+    const width = counterTotal(counters);
+    const stop = toNarrowWidePattern(counters, 2);
+    if (stop === CODE11_START_BITS) {
+      if (encoded.length === 0) return null;
+      const stopEnd = offset + width;
+      let nextDark = stopEnd;
+      while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+      if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(start.scale * 3))) {
+        return null;
+      }
+      const text = finalizeCode11(encoded, options.checkDigit);
+      return text == null ? null : { format: 'code11', text };
+    }
+
+    let character = null;
+    for (const expectedWide of [1, 2]) {
+      const bits = toNarrowWidePattern(counters, expectedWide);
+      if (bits < 0) continue;
+      const candidate = CODE11_BITS[`${bits}:${expectedWide}`];
+      if (candidate !== undefined) {
+        character = candidate;
+        break;
+      }
+    }
+    if (character == null) return null;
+    encoded += character;
+    if (encoded.length > 128) return null;
+    offset += width;
+    while (offset < row.length && row[offset] === 0) offset++;
+  }
+  return null;
+}
+
+/** @param {string} encoded @param {boolean|undefined} requested */
+function finalizeMSI(encoded, requested) {
+  if (requested !== true) return encoded;
+  if (encoded.length < 2) return null;
+  const body = encoded.slice(0, -1);
+  let odd = '';
+  for (let i = body.length - 1; i >= 0; i -= 2) odd = body[i] + odd;
+  const doubled = String(Number(odd) * 2);
+  let sum = 0;
+  for (const ch of doubled) sum += Number(ch);
+  for (let i = body.length - 2; i >= 0; i -= 2) sum += Number(body[i]);
+  const expected = String((10 - (sum % 10)) % 10);
+  return encoded.endsWith(expected) ? body : null;
+}
+
+/**
+ * Decode MSI/Plessey from one binarized scanline.
+ *
+ * @param {Uint8Array} row
+ * @param {object} [options]
+ * @param {boolean} [options.checkDigit]
+ * @returns {{format:'msi', text:string}|null}
+ */
+function decodeMSI(row, options = {}) {
+  const start = findGuard(row, 0, [2, 1], false);
+  if (!start) return null;
+  const scale = (start.end - start.start) / 3;
+  if (!(scale >= 1)) return null;
+
+  let offset = start.end;
+  let encoded = '';
+  const bitPatterns = [
+    { pattern: [1, 2], bit: '0' },
+    { pattern: [2, 1], bit: '1' },
+  ];
+
+  for (let digitIndex = 0; digitIndex < 80; digitIndex++) {
+    const stop = matchAt(row, offset, [1, 2, 1]);
+    if (stop && encoded.length > 0) {
+      let nextDark = stop.end;
+      while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+      if (nextDark === row.length ||
+          nextDark - stop.end >= Math.max(3, Math.ceil(scale * 3))) {
+        if (encoded.length < 6 && !(options.formats && options.formats.includes('msi'))) {
+          return null;
+        }
+        const text = finalizeMSI(encoded, options.checkDigit);
+        return text == null ? null : { format: 'msi', text };
+      }
+    }
+
+    let nibble = '';
+    for (let bitIndex = 0; bitIndex < 4; bitIndex++) {
+      let matched = null;
+      for (const candidate of bitPatterns) {
+        const found = matchAt(row, offset, candidate.pattern);
+        if (found) {
+          matched = { ...candidate, end: found.end };
+          break;
+        }
+      }
+      if (!matched) return null;
+      nibble += matched.bit;
+      offset = matched.end;
+    }
+
+    const digit = Number.parseInt(nibble, 2);
+    if (digit > 9) return null;
+    encoded += String(digit);
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -2748,8 +3589,11 @@ function decodeCode128(row) {
     : start.code === CODE128_START_B ? 'B' : 'C';
   let shifted = null;
   let text = '';
+  const fnc1AtStart = dataValues[0] === CODE128_FNC1;
+  const fnc1Positions = [];
 
-  for (const value of dataValues) {
+  for (let dataIndex = 0; dataIndex < dataValues.length; dataIndex++) {
+    const value = dataValues[dataIndex];
     const active = shifted || mode;
     shifted = null;
 
@@ -2757,7 +3601,13 @@ function decodeCode128(row) {
     if (value === CODE128_CODE_B && mode !== 'B') { mode = 'B'; continue; }
     if (value === CODE128_CODE_C) { mode = 'C'; continue; }
     if (value === CODE128_SHIFT) { shifted = mode === 'A' ? 'B' : 'A'; continue; }
-    if (value === CODE128_FNC1) { continue; }
+    if (value === CODE128_FNC1) {
+      if (dataIndex > 0) {
+        fnc1Positions.push(text.length);
+        text += '\x1d';
+      }
+      continue;
+    }
     if (value >= 96 && value <= 102) { continue; } // other function characters
 
     if (active === 'C') {
@@ -2770,6 +3620,16 @@ function decodeCode128(row) {
   }
 
   if (text.length === 0) return null;
+  if (fnc1AtStart) {
+    return {
+      format: 'gs1128',
+      text,
+      gs1: true,
+      symbologyIdentifier: ']C1',
+      fnc1AtStart: true,
+      fnc1Positions,
+    };
+  }
   return { format: 'code128', text };
 }
 
@@ -2914,6 +3774,7 @@ function decodeCode93(row) {
 function decodeITF(row) {
   const start = findGuard(row, 0, [1, 1, 1, 1], false);
   if (!start) return null;
+  const startScale = (start.end - start.start) / 4;
 
   let offset = start.end;
   const digits = [];
@@ -2959,6 +3820,10 @@ function decodeITF(row) {
   const stop = new Array(3).fill(0);
   if (!recordPattern(row, offset, stop)) return null;
   if (toNarrowWidePattern(stop, 1) !== 0b100) return null;
+  const stopEnd = offset + counterTotal(stop);
+  let nextDark = stopEnd;
+  while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+  if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(startScale * 3))) return null;
 
   return { format: 'itf', text: digits.join('') };
 }
@@ -3033,6 +3898,9 @@ const DECODERS = [
   ['ean8', decodeEAN8],
   ['upce', decodeUPCE],
   ['code128', decodeCode128],
+  ['code11', decodeCode11],
+  ['msi', decodeMSI],
+  ['gs1databar14', decodeDataBar14Scanline],
   ['code39', decodeCode39],
   ['code93', decodeCode93],
   ['itf', decodeITF],
@@ -3052,7 +3920,16 @@ const DECODERS = [
 function decodeOneD(image, options = {}) {
   const { formats = null, rows = 15, tryHarder = true } = options;
   const enabled = formats ? new Set(formats) : null;
-  const active = DECODERS.filter(([id]) => !enabled || enabled.has(id));
+  const active = DECODERS.filter(([id]) => {
+    if (!enabled) return true;
+    if (enabled.has(id)) return true;
+    if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
+      return enabled.has('ean2') || enabled.has('ean5');
+    }
+    if (id === 'code128') return enabled.has('gs1128');
+    if (id === 'gs1databar14') return enabled.has('databar') || enabled.has('gs1-databar14');
+    return false;
+  });
   if (active.length === 0) return [];
 
   const results = [];
@@ -3083,9 +3960,23 @@ function decodeOneD(image, options = {}) {
           result = null; // a malformed candidate is not an error
         }
         if (!result) continue;
-        if (enabled && !enabled.has(result.format)) continue;
+        if (enabled) {
+          const addonRequested = enabled.has('ean2') || enabled.has('ean5');
+          const isEANBase = result.format === 'ean13' || result.format === 'ean8' ||
+            result.format === 'upca' || result.format === 'upce';
+          if (isEANBase && addonRequested) {
+            if (!result.addon || !enabled.has(result.addon.format)) continue;
+          } else if (result.format === 'gs1128') {
+            if (!enabled.has('gs1128') && !enabled.has('code128')) continue;
+          } else if (result.format === 'gs1databar14') {
+            if (!enabled.has('gs1databar14') && !enabled.has('databar') && !enabled.has('gs1-databar14')) continue;
+          } else if (!enabled.has(result.format)) {
+            continue;
+          }
+        }
 
-        const key = `${result.format}:${result.text}`;
+        const addonKey = result.addon ? `:${result.addon.format}:${result.addon.text}` : '';
+        const key = `${result.format}:${result.text}${addonKey}`;
         if (seen.has(key)) continue;
         seen.add(key);
         results.push({ ...result, row: y });
@@ -3113,6 +4004,8 @@ function decodeOneDStrict(image, options) {
 __exports.patternVariance = patternVariance;
 __exports.recordPattern = recordPattern;
 __exports.toNarrowWidePattern = toNarrowWidePattern;
+__exports.decodeCode11 = decodeCode11;
+__exports.decodeMSI = decodeMSI;
 __exports.decodeOneD = decodeOneD;
 __exports.decodeOneDStrict = decodeOneDStrict;
 };
@@ -3122,9 +4015,12 @@ __modules["oned/index.js"] = function (__require, __exports) {
  * Linear symbologies.
  *
  * @module oned
- */const __reexport0 = __require("oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+ */
+const __reexport0 = __require("oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("oned/addons.js"); __exports.EAN2_PARITY = __reexport1.EAN2_PARITY; __exports.EAN5_PARITY = __reexport1.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport1.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport1.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport1.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport1.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport1.ean2Parity; __exports.ean5Checksum = __reexport1.ean5Checksum; __exports.ean5CheckDigit = __reexport1.ean5CheckDigit; __exports.ean5Parity = __reexport1.ean5Parity; __exports.encodeEAN2 = __reexport1.encodeEAN2; __exports.encodeEAN5 = __reexport1.encodeEAN5; __exports.encodeEANAddon = __reexport1.encodeEANAddon; __exports.encodeEANAddOn = __reexport1.encodeEANAddOn; __exports.decodeEAN2 = __reexport1.decodeEAN2; __exports.decodeEAN5 = __reexport1.decodeEAN5; __exports.decodeEANAddon = __reexport1.decodeEANAddon; __exports.decodeEANAddOn = __reexport1.decodeEANAddOn; __exports.composeEANAddon = __reexport1.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport1.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport1.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport1.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport1.encodeUPCEWithAddon;
-const __reexport2 = __require("oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;const __reexport3 = __require("oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("oned/writers.js");
+const __reexport2 = __require("oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.decodeCode11 = __reexport2.decodeCode11; __exports.decodeMSI = __reexport2.decodeMSI; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;
+const __reexport3 = __require("oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("oned/addons.js");
 
 /**
@@ -3135,8 +4031,9 @@ const { encodeEAN2, encodeEAN5 } = __require("oned/addons.js");
  * so the two lists legitimately differ and the API says so rather than
  * failing at runtime.
  *
- * @type {Record<string, {encode: Function, readable: boolean, label: string}>}
- */const ONED_FORMATS = {
+ * @type {Record<string, {encode: Function, readable: boolean, label: string, role?: string}>}
+ */
+const ONED_FORMATS = {
   ean13: { encode: encodeEAN13, readable: true, label: 'EAN-13' },
   ean8: { encode: encodeEAN8, readable: true, label: 'EAN-8' },
   upca: { encode: encodeUPCA, readable: true, label: 'UPC-A' },
@@ -3153,14 +4050,13 @@ const { encodeEAN2, encodeEAN5 } = __require("oned/addons.js");
   itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
   itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
   codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
-  code11: { encode: encodeCode11, readable: false, label: 'Code 11' },
-  msi: { encode: encodeMSI, readable: false, label: 'MSI Plessey' },
+  code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
+  msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
   pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
-  // Supplements are writable standalone matrices, but their reader is
-  // intentionally exposed through the EAN/UPC add-on helpers rather than the
-  // generic one-dimensional scan pipeline.
-  ean2: { encode: encodeEAN2, readable: false, label: 'EAN-2 supplement' },
-  ean5: { encode: encodeEAN5, readable: false, label: 'EAN-5 supplement' },
+  // Supplements are reported as readable capabilities, but the image reader
+  // only accepts them when attached to a validated EAN/UPC parent symbol.
+  ean2: { encode: encodeEAN2, readable: true, role: 'supplement', label: 'EAN-2 supplement' },
+  ean5: { encode: encodeEAN5, readable: true, role: 'supplement', label: 'EAN-5 supplement' },
 };
 
 __exports.ONED_FORMATS = ONED_FORMATS;
@@ -13909,271 +14805,6 @@ const __reexport3 = __require("compactpdf417/detector.js"); __exports.detectComp
 
 };
 
-__modules["databar/tables.js"] = function (__require, __exports) {
-/**
- * Static GS1 DataBar facts used by the GTIN compaction codec.
- *
- * The numbers in the DataBar-14 group tables are the public tables in
- * ISO/IEC 24724:2011, clauses 5.2.2 and 5.2.3. They describe values, not a
- * third-party implementation. Pattern construction deliberately belongs in
- * the renderer/encoder layer so this module stays a small, auditable contract.
- *
- * @module databar/tables
- */
-
-const group = (first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal) => Object.freeze({
-  first, last, gsum, oddModules, evenModules, oddWidest, evenWidest, oddTotal, evenTotal,
-});
-
-/** The four GTIN-only layouts sharing the DataBar-14 compaction rules. */
-const DATABAR14_VARIANTS = Object.freeze({
-  omnidirectional: Object.freeze({ id: 'omnidirectional', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: true }),
-  truncated: Object.freeze({ id: 'truncated', rows: 1, modules: 96, checksumModulus: 79, pointOfSale: false }),
-  stacked: Object.freeze({ id: 'stacked', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: false }),
-  'stacked-omnidirectional': Object.freeze({ id: 'stacked-omnidirectional', rows: 2, modules: 50, checksumModulus: 79, pointOfSale: true }),
-});
-
-/** GS1 DataBar Limited is a distinct two-character symbology. */
-const DATABAR_LIMITED_VARIANT = Object.freeze({
-  id: 'limited', rows: 1, checksumModulus: 89, pointOfSale: false,
-  permittedIndicatorDigits: Object.freeze([0, 1]),
-});
-
-/** (16,4) outside character groups, ISO/IEC 24724:2011 Table 1. */
-const DATABAR14_OUTSIDE_GROUPS = Object.freeze([
-  group(0, 160, 0, 12, 4, 8, 1, 161, 1),
-  group(161, 960, 161, 10, 6, 6, 3, 80, 10),
-  group(961, 2014, 961, 8, 8, 4, 5, 31, 34),
-  group(2015, 2714, 2015, 6, 10, 3, 6, 10, 70),
-  group(2715, 2840, 2715, 4, 12, 1, 8, 1, 126),
-]);
-
-/** (15,4) inside character groups, ISO/IEC 24724:2011 Table 2. */
-const DATABAR14_INSIDE_GROUPS = Object.freeze([
-  group(0, 335, 0, 5, 10, 2, 7, 4, 84),
-  group(336, 1035, 336, 7, 8, 4, 5, 20, 35),
-  group(1036, 1515, 1036, 9, 6, 6, 3, 48, 10),
-  group(1516, 1596, 1516, 11, 4, 8, 1, 81, 1),
-]);
-
-/** Number of values carried by an inside (15,4) character. */
-const DATABAR14_INSIDE_RADIX = 1597;
-/** Number of values carried by one outside/inside character pair. */
-const DATABAR14_PAIR_RADIX = 4537077;
-/** Stand-alone and composite DataBar-14 payload domain, including linkage. */
-const DATABAR14_SYMBOL_LIMIT = 20000000000000n;
-
-/** GS1 DataBar Limited divides its 13 data digits into two character values. */
-const DATABAR_LIMITED_PAIR_RADIX = 2013571;
-/** Offset that switches a DataBar Limited value from stand-alone to composite. */
-const DATABAR_LIMITED_LINKAGE_OFFSET = 2015133531096n;
-/** DataBar Limited carries GTIN values whose first digit is zero or one. */
-const DATABAR_LIMITED_DATA_LIMIT = 2000000000000n;
-
-/** Locate the value group that an outside or inside character belongs to. */
-function dataBar14GroupFor(value, kind) {
-  if (!Number.isInteger(value)) throw new TypeError('GS1 DataBar character value must be an integer');
-  const groups = kind === 'outside' ? DATABAR14_OUTSIDE_GROUPS
-    : kind === 'inside' ? DATABAR14_INSIDE_GROUPS : null;
-  if (!groups) throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
-  const found = groups.find((entry) => value >= entry.first && value <= entry.last);
-  if (!found) throw new RangeError(`GS1 DataBar ${kind} character value ${value} is out of range`);
-  return found;
-}
-/** Check the independently represented table identities. */
-function validateDataBarTables() {
-  const problems = [];
-  const validateGroups = (name, groups, expectedLast) => {
-    let next = 0;
-    for (const entry of groups) {
-      if (entry.first !== next) problems.push(`${name}: gap before ${entry.first}`);
-      if (entry.last < entry.first) problems.push(`${name}: inverted range ${entry.first}-${entry.last}`);
-      if (entry.oddTotal * entry.evenTotal !== entry.last - entry.first + 1) {
-        problems.push(`${name}: combination count mismatch at ${entry.first}`);
-      }
-      next = entry.last + 1;
-    }
-    if (next - 1 !== expectedLast) problems.push(`${name}: final value is ${next - 1}, expected ${expectedLast}`);
-  };
-  validateGroups('outside', DATABAR14_OUTSIDE_GROUPS, 2840);
-  validateGroups('inside', DATABAR14_INSIDE_GROUPS, 1596);
-  if (DATABAR14_PAIR_RADIX !== 2841 * DATABAR14_INSIDE_RADIX) problems.push('pair radix mismatch');
-  if (DATABAR14_SYMBOL_LIMIT !== 2n * 10000000000000n) problems.push('symbol limit mismatch');
-  if (DATABAR_LIMITED_LINKAGE_OFFSET !== BigInt(DATABAR_LIMITED_PAIR_RADIX) * 1000776n) {
-    problems.push('limited linkage offset mismatch');
-  }
-  return problems;
-}
-
-__exports.DATABAR14_VARIANTS = DATABAR14_VARIANTS;
-__exports.DATABAR_LIMITED_VARIANT = DATABAR_LIMITED_VARIANT;
-__exports.DATABAR14_OUTSIDE_GROUPS = DATABAR14_OUTSIDE_GROUPS;
-__exports.DATABAR14_INSIDE_GROUPS = DATABAR14_INSIDE_GROUPS;
-__exports.DATABAR14_INSIDE_RADIX = DATABAR14_INSIDE_RADIX;
-__exports.DATABAR14_PAIR_RADIX = DATABAR14_PAIR_RADIX;
-__exports.DATABAR14_SYMBOL_LIMIT = DATABAR14_SYMBOL_LIMIT;
-__exports.DATABAR_LIMITED_PAIR_RADIX = DATABAR_LIMITED_PAIR_RADIX;
-__exports.DATABAR_LIMITED_LINKAGE_OFFSET = DATABAR_LIMITED_LINKAGE_OFFSET;
-__exports.DATABAR_LIMITED_DATA_LIMIT = DATABAR_LIMITED_DATA_LIMIT;
-__exports.dataBar14GroupFor = dataBar14GroupFor;
-__exports.validateDataBarTables = validateDataBarTables;
-};
-
-__modules["databar/codec.js"] = function (__require, __exports) {
-/**
- * GTIN validation and numeric compaction for GS1 DataBar GTIN-only symbols.
- *
- * This is intentionally not a bar-pattern encoder. It emits the exact symbol
- * character values required by ISO/IEC 24724:2011; a later encoder can turn
- * those values into widths without reinterpreting a GTIN or linkage flag.
- *
- * @module databar/codec
- */
-const { DATABAR14_INSIDE_RADIX, DATABAR14_PAIR_RADIX, DATABAR14_SYMBOL_LIMIT, DATABAR_LIMITED_DATA_LIMIT, DATABAR_LIMITED_LINKAGE_OFFSET, DATABAR_LIMITED_PAIR_RADIX } = __require("databar/tables.js");
-
-const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
-
-function digits(value, label) {
-  const text = String(value);
-  if (!/^\d+$/.test(text)) throw new TypeError(`${label} must contain only decimal digits`);
-  return text;
-}
-
-function asCharacterValue(value, label, maximum) {
-  if (!Number.isInteger(value) || value < 0 || value > maximum) {
-    throw new RangeError(`${label} must be an integer from 0 to ${maximum}`);
-  }
-  return value;
-}
-
-/** Calculate the GS1 modulo-10 check digit for a GTIN body. */
-function gtinCheckDigit(body) {
-  const text = digits(body, 'GTIN body');
-  if (text.length < 1 || text.length > 13) throw new RangeError('GTIN body must contain 1 to 13 digits');
-  let sum = 0;
-  for (let i = text.length - 1, weight = 3; i >= 0; i--, weight = weight === 3 ? 1 : 3) {
-    sum += Number(text[i]) * weight;
-  }
-  return String((10 - (sum % 10)) % 10);
-}
-
-/** Return a checked 14-digit GTIN, preserving only its standardized digits. */
-function normalizeGTIN(value) {
-  const input = digits(value, 'GTIN');
-  if (!GTIN_LENGTHS.has(input.length)) {
-    throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
-  }
-  if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
-    throw new RangeError(`GTIN check digit is invalid for ${input}`);
-  }
-  return input.padStart(14, '0');
-}
-
-/** Build a checked GTIN-14 from its thirteen-digit data body. */
-function makeGTIN14(body) {
-  const input = digits(body, 'GTIN-14 body');
-  if (input.length > 13) throw new RangeError('GTIN-14 body must contain at most 13 digits');
-  const padded = input.padStart(13, '0');
-  return padded + gtinCheckDigit(padded);
-}
-
-function gtinFromSymbolValue(symbolValue) {
-  const value = BigInt(symbolValue);
-  if (value < 0n || value >= DATABAR14_SYMBOL_LIMIT) throw new RangeError('GS1 DataBar-14 symbol value is out of range');
-  const linkage = value >= 10000000000000n;
-  const body = (linkage ? value - 10000000000000n : value).toString().padStart(13, '0');
-  return { linkage, gtin: body + gtinCheckDigit(body) };
-}
-
-/**
- * Compact a GTIN into the four values shared by Omnidirectional, Truncated,
- * Stacked and Stacked Omnidirectional. The `physicalCharacters` sequence is
- * left-to-right on a linear DataBar-14 row: 1, 2, 4, 3.
- */
-function encodeDataBar14GTIN(value, options = {}) {
-  const gtin = normalizeGTIN(value);
-  const linkage = options.linkage === true;
-  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
-    throw new TypeError('GS1 DataBar linkage must be a boolean');
-  }
-  const dataBody = gtin.slice(0, -1);
-  const symbolValue = BigInt(dataBody) + (linkage ? 10000000000000n : 0n);
-  const leftPair = symbolValue / BigInt(DATABAR14_PAIR_RADIX);
-  const rightPair = symbolValue % BigInt(DATABAR14_PAIR_RADIX);
-  const outerLeft = Number(leftPair / BigInt(DATABAR14_INSIDE_RADIX));
-  const innerLeft = Number(leftPair % BigInt(DATABAR14_INSIDE_RADIX));
-  const outerRight = Number(rightPair / BigInt(DATABAR14_INSIDE_RADIX));
-  const innerRight = Number(rightPair % BigInt(DATABAR14_INSIDE_RADIX));
-
-  return Object.freeze({
-    gtin, linkage, symbolValue, leftPair, rightPair,
-    logicalCharacters: Object.freeze({ outerLeft, innerLeft, outerRight, innerRight }),
-    physicalCharacters: Object.freeze([outerLeft, innerLeft, innerRight, outerRight]),
-  });
-}
-
-/** Reconstruct and validate a GTIN from the four DataBar-14 character values. */
-function decodeDataBar14GTIN(values) {
-  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar-14 characters must be an object');
-  const outerLeft = asCharacterValue(values.outerLeft, 'outerLeft', 2840);
-  const innerLeft = asCharacterValue(values.innerLeft, 'innerLeft', 1596);
-  const outerRight = asCharacterValue(values.outerRight, 'outerRight', 2840);
-  const innerRight = asCharacterValue(values.innerRight, 'innerRight', 1596);
-  const leftPair = BigInt(outerLeft) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerLeft);
-  const rightPair = BigInt(outerRight) * BigInt(DATABAR14_INSIDE_RADIX) + BigInt(innerRight);
-  return Object.freeze({
-    ...gtinFromSymbolValue(leftPair * BigInt(DATABAR14_PAIR_RADIX) + rightPair),
-    leftPair, rightPair,
-  });
-}
-
-/** Compact a DataBar Limited-eligible GTIN into its two data character values. */
-function encodeDataBarLimitedGTIN(value, options = {}) {
-  const gtin = normalizeGTIN(value);
-  const linkage = options.linkage === true;
-  if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
-    throw new TypeError('GS1 DataBar linkage must be a boolean');
-  }
-  const dataBody = BigInt(gtin.slice(0, -1));
-  if (dataBody >= DATABAR_LIMITED_DATA_LIMIT) {
-    throw new RangeError('GS1 DataBar Limited requires a GTIN whose indicator digit is 0 or 1');
-  }
-  const symbolValue = dataBody + (linkage ? DATABAR_LIMITED_LINKAGE_OFFSET : 0n);
-  const left = Number(symbolValue / BigInt(DATABAR_LIMITED_PAIR_RADIX));
-  const right = Number(symbolValue % BigInt(DATABAR_LIMITED_PAIR_RADIX));
-  return Object.freeze({ gtin, linkage, symbolValue, left, right });
-}
-
-/** Reconstruct and validate a GTIN from DataBar Limited data character values. */
-function decodeDataBarLimitedGTIN(values) {
-  if (values === null || typeof values !== 'object') throw new TypeError('GS1 DataBar Limited characters must be an object');
-  const left = asCharacterValue(values.left, 'left', 1994036);
-  const right = asCharacterValue(values.right, 'right', DATABAR_LIMITED_PAIR_RADIX - 1);
-  let symbolValue = BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right);
-  const linkage = symbolValue >= DATABAR_LIMITED_LINKAGE_OFFSET;
-  if (linkage) symbolValue -= DATABAR_LIMITED_LINKAGE_OFFSET;
-  if (symbolValue < 0n || symbolValue >= DATABAR_LIMITED_DATA_LIMIT) {
-    throw new RangeError('GS1 DataBar Limited character values do not encode a permitted GTIN');
-  }
-  const body = symbolValue.toString().padStart(13, '0');
-  return Object.freeze({ linkage, gtin: body + gtinCheckDigit(body), symbolValue: BigInt(left) * BigInt(DATABAR_LIMITED_PAIR_RADIX) + BigInt(right) });
-}
-
-/** GS1 transmitted form for the GTIN-only DataBar variants. */
-function dataBarGtinTransmission(value) {
-  return `]e001${normalizeGTIN(value)}`;
-}
-
-__exports.gtinCheckDigit = gtinCheckDigit;
-__exports.normalizeGTIN = normalizeGTIN;
-__exports.makeGTIN14 = makeGTIN14;
-__exports.encodeDataBar14GTIN = encodeDataBar14GTIN;
-__exports.decodeDataBar14GTIN = decodeDataBar14GTIN;
-__exports.encodeDataBarLimitedGTIN = encodeDataBarLimitedGTIN;
-__exports.decodeDataBarLimitedGTIN = decodeDataBarLimitedGTIN;
-__exports.dataBarGtinTransmission = dataBarGtinTransmission;
-};
-
 __modules["databar/gs1.js"] = function (__require, __exports) {
 /** GS1 element-string codec used by GS1 DataBar Expanded. @module databar/gs1 */
 const { EncodeError, FormatError } = __require("core/errors.js");
@@ -14324,127 +14955,6 @@ __exports.decodeGS1ElementString = decodeGS1ElementString;
 __exports.formatGS1Elements = formatGS1Elements;
 };
 
-__modules["databar/patterns.js"] = function (__require, __exports) {
-/** Mathematical width construction for GS1 DataBar characters. @module databar/patterns */
-const { dataBar14GroupFor } = __require("databar/tables.js");
-
-function combinations(n, r) {
-  if (n < r || r < 0) return 0;
-  if (r === 0 || n === r) return 1;
-  let result = 1;
-  const k = Math.min(r, n - r);
-  for (let i = 1; i <= k; i++) result = result * (n - k + i) / i;
-  return result;
-}
-
-/**
- * Unrank one constrained positive composition.
- *
- * The rank is the GS1 DataBar symbol-character value inside its group. This
- * implementation follows the combinatorial definition directly: it counts
- * every remaining admissible suffix rather than storing third-party patterns.
- */
-function dataBarWidths(rank, modules, elements, maximumWidth, noNarrow) {
-  if (!Number.isInteger(rank) || rank < 0) throw new RangeError('GS1 DataBar width rank must be non-negative');
-  const widths = new Array(elements).fill(0);
-  let remaining = modules;
-  let narrowMask = 0;
-
-  for (let bar = 0; bar < elements - 1; bar++) {
-    let count = 0;
-    for (let width = 1; ; width++) {
-      narrowMask |= width === 1 ? 1 << bar : 0;
-      count = combinations(remaining - width - 1, elements - bar - 2);
-
-      if (noNarrow && narrowMask === 0 && remaining - width - (elements - bar - 1) >= elements - bar - 1) {
-        count -= combinations(remaining - width - (elements - bar), elements - bar - 2);
-      }
-
-      if (elements - bar - 1 > 1) {
-        let tooWide = 0;
-        for (let last = remaining - width - (elements - bar - 2); last > maximumWidth; last--) {
-          tooWide += combinations(remaining - width - last - 1, elements - bar - 3);
-        }
-        count -= tooWide * (elements - 1 - bar);
-      } else if (remaining - width > maximumWidth) {
-        count--;
-      }
-
-      if (rank < count) {
-        widths[bar] = width;
-        remaining -= width;
-        break;
-      }
-      rank -= count;
-      narrowMask &= ~(1 << bar);
-    }
-  }
-  widths[elements - 1] = remaining;
-  if (rank !== 0 || widths.some((width) => width < 1 || width > maximumWidth)) {
-    throw new RangeError('GS1 DataBar width rank exceeds its character group');
-  }
-  return widths;
-}
-
-/** Convert one DataBar-14 character value into its eight alternating widths. */
-function dataBar14CharacterWidths(value, kind) {
-  const group = dataBar14GroupFor(value, kind);
-  const offset = value - group.gsum;
-  const outside = kind === 'outside';
-  const oddRank = outside ? Math.floor(offset / group.evenTotal) : offset % group.oddTotal;
-  const evenRank = outside ? offset % group.evenTotal : Math.floor(offset / group.oddTotal);
-  const odd = dataBarWidths(oddRank, group.oddModules, 4, group.oddWidest, !outside);
-  const even = dataBarWidths(evenRank, group.evenModules, 4, group.evenWidest, outside);
-  const result = [];
-  for (let i = 0; i < 4; i++) result.push(odd[i], even[i]);
-  return result;
-}
-
-const inverseCharacterMaps = new Map();
-
-/** Recover a character value from its canonical eight-width representation. */
-function dataBar14ValueForWidths(widths, kind) {
-  if (!Array.isArray(widths) || widths.length !== 8 || widths.some((width) => !Number.isInteger(width) || width < 1)) {
-    throw new TypeError('GS1 DataBar character widths must contain eight positive integers');
-  }
-  if (kind !== 'outside' && kind !== 'inside') throw new RangeError(`Unknown GS1 DataBar character kind "${kind}"`);
-  let inverse = inverseCharacterMaps.get(kind);
-  if (!inverse) {
-    inverse = new Map();
-    const maximum = kind === 'outside' ? 2840 : 1596;
-    for (let value = 0; value <= maximum; value++) {
-      inverse.set(dataBar14CharacterWidths(value, kind).join(','), value);
-    }
-    inverseCharacterMaps.set(kind, inverse);
-  }
-  const value = inverse.get(widths.join(','));
-  if (value === undefined) throw new RangeError(`Invalid GS1 DataBar ${kind} character widths`);
-  return value;
-}
-
-/** Nine finder patterns, expressed as normative five-element widths. */
-const DATABAR14_FINDERS = Object.freeze([
-  Object.freeze([3, 8, 2, 1, 1]), Object.freeze([3, 5, 5, 1, 1]),
-  Object.freeze([3, 3, 7, 1, 1]), Object.freeze([3, 1, 9, 1, 1]),
-  Object.freeze([2, 7, 4, 1, 1]), Object.freeze([2, 5, 6, 1, 1]),
-  Object.freeze([2, 3, 8, 1, 1]), Object.freeze([1, 5, 7, 1, 1]),
-  Object.freeze([1, 3, 9, 1, 1]),
-]);
-
-/** Weight sequence generated as powers of three modulo 79. */
-const DATABAR14_CHECKSUM_WEIGHTS = Object.freeze(Array.from({ length: 32 }, (_, index) => {
-  let value = 1;
-  for (let i = 0; i < index; i++) value = (value * 3) % 79;
-  return value;
-}));
-
-__exports.dataBarWidths = dataBarWidths;
-__exports.dataBar14CharacterWidths = dataBar14CharacterWidths;
-__exports.dataBar14ValueForWidths = dataBar14ValueForWidths;
-__exports.DATABAR14_FINDERS = DATABAR14_FINDERS;
-__exports.DATABAR14_CHECKSUM_WEIGHTS = DATABAR14_CHECKSUM_WEIGHTS;
-};
-
 __modules["databar/encoder.js"] = function (__require, __exports) {
 /** GS1 DataBar Omnidirectional and Truncated encoder. @module databar/encoder */
 const { BitMatrix } = __require("core/bit-matrix.js");
@@ -14511,97 +15021,13 @@ function encodeDataBar14(value, options = {}) {
 __exports.encodeDataBar14 = encodeDataBar14;
 };
 
-__modules["databar/decoder.js"] = function (__require, __exports) {
-/** Clean-matrix decoder for GS1 DataBar Omnidirectional and Truncated. @module databar/decoder */
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { decodeDataBar14GTIN } = __require("databar/codec.js");
-const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14ValueForWidths } = __require("databar/patterns.js");
-
-function sampledRuns(matrix) {
-  if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
-    throw new TypeError('GS1 DataBar decoder expects a BitMatrix-like value');
-  }
-  if (matrix.width % 96 !== 0) throw new FormatError('GS1 DataBar-14 matrix width must be an integer multiple of 96 modules');
-  const scale = matrix.width / 96;
-  const y = Math.floor(matrix.height / 2);
-  const bits = Array.from({ length: 96 }, (_, x) => matrix.get(x * scale + Math.floor(scale / 2), y));
-  if (bits[0] || !bits[95]) throw new FormatError('GS1 DataBar-14 guard pattern is invalid');
-  const runs = [];
-  let current = bits[0];
-  let length = 0;
-  for (const bit of bits) {
-    if (bit === current) length++;
-    else {
-      runs.push(length);
-      current = bit;
-      length = 1;
-    }
-  }
-  runs.push(length);
-  if (runs.length !== 46 || runs[0] !== 1 || runs[1] !== 1 || runs[44] !== 1 || runs[45] !== 1) {
-    throw new FormatError('GS1 DataBar-14 element count or guard widths are invalid');
-  }
-  return runs;
-}
-
-function finderIndex(widths) {
-  const key = widths.join(',');
-  return DATABAR14_FINDERS.findIndex((candidate) => candidate.join(',') === key);
-}
-
-function expectedChecksum(widths) {
-  const offsets = [0, 8, 24, 16];
-  let checksum = 0;
-  for (let character = 0; character < 4; character++) {
-    for (let element = 0; element < 8; element++) {
-      checksum += widths[character][element] * DATABAR14_CHECKSUM_WEIGHTS[offsets[character] + element];
-    }
-  }
-  checksum %= 79;
-  if (checksum >= 8) checksum++;
-  if (checksum >= 72) checksum++;
-  return checksum;
-}
-
-/** Decode a clean or integer-scaled 96-module DataBar-14 matrix. */
-function decodeDataBar14(matrix) {
-  const runs = sampledRuns(matrix);
-  const widths = [
-    runs.slice(2, 10),
-    runs.slice(15, 23).slice().reverse(),
-    runs.slice(23, 31),
-    runs.slice(36, 44).slice().reverse(),
-  ];
-  const leftFinder = finderIndex(runs.slice(10, 15));
-  const rightFinder = finderIndex(runs.slice(31, 36).slice().reverse());
-  if (leftFinder < 0 || rightFinder < 0) throw new FormatError('GS1 DataBar-14 finder pattern is invalid');
-  const encodedChecksum = leftFinder * 9 + rightFinder;
-  if (encodedChecksum !== expectedChecksum(widths)) throw new ChecksumError('GS1 DataBar-14 checksum mismatch');
-
-  const outerLeft = dataBar14ValueForWidths(widths[0], 'outside');
-  const innerLeft = dataBar14ValueForWidths(widths[1], 'inside');
-  const innerRight = dataBar14ValueForWidths(widths[2], 'inside');
-  const outerRight = dataBar14ValueForWidths(widths[3], 'outside');
-  const decoded = decodeDataBar14GTIN({ outerLeft, innerLeft, outerRight, innerRight });
-  return Object.freeze({
-    format: 'databar-omnidirectional',
-    text: decoded.gtin,
-    gtin: decoded.gtin,
-    linkage: decoded.linkage,
-    symbologyIdentifier: ']e0',
-  });
-}
-
-__exports.decodeDataBar14 = decodeDataBar14;
-};
-
 __modules["databar/index.js"] = function (__require, __exports) {
 /** Verified GS1 DataBar data-layer primitives. @module databar */
 const __reexport0 = __require("databar/codec.js"); __exports.dataBarGtinTransmission = __reexport0.dataBarGtinTransmission; __exports.decodeDataBar14GTIN = __reexport0.decodeDataBar14GTIN; __exports.decodeDataBarLimitedGTIN = __reexport0.decodeDataBarLimitedGTIN; __exports.encodeDataBar14GTIN = __reexport0.encodeDataBar14GTIN; __exports.encodeDataBarLimitedGTIN = __reexport0.encodeDataBarLimitedGTIN; __exports.gtinCheckDigit = __reexport0.gtinCheckDigit; __exports.makeGTIN14 = __reexport0.makeGTIN14; __exports.normalizeGTIN = __reexport0.normalizeGTIN;
 const __reexport1 = __require("databar/gs1.js"); __exports.GS1_SEPARATOR = __reexport1.GS1_SEPARATOR; __exports.decodeGS1ElementString = __reexport1.decodeGS1ElementString; __exports.encodeGS1ElementString = __reexport1.encodeGS1ElementString; __exports.formatGS1Elements = __reexport1.formatGS1Elements; __exports.gs1AIInfo = __reexport1.gs1AIInfo; __exports.parseGS1ElementString = __reexport1.parseGS1ElementString;
 const __reexport2 = __require("databar/tables.js"); __exports.DATABAR14_VARIANTS = __reexport2.DATABAR14_VARIANTS; __exports.DATABAR_LIMITED_VARIANT = __reexport2.DATABAR_LIMITED_VARIANT; __exports.dataBar14GroupFor = __reexport2.dataBar14GroupFor; __exports.validateDataBarTables = __reexport2.validateDataBarTables;
 const __reexport3 = __require("databar/encoder.js"); __exports.encodeDataBar14 = __reexport3.encodeDataBar14;
-const __reexport4 = __require("databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14;
+const __reexport4 = __require("databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14; __exports.decodeDataBar14Scanline = __reexport4.decodeDataBar14Scanline;
 const __reexport5 = __require("databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport5.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport5.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport5.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport5.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport5.dataBarWidths;
 
 
@@ -15887,8 +16313,8 @@ const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reex
 Object.assign(__exports, __require("aztecrune/index.js"));
 const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
 Object.assign(__exports, __require("compactpdf417/index.js"));
-// DataBar currently exposes verified GS1 data-layer codecs only; physical
-// symbol rendering and image detection remain deliberately out of scope.
+  // DataBar exports include both the verified GTIN/data layer and the
+  // Omnidirectional/Truncated physical image path.
 Object.assign(__exports, __require("databar/index.js"));
 const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
 const __reexport13 = __require("microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
@@ -15902,6 +16328,7 @@ const __reexport15 = __require("frameqr/index.js"); __exports.encodeFrameQR = __
  * @property {boolean} canWrite
  * @property {boolean} canRead
  * @property {'1D' | '2D'} kind
+ * @property {'supplement'} [role]
  */
 
 // Writing and reading a format are separate capabilities that can land at
@@ -15940,6 +16367,7 @@ const aztecRuneCanDecode = typeof aztecRune.detectAndDecodeAztecRune === 'functi
 const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'function';
 const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
 const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
+const dataBarCanDecode = typeof databar.decodeDataBar14Scanline === 'function';
 
 /**
  * Every format this build supports.
@@ -15958,6 +16386,7 @@ function listFormats() {
     canWrite: true,
     canRead: info.readable,
     kind: /** @type {'1D'} */ ('1D'),
+    ...(info.role ? { role: info.role } : {}),
   }));
 
   formats.push({
@@ -16034,7 +16463,7 @@ function listFormats() {
     id: 'gs1databar14',
     label: 'GS1 DataBar Omnidirectional / Truncated',
     canWrite: dataBarCanEncode,
-    canRead: false,
+    canRead: dataBarCanDecode,
     kind: /** @type {'1D'} */ ('1D'),
   });
 
@@ -16143,6 +16572,13 @@ function encode(text, options = {}) {
  * @property {string} [profile] Sythos Canvas QR profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
  * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
+ * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
+ * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
+ * @property {string} [symbologyIdentifier] GS1 symbology identifier.
+ * @property {Array<{ai:string,value:string,fixed?:boolean}>} [elements] Parsed GS1 Application Identifier fields.
+ * @property {string} [gs1ParseError] Semantic GS1 parsing error after a valid physical read.
+ * @property {string} [gtin] GS1 DataBar GTIN-14 payload.
+ * @property {boolean} [linkage] GS1 DataBar linkage flag.
  */
 
 /**
@@ -16174,7 +16610,8 @@ function decode(image, options = {}) {
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
   const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
-  const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
+  const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
+  const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
 
   const source = LuminanceSource.fromImageData(image);
   const results = [];
@@ -16298,9 +16735,23 @@ function decode(image, options = {}) {
     }
 
     if (wantOneD) {
-      const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
-      for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
-        results.push({ text: found.text, format: found.format });
+      const oneDFormats = want
+        ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
+        : null;
+      for (const found of decodeOneD(bits, { ...options, formats: oneDFormats, tryHarder })) {
+        const { row, ...publicFound } = found;
+        void row;
+        if (publicFound.gs1) {
+          const semanticText = publicFound.format === 'gs1databar14'
+            ? `01${publicFound.gtin ?? publicFound.text}`
+            : publicFound.text;
+          try {
+            publicFound.elements = databar.decodeGS1ElementString(semanticText);
+          } catch (error) {
+            publicFound.gs1ParseError = error instanceof Error ? error.message : String(error);
+          }
+        }
+        results.push(publicFound);
       }
     }
 
@@ -16395,9 +16846,11 @@ export const {
   decode,
   decodeAztec,
   decodeAztecRune,
+  decodeCode11,
   decodeCompactPDF417,
   decodeDataBar14,
   decodeDataBar14GTIN,
+  decodeDataBar14Scanline,
   decodeDataBarLimitedGTIN,
   decodeDataMatrix,
   decodeEAN2,
@@ -16406,6 +16859,7 @@ export const {
   decodeEANAddon,
   decodeFrameQR,
   decodeGS1ElementString,
+  decodeMSI,
   decodeMicroPDF417,
   decodeMicroQR,
   decodeOneD,

@@ -60,8 +60,9 @@ CONCLUSION
 --------------------------------------------------------------------------
 
 The original add-on implementation is distributed under the MIT License.
-Generic camera read capability remains intentionally separate from the
-direct matrix helper.
+Image reading is intentionally parent-bound: the generic reader accepts
+EAN-5 only when attached to a validated EAN/UPC symbol; it is not a
+standalone retail-symbol detector.
 
 References relied upon:
   - ISO/IEC 15420, ISO/IEC

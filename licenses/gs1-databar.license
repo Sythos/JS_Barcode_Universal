@@ -1,7 +1,7 @@
-GS1 DataBar data-layer codecs — format provenance and usability
+GS1 DataBar Omnidirectional / Truncated — format provenance and usability
 ==========================================================================
 
-This file records where the GS1 DataBar data-layer codecs symbology comes from, what governs
+This file records where the GS1 DataBar Omnidirectional / Truncated symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
 
 It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
@@ -13,8 +13,9 @@ ORIGIN
 
 GS1 DataBar is a family of seven GS1 linear symbologies defined by ISO/IEC
 24724 and GS1 specifications. This release contains original GTIN and GS1
-element-string data-layer codecs; physical bar-pattern support is limited
-to the variants explicitly listed by the package.
+element-string data-layer codecs plus physical Omnidirectional and
+Truncated pattern readers and writers; other physical variants remain
+outside the package scope.
 
 
 SPECIFICATION
@@ -54,7 +55,7 @@ branding — how a product names and presents itself.
 IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
-GS1 DataBar data-layer codecs is implemented here from published descriptions of the format,
+GS1 DataBar Omnidirectional / Truncated is implemented here from published descriptions of the format,
 which are systems and facts rather than works of authorship. No source
 code or constant table from any other barcode implementation is copied or
 shipped. Public technical material and independent implementations may be
@@ -66,8 +67,10 @@ CONCLUSION
 --------------------------------------------------------------------------
 
 Only original Sythos DataBar code is distributed under the MIT License.
-Unsupported physical variants and conformance questions are intentionally
-not presented as completed capability. [LEGAL REVIEW]
+Omnidirectional and Truncated image support is exposed after
+checksum-validated black-box verification; Limited, Stacked and Expanded
+physical variants remain intentionally outside the completed capability.
+[LEGAL REVIEW]
 
 References relied upon:
   - ISO/IEC 24724, ISO/IEC

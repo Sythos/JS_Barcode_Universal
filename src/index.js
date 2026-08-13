@@ -84,8 +84,8 @@ export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './a
 export * from './aztecrune/index.js';
 export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './pdf417/index.js';
 export * from './compactpdf417/index.js';
-// DataBar currently exposes verified GS1 data-layer codecs only; physical
-// symbol rendering and image detection remain deliberately out of scope.
+  // DataBar exports include both the verified GTIN/data layer and the
+  // Omnidirectional/Truncated physical image path.
 export * from './databar/index.js';
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
@@ -103,6 +103,7 @@ export {
  * @property {boolean} canWrite
  * @property {boolean} canRead
  * @property {'1D' | '2D'} kind
+ * @property {'supplement'} [role]
  */
 
 // Writing and reading a format are separate capabilities that can land at
@@ -141,6 +142,7 @@ const aztecRuneCanDecode = typeof aztecRune.detectAndDecodeAztecRune === 'functi
 const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'function';
 const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
 const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
+const dataBarCanDecode = typeof databar.decodeDataBar14Scanline === 'function';
 
 /**
  * Every format this build supports.
@@ -159,6 +161,7 @@ export function listFormats() {
     canWrite: true,
     canRead: info.readable,
     kind: /** @type {'1D'} */ ('1D'),
+    ...(info.role ? { role: info.role } : {}),
   }));
 
   formats.push({
@@ -235,7 +238,7 @@ export function listFormats() {
     id: 'gs1databar14',
     label: 'GS1 DataBar Omnidirectional / Truncated',
     canWrite: dataBarCanEncode,
-    canRead: false,
+    canRead: dataBarCanDecode,
     kind: /** @type {'1D'} */ ('1D'),
   });
 
@@ -344,6 +347,13 @@ export function encode(text, options = {}) {
  * @property {string} [profile] FrameQR Code profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
  * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
+ * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
+ * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
+ * @property {string} [symbologyIdentifier] GS1 symbology identifier.
+ * @property {Array<{ai:string,value:string,fixed?:boolean}>} [elements] Parsed GS1 Application Identifier fields.
+ * @property {string} [gs1ParseError] Semantic GS1 parsing error after a valid physical read.
+ * @property {string} [gtin] GS1 DataBar GTIN-14 payload.
+ * @property {boolean} [linkage] GS1 DataBar linkage flag.
  */
 
 /**
@@ -375,7 +385,8 @@ export function decode(image, options = {}) {
   const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
   const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
   const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
-  const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS);
+  const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
+  const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
 
   const source = LuminanceSource.fromImageData(image);
   const results = [];
@@ -499,9 +510,23 @@ export function decode(image, options = {}) {
     }
 
     if (wantOneD) {
-      const oneDFormats = want ? [...want].filter((f) => f in ONED_FORMATS) : null;
-      for (const found of decodeOneD(bits, { formats: oneDFormats, tryHarder })) {
-        results.push({ text: found.text, format: found.format });
+      const oneDFormats = want
+        ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
+        : null;
+      for (const found of decodeOneD(bits, { ...options, formats: oneDFormats, tryHarder })) {
+        const { row, ...publicFound } = found;
+        void row;
+        if (publicFound.gs1) {
+          const semanticText = publicFound.format === 'gs1databar14'
+            ? `01${publicFound.gtin ?? publicFound.text}`
+            : publicFound.text;
+          try {
+            publicFound.elements = databar.decodeGS1ElementString(semanticText);
+          } catch (error) {
+            publicFound.gs1ParseError = error instanceof Error ? error.message : String(error);
+          }
+        }
+        results.push(publicFound);
       }
     }
 

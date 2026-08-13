@@ -106,6 +106,8 @@ date of transcription.
 | Aztec Rune and Compact PDF417 | ISO/IEC public technical descriptions and ZXing-C++ 3.1.1 were consulted on 2026-08-13. ZXing-C++ was used exclusively as an independent black-box validation tool; no source code or table is copied or shipped. Aztec Rune values were compared exhaustively; Compact PDF417 geometry and payload vectors were compared independently. |
 | EAN-2 and EAN-5 supplements | ISO/IEC 15420, GS1 public specifications and ZXing-C++ 3.1.1 were consulted on 2026-08-13. The add-on parity, guard and checksum routines are original Sythos code; ZXing-C++ was used only for independent add-on validation. |
 | GS1 DataBar Omnidirectional and Truncated | ISO/IEC 24724 and public GS1 material were consulted on 2026-08-13. The physical encoder/decoder uses original Sythos arithmetic and was compared bit-for-bit with Zint 2.16.0 and read bidirectionally with ZXing-C++ 3.1.1 as black boxes. No Zint or ZXing source code or table is copied or shipped. Limited, stacked and expanded physical variants remain outside this release. |
+| Code 11 and MSI Plessey image readers | Published format descriptions and the existing Sythos writer tables were used to implement the scanline readers on 2026-08-13. No third-party source code or table is copied or shipped; checksum and start/stop validation remain original Sythos code. |
+| GS1-128 semantic layer | The existing shared GS1 Application Identifier metadata and public GS1 descriptions were reused on 2026-08-13. FNC1 classification and parsing are original Sythos integration code; no third-party decoder is a runtime dependency. |
 
 ## Verification log
 
