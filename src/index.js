@@ -348,6 +348,10 @@ export function encode(text, options = {}) {
  * @property {boolean} [certified] Whether the profile is certified by its originator.
  * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
  * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
+ * @property {number} [confidence] Camera-profile confidence from 0 to 1.
+ * @property {{x:number,y:number,width:number,height:number}} [bounds] Camera-profile bounds in the scanned orientation.
+ * @property {0|90|180|270} [rotation] Camera-profile orientation in degrees.
+ * @property {{quietZone:boolean,checksum:boolean|null,rows:number|null,consistency:number|null}} [quality] Camera-profile validation evidence.
  * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
  * @property {string} [symbologyIdentifier] GS1 symbology identifier.
  * @property {Array<{ai:string,value:string,fixed?:boolean}>} [elements] Parsed GS1 Application Identifier fields.
@@ -368,12 +372,13 @@ export function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
+ * @param {'camera'} [options.profile] Opt-in strict camera profile for validated 1D reads.
  * @param {object} [options.frameqr] FrameQR Code detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
 export function decode(image, options = {}) {
-  const { formats = null, tryHarder = true, binarizer = 'auto' } = options;
+  const { formats = null, tryHarder = true, binarizer = 'auto', profile = null } = options;
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
@@ -513,7 +518,24 @@ export function decode(image, options = {}) {
       const oneDFormats = want
         ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
         : null;
-      for (const found of decodeOneD(bits, { ...options, formats: oneDFormats, tryHarder })) {
+      const oneDPasses = [{ bits, rotation: 0 }];
+      // A linear symbol rotated by 90° has no usable horizontal scanline.
+      // The strict camera profile adds exactly two normalized orientations,
+      // only when the native orientation found no validated 1D result.
+      const readOneD = (candidateBits, rotation) => decodeOneD(candidateBits, {
+        ...options, formats: oneDFormats, tryHarder, profile, cameraRotation: rotation,
+      });
+      let oneDResults = readOneD(bits, 0);
+      if (profile === 'camera' && oneDResults.length === 0) {
+        oneDPasses.push(
+          { bits: rotateBitMatrix90(bits, false), rotation: 90 },
+          { bits: rotateBitMatrix90(bits, true), rotation: 270 },
+        );
+        for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
+          oneDResults = readOneD(oneDPasses[i].bits, oneDPasses[i].rotation);
+        }
+      }
+      for (const found of oneDResults) {
         const { row, ...publicFound } = found;
         void row;
         if (publicFound.gs1) {
@@ -558,7 +580,11 @@ export function decode(image, options = {}) {
     && (binarizer === 'auto' || binarizer === 'hybrid')
     && retryFormats.length > 0;
 
-  if (!shouldRetryGlobal) return unique;
+  if (!shouldRetryGlobal) {
+    return profile === 'camera'
+      ? unique.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+      : unique;
+  }
 
   const fallback = decode(image, {
     ...options,
@@ -566,12 +592,32 @@ export function decode(image, options = {}) {
     binarizer: 'global',
   });
   const fallbackSeen = new Set();
-  return [...unique, ...fallback].filter((r) => {
+  const merged = [...unique, ...fallback].filter((r) => {
     const key = `${r.format}:${r.text}`;
     if (fallbackSeen.has(key)) return false;
     fallbackSeen.add(key);
     return true;
   });
+  return profile === 'camera'
+    ? merged.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+    : merged;
+}
+
+/**
+ * @param {BitMatrix} matrix
+ * @param {boolean} clockwise
+ * @returns {BitMatrix}
+ */
+function rotateBitMatrix90(matrix, clockwise) {
+  const rotated = new BitMatrix(matrix.height, matrix.width);
+  for (let y = 0; y < matrix.height; y++) {
+    for (let x = 0; x < matrix.width; x++) {
+      if (!matrix.get(x, y)) continue;
+      if (clockwise) rotated.set(matrix.height - 1 - y, x);
+      else rotated.set(y, matrix.width - 1 - x);
+    }
+  }
+  return rotated;
 }
 
 /**
@@ -588,4 +634,4 @@ export function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-export const VERSION = '1.5.4';
+export const VERSION = '1.5.5';

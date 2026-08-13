@@ -1170,6 +1170,51 @@ function withoutEANAddon(result) {
   return parent;
 }
 
+/** @param {Uint8Array} row @returns {{x:number, width:number, quietZone:boolean}|null} */
+function cameraRowGeometry(row) {
+  let first = 0;
+  while (first < row.length && row[first] === 0) first++;
+  if (first === row.length) return null;
+  let last = row.length - 1;
+  while (last >= 0 && row[last] === 0) last--;
+  return {
+    x: first,
+    width: last - first + 1,
+    quietZone: first >= 2 && row.length - 1 - last >= 2,
+  };
+}
+
+/** @param {string} format @param {object} options @returns {boolean|null} */
+function checksumStatus(format, options) {
+  if (format === 'ean13' || format === 'ean8' || format === 'upca' || format === 'upce' ||
+      format === 'code93' || format === 'code128' || format === 'gs1128' ||
+      format === 'gs1databar14') return true;
+  if (format === 'code11' || format === 'msi' || format === 'code39') {
+    return options.profile === 'camera' || options.checkDigit === true ? true : null;
+  }
+  return null;
+}
+
+/** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
+function cameraMetadata(result, geometry, rows, options) {
+  const checksum = checksumStatus(result.format, options);
+  const consistency = Math.min(1, rows.size / 3);
+  const confidence = Math.min(1, 0.4 + (geometry.quietZone ? 0.2 : 0) +
+    (checksum === true ? 0.2 : 0) + consistency * 0.2);
+  return {
+    ...result,
+    confidence,
+    bounds: {
+      x: geometry.x,
+      y: Math.min(...rows),
+      width: geometry.width,
+      height: Math.max(...rows) - Math.min(...rows) + 1,
+    },
+    rotation: options.cameraRotation ?? 0,
+    quality: { quietZone: geometry.quietZone, checksum, rows: rows.size, consistency },
+  };
+}
+
 /**
  * Read every linear symbol found in a binarized image.
  *
@@ -1178,10 +1223,13 @@ function withoutEANAddon(result) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {number} [options.rows] How many horizontal slices to try.
  * @param {boolean} [options.tryHarder] Also scan reversed rows, for mirrored symbols.
+ * @param {'camera'} [options.profile] Require stable, quiet-zone-qualified reads.
+ * @param {0|90|180|270} [options.cameraRotation] Orientation already normalized by the caller.
  * @returns {Array<{format: string, text: string, row: number}>}
  */
 export function decodeOneD(image, options = {}) {
-  const { formats = null, rows = 15, tryHarder = true } = options;
+  const { formats = null, rows = 15, tryHarder = true, profile = null } = options;
+  const cameraProfile = profile === 'camera';
   const enabled = formats ? new Set(formats) : null;
   const active = DECODERS.filter(([id]) => {
     if (!enabled) return true;
@@ -1200,13 +1248,15 @@ export function decodeOneD(image, options = {}) {
   const seen = new Set();
   const height = image.height;
   const buffer = new Uint8Array(image.width);
+  const cameraCandidates = new Map();
 
   // Sample rows from the middle outward: symbols are usually centred, and the
   // middle of a linear barcode is the part least likely to be clipped.
   const middle = height >> 1;
-  const step = Math.max(1, Math.round(height / rows));
+  const sampleRows = cameraProfile ? Math.min(height, Math.max(rows, 48)) : rows;
+  const step = Math.max(1, Math.round(height / sampleRows));
 
-  for (let attempt = 0; attempt < rows; attempt++) {
+  for (let attempt = 0; attempt < sampleRows; attempt++) {
     const delta = Math.ceil(attempt / 2) * step * (attempt % 2 === 0 ? 1 : -1);
     const y = middle + delta;
     if (y < 0 || y >= height) continue;
@@ -1219,7 +1269,12 @@ export function decodeOneD(image, options = {}) {
       for (const [id, decoder] of active) {
         let result = null;
         try {
-          result = decoder(scan, options);
+          // Code 11 and MSI checks are optional in their base standards, but
+          // a camera frame cannot safely promote their short unchecked forms.
+          const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi')
+            ? { ...options, checkDigit: true }
+            : options;
+          result = decoder(scan, decoderOptions);
         } catch {
           result = null; // a malformed candidate is not an error
         }
@@ -1251,11 +1306,37 @@ export function decodeOneD(image, options = {}) {
 
         const addonKey = result.addon ? `:${result.addon.format}:${result.addon.text}` : '';
         const key = `${result.format}:${result.text}${addonKey}`;
+        if (cameraProfile) {
+          const geometry = cameraRowGeometry(row);
+          // Do not promote partial row fragments from a camera frame.
+          if (!geometry || !geometry.quietZone) continue;
+          const candidate = cameraCandidates.get(key) ?? {
+            result,
+            geometry,
+            rows: new Set(),
+            rotation: ((options.cameraRotation ?? 0) + (pass ? 180 : 0)) % 360,
+          };
+          candidate.rows.add(y);
+          cameraCandidates.set(key, candidate);
+          continue;
+        }
         if (seen.has(key)) continue;
         seen.add(key);
         results.push({ ...result, row: y });
         void id;
       }
+    }
+  }
+
+  if (cameraProfile) {
+    for (const candidate of cameraCandidates.values()) {
+      // A complete symbol must survive at least two nearby scan samples. This
+      // rejects isolated run coincidences without imposing a payload length.
+      if (candidate.rows.size < 2) continue;
+      results.push(cameraMetadata(candidate.result, candidate.geometry, candidate.rows, {
+        ...options,
+        cameraRotation: candidate.rotation,
+      }));
     }
   }
 

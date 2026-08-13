@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.5.4
+ * Sythos Barcode Suite v1.5.5
  *
  * MIT License
  *
@@ -3935,6 +3935,51 @@ function withoutEANAddon(result) {
   return parent;
 }
 
+/** @param {Uint8Array} row @returns {{x:number, width:number, quietZone:boolean}|null} */
+function cameraRowGeometry(row) {
+  let first = 0;
+  while (first < row.length && row[first] === 0) first++;
+  if (first === row.length) return null;
+  let last = row.length - 1;
+  while (last >= 0 && row[last] === 0) last--;
+  return {
+    x: first,
+    width: last - first + 1,
+    quietZone: first >= 2 && row.length - 1 - last >= 2,
+  };
+}
+
+/** @param {string} format @param {object} options @returns {boolean|null} */
+function checksumStatus(format, options) {
+  if (format === 'ean13' || format === 'ean8' || format === 'upca' || format === 'upce' ||
+      format === 'code93' || format === 'code128' || format === 'gs1128' ||
+      format === 'gs1databar14') return true;
+  if (format === 'code11' || format === 'msi' || format === 'code39') {
+    return options.profile === 'camera' || options.checkDigit === true ? true : null;
+  }
+  return null;
+}
+
+/** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
+function cameraMetadata(result, geometry, rows, options) {
+  const checksum = checksumStatus(result.format, options);
+  const consistency = Math.min(1, rows.size / 3);
+  const confidence = Math.min(1, 0.4 + (geometry.quietZone ? 0.2 : 0) +
+    (checksum === true ? 0.2 : 0) + consistency * 0.2);
+  return {
+    ...result,
+    confidence,
+    bounds: {
+      x: geometry.x,
+      y: Math.min(...rows),
+      width: geometry.width,
+      height: Math.max(...rows) - Math.min(...rows) + 1,
+    },
+    rotation: options.cameraRotation ?? 0,
+    quality: { quietZone: geometry.quietZone, checksum, rows: rows.size, consistency },
+  };
+}
+
 /**
  * Read every linear symbol found in a binarized image.
  *
@@ -3943,10 +3988,13 @@ function withoutEANAddon(result) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {number} [options.rows] How many horizontal slices to try.
  * @param {boolean} [options.tryHarder] Also scan reversed rows, for mirrored symbols.
+ * @param {'camera'} [options.profile] Require stable, quiet-zone-qualified reads.
+ * @param {0|90|180|270} [options.cameraRotation] Orientation already normalized by the caller.
  * @returns {Array<{format: string, text: string, row: number}>}
  */
 function decodeOneD(image, options = {}) {
-  const { formats = null, rows = 15, tryHarder = true } = options;
+  const { formats = null, rows = 15, tryHarder = true, profile = null } = options;
+  const cameraProfile = profile === 'camera';
   const enabled = formats ? new Set(formats) : null;
   const active = DECODERS.filter(([id]) => {
     if (!enabled) return true;
@@ -3965,13 +4013,15 @@ function decodeOneD(image, options = {}) {
   const seen = new Set();
   const height = image.height;
   const buffer = new Uint8Array(image.width);
+  const cameraCandidates = new Map();
 
   // Sample rows from the middle outward: symbols are usually centred, and the
   // middle of a linear barcode is the part least likely to be clipped.
   const middle = height >> 1;
-  const step = Math.max(1, Math.round(height / rows));
+  const sampleRows = cameraProfile ? Math.min(height, Math.max(rows, 48)) : rows;
+  const step = Math.max(1, Math.round(height / sampleRows));
 
-  for (let attempt = 0; attempt < rows; attempt++) {
+  for (let attempt = 0; attempt < sampleRows; attempt++) {
     const delta = Math.ceil(attempt / 2) * step * (attempt % 2 === 0 ? 1 : -1);
     const y = middle + delta;
     if (y < 0 || y >= height) continue;
@@ -3984,7 +4034,12 @@ function decodeOneD(image, options = {}) {
       for (const [id, decoder] of active) {
         let result = null;
         try {
-          result = decoder(scan, options);
+          // Code 11 and MSI checks are optional in their base standards, but
+          // a camera frame cannot safely promote their short unchecked forms.
+          const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi')
+            ? { ...options, checkDigit: true }
+            : options;
+          result = decoder(scan, decoderOptions);
         } catch {
           result = null; // a malformed candidate is not an error
         }
@@ -4016,11 +4071,37 @@ function decodeOneD(image, options = {}) {
 
         const addonKey = result.addon ? `:${result.addon.format}:${result.addon.text}` : '';
         const key = `${result.format}:${result.text}${addonKey}`;
+        if (cameraProfile) {
+          const geometry = cameraRowGeometry(row);
+          // Do not promote partial row fragments from a camera frame.
+          if (!geometry || !geometry.quietZone) continue;
+          const candidate = cameraCandidates.get(key) ?? {
+            result,
+            geometry,
+            rows: new Set(),
+            rotation: ((options.cameraRotation ?? 0) + (pass ? 180 : 0)) % 360,
+          };
+          candidate.rows.add(y);
+          cameraCandidates.set(key, candidate);
+          continue;
+        }
         if (seen.has(key)) continue;
         seen.add(key);
         results.push({ ...result, row: y });
         void id;
       }
+    }
+  }
+
+  if (cameraProfile) {
+    for (const candidate of cameraCandidates.values()) {
+      // A complete symbol must survive at least two nearby scan samples. This
+      // rejects isolated run coincidences without imposing a payload length.
+      if (candidate.rows.size < 2) continue;
+      results.push(cameraMetadata(candidate.result, candidate.geometry, candidate.rows, {
+        ...options,
+        cameraRotation: candidate.rotation,
+      }));
     }
   }
 
@@ -16620,6 +16701,10 @@ function encode(text, options = {}) {
  * @property {boolean} [certified] Whether the profile is certified by its originator.
  * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
+ * @property {number} [confidence] Camera-profile confidence from 0 to 1.
+ * @property {{x:number,y:number,width:number,height:number}} [bounds] Camera-profile bounds in the scanned orientation.
+ * @property {0|90|180|270} [rotation] Camera-profile orientation in degrees.
+ * @property {{quietZone:boolean,checksum:boolean|null,rows:number|null,consistency:number|null}} [quality] Camera-profile validation evidence.
  * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
  * @property {string} [symbologyIdentifier] GS1 symbology identifier.
  * @property {Array<{ai:string,value:string,fixed?:boolean}>} [elements] Parsed GS1 Application Identifier fields.
@@ -16640,12 +16725,13 @@ function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
+ * @param {'camera'} [options.profile] Opt-in strict camera profile for validated 1D reads.
  * @param {object} [options.frameqr] Sythos Canvas QR detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
 function decode(image, options = {}) {
-  const { formats = null, tryHarder = true, binarizer = 'auto' } = options;
+  const { formats = null, tryHarder = true, binarizer = 'auto', profile = null } = options;
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
   const wantDataMatrix = !want || want.has('datamatrix') || want.has('data-matrix');
@@ -16785,7 +16871,24 @@ function decode(image, options = {}) {
       const oneDFormats = want
         ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
         : null;
-      for (const found of decodeOneD(bits, { ...options, formats: oneDFormats, tryHarder })) {
+      const oneDPasses = [{ bits, rotation: 0 }];
+      // A linear symbol rotated by 90° has no usable horizontal scanline.
+      // The strict camera profile adds exactly two normalized orientations,
+      // only when the native orientation found no validated 1D result.
+      const readOneD = (candidateBits, rotation) => decodeOneD(candidateBits, {
+        ...options, formats: oneDFormats, tryHarder, profile, cameraRotation: rotation,
+      });
+      let oneDResults = readOneD(bits, 0);
+      if (profile === 'camera' && oneDResults.length === 0) {
+        oneDPasses.push(
+          { bits: rotateBitMatrix90(bits, false), rotation: 90 },
+          { bits: rotateBitMatrix90(bits, true), rotation: 270 },
+        );
+        for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
+          oneDResults = readOneD(oneDPasses[i].bits, oneDPasses[i].rotation);
+        }
+      }
+      for (const found of oneDResults) {
         const { row, ...publicFound } = found;
         void row;
         if (publicFound.gs1) {
@@ -16830,7 +16933,11 @@ function decode(image, options = {}) {
     && (binarizer === 'auto' || binarizer === 'hybrid')
     && retryFormats.length > 0;
 
-  if (!shouldRetryGlobal) return unique;
+  if (!shouldRetryGlobal) {
+    return profile === 'camera'
+      ? unique.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+      : unique;
+  }
 
   const fallback = decode(image, {
     ...options,
@@ -16838,12 +16945,32 @@ function decode(image, options = {}) {
     binarizer: 'global',
   });
   const fallbackSeen = new Set();
-  return [...unique, ...fallback].filter((r) => {
+  const merged = [...unique, ...fallback].filter((r) => {
     const key = `${r.format}:${r.text}`;
     if (fallbackSeen.has(key)) return false;
     fallbackSeen.add(key);
     return true;
   });
+  return profile === 'camera'
+    ? merged.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+    : merged;
+}
+
+/**
+ * @param {BitMatrix} matrix
+ * @param {boolean} clockwise
+ * @returns {BitMatrix}
+ */
+function rotateBitMatrix90(matrix, clockwise) {
+  const rotated = new BitMatrix(matrix.height, matrix.width);
+  for (let y = 0; y < matrix.height; y++) {
+    for (let x = 0; x < matrix.width; x++) {
+      if (!matrix.get(x, y)) continue;
+      if (clockwise) rotated.set(matrix.height - 1 - y, x);
+      else rotated.set(y, matrix.width - 1 - x);
+    }
+  }
+  return rotated;
 }
 
 /**
@@ -16860,7 +16987,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.5.4';
+const VERSION = '1.5.5';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;

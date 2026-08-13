@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.4"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.4"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.5"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -195,6 +195,24 @@ for (const hit of decode(ctx.getImageData(0, 0, canvas.width, canvas.height))) {
 `decode` returns an array, empty when nothing is found. A frame with no barcode is an ordinary
 outcome for a camera loop, not an error, so the common case needs no `try`/`catch`. Use
 `decodeStrict` when absence really is a failure.
+
+### Strict camera profile
+
+For a live camera loop, opt into the stricter 1D policy:
+
+```js
+decode(frame, { formats, profile: 'camera', tryHarder: true })
+```
+
+The profile requires a compatible quiet zone and the same complete 1D symbol on at least two
+scan samples. It retries only the two quarter-turn orientations needed for 1D symbols when the
+native orientation has no validated read. Code 11 and MSI require a verified check digit in this
+profile; other formats retain their own structural and checksum validation. A frame without a
+validated barcode still returns `[]`.
+
+Camera-profile 1D results add `confidence` (0–1), `bounds`, `rotation`, and
+`quality: { quietZone, checksum, rows, consistency }`. `bounds` is reported in the raster
+orientation that was scanned; unavailable quality data is represented by `null` where applicable.
 
 ---
 
