@@ -3908,6 +3908,34 @@ const DECODERS = [
   ['codabar', decodeCodabar],
 ];
 
+const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn']);
+const EAN_SUPPLEMENT_FORMATS = new Set(['ean2', 'ean5']);
+
+/** @param {string} format @returns {boolean} */
+function isEANParentFormat(format) {
+  return format === 'ean13' || format === 'ean8' || format === 'upca' || format === 'upce';
+}
+
+/**
+ * An ISBN is printed as a Bookland EAN-13, so its decoded parent remains
+ * `ean13` while an ISBN filter accepts only the Bookland prefixes.
+ *
+ * @param {{format:string, text:string}} result
+ * @param {Set<string>} enabled
+ * @returns {boolean}
+ */
+function isRequestedEANParent(result, enabled) {
+  if (enabled.has(result.format)) return true;
+  return result.format === 'ean13' && enabled.has('isbn') && /^97[89]/.test(result.text);
+}
+
+/** @param {object} result @returns {object} */
+function withoutEANAddon(result) {
+  const { addon, ...parent } = result;
+  void addon;
+  return parent;
+}
+
 /**
  * Read every linear symbol found in a binarized image.
  *
@@ -3925,7 +3953,8 @@ function decodeOneD(image, options = {}) {
     if (!enabled) return true;
     if (enabled.has(id)) return true;
     if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
-      return enabled.has('ean2') || enabled.has('ean5');
+      return enabled.has('ean2') || enabled.has('ean5') ||
+        (id === 'ean13' && enabled.has('isbn'));
     }
     if (id === 'code128') return enabled.has('gs1128');
     if (id === 'gs1databar14') return enabled.has('databar') || enabled.has('gs1-databar14');
@@ -3962,11 +3991,21 @@ function decodeOneD(image, options = {}) {
         }
         if (!result) continue;
         if (enabled) {
-          const addonRequested = enabled.has('ean2') || enabled.has('ean5');
-          const isEANBase = result.format === 'ean13' || result.format === 'ean8' ||
-            result.format === 'upca' || result.format === 'upce';
-          if (isEANBase && addonRequested) {
-            if (!result.addon || !enabled.has(result.addon.format)) continue;
+          if (isEANParentFormat(result.format)) {
+            const baseRequested = [...EAN_PARENT_FORMATS].some((format) => enabled.has(format));
+            const parentRequested = isRequestedEANParent(result, enabled);
+            if (baseRequested && !parentRequested) {
+              continue;
+            }
+            if (!baseRequested) {
+              // A supplement is never an independent barcode. When it is the
+              // only requested format, return its validated EAN/UPC parent.
+              if (!result.addon || !EAN_SUPPLEMENT_FORMATS.has(result.addon.format) ||
+                  !enabled.has(result.addon.format)) continue;
+            } else if (result.addon && !enabled.has(result.addon.format)) {
+              // Supplements are optional whenever a requested parent exists.
+              result = withoutEANAddon(result);
+            }
           } else if (result.format === 'gs1128') {
             if (!enabled.has('gs1128') && !enabled.has('code128')) continue;
           } else if (result.format === 'gs1databar14') {
@@ -3986,7 +4025,15 @@ function decodeOneD(image, options = {}) {
     }
   }
 
-  return results;
+  // A valid EAN/UPC parent is substantially more constrained than a generic
+  // narrow/wide candidate. Suppress competing interpretations of the same
+  // scanline, while retaining symbols detected on other rows.
+  const eanRows = new Set(results
+    .filter((result) => isEANParentFormat(result.format))
+    .map((result) => result.row));
+  return eanRows.size === 0
+    ? results
+    : results.filter((result) => !eanRows.has(result.row) || isEANParentFormat(result.format));
 }
 
 /**

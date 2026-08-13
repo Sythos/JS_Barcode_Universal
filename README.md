@@ -407,6 +407,12 @@ the generic `ean2` and `ean5` format IDs. The image reader recognizes them only
 when attached to a validated EAN/UPC parent; use the composition helpers with
 an EAN/UPC base symbol.
 
+EAN-2 and EAN-5 are parent-bound supplements, never standalone image results. They may be
+listed with EAN-13, EAN-8, UPC-A, UPC-E or Bookland ISBN in `formats`: the parent remains valid
+without a supplement, and a valid requested supplement is exposed only through `result.addon`.
+If only `ean2` or `ean5` is requested, a validated EAN/UPC parent is still required and remains
+the returned `format`; an absent, malformed or unrequested supplement never rejects the parent.
+
 ### GS1 DataBar
 
 The `databar` subpath exposes original GS1 GTIN/AI codecs plus physical
