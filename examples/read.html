@@ -180,12 +180,14 @@
     return true;
   }
 
-  function scanCanvas(canvas) {
+  function scanCanvas(canvas, profile) {
     var ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx || !canvas.width || !canvas.height) return [];
     var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
     try {
-      return B.decode(image, { tryHarder: true });
+      var options = { tryHarder: true };
+      if (profile) options.profile = profile;
+      return B.decode(image, options);
     } catch (e) {
       return [];
     }
@@ -325,7 +327,7 @@
       .drawImage(video, 0, 0, work.width, work.height);
 
     frames++;
-    var hits = scanCanvas(work);
+    var hits = scanCanvas(work, 'camera');
     if (hits.length) {
       show(hits, 'camera');
       stopCamera();

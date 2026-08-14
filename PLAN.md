@@ -89,7 +89,7 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 The incremental 1D completion workflow is green: Code 11, MSI Plessey, parent-bound EAN-2/EAN-5,
 GS1-128 classification plus Application Identifier parsing, and GS1 DataBar-14
 Omnidirectional/Truncated scanline decoding are integrated without replacing the existing reader.
-The regression and false-positive corpus contains **297 passing tests**, including automatic global-threshold fallback coverage for large clean QR Code and PDF417 rasters plus strict camera-profile coverage for blank, textured, noisy and low-contrast frames. The camera profile requires quiet-zone-qualified, repeated 1D reads and exposes confidence metadata; it deliberately preserves the unrestricted default mode. A local benchmark of
+The regression and false-positive corpus contains **294 passing tests**, including automatic global-threshold fallback coverage for large clean QR Code and PDF417 rasters plus strict camera-profile coverage for blank, textured, noisy and low-contrast frames. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it deliberately preserves the unrestricted default mode. A local benchmark of
 the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
 no dispatch rewrite was necessary. Pharmacode remains deliberately `readable: false` because its
 unframed narrow/wide grammar is unsafe for generic image autodetection.

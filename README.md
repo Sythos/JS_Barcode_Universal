@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.5"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.5"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.6"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -208,7 +208,8 @@ The profile requires a compatible quiet zone and the same complete 1D symbol on 
 scan samples. It retries only the two quarter-turn orientations needed for 1D symbols when the
 native orientation has no validated read. Code 11 and MSI require a verified check digit in this
 profile; other formats retain their own structural and checksum validation. A frame without a
-validated barcode still returns `[]`.
+validated barcode still returns `[]`. No partial, structurally inconsistent or low-confidence value is
+emitted to the caller.
 
 Camera-profile 1D results add `confidence` (0–1), `bounds`, `rotation`, and
 `quality: { quietZone, checksum, rows, consistency }`. `bounds` is reported in the raster
