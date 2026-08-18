@@ -705,6 +705,17 @@ See [`AI_USAGE.md`](./AI_USAGE.md) for additional machine-oriented guidance.
 
 ---
 
+## Contributor
+
+**Tristan Jacob** ([Tristan-GPT](https://github.com/Tristan-GPT)) — **TypeScript implementation**.
+
+Tristan added the machine-readable TypeScript declaration layer across the SDK, covering the
+format-specific APIs, subpath exports and decoder result shapes. It is a welcome bit of type safety
+for a deliberately broad JavaScript API — fewer guesses, better autocomplete, and a
+much friendlier path for TypeScript users.
+
+---
+
 ## Contributing and roadmap
 
 [`PLAN.md`](PLAN.md) is the live status document: what is shipped, what is next, and the ground
