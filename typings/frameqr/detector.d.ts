@@ -28,6 +28,7 @@
  *
  * Original work. No code from any other barcode implementation.
  */
+import type { BitMatrix } from '../core/bit-matrix.js';
 export type Point = {
     x: number;
     y: number;
