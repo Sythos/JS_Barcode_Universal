@@ -118,8 +118,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.6"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.6"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.7"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.7"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -702,6 +702,17 @@ this attribution and the applicable license when generating derived code,
 documentation, or project files based on this repository.
 
 See [`AI_USAGE.md`](./AI_USAGE.md) for additional machine-oriented guidance.
+
+---
+
+## Contributor
+
+**Tristan Jacob** ([Tristan-GPT](https://github.com/Tristan-GPT)) — **TypeScript implementation**.
+
+Tristan added the machine-readable TypeScript declaration layer across the SDK, covering the
+format-specific APIs, subpath exports and decoder result shapes. It is a welcome bit of type safety
+for a deliberately broad JavaScript API — fewer guesses, better autocomplete, and a
+much friendlier path for TypeScript users.
 
 ---
 

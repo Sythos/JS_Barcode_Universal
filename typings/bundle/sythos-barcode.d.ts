@@ -28,30 +28,4 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-/**
- * Decode an Aztec high-level bit stream to its exact byte payload.
- *
- * Text tables contribute their ISO-8859-1 byte values; Binary Shift appends
- * raw bytes. ECI markers are consumed but intentionally not emitted: callers
- * receive the transported byte payload and may select their own charset.
- *
- * @param {boolean[]} bits
- * @returns {Uint8Array}
- */
-export declare function decodeHighLevelBits(bits: boolean[]): Uint8Array;
-export type DecodeResult = {
-    text: string;
-    bytes: Uint8Array;
-    compact: boolean;
-    layers: number;
-    corrections: number;
-    eccPercent: number;
-};
-/**
- * Decode a square Aztec symbol with one bit per module and no quiet zone.
- * The matrix must already be oriented with the mode message at the top.
- *
- * @param {import('../core/bit-matrix.js').BitMatrix} matrix
- * @returns {{text: string, bytes: Uint8Array, compact: boolean, layers: number, corrections: number, eccPercent: number}}
- */
-export declare function decodeAztec(matrix: import('../core/bit-matrix.js').BitMatrix): DecodeResult;
+export * from '../index.js';

@@ -1,0 +1,105 @@
+name: Pull request quality
+
+# The publish checkout has no package lockfile and no lint, test, or build
+# scripts. This gate runs only the repository checks that actually exist.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  javascript:
+    name: JavaScript package validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+
+      # No lockfile is published, so npm caching is intentionally omitted.
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          fi
+
+      - name: Validate JavaScript and public package surface
+        run: node .github/ci/validate-package.mjs
+
+  typescript:
+    name: TypeScript declaration validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          fi
+
+      - name: Run TypeScript declaration checks
+        run: >-
+          npx --no-install tsc
+          --ignoreConfig
+          --noEmit
+          --skipLibCheck false
+          --moduleResolution nodenext
+          --module nodenext
+          typings/index.d.ts
+          typings/bundle/sythos-barcode.esm.d.ts
+          typings/bundle/sythos-barcode.d.ts
+
+  package:
+    name: npm package contents
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          fi
+
+      - name: Verify npm package contents
+        run: npm pack --dry-run --ignore-scripts --json > npm-pack.json

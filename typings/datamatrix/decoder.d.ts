@@ -41,16 +41,17 @@
  * @module datamatrix/decoder
  */
 import { ChecksumError } from '../core/errors.js';
+export type DecodeResult = {
+    text: string;
+    bytes: Uint8Array;
+    correctedErrors: number;
+    symbol: object;
+};
 /**
  * Decode an upright, sampled Data Matrix ECC 200 symbol.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix Full symbol, no quiet zone.
  * @returns {{text: string, bytes: Uint8Array, correctedErrors: number, symbol: object}}
  */
-export declare function decodeDataMatrix(matrix: import('../core/bit-matrix.js').BitMatrix): {
-    text: string;
-    bytes: Uint8Array;
-    correctedErrors: number;
-    symbol: object;
-};
+export declare function decodeDataMatrix(matrix: import('../core/bit-matrix.js').BitMatrix): DecodeResult;
 export { ChecksumError };
