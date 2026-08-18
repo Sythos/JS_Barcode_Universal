@@ -55,8 +55,8 @@ export declare function detectAztec(binaryImage: import('../core/bit-matrix.js')
  * images without an Aztec code, therefore invalid candidates return null.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
- * @returns {(import('./decoder.js').DecodeResult & {corners: Point[]}) | null}
+ * @returns {(import('../index.js').DecodeResult & {corners: Point[]}) | null}
  */
-export declare function detectAndDecodeAztec(binaryImage: import('../core/bit-matrix.js').BitMatrix): (import('./decoder.js').DecodeResult & {
+export declare function detectAndDecodeAztec(binaryImage: import('../core/bit-matrix.js').BitMatrix): (import('../index.js').DecodeResult & {
     corners: Point[];
 }) | null;

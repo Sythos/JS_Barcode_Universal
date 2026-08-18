@@ -52,8 +52,8 @@ export declare function detectDataMatrix(binaryImage: import('../core/bit-matrix
  * image without a symbol, so candidates that cannot decode are skipped.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} binaryImage
- * @returns {(import('./decoder.js').DecodeResult & {corners: Point[]}) | null}
+ * @returns {(import('../index.js').DecodeResult & {corners: Point[]}) | null}
  */
-export declare function detectAndDecodeDataMatrix(binaryImage: import('../core/bit-matrix.js').BitMatrix): (import('./decoder.js').DecodeResult & {
+export declare function detectAndDecodeDataMatrix(binaryImage: import('../core/bit-matrix.js').BitMatrix): (import('../index.js').DecodeResult & {
     corners: Point[];
 }) | null;
