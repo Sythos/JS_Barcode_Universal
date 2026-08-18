@@ -20,28 +20,92 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "./typings/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./core": "./src/core/index.js",
-    "./image": "./src/image/index.js",
-    "./oned": "./src/oned/index.js",
-    "./qr": "./src/qr/index.js",
-    "./datamatrix": "./src/datamatrix/index.js",
-    "./databar": "./src/databar/index.js",
-    "./aztec": "./src/aztec/index.js",
-    "./aztecrune": "./src/aztecrune/index.js",
-    "./pdf417": "./src/pdf417/index.js",
-    "./compactpdf417": "./src/compactpdf417/index.js",
-    "./micropdf417": "./src/micropdf417/index.js",
-    "./microqr": "./src/microqr/index.js",
-    "./rmqr": "./src/rmqr/index.js",
-    "./frameqr": "./src/frameqr/index.js",
-    "./render": "./src/render/index.js",
-    "./render/svg": "./src/render/svg.js",
-    "./render/png": "./src/render/png.js",
-    "./render/image-data": "./src/render/image-data.js",
-    "./bundle": "./bundle/sythos-barcode.esm.js",
-    "./bundle/iife": "./bundle/sythos-barcode.js",
+    ".": {
+      "import": "./src/index.js",
+      "types": "./typings/index.d.ts"
+    },
+    "./core": {
+      "import": "./src/core/index.js",
+      "types": "./typings/core/index.d.ts"
+    },
+    "./image": {
+      "import": "./src/image/index.js",
+      "types": "./typings/image/index.d.ts"
+    },
+    "./oned": {
+      "import": "./src/oned/index.js",
+      "types": "./typings/oned/index.d.ts"
+    },
+    "./qr": {
+      "import": "./src/qr/index.js",
+      "types": "./typings/qr/index.d.ts"
+    },
+    "./datamatrix": {
+      "import": "./src/datamatrix/index.js",
+      "types": "./typings/datamatrix/index.d.ts"
+    },
+    "./databar": {
+      "import": "./src/databar/index.js",
+      "types": "./typings/databar/index.d.ts"
+    },
+    "./aztec": {
+      "import": "./src/aztec/index.js",
+      "types": "./typings/aztec/index.d.ts"
+    },
+    "./aztecrune": {
+      "import": "./src/aztecrune/index.js",
+      "types": "./typings/aztecrune/index.d.ts"
+    },
+    "./pdf417": {
+      "import": "./src/pdf417/index.js",
+      "types": "./typings/pdf417/index.d.ts"
+    },
+    "./compactpdf417": {
+      "import": "./src/compactpdf417/index.js",
+      "types": "./typings/compactpdf417/index.d.ts"
+    },
+    "./micropdf417": {
+      "import": "./src/micropdf417/index.js",
+      "types": "./typings/micropdf417/index.d.ts"
+    },
+    "./microqr": {
+      "import": "./src/microqr/index.js",
+      "types": "./typings/microqr/index.d.ts"
+    },
+    "./rmqr": {
+      "import": "./src/rmqr/index.js",
+      "types": "./typings/rmqr/index.d.ts"
+    },
+    "./frameqr": {
+      "import": "./src/frameqr/index.js",
+      "types": "./typings/frameqr/index.d.ts"
+    },
+    "./render": {
+      "import": "./src/render/index.js",
+      "types": "./typings/render/index.d.ts"
+    },
+    "./render/svg": {
+      "import": "./src/render/svg.js",
+      "types": "./typings/render/svg.d.ts"
+    },
+    "./render/png": {
+      "import": "./src/render/png.js",
+      "types": "./typings/render/png.d.ts"
+    },
+    "./render/image-data": {
+      "import": "./src/render/image-data.js",
+      "types": "./typings/render/image-data.d.ts"
+    },
+    "./bundle": {
+      "import": "./bundle/sythos-barcode.esm.js",
+      "types": "./typings/bundle/sythos-barcode.esm.d.ts"
+    },
+    "./bundle/iife": {
+      "import": "./bundle/sythos-barcode.js",
+      "types": "./typings/bundle/sythos-barcode.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -52,7 +116,8 @@
     "LICENSE",
     "NOTICE.md",
     "README.md",
-    "AI_USAGE.md"
+    "AI_USAGE.md",
+    "typings"
   ],
   "keywords": [
     "barcode",
@@ -118,6 +183,7 @@
     "url": "https://github.com/Sythos/JS_Barcode_Universal/issues"
   },
   "homepage": "https://github.com/Sythos/JS_Barcode_Universal#readme",
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }
