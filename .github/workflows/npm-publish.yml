@@ -1,23 +1,58 @@
-name: Publish to npm on version bump
+name: Validate and publish to npm
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - "src/**"
-      - "lib/**"
-      - "bundle/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  validate:
+    name: Validate JavaScript, TypeScript and package exports
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install validation dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run JavaScript source and API checks
+        run: node .github/ci/validate-package.mjs
+
+      - name: Run TypeScript declaration checks
+        run: >-
+          npx --no-install tsc
+          --ignoreConfig
+          --noEmit
+          --skipLibCheck false
+          --moduleResolution nodenext
+          --module nodenext
+          typings/index.d.ts
+          typings/bundle/sythos-barcode.esm.d.ts
+          typings/bundle/sythos-barcode.d.ts
+
+      - name: Verify npm package contents
+        run: npm pack --dry-run --json > npm-pack.json
+
   check-version:
     name: Check package version
+    needs: validate
     runs-on: ubuntu-latest
 
     outputs:
@@ -26,17 +61,12 @@ jobs:
       package_name: ${{ steps.version.outputs.package_name }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository history
         uses: actions/checkout@v7
         with:
           fetch-depth: 2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Check version bump
+      - name: Check version increase
         id: version
         shell: bash
         run: |
@@ -47,65 +77,48 @@ jobs:
 
           echo "Current package: $PACKAGE_NAME"
           echo "Current version: $CURRENT_VERSION"
-
           echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
-          # Se non esiste un commit precedente, non pubblichiamo automaticamente.
           if ! git rev-parse HEAD^ >/dev/null 2>&1; then
             echo "No previous commit available. Skipping publish."
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Recupera il package.json del commit precedente.
           if ! git show HEAD^:package.json > /tmp/package.previous.json 2>/dev/null; then
             echo "Previous package.json not found. Skipping publish."
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          PREVIOUS_VERSION=$(node -p \
-            "require('/tmp/package.previous.json').version")
-
+          PREVIOUS_VERSION=$(node -p "require('/tmp/package.previous.json').version")
           echo "Previous version: $PREVIOUS_VERSION"
 
-          # Nessun cambio versione = nessuna pubblicazione.
           if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
             echo "Version unchanged. Nothing to publish."
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Controllo SemVer X.Y.Z.
           node <<'NODE'
           const previous = require('/tmp/package.previous.json').version;
           const current = require('./package.json').version;
-
-          const semver =
-            /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
-
+          const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
           const oldMatch = previous.match(semver);
           const newMatch = current.match(semver);
 
           if (!oldMatch || !newMatch) {
-            console.error(
-              `Invalid SemVer version: ${previous} -> ${current}`
-            );
+            console.error(`Invalid SemVer version: ${previous} -> ${current}`);
             process.exit(1);
           }
 
           function compareIdentifiers(a, b) {
             const aNum = /^\d+$/.test(a);
             const bNum = /^\d+$/.test(b);
-
-            if (aNum && bNum) {
-              return Number(a) - Number(b);
-            }
-
+            if (aNum && bNum) return Number(a) - Number(b);
             if (aNum) return -1;
             if (bNum) return 1;
-
             return a.localeCompare(b);
           }
 
@@ -113,38 +126,30 @@ jobs:
             if (!a && !b) return 0;
             if (!a) return 1;
             if (!b) return -1;
-
             const aa = a.split('.');
             const bb = b.split('.');
             const length = Math.max(aa.length, bb.length);
-
             for (let i = 0; i < length; i++) {
               if (aa[i] === undefined) return -1;
               if (bb[i] === undefined) return 1;
-
               const result = compareIdentifiers(aa[i], bb[i]);
               if (result !== 0) return result;
             }
-
             return 0;
           }
 
           function compareVersions(a, b) {
             const am = a.match(semver);
             const bm = b.match(semver);
-
             for (let i = 1; i <= 3; i++) {
               const diff = Number(am[i]) - Number(bm[i]);
               if (diff !== 0) return diff;
             }
-
             return comparePrerelease(am[4], bm[4]);
           }
 
           if (compareVersions(current, previous) <= 0) {
-            console.error(
-              `Version must increase: ${previous} -> ${current}`
-            );
+            console.error(`Version must increase: ${previous} -> ${current}`);
             process.exit(1);
           }
 
@@ -155,10 +160,8 @@ jobs:
 
   publish:
     name: Publish npm package
-    needs: check-version
-
+    needs: [validate, check-version]
     if: needs.check-version.outputs.should_publish == 'true'
-
     runs-on: ubuntu-latest
 
     steps:
@@ -169,23 +172,15 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - name: Run tests
-        run: npm test --if-present
-
-      - name: Run build
-        run: npm run build --if-present
+          registry-url: https://registry.npmjs.org
 
       - name: Check whether version already exists on npm
         id: npm-check
         shell: bash
         run: |
           set -euo pipefail
-
           PACKAGE_NAME="${{ needs.check-version.outputs.package_name }}"
           VERSION="${{ needs.check-version.outputs.version }}"
-
-          echo "Checking npm for $PACKAGE_NAME@$VERSION..."
 
           if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
             echo "$PACKAGE_NAME@$VERSION already exists on npm."
@@ -197,4 +192,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.npm-check.outputs.exists == 'false'
-        run: npm publish
+        run: npm publish --provenance
