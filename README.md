@@ -2,15 +2,9 @@
 
 Read and write barcodes in JavaScript.
 
-[![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
-[![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html)
-[![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
+[![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json) [![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
-[![GitHub last commit](https://img.shields.io/github/last-commit/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/commits/main/)
-[![GitHub issues](https://img.shields.io/github/issues/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/issues)
+[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![GitHub last commit](https://img.shields.io/github/last-commit/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/commits/main/) [![GitHub issues](https://img.shields.io/github/issues/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/issues) [![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
 
 Original Sythos implementation, zero runtime dependencies, MIT. It runs unmodified in Node, in browsers
 (including Safari on iOS) and in web workers. The core requires no canvas, no filesystem and no
