@@ -41,7 +41,7 @@ function __require(id) {
   return exports;
 }
 
-__modules["core/bit-matrix.js"] = function (__require, __exports) {
+__modules["js/core/bit-matrix.js"] = function (__require, __exports) {
 /**
  * A 2D bit grid — the common currency of this library.
  *
@@ -256,7 +256,7 @@ class BitMatrix {
 __exports.BitMatrix = BitMatrix;
 };
 
-__modules["core/errors.js"] = function (__require, __exports) {
+__modules["js/core/errors.js"] = function (__require, __exports) {
 /**
  * Error types.
  *
@@ -296,7 +296,7 @@ __exports.FormatError = FormatError;
 __exports.ChecksumError = ChecksumError;
 };
 
-__modules["image/luminance.js"] = function (__require, __exports) {
+__modules["js/image/luminance.js"] = function (__require, __exports) {
 /**
  * Greyscale conversion — the boundary between "an image" and "our problem".
  *
@@ -308,7 +308,7 @@ __modules["image/luminance.js"] = function (__require, __exports) {
  *
  * @module image/luminance
  */
-const { NotFoundError } = __require("core/errors.js");
+const { NotFoundError } = __require("js/core/errors.js");
 
 /**
  * @typedef {object} ImageLike
@@ -465,7 +465,7 @@ class LuminanceSource {
 __exports.LuminanceSource = LuminanceSource;
 };
 
-__modules["image/binarizer.js"] = function (__require, __exports) {
+__modules["js/image/binarizer.js"] = function (__require, __exports) {
 /**
  * Greyscale to black-and-white.
  *
@@ -484,8 +484,8 @@ __modules["image/binarizer.js"] = function (__require, __exports) {
  *
  * @module image/binarizer
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { NotFoundError } = __require("core/errors.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
 
 /** Side of a block, in pixels. */
 const BLOCK = 8;
@@ -711,7 +711,7 @@ __exports.binarizeHybrid = binarizeHybrid;
 __exports.binarize = binarize;
 };
 
-__modules["oned/patterns.js"] = function (__require, __exports) {
+__modules["js/oned/patterns.js"] = function (__require, __exports) {
 /**
  * Pattern tables for the linear symbologies.
  *
@@ -1101,7 +1101,7 @@ __exports.MSI_STOP = MSI_STOP;
 __exports.validateTables = validateTables;
 };
 
-__modules["oned/writers.js"] = function (__require, __exports) {
+__modules["js/oned/writers.js"] = function (__require, __exports) {
 /**
  * Linear barcode writers.
  *
@@ -1112,9 +1112,9 @@ __modules["oned/writers.js"] = function (__require, __exports) {
  *
  * @module oned/writers
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP } = __require("oned/patterns.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP } = __require("js/oned/patterns.js");
 
 /* ------------------------------------------------------------------ *
  * Shared helpers
@@ -1827,7 +1827,7 @@ __exports.encodeMSI = encodeMSI;
 __exports.encodePharmacode = encodePharmacode;
 };
 
-__modules["oned/addons.js"] = function (__require, __exports) {
+__modules["js/oned/addons.js"] = function (__require, __exports) {
 /**
  * UPC/EAN two- and five-digit supplements.
  *
@@ -1843,10 +1843,10 @@ __modules["oned/addons.js"] = function (__require, __exports) {
  *
  * @module oned/addons
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError, FormatError } = __require("core/errors.js");
-const { EAN_L, EAN_G } = __require("oned/patterns.js");
-const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE } = __require("oned/writers.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError, FormatError } = __require("js/core/errors.js");
+const { EAN_L, EAN_G } = __require("js/oned/patterns.js");
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE } = __require("js/oned/writers.js");
 
 /** EAN-2 parity rows, indexed by the two-digit value modulo four. */
 const EAN2_PARITY = Object.freeze([
@@ -2234,7 +2234,7 @@ __exports.encodeUPCAWithAddon = encodeUPCAWithAddon;
 __exports.encodeUPCEWithAddon = encodeUPCEWithAddon;
 };
 
-__modules["databar/tables.js"] = function (__require, __exports) {
+__modules["js/databar/tables.js"] = function (__require, __exports) {
 /**
  * Static GS1 DataBar facts used by the GTIN compaction codec.
  *
@@ -2344,7 +2344,7 @@ __exports.dataBar14GroupFor = dataBar14GroupFor;
 __exports.validateDataBarTables = validateDataBarTables;
 };
 
-__modules["databar/codec.js"] = function (__require, __exports) {
+__modules["js/databar/codec.js"] = function (__require, __exports) {
 /**
  * GTIN validation and numeric compaction for GS1 DataBar GTIN-only symbols.
  *
@@ -2354,7 +2354,7 @@ __modules["databar/codec.js"] = function (__require, __exports) {
  *
  * @module databar/codec
  */
-const { DATABAR14_INSIDE_RADIX, DATABAR14_PAIR_RADIX, DATABAR14_SYMBOL_LIMIT, DATABAR_LIMITED_DATA_LIMIT, DATABAR_LIMITED_LINKAGE_OFFSET, DATABAR_LIMITED_PAIR_RADIX } = __require("databar/tables.js");
+const { DATABAR14_INSIDE_RADIX, DATABAR14_PAIR_RADIX, DATABAR14_SYMBOL_LIMIT, DATABAR_LIMITED_DATA_LIMIT, DATABAR_LIMITED_LINKAGE_OFFSET, DATABAR_LIMITED_PAIR_RADIX } = __require("js/databar/tables.js");
 
 const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
 
@@ -2499,9 +2499,9 @@ __exports.decodeDataBarLimitedGTIN = decodeDataBarLimitedGTIN;
 __exports.dataBarGtinTransmission = dataBarGtinTransmission;
 };
 
-__modules["databar/patterns.js"] = function (__require, __exports) {
+__modules["js/databar/patterns.js"] = function (__require, __exports) {
 /** Mathematical width construction for GS1 DataBar characters. @module databar/patterns */
-const { dataBar14GroupFor } = __require("databar/tables.js");
+const { dataBar14GroupFor } = __require("js/databar/tables.js");
 
 function combinations(n, r) {
   if (n < r || r < 0) return 0;
@@ -2620,12 +2620,12 @@ __exports.DATABAR14_FINDERS = DATABAR14_FINDERS;
 __exports.DATABAR14_CHECKSUM_WEIGHTS = DATABAR14_CHECKSUM_WEIGHTS;
 };
 
-__modules["databar/decoder.js"] = function (__require, __exports) {
+__modules["js/databar/decoder.js"] = function (__require, __exports) {
 /** Clean-matrix decoder for GS1 DataBar Omnidirectional and Truncated. @module databar/decoder */
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { decodeDataBar14GTIN } = __require("databar/codec.js");
-const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14ValueForWidths } = __require("databar/patterns.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { decodeDataBar14GTIN } = __require("js/databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14ValueForWidths } = __require("js/databar/patterns.js");
 
 function sampledRuns(matrix) {
   if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
@@ -2806,7 +2806,7 @@ __exports.decodeDataBar14 = decodeDataBar14;
 __exports.decodeDataBar14Scanline = decodeDataBar14Scanline;
 };
 
-__modules["oned/reader.js"] = function (__require, __exports) {
+__modules["js/oned/reader.js"] = function (__require, __exports) {
 /**
  * Linear barcode reading.
  *
@@ -2826,11 +2826,11 @@ __modules["oned/reader.js"] = function (__require, __exports) {
  *
  * @module oned/reader
  */
-const { NotFoundError } = __require("core/errors.js");
-const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET, CODE93, CODE93_VALUES, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_START, MSI_STOP, MSI_BIT } = __require("oned/patterns.js");
-const { ean13CheckDigit, upceToUpcaBody } = __require("oned/writers.js");
-const { EAN2_PARITY, EAN5_PARITY, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean5Checksum } = __require("oned/addons.js");
-const { decodeDataBar14Scanline } = __require("databar/decoder.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET, CODE93, CODE93_VALUES, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_START, MSI_STOP, MSI_BIT } = __require("js/oned/patterns.js");
+const { ean13CheckDigit, upceToUpcaBody } = __require("js/oned/writers.js");
+const { EAN2_PARITY, EAN5_PARITY, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean5Checksum } = __require("js/oned/addons.js");
+const { decodeDataBar14Scanline } = __require("js/databar/decoder.js");
 
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -4138,18 +4138,18 @@ __exports.decodeOneD = decodeOneD;
 __exports.decodeOneDStrict = decodeOneDStrict;
 };
 
-__modules["oned/index.js"] = function (__require, __exports) {
+__modules["js/oned/index.js"] = function (__require, __exports) {
 /**
  * Linear symbologies.
  *
  * @module oned
  */
-const __reexport0 = __require("oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
-const __reexport1 = __require("oned/addons.js"); __exports.EAN2_PARITY = __reexport1.EAN2_PARITY; __exports.EAN5_PARITY = __reexport1.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport1.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport1.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport1.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport1.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport1.ean2Parity; __exports.ean5Checksum = __reexport1.ean5Checksum; __exports.ean5CheckDigit = __reexport1.ean5CheckDigit; __exports.ean5Parity = __reexport1.ean5Parity; __exports.encodeEAN2 = __reexport1.encodeEAN2; __exports.encodeEAN5 = __reexport1.encodeEAN5; __exports.encodeEANAddon = __reexport1.encodeEANAddon; __exports.encodeEANAddOn = __reexport1.encodeEANAddOn; __exports.decodeEAN2 = __reexport1.decodeEAN2; __exports.decodeEAN5 = __reexport1.decodeEAN5; __exports.decodeEANAddon = __reexport1.decodeEANAddon; __exports.decodeEANAddOn = __reexport1.decodeEANAddOn; __exports.composeEANAddon = __reexport1.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport1.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport1.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport1.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport1.encodeUPCEWithAddon;
-const __reexport2 = __require("oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.decodeCode11 = __reexport2.decodeCode11; __exports.decodeMSI = __reexport2.decodeMSI; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;
-const __reexport3 = __require("oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;
-const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("oned/writers.js");
-const { encodeEAN2, encodeEAN5 } = __require("oned/addons.js");
+const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport1 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport1.EAN2_PARITY; __exports.EAN5_PARITY = __reexport1.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport1.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport1.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport1.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport1.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport1.ean2Parity; __exports.ean5Checksum = __reexport1.ean5Checksum; __exports.ean5CheckDigit = __reexport1.ean5CheckDigit; __exports.ean5Parity = __reexport1.ean5Parity; __exports.encodeEAN2 = __reexport1.encodeEAN2; __exports.encodeEAN5 = __reexport1.encodeEAN5; __exports.encodeEANAddon = __reexport1.encodeEANAddon; __exports.encodeEANAddOn = __reexport1.encodeEANAddOn; __exports.decodeEAN2 = __reexport1.decodeEAN2; __exports.decodeEAN5 = __reexport1.decodeEAN5; __exports.decodeEANAddon = __reexport1.decodeEANAddon; __exports.decodeEANAddOn = __reexport1.decodeEANAddOn; __exports.composeEANAddon = __reexport1.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport1.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport1.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport1.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport1.encodeUPCEWithAddon;
+const __reexport2 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.decodeCode11 = __reexport2.decodeCode11; __exports.decodeMSI = __reexport2.decodeMSI; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;
+const __reexport3 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("js/oned/writers.js");
+const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -4190,7 +4190,7 @@ const ONED_FORMATS = {
 __exports.ONED_FORMATS = ONED_FORMATS;
 };
 
-__modules["core/galois-field.js"] = function (__require, __exports) {
+__modules["js/core/galois-field.js"] = function (__require, __exports) {
 /**
  * Finite field arithmetic.
  *
@@ -4379,7 +4379,7 @@ __exports.GF1024 = GF1024;
 __exports.GF4096 = GF4096;
 };
 
-__modules["core/reed-solomon.js"] = function (__require, __exports) {
+__modules["js/core/reed-solomon.js"] = function (__require, __exports) {
 /**
  * Reed-Solomon encoding and decoding over an arbitrary finite field.
  *
@@ -4400,7 +4400,7 @@ __modules["core/reed-solomon.js"] = function (__require, __exports) {
  *
  * @module core/reed-solomon
  */
-const { ChecksumError } = __require("core/errors.js");
+const { ChecksumError } = __require("js/core/errors.js");
 
 /**
  * Build the generator polynomial for `eccLen` parity symbols.
@@ -4682,7 +4682,7 @@ __exports.rsEncode = rsEncode;
 __exports.rsDecode = rsDecode;
 };
 
-__modules["datamatrix/tables.js"] = function (__require, __exports) {
+__modules["js/datamatrix/tables.js"] = function (__require, __exports) {
 /**
  * Data Matrix ECC 200 symbol parameters.
  *
@@ -4784,13 +4784,13 @@ __exports.validateDataMatrixTables = validateDataMatrixTables;
 __exports.validateTables = validateTables;
 };
 
-__modules["datamatrix/encoder.js"] = function (__require, __exports) {
+__modules["js/datamatrix/encoder.js"] = function (__require, __exports) {
 /** Data Matrix ECC 200 encoder: ASCII/Base256, RS interleaving and Annex F placement. */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { GF256_DM } = __require("core/galois-field.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { symbolForDataCodewords } = __require("datamatrix/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF256_DM } = __require("js/core/galois-field.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { symbolForDataCodewords } = __require("js/datamatrix/tables.js");
 
 function asciiCodewords(text) {
   const out = [];
@@ -4951,7 +4951,7 @@ __exports.encodeDataMatrix = encodeDataMatrix;
 __exports.encodeDataMatrixCodewords = encodeDataMatrixCodewords;
 };
 
-__modules["datamatrix/decoder.js"] = function (__require, __exports) {
+__modules["js/datamatrix/decoder.js"] = function (__require, __exports) {
 /**
  * Data Matrix ECC 200 decoder for an already sampled symbol.
  *
@@ -4964,10 +4964,10 @@ __modules["datamatrix/decoder.js"] = function (__require, __exports) {
  *
  * @module datamatrix/decoder
  */
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { GF256_DM } = __require("core/galois-field.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { SYMBOLS } = __require("datamatrix/tables.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { GF256_DM } = __require("js/core/galois-field.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { SYMBOLS } = __require("js/datamatrix/tables.js");
 
 const CW_PAD = 129;
 const CW_BASE256 = 231;
@@ -5186,7 +5186,7 @@ __exports.ChecksumError = ChecksumError;
 __exports.decodeDataMatrix = decodeDataMatrix;
 };
 
-__modules["image/perspective.js"] = function (__require, __exports) {
+__modules["js/image/perspective.js"] = function (__require, __exports) {
 /**
  * Projective (perspective) transforms.
  *
@@ -5355,7 +5355,7 @@ class PerspectiveTransform {
 __exports.PerspectiveTransform = PerspectiveTransform;
 };
 
-__modules["image/grid-sampler.js"] = function (__require, __exports) {
+__modules["js/image/grid-sampler.js"] = function (__require, __exports) {
 /**
  * Resample a distorted symbol in the image into an upright module grid.
  *
@@ -5366,9 +5366,9 @@ __modules["image/grid-sampler.js"] = function (__require, __exports) {
  *
  * @module image/grid-sampler
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { NotFoundError } = __require("core/errors.js");
-const { PerspectiveTransform } = __require("image/perspective.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { PerspectiveTransform } = __require("js/image/perspective.js");
 
 /**
  * Sample a `dimension` x `dimension` grid (or `width` x `height`).
@@ -5495,7 +5495,7 @@ __exports.sampleGridVoting = sampleGridVoting;
 __exports.sampleQuad = sampleQuad;
 };
 
-__modules["datamatrix/detector.js"] = function (__require, __exports) {
+__modules["js/datamatrix/detector.js"] = function (__require, __exports) {
 /**
  * Data Matrix ECC 200 detection in a binarized image.
  *
@@ -5512,10 +5512,10 @@ __modules["datamatrix/detector.js"] = function (__require, __exports) {
  *
  * @module datamatrix/detector
  */
-const { NotFoundError } = __require("core/errors.js");
-const { sampleGrid, sampleQuad } = __require("image/grid-sampler.js");
-const { PerspectiveTransform } = __require("image/perspective.js");
-const { decodeDataMatrix } = __require("datamatrix/decoder.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { sampleGrid, sampleQuad } = __require("js/image/grid-sampler.js");
+const { PerspectiveTransform } = __require("js/image/perspective.js");
+const { decodeDataMatrix } = __require("js/datamatrix/decoder.js");
 
 // ECC 200 dimensions.  DMRE is deliberately not included: it uses a separate
 // size table and is not part of the original ECC 200 family implemented here.
@@ -5695,17 +5695,17 @@ __exports.detectDataMatrix = detectDataMatrix;
 __exports.detectAndDecodeDataMatrix = detectAndDecodeDataMatrix;
 };
 
-__modules["datamatrix/index.js"] = function (__require, __exports) {
+__modules["js/datamatrix/index.js"] = function (__require, __exports) {
 /** Data Matrix ECC 200 entry points. @module datamatrix */
-const __reexport0 = __require("datamatrix/encoder.js"); __exports.encodeDataMatrix = __reexport0.encodeDataMatrix; __exports.encodeDataMatrixCodewords = __reexport0.encodeDataMatrixCodewords;
-const __reexport1 = __require("datamatrix/decoder.js"); __exports.decodeDataMatrix = __reexport1.decodeDataMatrix;
-const __reexport2 = __require("datamatrix/detector.js"); __exports.detectDataMatrix = __reexport2.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport2.detectAndDecodeDataMatrix;
-const __reexport3 = __require("datamatrix/tables.js"); __exports.DATAMATRIX_SYMBOLS = __reexport3.DATAMATRIX_SYMBOLS; __exports.SYMBOLS = __reexport3.SYMBOLS; __exports.symbolForDataCodewords = __reexport3.symbolForDataCodewords; __exports.validateDataMatrixTables = __reexport3.validateDataMatrixTables; __exports.validateTables = __reexport3.validateTables;
+const __reexport0 = __require("js/datamatrix/encoder.js"); __exports.encodeDataMatrix = __reexport0.encodeDataMatrix; __exports.encodeDataMatrixCodewords = __reexport0.encodeDataMatrixCodewords;
+const __reexport1 = __require("js/datamatrix/decoder.js"); __exports.decodeDataMatrix = __reexport1.decodeDataMatrix;
+const __reexport2 = __require("js/datamatrix/detector.js"); __exports.detectDataMatrix = __reexport2.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport2.detectAndDecodeDataMatrix;
+const __reexport3 = __require("js/datamatrix/tables.js"); __exports.DATAMATRIX_SYMBOLS = __reexport3.DATAMATRIX_SYMBOLS; __exports.SYMBOLS = __reexport3.SYMBOLS; __exports.symbolForDataCodewords = __reexport3.symbolForDataCodewords; __exports.validateDataMatrixTables = __reexport3.validateDataMatrixTables; __exports.validateTables = __reexport3.validateTables;
 
 
 };
 
-__modules["core/bit-buffer.js"] = function (__require, __exports) {
+__modules["js/core/bit-buffer.js"] = function (__require, __exports) {
 /**
  * Bit-level writing and reading, MSB-first.
  *
@@ -5716,7 +5716,7 @@ __modules["core/bit-buffer.js"] = function (__require, __exports) {
  *
  * @module core/bit-buffer
  */
-const { FormatError } = __require("core/errors.js");
+const { FormatError } = __require("js/core/errors.js");
 
 /** Growable MSB-first bit writer. */
 class BitWriter {
@@ -5854,7 +5854,7 @@ __exports.BitWriter = BitWriter;
 __exports.BitReader = BitReader;
 };
 
-__modules["qr/tables.js"] = function (__require, __exports) {
+__modules["js/qr/tables.js"] = function (__require, __exports) {
 /**
  * QR Code structural tables.
  *
@@ -5884,7 +5884,7 @@ __modules["qr/tables.js"] = function (__require, __exports) {
  *
  * @module qr/tables
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
 
 /** Error correction levels, weakest to strongest. */
 const ECC_LEVELS = ['L', 'M', 'Q', 'H'];
@@ -6585,7 +6585,7 @@ __exports.dataBitCapacity = dataBitCapacity;
 __exports.validateTables = validateTables;
 };
 
-__modules["qr/encoder.js"] = function (__require, __exports) {
+__modules["js/qr/encoder.js"] = function (__require, __exports) {
 /**
  * QR Code encoder.
  *
@@ -6609,12 +6609,12 @@ __modules["qr/encoder.js"] = function (__require, __exports) {
  *
  * @module qr/encoder
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { BitWriter } = __require("core/bit-buffer.js");
-const { EncodeError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { ECC_LEVELS, ECC_LEVEL_BITS, MAX_VERSION, MIN_VERSION, MODE, VERSION_INFO_MIN, alignmentCentres, blockLayout, countBits, dataBitCapacity, dataModuleOrder, formatInfoPositions, maskBit, versionSize } = __require("qr/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { ECC_LEVELS, ECC_LEVEL_BITS, MAX_VERSION, MIN_VERSION, MODE, VERSION_INFO_MIN, alignmentCentres, blockLayout, countBits, dataBitCapacity, dataModuleOrder, formatInfoPositions, maskBit, versionSize } = __require("js/qr/tables.js");
 
 /** Alphanumeric mode character set; a character's index is its encoded value. */
 const ALPHANUMERIC_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
@@ -7508,7 +7508,7 @@ __exports.maskPenalty = maskPenalty;
 __exports.encodeQR = encodeQR;
 };
 
-__modules["qr/decoder.js"] = function (__require, __exports) {
+__modules["js/qr/decoder.js"] = function (__require, __exports) {
 /**
  * QR Code decoder.
  *
@@ -7525,12 +7525,12 @@ __modules["qr/decoder.js"] = function (__require, __exports) {
  *
  * @module qr/decoder
  */
-const { BitReader } = __require("core/bit-buffer.js");
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { ECC_LEVELS, MAX_VERSION, MIN_VERSION, MODE, VERSION_INFO_MIN, blockLayout, countBits, dataModuleOrder, formatInfoPositions, maskBit, versionSize } = __require("qr/tables.js");
-const { ALPHANUMERIC_CHARS, formatInfoBits, versionInfoBits } = __require("qr/encoder.js");
+const { BitReader } = __require("js/core/bit-buffer.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { ECC_LEVELS, MAX_VERSION, MIN_VERSION, MODE, VERSION_INFO_MIN, blockLayout, countBits, dataModuleOrder, formatInfoPositions, maskBit, versionSize } = __require("js/qr/tables.js");
+const { ALPHANUMERIC_CHARS, formatInfoBits, versionInfoBits } = __require("js/qr/encoder.js");
 
 /**
  * Maximum bit errors tolerated when matching a BCH field.
@@ -8044,7 +8044,7 @@ __exports.ChecksumError = ChecksumError;
 __exports.decodeQR = decodeQR;
 };
 
-__modules["qr/detector.js"] = function (__require, __exports) {
+__modules["js/qr/detector.js"] = function (__require, __exports) {
 /**
  * QR Code detection — finding symbols in a binarized image.
  *
@@ -8067,10 +8067,10 @@ __modules["qr/detector.js"] = function (__require, __exports) {
  *
  * @module qr/detector
  */
-const { NotFoundError } = __require("core/errors.js");
-const { PerspectiveTransform } = __require("image/perspective.js");
-const { sampleQuad } = __require("image/grid-sampler.js");
-const { decodeQR } = __require("qr/decoder.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { PerspectiveTransform } = __require("js/image/perspective.js");
+const { sampleQuad } = __require("js/image/grid-sampler.js");
+const { decodeQR } = __require("js/qr/decoder.js");
 
 /** Finder pattern run ratios, centre run first in the array's own order. */
 const FINDER_RATIOS = [1, 1, 3, 1, 1];
@@ -8649,7 +8649,7 @@ __exports.detectQR = detectQR;
 __exports.detectAndDecodeQR = detectAndDecodeQR;
 };
 
-__modules["qr/index.js"] = function (__require, __exports) {
+__modules["js/qr/index.js"] = function (__require, __exports) {
 /**
  * QR Code, re-exported.
  *
@@ -8659,15 +8659,15 @@ __modules["qr/index.js"] = function (__require, __exports) {
  *
  * @module qr
  */
-const __reexport0 = __require("qr/encoder.js"); __exports.encodeQR = __reexport0.encodeQR;
-const __reexport1 = __require("qr/decoder.js"); __exports.decodeQR = __reexport1.decodeQR;
-const __reexport2 = __require("qr/detector.js"); __exports.detectQR = __reexport2.detectQR; __exports.detectAndDecodeQR = __reexport2.detectAndDecodeQR;
-const __reexport3 = __require("qr/tables.js"); __exports.validateTables = __reexport3.validateTables;
+const __reexport0 = __require("js/qr/encoder.js"); __exports.encodeQR = __reexport0.encodeQR;
+const __reexport1 = __require("js/qr/decoder.js"); __exports.decodeQR = __reexport1.decodeQR;
+const __reexport2 = __require("js/qr/detector.js"); __exports.detectQR = __reexport2.detectQR; __exports.detectAndDecodeQR = __reexport2.detectAndDecodeQR;
+const __reexport3 = __require("js/qr/tables.js"); __exports.validateTables = __reexport3.validateTables;
 
 
 };
 
-__modules["aztec/high-level.js"] = function (__require, __exports) {
+__modules["js/aztec/high-level.js"] = function (__require, __exports) {
 /**
  * Aztec high-level stream writer.
  *
@@ -8684,8 +8684,8 @@ __modules["aztec/high-level.js"] = function (__require, __exports) {
  *
  * @module aztec/high-level
  */
-const { BitWriter } = __require("core/bit-buffer.js");
-const { EncodeError } = __require("core/errors.js");
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { EncodeError } = __require("js/core/errors.js");
 
 /** Aztec high-level table identifiers, exposed for decoder/API symmetry. */
 const HIGH_LEVEL_MODE = Object.freeze({
@@ -8856,7 +8856,7 @@ __exports.writeBinaryShift = writeBinaryShift;
 __exports.encodeHighLevel = encodeHighLevel;
 };
 
-__modules["aztec/tables.js"] = function (__require, __exports) {
+__modules["js/aztec/tables.js"] = function (__require, __exports) {
 /**
  * Aztec Code layer geometry and Reed-Solomon parameters.
  *
@@ -8870,7 +8870,7 @@ __modules["aztec/tables.js"] = function (__require, __exports) {
  *
  * @module aztec/tables
  */
-const { GF16, GF64, GF256_AZTEC, GF1024, GF4096 } = __require("core/galois-field.js");
+const { GF16, GF64, GF256_AZTEC, GF1024, GF4096 } = __require("js/core/galois-field.js");
 
 /** Reed-Solomon generator base defined for Aztec parameter and data fields. */
 const AZTEC_RS_GENERATOR_BASE = 1;
@@ -9053,7 +9053,7 @@ __exports.selectAztecLayer = selectAztecLayer;
 __exports.validateAztecTables = validateAztecTables;
 };
 
-__modules["aztec/encoder.js"] = function (__require, __exports) {
+__modules["js/aztec/encoder.js"] = function (__require, __exports) {
 /**
  * Aztec encoder: high-level bits, bit stuffing, Reed-Solomon and matrix layout.
  *
@@ -9065,12 +9065,12 @@ __modules["aztec/encoder.js"] = function (__require, __exports) {
  *
  * @module aztec/encoder
  */
-const { BitWriter } = __require("core/bit-buffer.js");
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { encodeHighLevel } = __require("aztec/high-level.js");
-const { AZTEC_COMPACT_LAYERS, AZTEC_FULL_LAYERS, aztecLayer, eccCodewordsFor, fieldForLayers, fieldForWordSize, wordSizeForLayers } = __require("aztec/tables.js");
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { encodeHighLevel } = __require("js/aztec/high-level.js");
+const { AZTEC_COMPACT_LAYERS, AZTEC_FULL_LAYERS, aztecLayer, eccCodewordsFor, fieldForLayers, fieldForWordSize, wordSizeForLayers } = __require("js/aztec/tables.js");
 
 /** @param {BitWriter} bits @param {number} at @returns {boolean} */
 function bitAt(bits, at) {
@@ -9288,7 +9288,7 @@ __exports.buildAztecMatrix = buildAztecMatrix;
 __exports.encodeAztec = encodeAztec;
 };
 
-__modules["aztec/decoder.js"] = function (__require, __exports) {
+__modules["js/aztec/decoder.js"] = function (__require, __exports) {
 /**
  * Decoder for a sampled Aztec symbol.
  *
@@ -9305,9 +9305,9 @@ __modules["aztec/decoder.js"] = function (__require, __exports) {
  *
  * @module aztec/decoder
  */
-const { FormatError } = __require("core/errors.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { aztecLayer: aztecSymbolForLayers, wordSizeForLayers: aztecWordSizeForLayers, fieldForLayers: aztecFieldForLayers, fieldForWordSize, aztecSymbolSize: aztecMatrixSize } = __require("aztec/tables.js");
+const { FormatError } = __require("js/core/errors.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { aztecLayer: aztecSymbolForLayers, wordSizeForLayers: aztecWordSizeForLayers, fieldForLayers: aztecFieldForLayers, fieldForWordSize, aztecSymbolSize: aztecMatrixSize } = __require("js/aztec/tables.js");
 
 const UPPER = ['CTRL_PS', ' ', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'CTRL_LL', 'CTRL_ML', 'CTRL_DL', 'CTRL_BS'];
 const LOWER = ['CTRL_PS', ' ', ...'abcdefghijklmnopqrstuvwxyz', 'CTRL_US', 'CTRL_ML', 'CTRL_DL', 'CTRL_BS'];
@@ -9574,7 +9574,7 @@ __exports.decodeHighLevelBits = decodeHighLevelBits;
 __exports.decodeAztec = decodeAztec;
 };
 
-__modules["aztec/detector.js"] = function (__require, __exports) {
+__modules["js/aztec/detector.js"] = function (__require, __exports) {
 /**
  * Aztec image detection.
  *
@@ -9594,9 +9594,9 @@ __modules["aztec/detector.js"] = function (__require, __exports) {
  *
  * @module aztec/detector
  */
-const { NotFoundError } = __require("core/errors.js");
-const { sampleQuad } = __require("image/grid-sampler.js");
-const { decodeAztec } = __require("aztec/decoder.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { sampleQuad } = __require("js/image/grid-sampler.js");
+const { decodeAztec } = __require("js/aztec/decoder.js");
 
 /** @typedef {{x:number, y:number}} Point */
 /** @typedef {{corners: Point[], dimension: number, compact: boolean, moduleSize: number, matrix: import('../core/bit-matrix.js').BitMatrix}} Detection */
@@ -9773,19 +9773,19 @@ __exports.detectAztec = detectAztec;
 __exports.detectAndDecodeAztec = detectAndDecodeAztec;
 };
 
-__modules["aztec/index.js"] = function (__require, __exports) {
+__modules["js/aztec/index.js"] = function (__require, __exports) {
 /** Aztec Code entry points. @module aztec */
-const __reexport0 = __require("aztec/encoder.js"); __exports.encodeAztec = __reexport0.encodeAztec;
-const __reexport1 = __require("aztec/decoder.js"); __exports.decodeAztec = __reexport1.decodeAztec;
-const __reexport2 = __require("aztec/detector.js"); __exports.detectAztec = __reexport2.detectAztec; __exports.detectAndDecodeAztec = __reexport2.detectAndDecodeAztec;
-const __reexport3 = __require("aztec/tables.js"); __exports.AZTEC_COMPACT_LAYERS = __reexport3.AZTEC_COMPACT_LAYERS; __exports.AZTEC_FULL_LAYERS = __reexport3.AZTEC_FULL_LAYERS; __exports.AZTEC_LAYERS = __reexport3.AZTEC_LAYERS; __exports.AZTEC_DEFAULT_ECC_PERCENT = __reexport3.AZTEC_DEFAULT_ECC_PERCENT; __exports.AZTEC_RS_GENERATOR_BASE = __reexport3.AZTEC_RS_GENERATOR_BASE; __exports.aztecLayer = __reexport3.aztecLayer; __exports.aztecSymbolSize = __reexport3.aztecSymbolSize; __exports.validateAztecTables = __reexport3.validateAztecTables;
+const __reexport0 = __require("js/aztec/encoder.js"); __exports.encodeAztec = __reexport0.encodeAztec;
+const __reexport1 = __require("js/aztec/decoder.js"); __exports.decodeAztec = __reexport1.decodeAztec;
+const __reexport2 = __require("js/aztec/detector.js"); __exports.detectAztec = __reexport2.detectAztec; __exports.detectAndDecodeAztec = __reexport2.detectAndDecodeAztec;
+const __reexport3 = __require("js/aztec/tables.js"); __exports.AZTEC_COMPACT_LAYERS = __reexport3.AZTEC_COMPACT_LAYERS; __exports.AZTEC_FULL_LAYERS = __reexport3.AZTEC_FULL_LAYERS; __exports.AZTEC_LAYERS = __reexport3.AZTEC_LAYERS; __exports.AZTEC_DEFAULT_ECC_PERCENT = __reexport3.AZTEC_DEFAULT_ECC_PERCENT; __exports.AZTEC_RS_GENERATOR_BASE = __reexport3.AZTEC_RS_GENERATOR_BASE; __exports.aztecLayer = __reexport3.aztecLayer; __exports.aztecSymbolSize = __reexport3.aztecSymbolSize; __exports.validateAztecTables = __reexport3.validateAztecTables;
 
 
 };
 
-__modules["pdf417/compaction.js"] = function (__require, __exports) {
+__modules["js/pdf417/compaction.js"] = function (__require, __exports) {
 /** PDF417 high-level text, byte and numeric compaction. @module pdf417/compaction */
-const { EncodeError, FormatError } = __require("core/errors.js");
+const { EncodeError, FormatError } = __require("js/core/errors.js");
 
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
 const LOWER = 'abcdefghijklmnopqrstuvwxyz ';
@@ -10060,10 +10060,10 @@ __exports.decodePdf417CompactionDetailed = decodePdf417CompactionDetailed;
 __exports.decodePdf417Compaction = decodePdf417Compaction;
 };
 
-__modules["pdf417/error-correction.js"] = function (__require, __exports) {
-const { EncodeError } = __require("core/errors.js");
-const { GF929 } = __require("core/galois-field.js");
-const { rsDecode, rsEncode } = __require("core/reed-solomon.js");
+__modules["js/pdf417/error-correction.js"] = function (__require, __exports) {
+const { EncodeError } = __require("js/core/errors.js");
+const { GF929 } = __require("js/core/galois-field.js");
+const { rsDecode, rsEncode } = __require("js/core/reed-solomon.js");
 function pdf417EccLength(level) {
   if (!Number.isInteger(level) || level < 0 || level > 8) throw new EncodeError('PDF417: error correction level must be in 0..8');
   return 1 << (level + 1);
@@ -10082,7 +10082,7 @@ __exports.pdf417ErrorCorrection = pdf417ErrorCorrection;
 __exports.pdf417CorrectErrors = pdf417CorrectErrors;
 };
 
-__modules["pdf417/tables.js"] = function (__require, __exports) {
+__modules["js/pdf417/tables.js"] = function (__require, __exports) {
 /** PDF417 symbol-character pattern table. @module pdf417/tables */
 const PDF417_CLUSTER_NUMBERS = Object.freeze([0, 3, 6]);
 const PDF417_CODEWORDS_PER_CLUSTER = 929;
@@ -10378,12 +10378,12 @@ __exports.pdf417PatternForCodeword = pdf417PatternForCodeword;
 __exports.pdf417CodewordForPattern = pdf417CodewordForPattern;
 };
 
-__modules["pdf417/encoder.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { compactPdf417 } = __require("pdf417/compaction.js");
-const { pdf417ErrorCorrection, pdf417EccLength } = __require("pdf417/error-correction.js");
-const { pdf417PatternForCodeword } = __require("pdf417/tables.js");
+__modules["js/pdf417/encoder.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { compactPdf417 } = __require("js/pdf417/compaction.js");
+const { pdf417ErrorCorrection, pdf417EccLength } = __require("js/pdf417/error-correction.js");
+const { pdf417PatternForCodeword } = __require("js/pdf417/tables.js");
 
 const START = '81111113';
 const STOP = '711311121';
@@ -10443,11 +10443,11 @@ function encodePDF417(value, options = {}) {
 __exports.encodePDF417 = encodePDF417;
 };
 
-__modules["pdf417/decoder.js"] = function (__require, __exports) {
-const { FormatError } = __require("core/errors.js");
-const { decodePdf417CompactionDetailed } = __require("pdf417/compaction.js");
-const { pdf417CorrectErrors, pdf417EccLength } = __require("pdf417/error-correction.js");
-const { pdf417CodewordForPattern } = __require("pdf417/tables.js");
+__modules["js/pdf417/decoder.js"] = function (__require, __exports) {
+const { FormatError } = __require("js/core/errors.js");
+const { decodePdf417CompactionDetailed } = __require("js/pdf417/compaction.js");
+const { pdf417CorrectErrors, pdf417EccLength } = __require("js/pdf417/error-correction.js");
+const { pdf417CodewordForPattern } = __require("js/pdf417/tables.js");
 
 const START = '11111111010101000';
 const STOP = '111111101000101001';
@@ -10492,11 +10492,11 @@ function decodePDF417(matrix, options = {}) {
 __exports.decodePDF417 = decodePDF417;
 };
 
-__modules["pdf417/detector.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { sampleGrid, sampleGridVoting } = __require("image/grid-sampler.js");
-const { PerspectiveTransform } = __require("image/perspective.js");
-const { decodePDF417 } = __require("pdf417/decoder.js");
+__modules["js/pdf417/detector.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { sampleGrid, sampleGridVoting } = __require("js/image/grid-sampler.js");
+const { PerspectiveTransform } = __require("js/image/perspective.js");
+const { decodePDF417 } = __require("js/pdf417/decoder.js");
 
 const START_PATTERN = [8, 1, 1, 1, 1, 1, 1, 3];
 const STOP_PATTERN = [7, 1, 1, 3, 1, 1, 1, 2, 1];
@@ -10935,18 +10935,18 @@ __exports.detectPDF417 = detectPDF417;
 __exports.detectAndDecodePDF417 = detectAndDecodePDF417;
 };
 
-__modules["pdf417/index.js"] = function (__require, __exports) {
-const __reexport0 = __require("pdf417/compaction.js"); __exports.compactPdf417 = __reexport0.compactPdf417; __exports.compactPdf417Text = __reexport0.compactPdf417Text; __exports.compactPdf417Bytes = __reexport0.compactPdf417Bytes; __exports.compactPdf417Numeric = __reexport0.compactPdf417Numeric; __exports.decodePdf417Compaction = __reexport0.decodePdf417Compaction; __exports.decodePdf417CompactionDetailed = __reexport0.decodePdf417CompactionDetailed;
-const __reexport1 = __require("pdf417/encoder.js"); __exports.encodePDF417 = __reexport1.encodePDF417;
-const __reexport2 = __require("pdf417/decoder.js"); __exports.decodePDF417 = __reexport2.decodePDF417;
-const __reexport3 = __require("pdf417/detector.js"); __exports.detectPDF417 = __reexport3.detectPDF417; __exports.detectAndDecodePDF417 = __reexport3.detectAndDecodePDF417;
-const __reexport4 = __require("pdf417/error-correction.js"); __exports.pdf417EccLength = __reexport4.pdf417EccLength; __exports.pdf417ErrorCorrection = __reexport4.pdf417ErrorCorrection; __exports.pdf417CorrectErrors = __reexport4.pdf417CorrectErrors;
-const __reexport5 = __require("pdf417/tables.js"); __exports.PDF417_PATTERN_TABLE = __reexport5.PDF417_PATTERN_TABLE; __exports.PDF417_CLUSTER_NUMBERS = __reexport5.PDF417_CLUSTER_NUMBERS; __exports.pdf417PatternForCodeword = __reexport5.pdf417PatternForCodeword; __exports.pdf417CodewordForPattern = __reexport5.pdf417CodewordForPattern;
+__modules["js/pdf417/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("js/pdf417/compaction.js"); __exports.compactPdf417 = __reexport0.compactPdf417; __exports.compactPdf417Text = __reexport0.compactPdf417Text; __exports.compactPdf417Bytes = __reexport0.compactPdf417Bytes; __exports.compactPdf417Numeric = __reexport0.compactPdf417Numeric; __exports.decodePdf417Compaction = __reexport0.decodePdf417Compaction; __exports.decodePdf417CompactionDetailed = __reexport0.decodePdf417CompactionDetailed;
+const __reexport1 = __require("js/pdf417/encoder.js"); __exports.encodePDF417 = __reexport1.encodePDF417;
+const __reexport2 = __require("js/pdf417/decoder.js"); __exports.decodePDF417 = __reexport2.decodePDF417;
+const __reexport3 = __require("js/pdf417/detector.js"); __exports.detectPDF417 = __reexport3.detectPDF417; __exports.detectAndDecodePDF417 = __reexport3.detectAndDecodePDF417;
+const __reexport4 = __require("js/pdf417/error-correction.js"); __exports.pdf417EccLength = __reexport4.pdf417EccLength; __exports.pdf417ErrorCorrection = __reexport4.pdf417ErrorCorrection; __exports.pdf417CorrectErrors = __reexport4.pdf417CorrectErrors;
+const __reexport5 = __require("js/pdf417/tables.js"); __exports.PDF417_PATTERN_TABLE = __reexport5.PDF417_PATTERN_TABLE; __exports.PDF417_CLUSTER_NUMBERS = __reexport5.PDF417_CLUSTER_NUMBERS; __exports.pdf417PatternForCodeword = __reexport5.pdf417PatternForCodeword; __exports.pdf417CodewordForPattern = __reexport5.pdf417CodewordForPattern;
 
 
 };
 
-__modules["micropdf417/tables.js"] = function (__require, __exports) {
+__modules["js/micropdf417/tables.js"] = function (__require, __exports) {
 /**
  * MicroPDF417 format facts and Row Address Pattern (RAP) helpers.
  *
@@ -11111,11 +11111,11 @@ __exports.microPdf417RowAddress = microPdf417RowAddress;
 __exports.validateMicroPdf417Tables = validateMicroPdf417Tables;
 };
 
-__modules["micropdf417/error-correction.js"] = function (__require, __exports) {
+__modules["js/micropdf417/error-correction.js"] = function (__require, __exports) {
 /** MicroPDF417 error correction over the existing GF(929) core. @module micropdf417/error-correction */
-const { EncodeError } = __require("core/errors.js");
-const { GF929 } = __require("core/galois-field.js");
-const { generatorPoly, rsDecode, rsEncode } = __require("core/reed-solomon.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF929 } = __require("js/core/galois-field.js");
+const { generatorPoly, rsDecode, rsEncode } = __require("js/core/reed-solomon.js");
 
 function eccLength(entry) {
   if (!entry || !Number.isInteger(entry.eccCodewords)) throw new EncodeError('MicroPDF417: a variant with an ECC length is required');
@@ -11143,10 +11143,10 @@ __exports.microPdf417ErrorCorrection = microPdf417ErrorCorrection;
 __exports.microPdf417CorrectErrors = microPdf417CorrectErrors;
 };
 
-__modules["micropdf417/compaction.js"] = function (__require, __exports) {
+__modules["js/micropdf417/compaction.js"] = function (__require, __exports) {
 /** MicroPDF417 high-level compaction adapter. @module micropdf417/compaction */
-const { EncodeError } = __require("core/errors.js");
-const { compactPdf417Bytes, compactPdf417Numeric, compactPdf417Text } = __require("pdf417/compaction.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { compactPdf417Bytes, compactPdf417Numeric, compactPdf417Text } = __require("js/pdf417/compaction.js");
 
 function byteLength(value) {
   if (value instanceof Uint8Array) return value.byteLength;
@@ -11229,14 +11229,14 @@ function compactMicroPDF417(value, options = {}) {
 __exports.compactMicroPDF417 = compactMicroPDF417;
 };
 
-__modules["micropdf417/encoder.js"] = function (__require, __exports) {
+__modules["js/micropdf417/encoder.js"] = function (__require, __exports) {
 /** MicroPDF417 encoder. @module micropdf417/encoder */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { pdf417PatternForCodeword } = __require("pdf417/tables.js");
-const { compactMicroPDF417 } = __require("micropdf417/compaction.js");
-const { microPdf417ErrorCorrection } = __require("micropdf417/error-correction.js");
-const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber, microPdf417VariantForCapacity } = __require("micropdf417/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { pdf417PatternForCodeword } = __require("js/pdf417/tables.js");
+const { compactMicroPDF417 } = __require("js/micropdf417/compaction.js");
+const { microPdf417ErrorCorrection } = __require("js/micropdf417/error-correction.js");
+const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber, microPdf417VariantForCapacity } = __require("js/micropdf417/tables.js");
 
 function appendWidths(matrix, y, x, sequence, height) {
   let dark = true;
@@ -11406,7 +11406,7 @@ function encodeMicroPDF417(value, options = {}) {
 __exports.encodeMicroPDF417 = encodeMicroPDF417;
 };
 
-__modules["micropdf417/decoder.js"] = function (__require, __exports) {
+__modules["js/micropdf417/decoder.js"] = function (__require, __exports) {
 /**
  * Direct-module MicroPDF417 decoder.
  *
@@ -11417,11 +11417,11 @@ __modules["micropdf417/decoder.js"] = function (__require, __exports) {
  *
  * @module micropdf417/decoder
  */
-const { FormatError } = __require("core/errors.js");
-const { decodePdf417CompactionDetailed } = __require("pdf417/compaction.js");
-const { pdf417CodewordForPattern } = __require("pdf417/tables.js");
-const { microPdf417CorrectErrors } = __require("micropdf417/error-correction.js");
-const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber } = __require("micropdf417/tables.js");
+const { FormatError } = __require("js/core/errors.js");
+const { decodePdf417CompactionDetailed } = __require("js/pdf417/compaction.js");
+const { pdf417CodewordForPattern } = __require("js/pdf417/tables.js");
+const { microPdf417CorrectErrors } = __require("js/micropdf417/error-correction.js");
+const { MICROPDF417_VARIANTS, microPdf417RapSequence, microPdf417RowAddress, microPdf417VariantByNumber } = __require("js/micropdf417/tables.js");
 
 function symbolWidth(columns) {
   return 21 + columns * 17 + (columns > 2 ? 10 : 0);
@@ -11558,7 +11558,7 @@ function decodeMicroPDF417(matrix, options = {}) {
 __exports.decodeMicroPDF417 = decodeMicroPDF417;
 };
 
-__modules["micropdf417/detector.js"] = function (__require, __exports) {
+__modules["js/micropdf417/detector.js"] = function (__require, __exports) {
 /**
  * Axis-aligned MicroPDF417 raster detection.
  *
@@ -11573,8 +11573,8 @@ __modules["micropdf417/detector.js"] = function (__require, __exports) {
  *
  * @module micropdf417/detector
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { decodeMicroPDF417 } = __require("micropdf417/decoder.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { decodeMicroPDF417 } = __require("js/micropdf417/decoder.js");
 
 /** @typedef {{x:number, y:number}} Point */
 
@@ -11682,18 +11682,18 @@ __exports.detectMicroPDF417 = detectMicroPDF417;
 __exports.detectAndDecodeMicroPDF417 = detectAndDecodeMicroPDF417;
 };
 
-__modules["micropdf417/index.js"] = function (__require, __exports) {
-const __reexport0 = __require("micropdf417/tables.js"); __exports.MICROPDF417_VARIANTS = __reexport0.MICROPDF417_VARIANTS; __exports.microPdf417NextRap = __reexport0.microPdf417NextRap; __exports.microPdf417VariantByNumber = __reexport0.microPdf417VariantByNumber; __exports.microPdf417VariantForCapacity = __reexport0.microPdf417VariantForCapacity; __exports.microPdf417RapSequence = __reexport0.microPdf417RapSequence; __exports.microPdf417RowAddress = __reexport0.microPdf417RowAddress; __exports.validateMicroPdf417Tables = __reexport0.validateMicroPdf417Tables;
-const __reexport1 = __require("micropdf417/error-correction.js"); __exports.microPdf417EccLength = __reexport1.microPdf417EccLength; __exports.microPdf417Generator = __reexport1.microPdf417Generator; __exports.microPdf417ErrorCorrection = __reexport1.microPdf417ErrorCorrection; __exports.microPdf417CorrectErrors = __reexport1.microPdf417CorrectErrors;
-const __reexport2 = __require("micropdf417/compaction.js"); __exports.compactMicroPDF417 = __reexport2.compactMicroPDF417;
-const __reexport3 = __require("micropdf417/encoder.js"); __exports.encodeMicroPDF417 = __reexport3.encodeMicroPDF417;
-const __reexport4 = __require("micropdf417/decoder.js"); __exports.decodeMicroPDF417 = __reexport4.decodeMicroPDF417;
-const __reexport5 = __require("micropdf417/detector.js"); __exports.detectMicroPDF417 = __reexport5.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport5.detectAndDecodeMicroPDF417;
+__modules["js/micropdf417/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("js/micropdf417/tables.js"); __exports.MICROPDF417_VARIANTS = __reexport0.MICROPDF417_VARIANTS; __exports.microPdf417NextRap = __reexport0.microPdf417NextRap; __exports.microPdf417VariantByNumber = __reexport0.microPdf417VariantByNumber; __exports.microPdf417VariantForCapacity = __reexport0.microPdf417VariantForCapacity; __exports.microPdf417RapSequence = __reexport0.microPdf417RapSequence; __exports.microPdf417RowAddress = __reexport0.microPdf417RowAddress; __exports.validateMicroPdf417Tables = __reexport0.validateMicroPdf417Tables;
+const __reexport1 = __require("js/micropdf417/error-correction.js"); __exports.microPdf417EccLength = __reexport1.microPdf417EccLength; __exports.microPdf417Generator = __reexport1.microPdf417Generator; __exports.microPdf417ErrorCorrection = __reexport1.microPdf417ErrorCorrection; __exports.microPdf417CorrectErrors = __reexport1.microPdf417CorrectErrors;
+const __reexport2 = __require("js/micropdf417/compaction.js"); __exports.compactMicroPDF417 = __reexport2.compactMicroPDF417;
+const __reexport3 = __require("js/micropdf417/encoder.js"); __exports.encodeMicroPDF417 = __reexport3.encodeMicroPDF417;
+const __reexport4 = __require("js/micropdf417/decoder.js"); __exports.decodeMicroPDF417 = __reexport4.decodeMicroPDF417;
+const __reexport5 = __require("js/micropdf417/detector.js"); __exports.detectMicroPDF417 = __reexport5.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport5.detectAndDecodeMicroPDF417;
 
 
 };
 
-__modules["microqr/tables.js"] = function (__require, __exports) {
+__modules["js/microqr/tables.js"] = function (__require, __exports) {
 /**
  * Micro QR Code structural facts and geometry.
  *
@@ -11705,7 +11705,7 @@ __modules["microqr/tables.js"] = function (__require, __exports) {
  *
  * @module microqr/tables
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
 
 /** Numeric version identifiers used by the encoder selection loop. */
 const MICROQR_VERSIONS = Object.freeze([1, 2, 3, 4]);
@@ -12001,13 +12001,13 @@ __exports.microQrMaskBit = microQrMaskBit;
 __exports.validateMicroQrTables = validateMicroQrTables;
 };
 
-__modules["microqr/encoder.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { BitWriter } = __require("core/bit-buffer.js");
-const { EncodeError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { MICROQR_VERSIONS, microQrBlockLayout, microQrDataModuleOrder, microQrFormatInfo, microQrFormatInfoPositions, microQrMaskBit, microQrSymbolNumber, microQrVersionSize } = __require("microqr/tables.js");
+__modules["js/microqr/encoder.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { MICROQR_VERSIONS, microQrBlockLayout, microQrDataModuleOrder, microQrFormatInfo, microQrFormatInfoPositions, microQrMaskBit, microQrSymbolNumber, microQrVersionSize } = __require("js/microqr/tables.js");
 const MICROQR_ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
 const MODE = { numeric: 0, alphanumeric: 1, byte: 2, kanji: 3 };
 const MODE_MIN_VERSION = { numeric: 1, alphanumeric: 2, byte: 3, kanji: 3 };
@@ -12240,16 +12240,16 @@ __exports.MICROQR_ALPHANUMERIC = MICROQR_ALPHANUMERIC;
 __exports.encodeMicroQR = encodeMicroQR;
 };
 
-__modules["microqr/decoder.js"] = function (__require, __exports) {
+__modules["js/microqr/decoder.js"] = function (__require, __exports) {
 /**
  * Micro QR decoder for an already sampled M1-M4 module matrix.
  *
  * @module microqr/decoder
  */
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { microQrBlockLayout, microQrDataModuleOrder, microQrDecodeFormatInfo, microQrFormatInfoPositions, microQrMaskBit } = __require("microqr/tables.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { microQrBlockLayout, microQrDataModuleOrder, microQrDecodeFormatInfo, microQrFormatInfoPositions, microQrMaskBit } = __require("js/microqr/tables.js");
 
 const ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
 const MODE_NAMES = ['numeric', 'alphanumeric', 'byte', 'kanji'];
@@ -12452,7 +12452,7 @@ __exports.ChecksumError = ChecksumError; __exports.FormatError = FormatError;
 __exports.decodeMicroQR = decodeMicroQR;
 };
 
-__modules["microqr/detector.js"] = function (__require, __exports) {
+__modules["js/microqr/detector.js"] = function (__require, __exports) {
 /**
  * Micro QR detection in binarized rasters.
  *
@@ -12469,10 +12469,10 @@ __modules["microqr/detector.js"] = function (__require, __exports) {
  *
  * @module microqr/detector
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { NotFoundError } = __require("core/errors.js");
-const { sampleQuad } = __require("image/grid-sampler.js");
-const { decodeMicroQR } = __require("microqr/decoder.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { sampleQuad } = __require("js/image/grid-sampler.js");
+const { decodeMicroQR } = __require("js/microqr/decoder.js");
 
 /** Legal Micro QR side lengths (M1 through M4). */
 const DIMENSIONS = [11, 13, 15, 17];
@@ -12782,18 +12782,18 @@ __exports.detectMicroQR = detectMicroQR;
 __exports.detectAndDecodeMicroQR = detectAndDecodeMicroQR;
 };
 
-__modules["microqr/index.js"] = function (__require, __exports) {
+__modules["js/microqr/index.js"] = function (__require, __exports) {
 /** Micro QR Code M1-M4 public module surface. @module microqr */
-const __reexport0 = __require("microqr/encoder.js"); __exports.encodeMicroQR = __reexport0.encodeMicroQR;
-const __reexport1 = __require("microqr/decoder.js"); __exports.decodeMicroQR = __reexport1.decodeMicroQR;
-const __reexport2 = __require("microqr/detector.js"); __exports.detectMicroQR = __reexport2.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport2.detectAndDecodeMicroQR;
-const __reexport3 = __require("microqr/tables.js"); __exports.validateMicroQrTables = __reexport3.validateMicroQrTables;
+const __reexport0 = __require("js/microqr/encoder.js"); __exports.encodeMicroQR = __reexport0.encodeMicroQR;
+const __reexport1 = __require("js/microqr/decoder.js"); __exports.decodeMicroQR = __reexport1.decodeMicroQR;
+const __reexport2 = __require("js/microqr/detector.js"); __exports.detectMicroQR = __reexport2.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport2.detectAndDecodeMicroQR;
+const __reexport3 = __require("js/microqr/tables.js"); __exports.validateMicroQrTables = __reexport3.validateMicroQrTables;
 
 
 };
 
-__modules["rmqr/tables.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
+__modules["js/rmqr/tables.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
 
 /** The 32 rMQR dimensions in ISO/IEC 23941 order (width, height). */
 const RMQR_SIZES = Object.freeze([
@@ -12929,13 +12929,13 @@ __exports.dataBitCapacity = dataBitCapacity;
 __exports.validateTables = validateTables;
 };
 
-__modules["rmqr/encoder.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { BitWriter } = __require("core/bit-buffer.js");
-const { EncodeError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataBitCapacity, dataModuleOrder, formatBits, functionModules, maskBit, versionForSize, versionInfo } = __require("rmqr/tables.js");
+__modules["js/rmqr/encoder.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataBitCapacity, dataModuleOrder, formatBits, functionModules, maskBit, versionForSize, versionInfo } = __require("js/rmqr/tables.js");
 const ALPHANUMERIC_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
 const MODE = Object.freeze({ TERMINATOR: 0, NUMERIC: 1, ALPHANUMERIC: 2, BYTE: 3, KANJI: 4, FNC1: 5, FNC1_SECOND: 6, ECI: 7 });
 
@@ -13072,13 +13072,13 @@ __exports.ALPHANUMERIC_CHARS = ALPHANUMERIC_CHARS;
 __exports.encodeRMQR = encodeRMQR;
 };
 
-__modules["rmqr/decoder.js"] = function (__require, __exports) {
-const { BitReader } = __require("core/bit-buffer.js");
-const { ChecksumError, FormatError } = __require("core/errors.js");
-const { GF256_QR } = __require("core/galois-field.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataModuleOrder, functionModules, maskBit, versionForSize, versionInfo, formatBits } = __require("rmqr/tables.js");
-const { ALPHANUMERIC_CHARS, MODE } = __require("rmqr/encoder.js");
+__modules["js/rmqr/decoder.js"] = function (__require, __exports) {
+const { BitReader } = __require("js/core/bit-buffer.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { GF256_QR } = __require("js/core/galois-field.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { FORMAT_MASK_FINDER, FORMAT_MASK_SUB, dataModuleOrder, functionModules, maskBit, versionForSize, versionInfo, formatBits } = __require("js/rmqr/tables.js");
+const { ALPHANUMERIC_CHARS, MODE } = __require("js/rmqr/encoder.js");
 
 function hamming(a, b) { let v = a ^ b, n = 0; while (v) { v &= v - 1; n++; } return n; }
 function readFormat(matrix, v) {
@@ -13144,11 +13144,11 @@ __exports.ChecksumError = ChecksumError;
 __exports.decodeRMQR = decodeRMQR;
 };
 
-__modules["rmqr/detector.js"] = function (__require, __exports) {
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { NotFoundError } = __require("core/errors.js");
-const { decodeRMQR } = __require("rmqr/decoder.js");
-const { versionForSize } = __require("rmqr/tables.js");
+__modules["js/rmqr/detector.js"] = function (__require, __exports) {
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { decodeRMQR } = __require("js/rmqr/decoder.js");
+const { versionForSize } = __require("js/rmqr/tables.js");
 
 function rotate90(source) {
   const out = new BitMatrix(source.height, source.width);
@@ -13210,16 +13210,16 @@ __exports.detectRMQR = detectRMQR;
 __exports.detectAndDecodeRMQR = detectAndDecodeRMQR;
 };
 
-__modules["rmqr/index.js"] = function (__require, __exports) {
-const __reexport0 = __require("rmqr/encoder.js"); __exports.encodeRMQR = __reexport0.encodeRMQR; __exports.ALPHANUMERIC_CHARS = __reexport0.ALPHANUMERIC_CHARS;
-const __reexport1 = __require("rmqr/decoder.js"); __exports.decodeRMQR = __reexport1.decodeRMQR;
-const __reexport2 = __require("rmqr/detector.js"); __exports.detectRMQR = __reexport2.detectRMQR; __exports.detectAndDecodeRMQR = __reexport2.detectAndDecodeRMQR;
-const __reexport3 = __require("rmqr/tables.js"); __exports.RMQR_SIZES = __reexport3.RMQR_SIZES; __exports.versionInfo = __reexport3.versionInfo; __exports.versionForSize = __reexport3.versionForSize; __exports.alignmentCoordinates = __reexport3.alignmentCoordinates; __exports.dataModuleOrder = __reexport3.dataModuleOrder; __exports.functionModules = __reexport3.functionModules; __exports.dataBitCapacity = __reexport3.dataBitCapacity; __exports.formatBits = __reexport3.formatBits; __exports.maskBit = __reexport3.maskBit; __exports.validateTables = __reexport3.validateTables;
+__modules["js/rmqr/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("js/rmqr/encoder.js"); __exports.encodeRMQR = __reexport0.encodeRMQR; __exports.ALPHANUMERIC_CHARS = __reexport0.ALPHANUMERIC_CHARS;
+const __reexport1 = __require("js/rmqr/decoder.js"); __exports.decodeRMQR = __reexport1.decodeRMQR;
+const __reexport2 = __require("js/rmqr/detector.js"); __exports.detectRMQR = __reexport2.detectRMQR; __exports.detectAndDecodeRMQR = __reexport2.detectAndDecodeRMQR;
+const __reexport3 = __require("js/rmqr/tables.js"); __exports.RMQR_SIZES = __reexport3.RMQR_SIZES; __exports.versionInfo = __reexport3.versionInfo; __exports.versionForSize = __reexport3.versionForSize; __exports.alignmentCoordinates = __reexport3.alignmentCoordinates; __exports.dataModuleOrder = __reexport3.dataModuleOrder; __exports.functionModules = __reexport3.functionModules; __exports.dataBitCapacity = __reexport3.dataBitCapacity; __exports.formatBits = __reexport3.formatBits; __exports.maskBit = __reexport3.maskBit; __exports.validateTables = __reexport3.validateTables;
 
 
 };
 
-__modules["frameqr/tables.js"] = function (__require, __exports) {
+__modules["js/frameqr/tables.js"] = function (__require, __exports) {
 /**
  * Structural contract for the Sythos Canvas QR profile.
  *
@@ -13239,7 +13239,7 @@ __modules["frameqr/tables.js"] = function (__require, __exports) {
  *
  * @module frameqr/tables
  */
-const { blockLayout, dataModuleOrder, reservedModules, versionSize } = __require("qr/tables.js");
+const { blockLayout, dataModuleOrder, reservedModules, versionSize } = __require("js/qr/tables.js");
 
 /** Public identity and compatibility boundary of the implementable profile. */
 const FRAMEQR_PROFILE = Object.freeze({
@@ -13464,7 +13464,7 @@ __exports.validateCanvasSpec = validateCanvasSpec;
 __exports.validateFrameQrTables = validateFrameQrTables;
 };
 
-__modules["frameqr/encoder.js"] = function (__require, __exports) {
+__modules["js/frameqr/encoder.js"] = function (__require, __exports) {
 /**
  * Sythos Canvas QR profile encoder.
  *
@@ -13475,9 +13475,9 @@ __modules["frameqr/encoder.js"] = function (__require, __exports) {
  *
  * @module frameqr/encoder
  */
-const { EncodeError } = __require("core/errors.js");
-const { encodeQR } = __require("qr/encoder.js");
-const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec, validateCanvasSpec } = __require("frameqr/tables.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { encodeQR } = __require("js/qr/encoder.js");
+const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec, validateCanvasSpec } = __require("js/frameqr/tables.js");
 
 /**
  * @typedef {object} FrameQrEncodeOptions
@@ -13589,7 +13589,7 @@ function encodeFrameQR(text, options = {}) {
 __exports.encodeFrameQR = encodeFrameQR;
 };
 
-__modules["frameqr/decoder.js"] = function (__require, __exports) {
+__modules["js/frameqr/decoder.js"] = function (__require, __exports) {
 /**
  * Decoder for the Sythos Canvas QR profile.
  *
@@ -13604,9 +13604,9 @@ __modules["frameqr/decoder.js"] = function (__require, __exports) {
  *
  * @module frameqr/decoder
  */
-const { FormatError } = __require("core/errors.js");
-const { decodeQR } = __require("qr/decoder.js");
-const { FRAMEQR_PROFILE, normalizeCanvasSpec, validateCanvasSpec, analyzeCanvasDamage } = __require("frameqr/tables.js");
+const { FormatError } = __require("js/core/errors.js");
+const { decodeQR } = __require("js/qr/decoder.js");
+const { FRAMEQR_PROFILE, normalizeCanvasSpec, validateCanvasSpec, analyzeCanvasDamage } = __require("js/frameqr/tables.js");
 
 /** @param {unknown} value @returns {boolean} */
 function isObject(value) {
@@ -13796,7 +13796,7 @@ __exports.isExpectedProfile = isExpectedProfile;
 __exports.decodeFrameQR = decodeFrameQR;
 };
 
-__modules["frameqr/detector.js"] = function (__require, __exports) {
+__modules["js/frameqr/detector.js"] = function (__require, __exports) {
 /**
  * Detector for the non-certified Sythos Canvas QR profile.
  *
@@ -13814,11 +13814,11 @@ __modules["frameqr/detector.js"] = function (__require, __exports) {
  *
  * @module frameqr/detector
  */
-const { NotFoundError } = __require("core/errors.js");
-const { sampleQuad } = __require("image/grid-sampler.js");
-const { detectQR } = __require("qr/detector.js");
-const { decodeFrameQR } = __require("frameqr/decoder.js");
-const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec } = __require("frameqr/tables.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { sampleQuad } = __require("js/image/grid-sampler.js");
+const { detectQR } = __require("js/qr/detector.js");
+const { decodeFrameQR } = __require("js/frameqr/decoder.js");
+const { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec } = __require("js/frameqr/tables.js");
 
 /** @typedef {{x:number, y:number}} Point */
 
@@ -13959,16 +13959,16 @@ __exports.detectFrameQR = detectFrameQR;
 __exports.detectAndDecodeFrameQR = detectAndDecodeFrameQR;
 };
 
-__modules["frameqr/index.js"] = function (__require, __exports) {
-const __reexport0 = __require("frameqr/encoder.js"); __exports.encodeFrameQR = __reexport0.encodeFrameQR;
-const __reexport1 = __require("frameqr/decoder.js"); __exports.decodeFrameQR = __reexport1.decodeFrameQR;
-const __reexport2 = __require("frameqr/detector.js"); __exports.detectFrameQR = __reexport2.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport2.detectAndDecodeFrameQR;
-const __reexport3 = __require("frameqr/tables.js"); __exports.FRAMEQR_PROFILE = __reexport3.FRAMEQR_PROFILE; __exports.FRAMEQR_CANVAS_SHAPES = __reexport3.FRAMEQR_CANVAS_SHAPES; __exports.canvasModules = __reexport3.canvasModules; __exports.normalizeCanvasSpec = __reexport3.normalizeCanvasSpec; __exports.analyzeCanvasDamage = __reexport3.analyzeCanvasDamage; __exports.validateCanvasSpec = __reexport3.validateCanvasSpec; __exports.validateFrameQrTables = __reexport3.validateFrameQrTables;
+__modules["js/frameqr/index.js"] = function (__require, __exports) {
+const __reexport0 = __require("js/frameqr/encoder.js"); __exports.encodeFrameQR = __reexport0.encodeFrameQR;
+const __reexport1 = __require("js/frameqr/decoder.js"); __exports.decodeFrameQR = __reexport1.decodeFrameQR;
+const __reexport2 = __require("js/frameqr/detector.js"); __exports.detectFrameQR = __reexport2.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport2.detectAndDecodeFrameQR;
+const __reexport3 = __require("js/frameqr/tables.js"); __exports.FRAMEQR_PROFILE = __reexport3.FRAMEQR_PROFILE; __exports.FRAMEQR_CANVAS_SHAPES = __reexport3.FRAMEQR_CANVAS_SHAPES; __exports.canvasModules = __reexport3.canvasModules; __exports.normalizeCanvasSpec = __reexport3.normalizeCanvasSpec; __exports.analyzeCanvasDamage = __reexport3.analyzeCanvasDamage; __exports.validateCanvasSpec = __reexport3.validateCanvasSpec; __exports.validateFrameQrTables = __reexport3.validateFrameQrTables;
 
 
 };
 
-__modules["aztecrune/tables.js"] = function (__require, __exports) {
+__modules["js/aztecrune/tables.js"] = function (__require, __exports) {
 /**
  * Aztec Rune geometry.
  *
@@ -13983,8 +13983,8 @@ __modules["aztecrune/tables.js"] = function (__require, __exports) {
  *
  * @module aztecrune/tables
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { fieldForWordSize } = __require("aztec/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { fieldForWordSize } = __require("js/aztec/tables.js");
 const AZTEC_RUNE_SIZE = 11;
 const AZTEC_RUNE_DATA_BITS = 8;
 const AZTEC_RUNE_WORD_SIZE = 4;
@@ -14090,7 +14090,7 @@ __exports.aztecRuneField = aztecRuneField;
 __exports.validateAztecRuneTables = validateAztecRuneTables;
 };
 
-__modules["aztecrune/encoder.js"] = function (__require, __exports) {
+__modules["js/aztecrune/encoder.js"] = function (__require, __exports) {
 /**
  * Aztec Rune encoder.
  *
@@ -14100,10 +14100,10 @@ __modules["aztecrune/encoder.js"] = function (__require, __exports) {
  *
  * @module aztecrune/encoder
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { rsEncode } = __require("core/reed-solomon.js");
-const { AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, buildAztecRuneStructure } = __require("aztecrune/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, buildAztecRuneStructure } = __require("js/aztecrune/tables.js");
 
 /** @param {unknown} value @returns {number} */
 function normalizeAztecRuneValue(value) {
@@ -14178,7 +14178,7 @@ __exports.normalizeAztecRuneValue = normalizeAztecRuneValue;
 __exports.encodeAztecRune = encodeAztecRune;
 };
 
-__modules["aztecrune/decoder.js"] = function (__require, __exports) {
+__modules["js/aztecrune/decoder.js"] = function (__require, __exports) {
 /**
  * Aztec Rune decoder.
  *
@@ -14190,9 +14190,9 @@ __modules["aztecrune/decoder.js"] = function (__require, __exports) {
  *
  * @module aztecrune/decoder
  */
-const { FormatError } = __require("core/errors.js");
-const { rsDecode } = __require("core/reed-solomon.js");
-const { AZTEC_RUNE_DATA_CODEWORDS, AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, aztecRuneStructuralValue } = __require("aztecrune/tables.js");
+const { FormatError } = __require("js/core/errors.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { AZTEC_RUNE_DATA_CODEWORDS, AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, aztecRuneStructuralValue } = __require("js/aztecrune/tables.js");
 
 /** @param {import('../core/bit-matrix.js').BitMatrix} source @param {number} turns */
 function rotateClockwise(source, turns) {
@@ -14298,7 +14298,7 @@ __exports.readCodewords = readCodewords; __exports.structureMatches = structureM
 __exports.decodeAztecRune = decodeAztecRune;
 };
 
-__modules["aztecrune/detector.js"] = function (__require, __exports) {
+__modules["js/aztecrune/detector.js"] = function (__require, __exports) {
 /**
  * Detector for Aztec Rune symbols.
  *
@@ -14310,10 +14310,10 @@ __modules["aztecrune/detector.js"] = function (__require, __exports) {
  *
  * @module aztecrune/detector
  */
-const { NotFoundError } = __require("core/errors.js");
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { decodeAztecRune } = __require("aztecrune/decoder.js");
-const { AZTEC_RUNE_SIZE } = __require("aztecrune/tables.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { decodeAztecRune } = __require("js/aztecrune/decoder.js");
+const { AZTEC_RUNE_SIZE } = __require("js/aztecrune/tables.js");
 
 /** @typedef {{x:number,y:number}} Point */
 
@@ -14439,17 +14439,17 @@ __exports.detectAztecRune = detectAztecRune;
 __exports.detectAndDecodeAztecRune = detectAndDecodeAztecRune;
 };
 
-__modules["aztecrune/index.js"] = function (__require, __exports) {
+__modules["js/aztecrune/index.js"] = function (__require, __exports) {
 /** Aztec Rune entry points. @module aztecrune */
-const __reexport0 = __require("aztecrune/encoder.js"); __exports.encodeAztecRune = __reexport0.encodeAztecRune; __exports.normalizeAztecRuneValue = __reexport0.normalizeAztecRuneValue;
-const __reexport1 = __require("aztecrune/decoder.js"); __exports.decodeAztecRune = __reexport1.decodeAztecRune;
-const __reexport2 = __require("aztecrune/detector.js"); __exports.detectAztecRune = __reexport2.detectAztecRune; __exports.detectAndDecodeAztecRune = __reexport2.detectAndDecodeAztecRune;
-const __reexport3 = __require("aztecrune/tables.js"); __exports.AZTEC_RUNE_SIZE = __reexport3.AZTEC_RUNE_SIZE; __exports.AZTEC_RUNE_DATA_BITS = __reexport3.AZTEC_RUNE_DATA_BITS; __exports.AZTEC_RUNE_WORD_SIZE = __reexport3.AZTEC_RUNE_WORD_SIZE; __exports.AZTEC_RUNE_DATA_CODEWORDS = __reexport3.AZTEC_RUNE_DATA_CODEWORDS; __exports.AZTEC_RUNE_ECC_CODEWORDS = __reexport3.AZTEC_RUNE_ECC_CODEWORDS; __exports.AZTEC_RUNE_TOTAL_CODEWORDS = __reexport3.AZTEC_RUNE_TOTAL_CODEWORDS; __exports.AZTEC_RUNE_MASK = __reexport3.AZTEC_RUNE_MASK; __exports.AZTEC_RUNE_DATA_POSITIONS = __reexport3.AZTEC_RUNE_DATA_POSITIONS; __exports.aztecRuneStructuralValue = __reexport3.aztecRuneStructuralValue; __exports.buildAztecRuneStructure = __reexport3.buildAztecRuneStructure; __exports.aztecRuneField = __reexport3.aztecRuneField; __exports.validateAztecRuneTables = __reexport3.validateAztecRuneTables;
+const __reexport0 = __require("js/aztecrune/encoder.js"); __exports.encodeAztecRune = __reexport0.encodeAztecRune; __exports.normalizeAztecRuneValue = __reexport0.normalizeAztecRuneValue;
+const __reexport1 = __require("js/aztecrune/decoder.js"); __exports.decodeAztecRune = __reexport1.decodeAztecRune;
+const __reexport2 = __require("js/aztecrune/detector.js"); __exports.detectAztecRune = __reexport2.detectAztecRune; __exports.detectAndDecodeAztecRune = __reexport2.detectAndDecodeAztecRune;
+const __reexport3 = __require("js/aztecrune/tables.js"); __exports.AZTEC_RUNE_SIZE = __reexport3.AZTEC_RUNE_SIZE; __exports.AZTEC_RUNE_DATA_BITS = __reexport3.AZTEC_RUNE_DATA_BITS; __exports.AZTEC_RUNE_WORD_SIZE = __reexport3.AZTEC_RUNE_WORD_SIZE; __exports.AZTEC_RUNE_DATA_CODEWORDS = __reexport3.AZTEC_RUNE_DATA_CODEWORDS; __exports.AZTEC_RUNE_ECC_CODEWORDS = __reexport3.AZTEC_RUNE_ECC_CODEWORDS; __exports.AZTEC_RUNE_TOTAL_CODEWORDS = __reexport3.AZTEC_RUNE_TOTAL_CODEWORDS; __exports.AZTEC_RUNE_MASK = __reexport3.AZTEC_RUNE_MASK; __exports.AZTEC_RUNE_DATA_POSITIONS = __reexport3.AZTEC_RUNE_DATA_POSITIONS; __exports.aztecRuneStructuralValue = __reexport3.aztecRuneStructuralValue; __exports.buildAztecRuneStructure = __reexport3.buildAztecRuneStructure; __exports.aztecRuneField = __reexport3.aztecRuneField; __exports.validateAztecRuneTables = __reexport3.validateAztecRuneTables;
 
 
 };
 
-__modules["compactpdf417/tables.js"] = function (__require, __exports) {
+__modules["js/compactpdf417/tables.js"] = function (__require, __exports) {
 /**
  * Compact (truncated) PDF417 layout.
  *
@@ -14462,7 +14462,7 @@ __modules["compactpdf417/tables.js"] = function (__require, __exports) {
  *
  * @module compactpdf417/tables
  */
-const { EncodeError } = __require("core/errors.js");
+const { EncodeError } = __require("js/core/errors.js");
 
 /** PDF417 start pattern, in module widths. */
 const COMPACT_PDF417_START = '81111113';
@@ -14605,14 +14605,14 @@ __exports.compactPdf417MatchingLevels = compactPdf417MatchingLevels;
 __exports.validateCompactPdf417Tables = validateCompactPdf417Tables;
 };
 
-__modules["compactpdf417/encoder.js"] = function (__require, __exports) {
+__modules["js/compactpdf417/encoder.js"] = function (__require, __exports) {
 /** Compact PDF417 (truncated PDF417) encoder. @module compactpdf417/encoder */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { compactPdf417 } = __require("pdf417/compaction.js");
-const { pdf417ErrorCorrection, pdf417EccLength } = __require("pdf417/error-correction.js");
-const { pdf417PatternForCodeword } = __require("pdf417/tables.js");
-const { COMPACT_PDF417_START, compactPdf417Indicators, compactPdf417Width, validateCompactPdf417Options } = __require("compactpdf417/tables.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { compactPdf417 } = __require("js/pdf417/compaction.js");
+const { pdf417ErrorCorrection, pdf417EccLength } = __require("js/pdf417/error-correction.js");
+const { pdf417PatternForCodeword } = __require("js/pdf417/tables.js");
+const { COMPACT_PDF417_START, compactPdf417Indicators, compactPdf417Width, validateCompactPdf417Options } = __require("js/compactpdf417/tables.js");
 
 function appendWidths(matrix, y, x, sequence, height) {
   let dark = true;
@@ -14713,13 +14713,13 @@ __exports.compactPdf417Dimensions = dimensions;
 __exports.encodeCompactPDF417 = encodeCompactPDF417;
 };
 
-__modules["compactpdf417/decoder.js"] = function (__require, __exports) {
+__modules["js/compactpdf417/decoder.js"] = function (__require, __exports) {
 /** Compact PDF417 decoder. @module compactpdf417/decoder */
-const { FormatError } = __require("core/errors.js");
-const { decodePdf417CompactionDetailed } = __require("pdf417/compaction.js");
-const { pdf417CorrectErrors, pdf417EccLength } = __require("pdf417/error-correction.js");
-const { pdf417CodewordForPattern } = __require("pdf417/tables.js");
-const { COMPACT_PDF417_START_BITS, compactPdf417Geometry, compactPdf417Indicators, compactPdf417MatchingLevels } = __require("compactpdf417/tables.js");
+const { FormatError } = __require("js/core/errors.js");
+const { decodePdf417CompactionDetailed } = __require("js/pdf417/compaction.js");
+const { pdf417CorrectErrors, pdf417EccLength } = __require("js/pdf417/error-correction.js");
+const { pdf417CodewordForPattern } = __require("js/pdf417/tables.js");
+const { COMPACT_PDF417_START_BITS, compactPdf417Geometry, compactPdf417Indicators, compactPdf417MatchingLevels } = __require("js/compactpdf417/tables.js");
 
 function bits(matrix, y, x, width) {
   let value = 0;
@@ -14810,11 +14810,11 @@ function decodeCompactPDF417(matrix, options = {}) {
 __exports.decodeCompactPDF417 = decodeCompactPDF417;
 };
 
-__modules["compactpdf417/detector.js"] = function (__require, __exports) {
+__modules["js/compactpdf417/detector.js"] = function (__require, __exports) {
 /** Compact PDF417 detector for clean, integer-scaled rasters. @module compactpdf417/detector */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { compactPdf417Width } = __require("compactpdf417/tables.js");
-const { decodeCompactPDF417 } = __require("compactpdf417/decoder.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { compactPdf417Width } = __require("js/compactpdf417/tables.js");
+const { decodeCompactPDF417 } = __require("js/compactpdf417/decoder.js");
 
 function rotateClockwise(source) {
   const out = new BitMatrix(source.height, source.width);
@@ -14923,19 +14923,19 @@ __exports.detectCompactPDF417 = detectCompactPDF417;
 __exports.detectAndDecodeCompactPDF417 = detectAndDecodeCompactPDF417;
 };
 
-__modules["compactpdf417/index.js"] = function (__require, __exports) {
+__modules["js/compactpdf417/index.js"] = function (__require, __exports) {
 /* Compact PDF417 public module exports. */
-const __reexport0 = __require("compactpdf417/tables.js"); __exports.COMPACT_PDF417_START = __reexport0.COMPACT_PDF417_START; __exports.COMPACT_PDF417_START_BITS = __reexport0.COMPACT_PDF417_START_BITS; __exports.COMPACT_PDF417_STOP_MODULES = __reexport0.COMPACT_PDF417_STOP_MODULES; __exports.COMPACT_PDF417_LIMITS = __reexport0.COMPACT_PDF417_LIMITS; __exports.compactPdf417Width = __reexport0.compactPdf417Width; __exports.compactPdf417Geometry = __reexport0.compactPdf417Geometry; __exports.compactPdf417Indicators = __reexport0.compactPdf417Indicators; __exports.compactPdf417MatchingLevels = __reexport0.compactPdf417MatchingLevels; __exports.validateCompactPdf417Options = __reexport0.validateCompactPdf417Options; __exports.validateCompactPdf417Tables = __reexport0.validateCompactPdf417Tables;
-const __reexport1 = __require("compactpdf417/encoder.js"); __exports.encodeCompactPDF417 = __reexport1.encodeCompactPDF417; __exports.compactPdf417Dimensions = __reexport1.compactPdf417Dimensions;
-const __reexport2 = __require("compactpdf417/decoder.js"); __exports.decodeCompactPDF417 = __reexport2.decodeCompactPDF417;
-const __reexport3 = __require("compactpdf417/detector.js"); __exports.detectCompactPDF417 = __reexport3.detectCompactPDF417; __exports.detectAndDecodeCompactPDF417 = __reexport3.detectAndDecodeCompactPDF417;
+const __reexport0 = __require("js/compactpdf417/tables.js"); __exports.COMPACT_PDF417_START = __reexport0.COMPACT_PDF417_START; __exports.COMPACT_PDF417_START_BITS = __reexport0.COMPACT_PDF417_START_BITS; __exports.COMPACT_PDF417_STOP_MODULES = __reexport0.COMPACT_PDF417_STOP_MODULES; __exports.COMPACT_PDF417_LIMITS = __reexport0.COMPACT_PDF417_LIMITS; __exports.compactPdf417Width = __reexport0.compactPdf417Width; __exports.compactPdf417Geometry = __reexport0.compactPdf417Geometry; __exports.compactPdf417Indicators = __reexport0.compactPdf417Indicators; __exports.compactPdf417MatchingLevels = __reexport0.compactPdf417MatchingLevels; __exports.validateCompactPdf417Options = __reexport0.validateCompactPdf417Options; __exports.validateCompactPdf417Tables = __reexport0.validateCompactPdf417Tables;
+const __reexport1 = __require("js/compactpdf417/encoder.js"); __exports.encodeCompactPDF417 = __reexport1.encodeCompactPDF417; __exports.compactPdf417Dimensions = __reexport1.compactPdf417Dimensions;
+const __reexport2 = __require("js/compactpdf417/decoder.js"); __exports.decodeCompactPDF417 = __reexport2.decodeCompactPDF417;
+const __reexport3 = __require("js/compactpdf417/detector.js"); __exports.detectCompactPDF417 = __reexport3.detectCompactPDF417; __exports.detectAndDecodeCompactPDF417 = __reexport3.detectAndDecodeCompactPDF417;
 
 
 };
 
-__modules["databar/gs1.js"] = function (__require, __exports) {
+__modules["js/databar/gs1.js"] = function (__require, __exports) {
 /** GS1 element-string codec used by GS1 DataBar Expanded. @module databar/gs1 */
-const { EncodeError, FormatError } = __require("core/errors.js");
+const { EncodeError, FormatError } = __require("js/core/errors.js");
 const GS1_SEPARATOR = '\x1d';
 
 const EXACT = new Map([
@@ -15083,12 +15083,12 @@ __exports.decodeGS1ElementString = decodeGS1ElementString;
 __exports.formatGS1Elements = formatGS1Elements;
 };
 
-__modules["databar/encoder.js"] = function (__require, __exports) {
+__modules["js/databar/encoder.js"] = function (__require, __exports) {
 /** GS1 DataBar Omnidirectional and Truncated encoder. @module databar/encoder */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError } = __require("core/errors.js");
-const { encodeDataBar14GTIN } = __require("databar/codec.js");
-const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths } = __require("databar/patterns.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { encodeDataBar14GTIN } = __require("js/databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths } = __require("js/databar/patterns.js");
 
 function finderIndexes(characters) {
   const widths = characters.map((value, index) =>
@@ -15149,25 +15149,25 @@ function encodeDataBar14(value, options = {}) {
 __exports.encodeDataBar14 = encodeDataBar14;
 };
 
-__modules["databar/index.js"] = function (__require, __exports) {
+__modules["js/databar/index.js"] = function (__require, __exports) {
 /** Verified GS1 DataBar data-layer primitives. @module databar */
-const __reexport0 = __require("databar/codec.js"); __exports.dataBarGtinTransmission = __reexport0.dataBarGtinTransmission; __exports.decodeDataBar14GTIN = __reexport0.decodeDataBar14GTIN; __exports.decodeDataBarLimitedGTIN = __reexport0.decodeDataBarLimitedGTIN; __exports.encodeDataBar14GTIN = __reexport0.encodeDataBar14GTIN; __exports.encodeDataBarLimitedGTIN = __reexport0.encodeDataBarLimitedGTIN; __exports.gtinCheckDigit = __reexport0.gtinCheckDigit; __exports.makeGTIN14 = __reexport0.makeGTIN14; __exports.normalizeGTIN = __reexport0.normalizeGTIN;
-const __reexport1 = __require("databar/gs1.js"); __exports.GS1_SEPARATOR = __reexport1.GS1_SEPARATOR; __exports.decodeGS1ElementString = __reexport1.decodeGS1ElementString; __exports.encodeGS1ElementString = __reexport1.encodeGS1ElementString; __exports.formatGS1Elements = __reexport1.formatGS1Elements; __exports.gs1AIInfo = __reexport1.gs1AIInfo; __exports.parseGS1ElementString = __reexport1.parseGS1ElementString;
-const __reexport2 = __require("databar/tables.js"); __exports.DATABAR14_VARIANTS = __reexport2.DATABAR14_VARIANTS; __exports.DATABAR_LIMITED_VARIANT = __reexport2.DATABAR_LIMITED_VARIANT; __exports.dataBar14GroupFor = __reexport2.dataBar14GroupFor; __exports.validateDataBarTables = __reexport2.validateDataBarTables;
-const __reexport3 = __require("databar/encoder.js"); __exports.encodeDataBar14 = __reexport3.encodeDataBar14;
-const __reexport4 = __require("databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14; __exports.decodeDataBar14Scanline = __reexport4.decodeDataBar14Scanline;
-const __reexport5 = __require("databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport5.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport5.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport5.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport5.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport5.dataBarWidths;
+const __reexport0 = __require("js/databar/codec.js"); __exports.dataBarGtinTransmission = __reexport0.dataBarGtinTransmission; __exports.decodeDataBar14GTIN = __reexport0.decodeDataBar14GTIN; __exports.decodeDataBarLimitedGTIN = __reexport0.decodeDataBarLimitedGTIN; __exports.encodeDataBar14GTIN = __reexport0.encodeDataBar14GTIN; __exports.encodeDataBarLimitedGTIN = __reexport0.encodeDataBarLimitedGTIN; __exports.gtinCheckDigit = __reexport0.gtinCheckDigit; __exports.makeGTIN14 = __reexport0.makeGTIN14; __exports.normalizeGTIN = __reexport0.normalizeGTIN;
+const __reexport1 = __require("js/databar/gs1.js"); __exports.GS1_SEPARATOR = __reexport1.GS1_SEPARATOR; __exports.decodeGS1ElementString = __reexport1.decodeGS1ElementString; __exports.encodeGS1ElementString = __reexport1.encodeGS1ElementString; __exports.formatGS1Elements = __reexport1.formatGS1Elements; __exports.gs1AIInfo = __reexport1.gs1AIInfo; __exports.parseGS1ElementString = __reexport1.parseGS1ElementString;
+const __reexport2 = __require("js/databar/tables.js"); __exports.DATABAR14_VARIANTS = __reexport2.DATABAR14_VARIANTS; __exports.DATABAR_LIMITED_VARIANT = __reexport2.DATABAR_LIMITED_VARIANT; __exports.dataBar14GroupFor = __reexport2.dataBar14GroupFor; __exports.validateDataBarTables = __reexport2.validateDataBarTables;
+const __reexport3 = __require("js/databar/encoder.js"); __exports.encodeDataBar14 = __reexport3.encodeDataBar14;
+const __reexport4 = __require("js/databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14; __exports.decodeDataBar14Scanline = __reexport4.decodeDataBar14Scanline;
+const __reexport5 = __require("js/databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport5.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport5.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport5.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport5.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport5.dataBarWidths;
 
 
 };
 
-__modules["render/options.js"] = function (__require, __exports) {
+__modules["js/render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
  *
  * @module render/options
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
 
 /**
  * @typedef {object} RenderOptions
@@ -15296,7 +15296,7 @@ __exports.normalizeOptions = normalizeOptions;
 __exports.parseColor = parseColor;
 };
 
-__modules["render/svg.js"] = function (__require, __exports) {
+__modules["js/render/svg.js"] = function (__require, __exports) {
 /**
  * SVG output.
  *
@@ -15307,7 +15307,7 @@ __modules["render/svg.js"] = function (__require, __exports) {
  *
  * @module render/svg
  */
-const { normalizeOptions } = __require("render/options.js");
+const { normalizeOptions } = __require("js/render/options.js");
 
 /**
  * @param {string} value
@@ -15391,13 +15391,13 @@ __exports.toSVG = toSVG;
 __exports.toSVGDataURI = toSVGDataURI;
 };
 
-__modules["render/image-data.js"] = function (__require, __exports) {
+__modules["js/render/image-data.js"] = function (__require, __exports) {
 /**
  * Raster output as ImageData, and 2D-canvas drawing.
  *
  * @module render/image-data
  */
-const { normalizeOptions, parseColor } = __require("render/options.js");
+const { normalizeOptions, parseColor } = __require("js/render/options.js");
 
 /**
  * Render to an `ImageData`-shaped object.
@@ -15491,7 +15491,7 @@ __exports.toImageData = toImageData;
 __exports.toCanvas = toCanvas;
 };
 
-__modules["render/png.js"] = function (__require, __exports) {
+__modules["js/render/png.js"] = function (__require, __exports) {
 /**
  * PNG output, with no dependencies and no compression library of our own.
  *
@@ -15512,7 +15512,7 @@ __modules["render/png.js"] = function (__require, __exports) {
  *
  * @module render/png
  */
-const { normalizeOptions, parseColor } = __require("render/options.js");
+const { normalizeOptions, parseColor } = __require("js/render/options.js");
 
 /* ------------------------------------------------------------------ *
  * Checksums
@@ -15762,7 +15762,7 @@ __exports.toPNG = toPNG;
 __exports.toPNGDataURI = toPNGDataURI;
 };
 
-__modules["render/webgl.js"] = function (__require, __exports) {
+__modules["js/render/webgl.js"] = function (__require, __exports) {
 /**
  * WebGL2 drawing.
  *
@@ -15777,7 +15777,7 @@ __modules["render/webgl.js"] = function (__require, __exports) {
  *
  * @module render/webgl
  */
-const { normalizeOptions, parseColor } = __require("render/options.js");
+const { normalizeOptions, parseColor } = __require("js/render/options.js");
 
 const VERTEX_SHADER = `#version 300 es
 // A single oversized triangle covers the viewport with no vertex buffer:
@@ -15943,7 +15943,7 @@ __exports.isWebGL2Available = isWebGL2Available;
 __exports.renderToCanvasWebGL = renderToCanvasWebGL;
 };
 
-__modules["render/webgpu.js"] = function (__require, __exports) {
+__modules["js/render/webgpu.js"] = function (__require, __exports) {
 /**
  * WebGPU drawing.
  *
@@ -15961,7 +15961,7 @@ __modules["render/webgpu.js"] = function (__require, __exports) {
  *
  * @module render/webgpu
  */
-const { normalizeOptions, parseColor } = __require("render/options.js");
+const { normalizeOptions, parseColor } = __require("js/render/options.js");
 
 /**
  * Vertex and fragment stages in one module, mirroring the WebGL2 pair.
@@ -16287,7 +16287,7 @@ __exports.isWebGPUAvailable = isWebGPUAvailable;
 __exports.renderToCanvasWebGPU = renderToCanvasWebGPU;
 };
 
-__modules["render/index.js"] = function (__require, __exports) {
+__modules["js/render/index.js"] = function (__require, __exports) {
 /**
  * Output backends.
  *
@@ -16317,15 +16317,15 @@ __modules["render/index.js"] = function (__require, __exports) {
  *
  * @module render
  */
-const __reexport0 = __require("render/svg.js"); __exports.toSVG = __reexport0.toSVG; __exports.toSVGDataURI = __reexport0.toSVGDataURI;
-const __reexport1 = __require("render/image-data.js"); __exports.toImageData = __reexport1.toImageData; __exports.toCanvas = __reexport1.toCanvas;
-const __reexport2 = __require("render/png.js"); __exports.toPNG = __reexport2.toPNG; __exports.toPNGDataURI = __reexport2.toPNGDataURI; __exports.deflateStored = __reexport2.deflateStored;
-const __reexport3 = __require("render/webgl.js"); __exports.isWebGL2Available = __reexport3.isWebGL2Available; __exports.renderToCanvasWebGL = __reexport3.renderToCanvasWebGL;
-const __reexport4 = __require("render/webgpu.js"); __exports.isWebGPUAvailable = __reexport4.isWebGPUAvailable; __exports.renderToCanvasWebGPU = __reexport4.renderToCanvasWebGPU;
-const __reexport5 = __require("render/options.js"); __exports.normalizeOptions = __reexport5.normalizeOptions; __exports.parseColor = __reexport5.parseColor;
-const { toCanvas } = __require("render/image-data.js");
-const { isWebGL2Available, renderToCanvasWebGL } = __require("render/webgl.js");
-const { isWebGPUAvailable, renderToCanvasWebGPU } = __require("render/webgpu.js");
+const __reexport0 = __require("js/render/svg.js"); __exports.toSVG = __reexport0.toSVG; __exports.toSVGDataURI = __reexport0.toSVGDataURI;
+const __reexport1 = __require("js/render/image-data.js"); __exports.toImageData = __reexport1.toImageData; __exports.toCanvas = __reexport1.toCanvas;
+const __reexport2 = __require("js/render/png.js"); __exports.toPNG = __reexport2.toPNG; __exports.toPNGDataURI = __reexport2.toPNGDataURI; __exports.deflateStored = __reexport2.deflateStored;
+const __reexport3 = __require("js/render/webgl.js"); __exports.isWebGL2Available = __reexport3.isWebGL2Available; __exports.renderToCanvasWebGL = __reexport3.renderToCanvasWebGL;
+const __reexport4 = __require("js/render/webgpu.js"); __exports.isWebGPUAvailable = __reexport4.isWebGPUAvailable; __exports.renderToCanvasWebGPU = __reexport4.renderToCanvasWebGPU;
+const __reexport5 = __require("js/render/options.js"); __exports.normalizeOptions = __reexport5.normalizeOptions; __exports.parseColor = __reexport5.parseColor;
+const { toCanvas } = __require("js/render/image-data.js");
+const { isWebGL2Available, renderToCanvasWebGL } = __require("js/render/webgl.js");
+const { isWebGPUAvailable, renderToCanvasWebGPU } = __require("js/render/webgpu.js");
 
 /**
  * Draw into a canvas using the best backend available.
@@ -16408,46 +16408,46 @@ __modules["index.js"] = function (__require, __exports) {
  *
  * @module @sythos/js_barcode_universal
  */
-const { BitMatrix } = __require("core/bit-matrix.js");
-const { EncodeError, NotFoundError } = __require("core/errors.js");
-const { LuminanceSource } = __require("image/luminance.js");
-const { binarize } = __require("image/binarizer.js");
-const { ONED_FORMATS } = __require("oned/index.js");
-const { decodeOneD } = __require("oned/reader.js");
-const datamatrix = __require("datamatrix/index.js");
-const qr = __require("qr/index.js");
-const aztec = __require("aztec/index.js");
-const pdf417 = __require("pdf417/index.js");
-const micropdf417 = __require("micropdf417/index.js");
-const microqr = __require("microqr/index.js");
-const rmqr = __require("rmqr/index.js");
-const frameqr = __require("frameqr/index.js");
-const aztecRune = __require("aztecrune/index.js");
-const compactPdf417 = __require("compactpdf417/index.js");
-const databar = __require("databar/index.js");
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError, NotFoundError } = __require("js/core/errors.js");
+const { LuminanceSource } = __require("js/image/luminance.js");
+const { binarize } = __require("js/image/binarizer.js");
+const { ONED_FORMATS } = __require("js/oned/index.js");
+const { decodeOneD } = __require("js/oned/reader.js");
+const datamatrix = __require("js/datamatrix/index.js");
+const qr = __require("js/qr/index.js");
+const aztec = __require("js/aztec/index.js");
+const pdf417 = __require("js/pdf417/index.js");
+const micropdf417 = __require("js/micropdf417/index.js");
+const microqr = __require("js/microqr/index.js");
+const rmqr = __require("js/rmqr/index.js");
+const frameqr = __require("js/frameqr/index.js");
+const aztecRune = __require("js/aztecrune/index.js");
+const compactPdf417 = __require("js/compactpdf417/index.js");
+const databar = __require("js/databar/index.js");
 __exports.BitMatrix = BitMatrix;
-const __reexport0 = __require("core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
-const __reexport1 = __require("image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
-const __reexport2 = __require("image/binarizer.js"); __exports.binarize = __reexport2.binarize; __exports.binarizeGlobal = __reexport2.binarizeGlobal; __exports.binarizeHybrid = __reexport2.binarizeHybrid;
-Object.assign(__exports, __require("oned/index.js"));
-const __reexport3 = __require("render/svg.js"); __exports.toSVG = __reexport3.toSVG; __exports.toSVGDataURI = __reexport3.toSVGDataURI;
-const __reexport4 = __require("render/image-data.js"); __exports.toImageData = __reexport4.toImageData; __exports.toCanvas = __reexport4.toCanvas;
-const __reexport5 = __require("render/png.js"); __exports.toPNG = __reexport5.toPNG; __exports.toPNGDataURI = __reexport5.toPNGDataURI;
-const __reexport6 = __require("render/index.js"); __exports.renderToCanvasAuto = __reexport6.renderToCanvasAuto; __exports.isWebGL2Available = __reexport6.isWebGL2Available;
-const __reexport7 = __require("render/index.js"); __exports.renderToCanvasAutoAsync = __reexport7.renderToCanvasAutoAsync; __exports.isWebGPUAvailable = __reexport7.isWebGPUAvailable;
-const __reexport8 = __require("qr/index.js"); __exports.encodeQR = __reexport8.encodeQR; __exports.decodeQR = __reexport8.decodeQR; __exports.detectQR = __reexport8.detectQR; __exports.detectAndDecodeQR = __reexport8.detectAndDecodeQR;
-const __reexport9 = __require("datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
-const __reexport10 = __require("aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
-Object.assign(__exports, __require("aztecrune/index.js"));
-const __reexport11 = __require("pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
-Object.assign(__exports, __require("compactpdf417/index.js"));
+const __reexport0 = __require("js/core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
+const __reexport1 = __require("js/image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
+const __reexport2 = __require("js/image/binarizer.js"); __exports.binarize = __reexport2.binarize; __exports.binarizeGlobal = __reexport2.binarizeGlobal; __exports.binarizeHybrid = __reexport2.binarizeHybrid;
+Object.assign(__exports, __require("js/oned/index.js"));
+const __reexport3 = __require("js/render/svg.js"); __exports.toSVG = __reexport3.toSVG; __exports.toSVGDataURI = __reexport3.toSVGDataURI;
+const __reexport4 = __require("js/render/image-data.js"); __exports.toImageData = __reexport4.toImageData; __exports.toCanvas = __reexport4.toCanvas;
+const __reexport5 = __require("js/render/png.js"); __exports.toPNG = __reexport5.toPNG; __exports.toPNGDataURI = __reexport5.toPNGDataURI;
+const __reexport6 = __require("js/render/index.js"); __exports.renderToCanvasAuto = __reexport6.renderToCanvasAuto; __exports.isWebGL2Available = __reexport6.isWebGL2Available;
+const __reexport7 = __require("js/render/index.js"); __exports.renderToCanvasAutoAsync = __reexport7.renderToCanvasAutoAsync; __exports.isWebGPUAvailable = __reexport7.isWebGPUAvailable;
+const __reexport8 = __require("js/qr/index.js"); __exports.encodeQR = __reexport8.encodeQR; __exports.decodeQR = __reexport8.decodeQR; __exports.detectQR = __reexport8.detectQR; __exports.detectAndDecodeQR = __reexport8.detectAndDecodeQR;
+const __reexport9 = __require("js/datamatrix/index.js"); __exports.encodeDataMatrix = __reexport9.encodeDataMatrix; __exports.decodeDataMatrix = __reexport9.decodeDataMatrix; __exports.detectDataMatrix = __reexport9.detectDataMatrix; __exports.detectAndDecodeDataMatrix = __reexport9.detectAndDecodeDataMatrix;
+const __reexport10 = __require("js/aztec/index.js"); __exports.encodeAztec = __reexport10.encodeAztec; __exports.decodeAztec = __reexport10.decodeAztec; __exports.detectAztec = __reexport10.detectAztec; __exports.detectAndDecodeAztec = __reexport10.detectAndDecodeAztec;
+Object.assign(__exports, __require("js/aztecrune/index.js"));
+const __reexport11 = __require("js/pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
+Object.assign(__exports, __require("js/compactpdf417/index.js"));
   // DataBar exports include both the verified GTIN/data layer and the
   // Omnidirectional/Truncated physical image path.
-Object.assign(__exports, __require("databar/index.js"));
-const __reexport12 = __require("micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
-const __reexport13 = __require("microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
-const __reexport14 = __require("rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
-const __reexport15 = __require("frameqr/index.js"); __exports.encodeFrameQR = __reexport15.encodeFrameQR; __exports.decodeFrameQR = __reexport15.decodeFrameQR; __exports.detectFrameQR = __reexport15.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport15.detectAndDecodeFrameQR;
+Object.assign(__exports, __require("js/databar/index.js"));
+const __reexport12 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
+const __reexport13 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
+const __reexport14 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
+const __reexport15 = __require("js/frameqr/index.js"); __exports.encodeFrameQR = __reexport15.encodeFrameQR; __exports.decodeFrameQR = __reexport15.decodeFrameQR; __exports.detectFrameQR = __reexport15.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport15.detectAndDecodeFrameQR;
 
 /**
  * @typedef {object} FormatInfo
@@ -16703,7 +16703,7 @@ function encode(text, options = {}) {
  * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
  * @property {number} [confidence] Camera-profile confidence from 0 to 1.
  * @property {{x:number,y:number,width:number,height:number}} [bounds] Camera-profile bounds in the scanned orientation.
- * @property {0|90|180|270} [rotation] Camera-profile orientation in degrees.
+ * @property {0|45|90|135|180|225|270|315} [rotation] Camera-profile orientation in degrees.
  * @property {{quietZone:boolean,checksum:boolean|null,rows:number|null,consistency:number|null}} [quality] Camera-profile validation evidence.
  * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
  * @property {string} [symbologyIdentifier] GS1 symbology identifier.
@@ -16725,7 +16725,7 @@ function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {'camera'} [options.profile] Opt-in strict camera profile for validated 1D reads.
+ * @param {'camera'} [options.profile] Opt-in strict camera profile for validated reads.
  * @param {object} [options.frameqr] Sythos Canvas QR detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
@@ -16745,6 +16745,8 @@ function decode(image, options = {}) {
   const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
   const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
+  const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
+    || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR;
 
   const source = LuminanceSource.fromImageData(image);
   const results = [];
@@ -16756,114 +16758,151 @@ function decode(image, options = {}) {
   for (const pass of passes) {
     const bits = binarize(pass, binarizer);
 
-    if (wantQR && qrCanDecode) {
-      try {
-        for (const found of qr.detectAndDecodeQR(bits)) {
-          results.push({ ...found, format: 'qr' });
-        }
-      } catch {
-        /* no QR in this pass */
-      }
-    }
+    // Keep all two-dimensional detector calls in one helper so camera-only
+    // orientation retries use exactly the same validation path as the native
+    // orientation. Arbitrary-angle retries remain opt-in to the camera
+    // profile because resampling is intentionally not part of ordinary decode.
+    const readTwoD = (candidateBits, cameraRotation = 0, candidateSource = pass) => {
+      const before = results.length;
+      const add = (found, format) => {
+        if (!found) return;
+        const publicFound = { ...found, format };
+        if (profile === 'camera' && cameraRotation !== 0) publicFound.rotation = cameraRotation;
+        results.push(publicFound);
+      };
 
-    if (wantDataMatrix && dataMatrixCanDecode) {
-      // Hybrid thresholding can erase the interior of very large, perfectly
-      // uniform modules. In auto mode keep the local-threshold attempt, then
-      // retry Data Matrix once with the global threshold before giving up.
-      const dataMatrixBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of dataMatrixBits) {
+      if (wantQR && qrCanDecode) {
         try {
-          const found = datamatrix.detectAndDecodeDataMatrix(candidateBits);
-          if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
+          for (const found of qr.detectAndDecodeQR(candidateBits)) add(found, 'qr');
         } catch {
-          /* no Data Matrix with this threshold */
+          /* no QR in this pass */
         }
       }
-    }
 
-    if (wantAztec && aztecCanDecode) {
-      // The central bull's-eye is a small, high-contrast target. Hybrid
-      // thresholding can flatten it on clean rendered symbols, so mirror the
-      // Data Matrix global fallback in auto mode.
-      const aztecBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of aztecBits) {
+      if (wantDataMatrix && dataMatrixCanDecode) {
+        // Hybrid thresholding can erase the interior of very large, perfectly
+        // uniform modules. In auto mode keep the local-threshold attempt, then
+        // retry Data Matrix once with the global threshold before giving up.
+        const dataMatrixBits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of dataMatrixBits) {
+          try {
+            const found = datamatrix.detectAndDecodeDataMatrix(thresholdBits);
+            if (found) { add(found, 'datamatrix'); break; }
+          } catch {
+            /* no Data Matrix with this threshold */
+          }
+        }
+      }
+
+      if (wantAztec && aztecCanDecode) {
+        // The central bull's-eye is a small, high-contrast target. Hybrid
+        // thresholding can flatten it on clean rendered symbols, so mirror the
+        // Data Matrix global fallback in auto mode.
+        const aztecBits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of aztecBits) {
+          try {
+            const found = aztec.detectAndDecodeAztec(thresholdBits);
+            if (found) { add(found, 'aztec'); break; }
+          } catch {
+            /* no Aztec code with this threshold */
+          }
+        }
+      }
+
+      if (wantAztecRune && aztecRuneCanDecode) {
         try {
-          const found = aztec.detectAndDecodeAztec(candidateBits);
-          if (found) { results.push({ ...found, format: 'aztec' }); break; }
+          const found = aztecRune.detectAndDecodeAztecRune(candidateBits);
+          if (found) add(found, 'aztecrune');
         } catch {
-          /* no Aztec code with this threshold */
+          /* no Aztec Rune in this pass */
         }
       }
-    }
 
-    if (wantAztecRune && aztecRuneCanDecode) {
-      try {
-        const found = aztecRune.detectAndDecodeAztecRune(bits);
-        if (found) results.push({ ...found, format: 'aztecrune' });
-      } catch {
-        /* no Aztec Rune in this pass */
-      }
-    }
-
-    if (wantPDF417 && pdf417CanDecode) {
-      try {
-        const found = pdf417.detectAndDecodePDF417(bits);
-        if (found) results.push({ ...found, format: 'pdf417' });
-      } catch {
-        /* no PDF417 in this pass */
-      }
-    }
-
-    if (wantCompactPDF417 && compactPdf417CanDecode) {
-      try {
-        const found = compactPdf417.detectAndDecodeCompactPDF417(bits);
-        if (found) results.push({ ...found, format: 'compactpdf417' });
-      } catch {
-        /* no Compact PDF417 in this pass */
-      }
-    }
-
-    if (wantMicroPDF417 && microPdf417CanDecode) {
-      // MicroPDF417 detection measures runs across the whole raster. Hybrid
-      // thresholding can alter uniform modules near local-window boundaries,
-      // so retry the global threshold in auto mode as for the other 2D codes.
-      const microPdf417Bits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of microPdf417Bits) {
+      if (wantPDF417 && pdf417CanDecode) {
         try {
-          const found = micropdf417.detectAndDecodeMicroPDF417(candidateBits);
-          if (found) { results.push({ ...found, format: 'micropdf417' }); break; }
+          const found = pdf417.detectAndDecodePDF417(candidateBits);
+          if (found) add(found, 'pdf417');
         } catch {
-          /* no MicroPDF417 with this threshold */
+          /* no PDF417 in this pass */
         }
       }
-    }
 
-    if (wantMicroQR && microQrCanDecode) {
-      try {
-        for (const found of microqr.detectAndDecodeMicroQR(bits)) {
-          results.push({ ...found, format: 'microqr' });
+      if (wantCompactPDF417 && compactPdf417CanDecode) {
+        try {
+          const found = compactPdf417.detectAndDecodeCompactPDF417(candidateBits);
+          if (found) add(found, 'compactpdf417');
+        } catch {
+          /* no Compact PDF417 in this pass */
         }
-      } catch {
-        /* no Micro QR in this pass */
       }
-    }
 
-    if (wantRMQR && rmqrCanDecode) {
-      try {
-        const found = rmqr.detectAndDecodeRMQR(bits);
-        if (found) results.push({ ...found, format: 'rmqr' });
-      } catch {
-        /* no rMQR in this pass */
-      }
-    }
-
-    if (wantFrameQR && frameQrCanDecode) {
-      try {
-        for (const found of frameqr.detectAndDecodeFrameQR(bits, options.frameqr ?? {})) {
-          results.push({ ...found, format: 'frameqr' });
+      if (wantMicroPDF417 && microPdf417CanDecode) {
+        // MicroPDF417 detection measures runs across the whole raster. Hybrid
+        // thresholding can alter uniform modules near local-window boundaries,
+        // so retry the global threshold in auto mode as for the other 2D codes.
+        const microPdf417Bits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of microPdf417Bits) {
+          try {
+            const found = micropdf417.detectAndDecodeMicroPDF417(thresholdBits);
+            if (found) { add(found, 'micropdf417'); break; }
+          } catch {
+            /* no MicroPDF417 with this threshold */
+          }
         }
-      } catch {
-        /* no Sythos Canvas QR profile in this pass */
+      }
+
+      if (wantMicroQR && microQrCanDecode) {
+        try {
+          for (const found of microqr.detectAndDecodeMicroQR(candidateBits)) add(found, 'microqr');
+        } catch {
+          /* no Micro QR in this pass */
+        }
+      }
+
+      if (wantRMQR && rmqrCanDecode) {
+        try {
+          const found = rmqr.detectAndDecodeRMQR(candidateBits);
+          if (found) add(found, 'rmqr');
+        } catch {
+          /* no rMQR in this pass */
+        }
+      }
+
+      if (wantFrameQR && frameQrCanDecode) {
+        try {
+          for (const found of frameqr.detectAndDecodeFrameQR(candidateBits, options.frameqr ?? {})) add(found, 'frameqr');
+        } catch {
+          /* no Sythos Canvas QR profile in this pass */
+        }
+      }
+
+      return results.length > before;
+    };
+
+    const twoDFound = readTwoD(bits);
+    if (profile === 'camera' && wantTwoD && !twoDFound) {
+      // Normalize a camera frame through the full eight-angle set only after
+      // the native orientation has failed. This preserves the fast path while
+      // limiting resampling to frames that need it.
+      const cameraRotations = [45, 90, 135, 180, 225, 270, 315];
+      for (const rotation of cameraRotations) {
+        const inverse = (360 - rotation) % 360;
+        const orientedSource = inverse % 90 === 0
+          ? inverse === 0
+            ? pass
+            : inverse === 90
+              ? pass.rotate90()
+              : inverse === 180
+                ? rotateLuminanceSourceByDegrees(pass, 180)
+                : pass.rotate90().rotate90().rotate90()
+          : rotateLuminanceSourceByDegrees(pass, inverse);
+        if (readTwoD(binarize(orientedSource, binarizer), rotation, orientedSource)) break;
       }
     }
 
@@ -16872,18 +16911,33 @@ function decode(image, options = {}) {
         ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
         : null;
       const oneDPasses = [{ bits, rotation: 0 }];
-      // A linear symbol rotated by 90° has no usable horizontal scanline.
-      // The strict camera profile adds exactly two normalized orientations,
-      // only when the native orientation found no validated 1D result.
+      // A linear symbol rotated away from the horizontal has no usable
+      // horizontal scanline. The strict camera profile adds normalized
+      // orientations only when the native orientation found no validated 1D
+      // result. Keep the two quarter-turns first: they are the established
+      // path and avoid paying for diagonal resampling on the common case.
       const readOneD = (candidateBits, rotation) => decodeOneD(candidateBits, {
         ...options, formats: oneDFormats, tryHarder, profile, cameraRotation: rotation,
       });
       let oneDResults = readOneD(bits, 0);
       if (profile === 'camera' && oneDResults.length === 0) {
-        oneDPasses.push(
-          { bits: rotateBitMatrix90(bits, false), rotation: 90 },
-          { bits: rotateBitMatrix90(bits, true), rotation: 270 },
-        );
+        // `rotation` describes the supplied raster, clockwise from the
+        // canonical horizontal orientation. To normalize it, apply the
+        // inverse rotation.  Include 180 explicitly so the full eight-angle
+        // set still works when tryHarder is disabled (the normal reversed-row
+        // pass also handles it without a second raster transform).
+        const cameraRotations = [90, 270, 180, 45, 135, 225, 315];
+        for (const rotation of cameraRotations) {
+          const inverse = (360 - rotation) % 360;
+          const oriented = inverse % 90 === 0
+            ? inverse === 0
+              ? bits.clone()
+              : inverse === 180
+                ? (() => { const copy = bits.clone(); copy.rotate180(); return copy; })()
+                : rotateBitMatrix90(bits, inverse === 90)
+            : rotateBitMatrixByDegrees(bits, inverse);
+          oneDPasses.push({ bits: oriented, rotation });
+        }
         for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
           oneDResults = readOneD(oneDPasses[i].bits, oneDPasses[i].rotation);
         }
@@ -16971,6 +17025,105 @@ function rotateBitMatrix90(matrix, clockwise) {
     }
   }
   return rotated;
+}
+
+/**
+ * Rotate a binarized raster by an arbitrary clockwise angle without changing
+ * the source matrix. This is intentionally used only by the strict camera
+ * profile: arbitrary-angle resampling is useful for linear symbols, but is
+ * too permissive to become a default retry for every detector.
+ *
+ * @param {BitMatrix} matrix
+ * @param {number} degrees Clockwise angle, normally one of 45/135/225/315.
+ * @returns {BitMatrix}
+ */
+function rotateBitMatrixByDegrees(matrix, degrees) {
+  const angle = ((degrees % 360) + 360) % 360;
+  if (angle === 0) return matrix.clone();
+  if (angle === 90) return rotateBitMatrix90(matrix, true);
+  if (angle === 180) {
+    const rotated = matrix.clone();
+    rotated.rotate180();
+    return rotated;
+  }
+  if (angle === 270) return rotateBitMatrix90(matrix, false);
+
+  const radians = angle * Math.PI / 180;
+  const sin = Math.sin(radians);
+  const cos = Math.cos(radians);
+  const width = Math.ceil(Math.abs(matrix.width * cos) + Math.abs(matrix.height * sin));
+  const height = Math.ceil(Math.abs(matrix.width * sin) + Math.abs(matrix.height * cos));
+  const rotated = new BitMatrix(width, height);
+  const sourceCenterX = (matrix.width - 1) / 2;
+  const sourceCenterY = (matrix.height - 1) / 2;
+  const destinationCenterX = (width - 1) / 2;
+  const destinationCenterY = (height - 1) / 2;
+
+  // Inverse-map destination pixels into the source. Sampling the already
+  // binarized raster keeps the operation deterministic and leaves the caller's
+  // original image and threshold result untouched.
+  for (let y = 0; y < height; y++) {
+    const dy = y - destinationCenterY;
+    for (let x = 0; x < width; x++) {
+      const dx = x - destinationCenterX;
+      const sourceX = Math.round(cos * dx + sin * dy + sourceCenterX);
+      const sourceY = Math.round(-sin * dx + cos * dy + sourceCenterY);
+      if (sourceX >= 0 && sourceX < matrix.width && sourceY >= 0 && sourceY < matrix.height &&
+          matrix.get(sourceX, sourceY)) {
+        rotated.set(x, y);
+      }
+    }
+  }
+  return rotated;
+}
+
+/**
+ * Rotate the greyscale source before thresholding. Resampling luminance rather
+ * than an already-binarized matrix preserves module contrast at diagonal
+ * orientations and gives the format-specific detectors the same input quality
+ * as the native camera frame.
+ *
+ * @param {LuminanceSource} source
+ * @param {number} degrees Clockwise angle.
+ * @returns {LuminanceSource}
+ */
+function rotateLuminanceSourceByDegrees(source, degrees) {
+  const angle = ((degrees % 360) + 360) % 360;
+  if (angle === 0) return source;
+  if (angle === 90) return source.rotate90();
+  if (angle === 180) return source.rotate90().rotate90();
+  if (angle === 270) return source.rotate90().rotate90().rotate90();
+
+  const radians = angle * Math.PI / 180;
+  const sin = Math.sin(radians);
+  const cos = Math.cos(radians);
+  const width = Math.ceil(Math.abs(source.width * cos) + Math.abs(source.height * sin));
+  const height = Math.ceil(Math.abs(source.width * sin) + Math.abs(source.height * cos));
+  const rotated = new Uint8Array(width * height);
+  rotated.fill(255);
+  const sourceCenterX = (source.width - 1) / 2;
+  const sourceCenterY = (source.height - 1) / 2;
+  const destinationCenterX = (width - 1) / 2;
+  const destinationCenterY = (height - 1) / 2;
+
+  for (let y = 0; y < height; y++) {
+    const dy = y - destinationCenterY;
+    for (let x = 0; x < width; x++) {
+      const dx = x - destinationCenterX;
+      const sourceX = cos * dx + sin * dy + sourceCenterX;
+      const sourceY = -sin * dx + cos * dy + sourceCenterY;
+      if (sourceX >= 0 && sourceX < source.width && sourceY >= 0 && sourceY < source.height) {
+        const left = Math.floor(sourceX), top = Math.floor(sourceY);
+        const right = Math.min(source.width - 1, left + 1);
+        const bottom = Math.min(source.height - 1, top + 1);
+        const fx = sourceX - left, fy = sourceY - top;
+        const topValue = source.get(left, top) * (1 - fx) + source.get(right, top) * fx;
+        const bottomValue = source.get(left, bottom) * (1 - fx) + source.get(right, bottom) * fx;
+        rotated[y * width + x] = Math.round(topValue * (1 - fy) + bottomValue * fy);
+      }
+    }
+  }
+  return LuminanceSource.fromGrey(rotated, width, height);
 }
 
 /**

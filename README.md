@@ -1,6 +1,6 @@
 # Sythos Barcode Suite and SDK
 
-Read and write barcodes in JavaScript and Typescript.
+Read and write barcodes in JavaScript and TypeScript.
 
 [![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json) [![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
@@ -162,7 +162,17 @@ toPNG(ean, { scale: 3, barHeight: 80 }).then((bytes) => {
 ### 4. The source directly
 
 [`src/index.js`](src/index.js) is plain ESM with JSDoc types and no build step of its own. Import
-it and let your bundler tree-shake; the package is marked side-effect free.
+it and let your bundler tree-shake; the package is marked side-effect free. The source layout is
+deliberately explicit:
+
+- `src/index.js` is the stable public facade.
+- `src/index.d.ts` is the public TypeScript declaration facade for the top-level entry point.
+- `src/js/` contains the zero-dependency JavaScript runtime modules, including format subpaths.
+- `src/ts/` contains the shipped machine-readable TypeScript declaration modules for the format
+  subpaths. These declarations describe the JavaScript runtime and do not add a runtime dependency.
+
+The package subpath exports therefore pair runtime modules under `src/js/` with their declaration
+counterparts under `src/ts/`; direct source imports should continue to use the facade above.
 
 ```js
 import { encode, decode, toImageData, listFormats } from './src/index.js';
@@ -199,11 +209,14 @@ decode(frame, { formats, profile: 'camera', tryHarder: true })
 ```
 
 The profile requires a compatible quiet zone and the same complete 1D symbol on at least two
-scan samples. It retries only the two quarter-turn orientations needed for 1D symbols when the
-native orientation has no validated read. Code 11 and MSI require a verified check digit in this
-profile; other formats retain their own structural and checksum validation. A frame without a
-validated barcode still returns `[]`. No partial, structurally inconsistent or low-confidence value is
-emitted to the caller.
+scan samples. It evaluates the eight fixed in-plane orientations `0°`, `45°`, `90°`, `135°`,
+`180°`, `225°`, `270°` and `315°` when the native orientation has no validated read. The same
+orientation set is available to the supported 2D detector passes in the strict camera profile.
+Code 11 and MSI require a verified check digit in this profile; other formats retain their own
+structural and checksum validation. A frame without a validated barcode still returns `[]`. No
+partial, structurally inconsistent or low-confidence value is emitted to the caller. This is a
+finite in-plane retry policy, not a guarantee for arbitrary perspective, curved media, severe
+occlusion or multi-symbol scenes.
 
 Camera-profile 1D results add `confidence` (0–1), `bounds`, `rotation`, and
 `quality: { quietZone, checksum, rows, consistency }`. `bounds` is reported in the raster
@@ -294,9 +307,9 @@ console.log(result.text, result.gs1); // 0101234567890128 true
 
 Binary content is accepted as a `Uint8Array` with `encoding: 'base256'`. The current high-level
 decoder handles ASCII and Base256 codewords; C40, Text, X12 and EDIFACT input symbols are not yet
-decoded. The current detector accepts axis-aligned square or rectangular symbols; the normal
-`decode(image, { formats: ['datamatrix'] })` pipeline also retries quarter-turn rotations.
-Arbitrary-angle and perspective-skewed Data Matrix photographs are not yet guaranteed.
+decoded. The current detector accepts axis-aligned square or rectangular symbols; with
+`profile: 'camera'`, the decode pipeline evaluates the eight fixed in-plane orientations at 45°
+steps. Arbitrary perspective and perspective-skewed Data Matrix photographs are not yet guaranteed.
 
 ### Aztec Code
 
@@ -314,9 +327,9 @@ const result = decodeAztec(symbol);
 console.log(result.text); // Greetings My Lord Sythos  👋
 ```
 
-The image detector handles rotation, inverted polarity and quadrilateral sampling around the
-central bull’s-eye. Severe photographic perspective remains an interoperability and robustness
-gate rather than a guaranteed capability.
+The image detector handles the eight fixed camera-profile orientations, inverted polarity and
+quadrilateral sampling around the central bull’s-eye. Severe photographic perspective remains an
+interoperability and robustness gate rather than a guaranteed capability.
 
 ### PDF417 (writer, matrix decoder and camera reader)
 
@@ -324,8 +337,8 @@ gate rather than a guaranteed capability.
 (UTF-8), ECC levels 0–8, row-height inference and Reed–Solomon erasure correction. The direct
 matrix decoder is available from `@sythos/js_barcode_universal/pdf417`.
 
-The image helper handles clean module-aligned raster symbols, integer scale, right-angle
-rotations, automatic perspective estimation, mild blur/noise and an application-supplied
+The image helper handles clean module-aligned raster symbols, integer scale, fixed 45°-step
+camera orientations, automatic perspective estimation, mild blur/noise and an application-supplied
 quadrilateral. Results expose `bytes` and ordered `segments` for byte-preserving payloads. Real
 device validation covers Pixel 10/Chrome and iPhone 17/Safari with printed symbols and continuous
 camera capture. Extreme glare, severe occlusion, curved media and multi-symbol scenes remain
@@ -351,17 +364,18 @@ const symbol = encodeMicroPDF417('MICRO PDF417', { compaction: 'text' });
 console.log(decodeMicroPDF417(symbol).text);
 ```
 
-The detector accepts clean, integer-scaled raster symbols and quarter-turn rotations. Arbitrary
-perspective, severe photographic degradation and multi-symbol scenes are not yet claimed as
-robust capabilities.
+The detector accepts clean, integer-scaled raster symbols and the eight fixed camera-profile
+orientations. Arbitrary perspective, severe photographic degradation and multi-symbol scenes are
+not yet claimed as robust capabilities.
 
 ### Micro QR Code
 
 `microqr` implements the M1–M4 family with Numeric, Alphanumeric, ISO-8859-1 Byte and Kanji
 payloads, BCH format protection, the four Micro QR masks and Reed–Solomon correction. M1 is
 detection-only. ECI, FNC1/GS1 and Structured Append are intentionally outside the current API.
-The detector accepts clean scaled rasters, quarter-turns, inverted polarity and mild projective
-sampling, and rejects normal QR Model 2 symbols.
+The detector accepts clean scaled rasters, the eight fixed camera-profile orientations, inverted
+polarity and mild projective sampling, and rejects normal QR Model 2 symbols. Arbitrary perspective
+and curved-media robustness are not claimed.
 
 ```js
 import { encodeMicroQR, decodeMicroQR } from '@sythos/js_barcode_universal/microqr';
@@ -373,8 +387,9 @@ console.log(decodeMicroQR(symbol).text);
 ### rMQR Code
 
 `rmqr` implements all 32 standard rectangular geometries, M/H ECC, Numeric, Alphanumeric, Byte,
-Kanji and ECI payloads. The detector accepts clean integer-scaled rasters, quiet zones and
-quarter-turns; arbitrary photographic perspective and multi-symbol scenes are not claimed.
+Kanji and ECI payloads. The detector accepts clean integer-scaled rasters, quiet zones and the
+eight fixed camera-profile orientations; arbitrary photographic perspective and multi-symbol
+scenes are not claimed.
 
 ```js
 import { encodeRMQR, decodeRMQR } from '@sythos/js_barcode_universal/rmqr';
@@ -408,7 +423,7 @@ exports the QR symbol without embedding the remote artwork.
 ### Aztec Rune, Compact PDF417 and EAN supplements
 
 `aztecrune` implements the fixed 11×11 Rune values 0–255 with clean raster
-detection, inversion and quarter-turn handling. Its matrices were compared
+detection, inversion and the eight fixed camera-profile orientations. Its matrices were compared
 exhaustively with ZXing-C++ as an independent black-box runtime; no ZXing
 source or table is shipped.
 
@@ -596,8 +611,8 @@ Luminance conversion flattens the image to greyscale. Binarization turns that in
 either globally or with a hybrid local threshold that survives uneven lighting. Detection locates
 a symbol and its corners in that bit plane. Detectors that recover four perspective-aware corners
 (currently QR) sample the symbol back through a perspective transform. Data Matrix currently uses
-an axis-aligned bounding box plus quarter-turn retries. Error correction repairs what the camera
-lost. Only then is the payload decoded.
+an axis-aligned bounding box; the strict camera profile evaluates the eight fixed in-plane
+orientations before error correction repairs what the camera lost. Only then is the payload decoded.
 
 **Reed–Solomon is generic over the finite field.** The `GaloisField` class is constructed with a
 field order and a primitive polynomial rather than hard-coding GF(256), which is what lets one

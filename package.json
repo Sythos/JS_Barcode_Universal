@@ -20,104 +20,104 @@
   "publishConfig": {
     "access": "public"
   },
-  "types": "./typings/index.d.ts",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
       "import": "./src/index.js",
-      "types": "./typings/index.d.ts"
+      "types": "./src/index.d.ts"
     },
     "./core": {
-      "import": "./src/core/index.js",
-      "types": "./typings/core/index.d.ts"
+      "import": "./src/js/core/index.js",
+      "types": "./src/ts/core/index.d.ts"
     },
     "./image": {
-      "import": "./src/image/index.js",
-      "types": "./typings/image/index.d.ts"
+      "import": "./src/js/image/index.js",
+      "types": "./src/ts/image/index.d.ts"
     },
     "./oned": {
-      "import": "./src/oned/index.js",
-      "types": "./typings/oned/index.d.ts"
+      "import": "./src/js/oned/index.js",
+      "types": "./src/ts/oned/index.d.ts"
     },
     "./qr": {
-      "import": "./src/qr/index.js",
-      "types": "./typings/qr/index.d.ts"
+      "import": "./src/js/qr/index.js",
+      "types": "./src/ts/qr/index.d.ts"
     },
     "./datamatrix": {
-      "import": "./src/datamatrix/index.js",
-      "types": "./typings/datamatrix/index.d.ts"
+      "import": "./src/js/datamatrix/index.js",
+      "types": "./src/ts/datamatrix/index.d.ts"
     },
     "./databar": {
-      "import": "./src/databar/index.js",
-      "types": "./typings/databar/index.d.ts"
+      "import": "./src/js/databar/index.js",
+      "types": "./src/ts/databar/index.d.ts"
     },
     "./aztec": {
-      "import": "./src/aztec/index.js",
-      "types": "./typings/aztec/index.d.ts"
+      "import": "./src/js/aztec/index.js",
+      "types": "./src/ts/aztec/index.d.ts"
     },
     "./aztecrune": {
-      "import": "./src/aztecrune/index.js",
-      "types": "./typings/aztecrune/index.d.ts"
+      "import": "./src/js/aztecrune/index.js",
+      "types": "./src/ts/aztecrune/index.d.ts"
     },
     "./pdf417": {
-      "import": "./src/pdf417/index.js",
-      "types": "./typings/pdf417/index.d.ts"
+      "import": "./src/js/pdf417/index.js",
+      "types": "./src/ts/pdf417/index.d.ts"
     },
     "./compactpdf417": {
-      "import": "./src/compactpdf417/index.js",
-      "types": "./typings/compactpdf417/index.d.ts"
+      "import": "./src/js/compactpdf417/index.js",
+      "types": "./src/ts/compactpdf417/index.d.ts"
     },
     "./micropdf417": {
-      "import": "./src/micropdf417/index.js",
-      "types": "./typings/micropdf417/index.d.ts"
+      "import": "./src/js/micropdf417/index.js",
+      "types": "./src/ts/micropdf417/index.d.ts"
     },
     "./microqr": {
-      "import": "./src/microqr/index.js",
-      "types": "./typings/microqr/index.d.ts"
+      "import": "./src/js/microqr/index.js",
+      "types": "./src/ts/microqr/index.d.ts"
     },
     "./rmqr": {
-      "import": "./src/rmqr/index.js",
-      "types": "./typings/rmqr/index.d.ts"
+      "import": "./src/js/rmqr/index.js",
+      "types": "./src/ts/rmqr/index.d.ts"
     },
     "./frameqr": {
-      "import": "./src/frameqr/index.js",
-      "types": "./typings/frameqr/index.d.ts"
+      "import": "./src/js/frameqr/index.js",
+      "types": "./src/ts/frameqr/index.d.ts"
     },
     "./render": {
-      "import": "./src/render/index.js",
-      "types": "./typings/render/index.d.ts"
+      "import": "./src/js/render/index.js",
+      "types": "./src/ts/render/index.d.ts"
     },
     "./render/svg": {
-      "import": "./src/render/svg.js",
-      "types": "./typings/render/svg.d.ts"
+      "import": "./src/js/render/svg.js",
+      "types": "./src/ts/render/svg.d.ts"
     },
     "./render/png": {
-      "import": "./src/render/png.js",
-      "types": "./typings/render/png.d.ts"
+      "import": "./src/js/render/png.js",
+      "types": "./src/ts/render/png.d.ts"
     },
     "./render/image-data": {
-      "import": "./src/render/image-data.js",
-      "types": "./typings/render/image-data.d.ts"
+      "import": "./src/js/render/image-data.js",
+      "types": "./src/ts/render/image-data.d.ts"
     },
     "./bundle": {
       "import": "./bundle/sythos-barcode.esm.js",
-      "types": "./typings/bundle/sythos-barcode.esm.d.ts"
+      "types": "./src/ts/bundle/sythos-barcode.esm.d.ts"
     },
     "./bundle/iife": {
       "import": "./bundle/sythos-barcode.js",
-      "types": "./typings/bundle/sythos-barcode.d.ts"
+      "types": "./src/ts/bundle/sythos-barcode.d.ts"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "src",
+    "src/ts",
     "bundle",
     "examples",
     "licenses",
     "LICENSE",
     "NOTICE.md",
     "README.md",
-    "AI_USAGE.md",
-    "typings"
+    "AI_USAGE.md"
   ],
   "keywords": [
     "barcode",

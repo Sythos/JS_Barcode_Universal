@@ -72,9 +72,9 @@ jobs:
           --skipLibCheck false
           --moduleResolution nodenext
           --module nodenext
-          typings/index.d.ts
-          typings/bundle/sythos-barcode.esm.d.ts
-          typings/bundle/sythos-barcode.d.ts
+          src/index.d.ts
+          src/ts/bundle/sythos-barcode.esm.d.ts
+          src/ts/bundle/sythos-barcode.d.ts
 
   package:
     name: npm package contents

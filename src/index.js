@@ -46,55 +46,55 @@
  * @module @sythos/js_barcode_universal
  */
 
-import { BitMatrix } from './core/bit-matrix.js';
-import { EncodeError, NotFoundError } from './core/errors.js';
-import { LuminanceSource } from './image/luminance.js';
-import { binarize } from './image/binarizer.js';
-import { ONED_FORMATS } from './oned/index.js';
-import { decodeOneD } from './oned/reader.js';
-import * as datamatrix from './datamatrix/index.js';
-import * as qr from './qr/index.js';
-import * as aztec from './aztec/index.js';
-import * as pdf417 from './pdf417/index.js';
-import * as micropdf417 from './micropdf417/index.js';
-import * as microqr from './microqr/index.js';
-import * as rmqr from './rmqr/index.js';
-import * as frameqr from './frameqr/index.js';
-import * as aztecRune from './aztecrune/index.js';
-import * as compactPdf417 from './compactpdf417/index.js';
-import * as databar from './databar/index.js';
+import { BitMatrix } from './js/core/bit-matrix.js';
+import { EncodeError, NotFoundError } from './js/core/errors.js';
+import { LuminanceSource } from './js/image/luminance.js';
+import { binarize } from './js/image/binarizer.js';
+import { ONED_FORMATS } from './js/oned/index.js';
+import { decodeOneD } from './js/oned/reader.js';
+import * as datamatrix from './js/datamatrix/index.js';
+import * as qr from './js/qr/index.js';
+import * as aztec from './js/aztec/index.js';
+import * as pdf417 from './js/pdf417/index.js';
+import * as micropdf417 from './js/micropdf417/index.js';
+import * as microqr from './js/microqr/index.js';
+import * as rmqr from './js/rmqr/index.js';
+import * as frameqr from './js/frameqr/index.js';
+import * as aztecRune from './js/aztecrune/index.js';
+import * as compactPdf417 from './js/compactpdf417/index.js';
+import * as databar from './js/databar/index.js';
 
 export { BitMatrix };
 export {
   BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError,
-} from './core/errors.js';
-export { LuminanceSource } from './image/luminance.js';
-export { binarize, binarizeGlobal, binarizeHybrid } from './image/binarizer.js';
-export * from './oned/index.js';
-export { toSVG, toSVGDataURI } from './render/svg.js';
-export { toImageData, toCanvas } from './render/image-data.js';
-export { toPNG, toPNGDataURI } from './render/png.js';
-export { renderToCanvasAuto, isWebGL2Available } from './render/index.js';
-export { renderToCanvasAutoAsync, isWebGPUAvailable } from './render/index.js';
-export { encodeQR, decodeQR, detectQR, detectAndDecodeQR } from './qr/index.js';
+} from './js/core/errors.js';
+export { LuminanceSource } from './js/image/luminance.js';
+export { binarize, binarizeGlobal, binarizeHybrid } from './js/image/binarizer.js';
+export * from './js/oned/index.js';
+export { toSVG, toSVGDataURI } from './js/render/svg.js';
+export { toImageData, toCanvas } from './js/render/image-data.js';
+export { toPNG, toPNGDataURI } from './js/render/png.js';
+export { renderToCanvasAuto, isWebGL2Available } from './js/render/index.js';
+export { renderToCanvasAutoAsync, isWebGPUAvailable } from './js/render/index.js';
+export { encodeQR, decodeQR, detectQR, detectAndDecodeQR } from './js/qr/index.js';
 export {
   encodeDataMatrix, decodeDataMatrix, detectDataMatrix, detectAndDecodeDataMatrix,
-} from './datamatrix/index.js';
-export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './aztec/index.js';
-export * from './aztecrune/index.js';
-export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './pdf417/index.js';
-export * from './compactpdf417/index.js';
+} from './js/datamatrix/index.js';
+export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './js/aztec/index.js';
+export * from './js/aztecrune/index.js';
+export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './js/pdf417/index.js';
+export * from './js/compactpdf417/index.js';
   // DataBar exports include both the verified GTIN/data layer and the
   // Omnidirectional/Truncated physical image path.
-export * from './databar/index.js';
+export * from './js/databar/index.js';
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
-} from './micropdf417/index.js';
-export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './microqr/index.js';
-export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './rmqr/index.js';
+} from './js/micropdf417/index.js';
+export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './js/microqr/index.js';
+export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './js/rmqr/index.js';
 export {
   encodeFrameQR, decodeFrameQR, detectFrameQR, detectAndDecodeFrameQR,
-} from './frameqr/index.js';
+} from './js/frameqr/index.js';
 
 /**
  * @typedef {object} FormatInfo
@@ -229,7 +229,7 @@ export function listFormats() {
   });
   formats.push({
     id: 'frameqr',
-    label: 'FrameQR Code',
+    label: 'Sythos Canvas QR profile',
     canWrite: frameQrCanEncode,
     canRead: frameQrCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
@@ -271,7 +271,7 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
- * @param {object} [options.canvas] FrameQR Code artwork reservation.
+ * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
  * @param {number} [options.canvas.width] Canvas width in QR modules.
@@ -344,13 +344,13 @@ export function encode(text, options = {}) {
  * @property {number} [rowHeight] PDF417 row height in modules.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
- * @property {string} [profile] FrameQR Code profile identifier.
+ * @property {string} [profile] Sythos Canvas QR profile identifier.
  * @property {boolean} [certified] Whether the profile is certified by its originator.
- * @property {object} [canvas] Canvas reservation metadata for the FrameQR Code profile.
+ * @property {object} [canvas] Canvas reservation metadata for the Sythos profile.
  * @property {{format:'ean2'|'ean5', text:string, parity:string, checksum?:number}} [addon] Attached EAN/UPC supplement.
  * @property {number} [confidence] Camera-profile confidence from 0 to 1.
  * @property {{x:number,y:number,width:number,height:number}} [bounds] Camera-profile bounds in the scanned orientation.
- * @property {0|90|180|270} [rotation] Camera-profile orientation in degrees.
+ * @property {0|45|90|135|180|225|270|315} [rotation] Camera-profile orientation in degrees.
  * @property {{quietZone:boolean,checksum:boolean|null,rows:number|null,consistency:number|null}} [quality] Camera-profile validation evidence.
  * @property {boolean} [gs1] Whether the physical symbol is classified as GS1.
  * @property {string} [symbologyIdentifier] GS1 symbology identifier.
@@ -372,8 +372,8 @@ export function encode(text, options = {}) {
  * @param {string[]} [options.formats] Restrict to these format ids.
  * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
  * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {'camera'} [options.profile] Opt-in strict camera profile for validated 1D reads.
- * @param {object} [options.frameqr] FrameQR Code detector options when
+ * @param {'camera'} [options.profile] Opt-in strict camera profile for validated reads.
+ * @param {object} [options.frameqr] Sythos Canvas QR detector options when
  *   the profile marker is not preserved through image rendering.
  * @returns {DecodeResult[]}
  */
@@ -392,6 +392,8 @@ export function decode(image, options = {}) {
   const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
   const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
+  const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
+    || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR;
 
   const source = LuminanceSource.fromImageData(image);
   const results = [];
@@ -403,114 +405,151 @@ export function decode(image, options = {}) {
   for (const pass of passes) {
     const bits = binarize(pass, binarizer);
 
-    if (wantQR && qrCanDecode) {
-      try {
-        for (const found of qr.detectAndDecodeQR(bits)) {
-          results.push({ ...found, format: 'qr' });
-        }
-      } catch {
-        /* no QR in this pass */
-      }
-    }
+    // Keep all two-dimensional detector calls in one helper so camera-only
+    // orientation retries use exactly the same validation path as the native
+    // orientation. Arbitrary-angle retries remain opt-in to the camera
+    // profile because resampling is intentionally not part of ordinary decode.
+    const readTwoD = (candidateBits, cameraRotation = 0, candidateSource = pass) => {
+      const before = results.length;
+      const add = (found, format) => {
+        if (!found) return;
+        const publicFound = { ...found, format };
+        if (profile === 'camera' && cameraRotation !== 0) publicFound.rotation = cameraRotation;
+        results.push(publicFound);
+      };
 
-    if (wantDataMatrix && dataMatrixCanDecode) {
-      // Hybrid thresholding can erase the interior of very large, perfectly
-      // uniform modules. In auto mode keep the local-threshold attempt, then
-      // retry Data Matrix once with the global threshold before giving up.
-      const dataMatrixBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of dataMatrixBits) {
+      if (wantQR && qrCanDecode) {
         try {
-          const found = datamatrix.detectAndDecodeDataMatrix(candidateBits);
-          if (found) { results.push({ ...found, format: 'datamatrix' }); break; }
+          for (const found of qr.detectAndDecodeQR(candidateBits)) add(found, 'qr');
         } catch {
-          /* no Data Matrix with this threshold */
+          /* no QR in this pass */
         }
       }
-    }
 
-    if (wantAztec && aztecCanDecode) {
-      // The central bull's-eye is a small, high-contrast target. Hybrid
-      // thresholding can flatten it on clean rendered symbols, so mirror the
-      // Data Matrix global fallback in auto mode.
-      const aztecBits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of aztecBits) {
+      if (wantDataMatrix && dataMatrixCanDecode) {
+        // Hybrid thresholding can erase the interior of very large, perfectly
+        // uniform modules. In auto mode keep the local-threshold attempt, then
+        // retry Data Matrix once with the global threshold before giving up.
+        const dataMatrixBits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of dataMatrixBits) {
+          try {
+            const found = datamatrix.detectAndDecodeDataMatrix(thresholdBits);
+            if (found) { add(found, 'datamatrix'); break; }
+          } catch {
+            /* no Data Matrix with this threshold */
+          }
+        }
+      }
+
+      if (wantAztec && aztecCanDecode) {
+        // The central bull's-eye is a small, high-contrast target. Hybrid
+        // thresholding can flatten it on clean rendered symbols, so mirror the
+        // Data Matrix global fallback in auto mode.
+        const aztecBits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of aztecBits) {
+          try {
+            const found = aztec.detectAndDecodeAztec(thresholdBits);
+            if (found) { add(found, 'aztec'); break; }
+          } catch {
+            /* no Aztec code with this threshold */
+          }
+        }
+      }
+
+      if (wantAztecRune && aztecRuneCanDecode) {
         try {
-          const found = aztec.detectAndDecodeAztec(candidateBits);
-          if (found) { results.push({ ...found, format: 'aztec' }); break; }
+          const found = aztecRune.detectAndDecodeAztecRune(candidateBits);
+          if (found) add(found, 'aztecrune');
         } catch {
-          /* no Aztec code with this threshold */
+          /* no Aztec Rune in this pass */
         }
       }
-    }
 
-    if (wantAztecRune && aztecRuneCanDecode) {
-      try {
-        const found = aztecRune.detectAndDecodeAztecRune(bits);
-        if (found) results.push({ ...found, format: 'aztecrune' });
-      } catch {
-        /* no Aztec Rune in this pass */
-      }
-    }
-
-    if (wantPDF417 && pdf417CanDecode) {
-      try {
-        const found = pdf417.detectAndDecodePDF417(bits);
-        if (found) results.push({ ...found, format: 'pdf417' });
-      } catch {
-        /* no PDF417 in this pass */
-      }
-    }
-
-    if (wantCompactPDF417 && compactPdf417CanDecode) {
-      try {
-        const found = compactPdf417.detectAndDecodeCompactPDF417(bits);
-        if (found) results.push({ ...found, format: 'compactpdf417' });
-      } catch {
-        /* no Compact PDF417 in this pass */
-      }
-    }
-
-    if (wantMicroPDF417 && microPdf417CanDecode) {
-      // MicroPDF417 detection measures runs across the whole raster. Hybrid
-      // thresholding can alter uniform modules near local-window boundaries,
-      // so retry the global threshold in auto mode as for the other 2D codes.
-      const microPdf417Bits = binarizer === 'auto' ? [bits, binarize(pass, 'global')] : [bits];
-      for (const candidateBits of microPdf417Bits) {
+      if (wantPDF417 && pdf417CanDecode) {
         try {
-          const found = micropdf417.detectAndDecodeMicroPDF417(candidateBits);
-          if (found) { results.push({ ...found, format: 'micropdf417' }); break; }
+          const found = pdf417.detectAndDecodePDF417(candidateBits);
+          if (found) add(found, 'pdf417');
         } catch {
-          /* no MicroPDF417 with this threshold */
+          /* no PDF417 in this pass */
         }
       }
-    }
 
-    if (wantMicroQR && microQrCanDecode) {
-      try {
-        for (const found of microqr.detectAndDecodeMicroQR(bits)) {
-          results.push({ ...found, format: 'microqr' });
+      if (wantCompactPDF417 && compactPdf417CanDecode) {
+        try {
+          const found = compactPdf417.detectAndDecodeCompactPDF417(candidateBits);
+          if (found) add(found, 'compactpdf417');
+        } catch {
+          /* no Compact PDF417 in this pass */
         }
-      } catch {
-        /* no Micro QR in this pass */
       }
-    }
 
-    if (wantRMQR && rmqrCanDecode) {
-      try {
-        const found = rmqr.detectAndDecodeRMQR(bits);
-        if (found) results.push({ ...found, format: 'rmqr' });
-      } catch {
-        /* no rMQR in this pass */
-      }
-    }
-
-    if (wantFrameQR && frameQrCanDecode) {
-      try {
-        for (const found of frameqr.detectAndDecodeFrameQR(bits, options.frameqr ?? {})) {
-          results.push({ ...found, format: 'frameqr' });
+      if (wantMicroPDF417 && microPdf417CanDecode) {
+        // MicroPDF417 detection measures runs across the whole raster. Hybrid
+        // thresholding can alter uniform modules near local-window boundaries,
+        // so retry the global threshold in auto mode as for the other 2D codes.
+        const microPdf417Bits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of microPdf417Bits) {
+          try {
+            const found = micropdf417.detectAndDecodeMicroPDF417(thresholdBits);
+            if (found) { add(found, 'micropdf417'); break; }
+          } catch {
+            /* no MicroPDF417 with this threshold */
+          }
         }
-      } catch {
-        /* no FrameQR Code in this pass */
+      }
+
+      if (wantMicroQR && microQrCanDecode) {
+        try {
+          for (const found of microqr.detectAndDecodeMicroQR(candidateBits)) add(found, 'microqr');
+        } catch {
+          /* no Micro QR in this pass */
+        }
+      }
+
+      if (wantRMQR && rmqrCanDecode) {
+        try {
+          const found = rmqr.detectAndDecodeRMQR(candidateBits);
+          if (found) add(found, 'rmqr');
+        } catch {
+          /* no rMQR in this pass */
+        }
+      }
+
+      if (wantFrameQR && frameQrCanDecode) {
+        try {
+          for (const found of frameqr.detectAndDecodeFrameQR(candidateBits, options.frameqr ?? {})) add(found, 'frameqr');
+        } catch {
+          /* no Sythos Canvas QR profile in this pass */
+        }
+      }
+
+      return results.length > before;
+    };
+
+    const twoDFound = readTwoD(bits);
+    if (profile === 'camera' && wantTwoD && !twoDFound) {
+      // Normalize a camera frame through the full eight-angle set only after
+      // the native orientation has failed. This preserves the fast path while
+      // limiting resampling to frames that need it.
+      const cameraRotations = [45, 90, 135, 180, 225, 270, 315];
+      for (const rotation of cameraRotations) {
+        const inverse = (360 - rotation) % 360;
+        const orientedSource = inverse % 90 === 0
+          ? inverse === 0
+            ? pass
+            : inverse === 90
+              ? pass.rotate90()
+              : inverse === 180
+                ? rotateLuminanceSourceByDegrees(pass, 180)
+                : pass.rotate90().rotate90().rotate90()
+          : rotateLuminanceSourceByDegrees(pass, inverse);
+        if (readTwoD(binarize(orientedSource, binarizer), rotation, orientedSource)) break;
       }
     }
 
@@ -519,18 +558,33 @@ export function decode(image, options = {}) {
         ? [...want].filter((f) => f in ONED_FORMATS || oneDAliases.has(f))
         : null;
       const oneDPasses = [{ bits, rotation: 0 }];
-      // A linear symbol rotated by 90° has no usable horizontal scanline.
-      // The strict camera profile adds exactly two normalized orientations,
-      // only when the native orientation found no validated 1D result.
+      // A linear symbol rotated away from the horizontal has no usable
+      // horizontal scanline. The strict camera profile adds normalized
+      // orientations only when the native orientation found no validated 1D
+      // result. Keep the two quarter-turns first: they are the established
+      // path and avoid paying for diagonal resampling on the common case.
       const readOneD = (candidateBits, rotation) => decodeOneD(candidateBits, {
         ...options, formats: oneDFormats, tryHarder, profile, cameraRotation: rotation,
       });
       let oneDResults = readOneD(bits, 0);
       if (profile === 'camera' && oneDResults.length === 0) {
-        oneDPasses.push(
-          { bits: rotateBitMatrix90(bits, false), rotation: 90 },
-          { bits: rotateBitMatrix90(bits, true), rotation: 270 },
-        );
+        // `rotation` describes the supplied raster, clockwise from the
+        // canonical horizontal orientation. To normalize it, apply the
+        // inverse rotation.  Include 180 explicitly so the full eight-angle
+        // set still works when tryHarder is disabled (the normal reversed-row
+        // pass also handles it without a second raster transform).
+        const cameraRotations = [90, 270, 180, 45, 135, 225, 315];
+        for (const rotation of cameraRotations) {
+          const inverse = (360 - rotation) % 360;
+          const oriented = inverse % 90 === 0
+            ? inverse === 0
+              ? bits.clone()
+              : inverse === 180
+                ? (() => { const copy = bits.clone(); copy.rotate180(); return copy; })()
+                : rotateBitMatrix90(bits, inverse === 90)
+            : rotateBitMatrixByDegrees(bits, inverse);
+          oneDPasses.push({ bits: oriented, rotation });
+        }
         for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
           oneDResults = readOneD(oneDPasses[i].bits, oneDPasses[i].rotation);
         }
@@ -618,6 +672,105 @@ function rotateBitMatrix90(matrix, clockwise) {
     }
   }
   return rotated;
+}
+
+/**
+ * Rotate a binarized raster by an arbitrary clockwise angle without changing
+ * the source matrix. This is intentionally used only by the strict camera
+ * profile: arbitrary-angle resampling is useful for linear symbols, but is
+ * too permissive to become a default retry for every detector.
+ *
+ * @param {BitMatrix} matrix
+ * @param {number} degrees Clockwise angle, normally one of 45/135/225/315.
+ * @returns {BitMatrix}
+ */
+function rotateBitMatrixByDegrees(matrix, degrees) {
+  const angle = ((degrees % 360) + 360) % 360;
+  if (angle === 0) return matrix.clone();
+  if (angle === 90) return rotateBitMatrix90(matrix, true);
+  if (angle === 180) {
+    const rotated = matrix.clone();
+    rotated.rotate180();
+    return rotated;
+  }
+  if (angle === 270) return rotateBitMatrix90(matrix, false);
+
+  const radians = angle * Math.PI / 180;
+  const sin = Math.sin(radians);
+  const cos = Math.cos(radians);
+  const width = Math.ceil(Math.abs(matrix.width * cos) + Math.abs(matrix.height * sin));
+  const height = Math.ceil(Math.abs(matrix.width * sin) + Math.abs(matrix.height * cos));
+  const rotated = new BitMatrix(width, height);
+  const sourceCenterX = (matrix.width - 1) / 2;
+  const sourceCenterY = (matrix.height - 1) / 2;
+  const destinationCenterX = (width - 1) / 2;
+  const destinationCenterY = (height - 1) / 2;
+
+  // Inverse-map destination pixels into the source. Sampling the already
+  // binarized raster keeps the operation deterministic and leaves the caller's
+  // original image and threshold result untouched.
+  for (let y = 0; y < height; y++) {
+    const dy = y - destinationCenterY;
+    for (let x = 0; x < width; x++) {
+      const dx = x - destinationCenterX;
+      const sourceX = Math.round(cos * dx + sin * dy + sourceCenterX);
+      const sourceY = Math.round(-sin * dx + cos * dy + sourceCenterY);
+      if (sourceX >= 0 && sourceX < matrix.width && sourceY >= 0 && sourceY < matrix.height &&
+          matrix.get(sourceX, sourceY)) {
+        rotated.set(x, y);
+      }
+    }
+  }
+  return rotated;
+}
+
+/**
+ * Rotate the greyscale source before thresholding. Resampling luminance rather
+ * than an already-binarized matrix preserves module contrast at diagonal
+ * orientations and gives the format-specific detectors the same input quality
+ * as the native camera frame.
+ *
+ * @param {LuminanceSource} source
+ * @param {number} degrees Clockwise angle.
+ * @returns {LuminanceSource}
+ */
+function rotateLuminanceSourceByDegrees(source, degrees) {
+  const angle = ((degrees % 360) + 360) % 360;
+  if (angle === 0) return source;
+  if (angle === 90) return source.rotate90();
+  if (angle === 180) return source.rotate90().rotate90();
+  if (angle === 270) return source.rotate90().rotate90().rotate90();
+
+  const radians = angle * Math.PI / 180;
+  const sin = Math.sin(radians);
+  const cos = Math.cos(radians);
+  const width = Math.ceil(Math.abs(source.width * cos) + Math.abs(source.height * sin));
+  const height = Math.ceil(Math.abs(source.width * sin) + Math.abs(source.height * cos));
+  const rotated = new Uint8Array(width * height);
+  rotated.fill(255);
+  const sourceCenterX = (source.width - 1) / 2;
+  const sourceCenterY = (source.height - 1) / 2;
+  const destinationCenterX = (width - 1) / 2;
+  const destinationCenterY = (height - 1) / 2;
+
+  for (let y = 0; y < height; y++) {
+    const dy = y - destinationCenterY;
+    for (let x = 0; x < width; x++) {
+      const dx = x - destinationCenterX;
+      const sourceX = cos * dx + sin * dy + sourceCenterX;
+      const sourceY = -sin * dx + cos * dy + sourceCenterY;
+      if (sourceX >= 0 && sourceX < source.width && sourceY >= 0 && sourceY < source.height) {
+        const left = Math.floor(sourceX), top = Math.floor(sourceY);
+        const right = Math.min(source.width - 1, left + 1);
+        const bottom = Math.min(source.height - 1, top + 1);
+        const fx = sourceX - left, fy = sourceY - top;
+        const topValue = source.get(left, top) * (1 - fx) + source.get(right, top) * fx;
+        const bottomValue = source.get(left, bottom) * (1 - fx) + source.get(right, bottom) * fx;
+        rotated[y * width + x] = Math.round(topValue * (1 - fy) + bottomValue * fy);
+      }
+    }
+  }
+  return LuminanceSource.fromGrey(rotated, width, height);
 }
 
 /**
