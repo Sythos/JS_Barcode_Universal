@@ -1,0 +1,10 @@
+# JavaScript runtime sources
+src/index.js linguist-language=JavaScript
+src/js/** linguist-language=JavaScript
+
+# TypeScript declaration sources
+src/index.d.ts linguist-language=TypeScript
+src/ts/** linguist-language=TypeScript
+
+# Generated distributable bundles
+bundle/** linguist-generated
