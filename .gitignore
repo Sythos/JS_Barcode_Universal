@@ -59,8 +59,18 @@ dev-*.mjs
 *.local.mjs
 *.local.json
 
+# CI validation entrypoints required by the repository workflows. These files
+# are development-only and are not included in the published package.
+!tools/
+tools/*
+!tools/compile-typescript.mjs
+!tools/check-public-types.mjs
+!tools/check-zero-deps.mjs
+
 # --- Build configuration a consumer never runs ----------------------------
 tsconfig.json
+!tsconfig.json
+!tsconfig.runtime.json
 .eslintrc*
 eslint.config.*
 .prettierrc*

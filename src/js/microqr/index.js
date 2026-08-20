@@ -27,9 +27,7 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /** Micro QR Code M1-M4 public module surface. @module microqr */
-
 export { encodeMicroQR } from './encoder.js';
 export { decodeMicroQR } from './decoder.js';
 export { detectMicroQR, detectAndDecodeMicroQR } from './detector.js';

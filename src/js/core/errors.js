@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Error types.
  *
@@ -38,24 +37,23 @@
  *
  * @module core/errors
  */
-
 /** Base class so consumers can `catch (e) { if (e instanceof BarcodeError) ... }`. */
 export class BarcodeError extends Error {
-  /** @param {string} message */
-  constructor(message) {
-    super(message);
-    this.name = new.target.name;
-  }
+    /** @param {string} message */
+    constructor(message) {
+        super(message);
+        this.name = new.target.name;
+    }
 }
-
 /** Input could not be encoded — bad payload, or it does not fit the symbology. */
-export class EncodeError extends BarcodeError {}
-
+export class EncodeError extends BarcodeError {
+}
 /** No symbol was found in the image. Not an error condition for `decode()`. */
-export class NotFoundError extends BarcodeError {}
-
+export class NotFoundError extends BarcodeError {
+}
 /** A symbol was found, but its geometry or content is malformed. */
-export class FormatError extends BarcodeError {}
-
+export class FormatError extends BarcodeError {
+}
 /** A symbol was found and read, but error correction could not repair it. */
-export class ChecksumError extends BarcodeError {}
+export class ChecksumError extends BarcodeError {
+}

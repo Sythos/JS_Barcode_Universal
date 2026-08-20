@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Output backends.
  *
@@ -57,18 +56,15 @@
  *
  * @module render
  */
-
 export { toSVG, toSVGDataURI } from './svg.js';
 export { toImageData, toCanvas } from './image-data.js';
 export { toPNG, toPNGDataURI, deflateStored } from './png.js';
 export { isWebGL2Available, renderToCanvasWebGL } from './webgl.js';
 export { isWebGPUAvailable, renderToCanvasWebGPU } from './webgpu.js';
 export { normalizeOptions, parseColor } from './options.js';
-
 import { toCanvas } from './image-data.js';
 import { isWebGL2Available, renderToCanvasWebGL } from './webgl.js';
 import { isWebGPUAvailable, renderToCanvasWebGPU } from './webgpu.js';
-
 /**
  * Draw into a canvas using the best backend available.
  *
@@ -88,15 +84,15 @@ import { isWebGPUAvailable, renderToCanvasWebGPU } from './webgpu.js';
  * @returns {{backend: 'webgl2' | '2d' | 'none'}}
  */
 export function renderToCanvasAuto(matrix, canvas, options = {}) {
-  const preferred = options.backend ?? 'auto';
-
-  if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
-    if (renderToCanvasWebGL(matrix, canvas, options)) return { backend: 'webgl2' };
-  }
-  if (toCanvas(matrix, canvas, options)) return { backend: '2d' };
-  return { backend: 'none' };
+    const preferred = options.backend ?? 'auto';
+    if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
+        if (renderToCanvasWebGL(matrix, canvas, options))
+            return { backend: 'webgl2' };
+    }
+    if (toCanvas(matrix, canvas, options))
+        return { backend: '2d' };
+    return { backend: 'none' };
 }
-
 /**
  * Draw into a canvas using the best backend available, including WebGPU.
  *
@@ -115,16 +111,18 @@ export function renderToCanvasAuto(matrix, canvas, options = {}) {
  * @returns {Promise<{backend: 'webgpu' | 'webgl2' | '2d' | 'none'}>}
  */
 export async function renderToCanvasAutoAsync(matrix, canvas, options = {}) {
-  const preferred = options.backend ?? 'auto';
-
-  if (preferred === 'auto' || preferred === 'webgpu') {
-    if (await isWebGPUAvailable()) {
-      if (await renderToCanvasWebGPU(matrix, canvas, options)) return { backend: 'webgpu' };
+    const preferred = options.backend ?? 'auto';
+    if (preferred === 'auto' || preferred === 'webgpu') {
+        if (await isWebGPUAvailable()) {
+            if (await renderToCanvasWebGPU(matrix, canvas, options))
+                return { backend: 'webgpu' };
+        }
     }
-  }
-  if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
-    if (renderToCanvasWebGL(matrix, canvas, options)) return { backend: 'webgl2' };
-  }
-  if (toCanvas(matrix, canvas, options)) return { backend: '2d' };
-  return { backend: 'none' };
+    if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
+        if (renderToCanvasWebGL(matrix, canvas, options))
+            return { backend: 'webgl2' };
+    }
+    if (toCanvas(matrix, canvas, options))
+        return { backend: '2d' };
+    return { backend: 'none' };
 }

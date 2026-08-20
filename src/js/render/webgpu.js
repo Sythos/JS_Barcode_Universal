@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * WebGPU drawing.
  *
@@ -45,9 +44,7 @@
  *
  * @module render/webgpu
  */
-
 import { normalizeOptions, parseColor } from './options.js';
-
 /**
  * Vertex and fragment stages in one module, mirroring the WebGL2 pair.
  *
@@ -92,7 +89,6 @@ fn fragmentMain(@location(0) quadUV : vec2<f32>) -> @location(0) vec4<f32> {
   return select(style.light, style.dark, v > 0.5);
 }
 `;
-
 /**
  * The adapter and device are per-page, not per-barcode.
  *
@@ -105,7 +101,6 @@ fn fragmentMain(@location(0) quadUV : vec2<f32>) -> @location(0) vec4<f32> {
  * @type {Promise<any> | null}
  */
 let sharedDevice = null;
-
 /**
  * Get the shared device, requesting one on first use.
  *
@@ -114,43 +109,43 @@ let sharedDevice = null;
  * @returns {Promise<any>} The device, or null.
  */
 function acquireDevice() {
-  if (sharedDevice) return sharedDevice;
-
-  // Hoisted so the `lost` handler below can compare against this exact
-  // promise, and never clear a newer one that has replaced it.
-  function forget() {
-    if (sharedDevice === pending) sharedDevice = null;
-  }
-
-  const pending = (async () => {
-    try {
-      if (typeof navigator === 'undefined' || !navigator.gpu) return null;
-      const adapter = await navigator.gpu.requestAdapter();
-      if (!adapter) {
-        forget();
-        return null;
-      }
-      const device = await adapter.requestDevice();
-      if (!device) {
-        forget();
-        return null;
-      }
-      // A lost device can never be revived, so drop it and let the next
-      // render ask for a fresh one instead of failing forever.
-      if (device.lost && typeof device.lost.then === 'function') {
-        device.lost.then(forget, forget);
-      }
-      return device;
-    } catch {
-      forget();
-      return null;
+    if (sharedDevice)
+        return sharedDevice;
+    // Hoisted so the `lost` handler below can compare against this exact
+    // promise, and never clear a newer one that has replaced it.
+    function forget() {
+        if (sharedDevice === pending)
+            sharedDevice = null;
     }
-  })();
-
-  sharedDevice = pending;
-  return pending;
+    const pending = (async () => {
+        try {
+            if (typeof navigator === 'undefined' || !navigator.gpu)
+                return null;
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                forget();
+                return null;
+            }
+            const device = await adapter.requestDevice();
+            if (!device) {
+                forget();
+                return null;
+            }
+            // A lost device can never be revived, so drop it and let the next
+            // render ask for a fresh one instead of failing forever.
+            if (device.lost && typeof device.lost.then === 'function') {
+                device.lost.then(forget, forget);
+            }
+            return device;
+        }
+        catch {
+            forget();
+            return null;
+        }
+    })();
+    sharedDevice = pending;
+    return pending;
 }
-
 /**
  * Is WebGPU usable here?
  *
@@ -160,18 +155,20 @@ function acquireDevice() {
  * @returns {Promise<boolean>}
  */
 export async function isWebGPUAvailable() {
-  try {
-    if (typeof navigator === 'undefined') return false;
-    if (!navigator.gpu || typeof navigator.gpu.requestAdapter !== 'function') return false;
-    // An adapter is the real test: `navigator.gpu` exists on machines whose
-    // GPU is blocklisted, where every request still comes back null.
-    const adapter = await navigator.gpu.requestAdapter();
-    return Boolean(adapter);
-  } catch {
-    return false;
-  }
+    try {
+        if (typeof navigator === 'undefined')
+            return false;
+        if (!navigator.gpu || typeof navigator.gpu.requestAdapter !== 'function')
+            return false;
+        // An adapter is the real test: `navigator.gpu` exists on machines whose
+        // GPU is blocklisted, where every request still comes back null.
+        const adapter = await navigator.gpu.requestAdapter();
+        return Boolean(adapter);
+    }
+    catch {
+        return false;
+    }
 }
-
 /**
  * Did the shader compile?
  *
@@ -183,20 +180,23 @@ export async function isWebGPUAvailable() {
  * @returns {Promise<boolean>}
  */
 async function compiles(module) {
-  try {
-    const query = module.getCompilationInfo ?? module.compilationInfo;
-    if (typeof query !== 'function') return true;
-    const info = await query.call(module);
-    if (!info || !info.messages) return true;
-    for (let i = 0; i < info.messages.length; i++) {
-      if (info.messages[i].type === 'error') return false;
+    try {
+        const query = module.getCompilationInfo ?? module.compilationInfo;
+        if (typeof query !== 'function')
+            return true;
+        const info = await query.call(module);
+        if (!info || !info.messages)
+            return true;
+        for (let i = 0; i < info.messages.length; i++) {
+            if (info.messages[i].type === 'error')
+                return false;
+        }
+        return true;
     }
-    return true;
-  } catch {
-    return true;
-  }
+    catch {
+        return true;
+    }
 }
-
 /**
  * Draw a matrix into a canvas with WebGPU.
  *
@@ -209,161 +209,149 @@ async function compiles(module) {
  *   availability before committing a canvas to this path.
  */
 export async function renderToCanvasWebGPU(matrix, canvas, options = {}) {
-  let device = null;
-  let texture = null;
-  let uniforms = null;
-
-  try {
-    if (typeof navigator === 'undefined' || !navigator.gpu) return false;
-
-    const opts = normalizeOptions(matrix, options);
-    const { source, pixelWidth, pixelHeight } = opts;
-
-    device = await acquireDevice();
-    if (!device) return false;
-
-    // Oversized symbols are a legitimate failure, not a crash: say so and let
-    // the caller fall back to a path with no texture ceiling.
-    // 8192 is the floor the specification guarantees, so it is the right
-    // assumption when an implementation does not report its limits.
-    const maxDimension = (device.limits && device.limits.maxTextureDimension2D) || 8192;
-    if (source.width > maxDimension || source.height > maxDimension) return false;
-
-    const context = canvas.getContext('webgpu');
-    if (!context) return false;
-
-    canvas.width = pixelWidth;
-    canvas.height = pixelHeight;
-
-    const format = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({ device, format, alphaMode: 'premultiplied' });
-
-    // One byte per module. r8unorm is the narrowest format every WebGPU
-    // implementation is required to support as a sampled texture.
-    const pixels = new Uint8Array(source.width * source.height);
-    for (let y = 0; y < source.height; y++) {
-      for (let x = 0; x < source.width; x++) {
-        pixels[y * source.width + x] = source.get(x, y) ? 255 : 0;
-      }
-    }
-
-    texture = device.createTexture({
-      size: { width: source.width, height: source.height, depthOrArrayLayers: 1 },
-      format: 'r8unorm',
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-    });
-
-    // `bytesPerRow` needs no 256-byte alignment here — that rule belongs to
-    // buffer-to-texture copies, not to writeTexture's linear source data.
-    device.queue.writeTexture(
-      { texture },
-      pixels,
-      { offset: 0, bytesPerRow: source.width, rowsPerImage: source.height },
-      { width: source.width, height: source.height, depthOrArrayLayers: 1 }
-    );
-
-    const sampler = device.createSampler({
-      magFilter: 'nearest',
-      minFilter: 'nearest',
-      addressModeU: 'clamp-to-edge',
-      addressModeV: 'clamp-to-edge',
-    });
-
-    // The canvas is configured as premultiplied, so the colours have to be
-    // too — otherwise a translucent `light` would come out too bright and a
-    // fully transparent one would tint the page behind it.
-    const dark = parseColor(opts.dark);
-    const light = parseColor(opts.light);
-    const premultiplied = (c) => {
-      const a = c[3] / 255;
-      return [(c[0] / 255) * a, (c[1] / 255) * a, (c[2] / 255) * a, a];
-    };
-    const darkF = premultiplied(dark);
-    const lightF = premultiplied(light);
-
-    // std140-style layout: two vec4 then a vec2, rounded up to the struct's
-    // 16-byte alignment. 48 bytes, of which the last 8 are padding.
-    const style = new Float32Array(12);
-    style.set(darkF, 0);
-    style.set(lightF, 4);
-    style[8] = source.width;
-    style[9] = source.height;
-
-    uniforms = device.createBuffer({
-      size: style.byteLength,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    device.queue.writeBuffer(uniforms, 0, style);
-
-    const shader = device.createShaderModule({ code: SHADER });
-    if (!(await compiles(shader))) return false;
-
-    // An error scope is the WGSL analogue of checking LINK_STATUS: a rejected
-    // pipeline is reported here instead of surfacing later as a lost device.
-    let pipeline = null;
-    if (typeof device.pushErrorScope === 'function') {
-      device.pushErrorScope('validation');
-      pipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: { module: shader, entryPoint: 'vertexMain' },
-        fragment: { module: shader, entryPoint: 'fragmentMain', targets: [{ format }] },
-        primitive: { topology: 'triangle-list' },
-      });
-      const failure = await device.popErrorScope();
-      if (failure) return false;
-    } else {
-      pipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: { module: shader, entryPoint: 'vertexMain' },
-        fragment: { module: shader, entryPoint: 'fragmentMain', targets: [{ format }] },
-        primitive: { topology: 'triangle-list' },
-      });
-    }
-    if (!pipeline) return false;
-
-    const bindGroup = device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: texture.createView() },
-        { binding: 1, resource: sampler },
-        { binding: 2, resource: { buffer: uniforms } },
-      ],
-    });
-
-    const encoder = device.createCommandEncoder();
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [{
-        view: context.getCurrentTexture().createView(),
-        clearValue: { r: 0, g: 0, b: 0, a: 0 },
-        loadOp: 'clear',
-        storeOp: 'store',
-      }],
-    });
-    pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroup);
-    pass.draw(3);
-    pass.end();
-    device.queue.submit([encoder.finish()]);
-
-    // Wait for the draw before the `finally` below frees its inputs, so
-    // returning true genuinely means the pixels are there.
-    if (device.queue && typeof device.queue.onSubmittedWorkDone === 'function') {
-      await device.queue.onSubmittedWorkDone();
-    }
-
-    return true;
-  } catch {
-    return false;
-  } finally {
-    // Release eagerly: a page generating many barcodes would otherwise hold
-    // every texture until GC caught up, and GPU memory is not GC's priority.
-    // The device itself is deliberately kept — it is shared, and destroying it
-    // would blank every canvas already configured with it.
+    let device = null;
+    let texture = null;
+    let uniforms = null;
     try {
-      if (texture && typeof texture.destroy === 'function') texture.destroy();
-      if (uniforms && typeof uniforms.destroy === 'function') uniforms.destroy();
-    } catch {
-      /* device already gone */
+        if (typeof navigator === 'undefined' || !navigator.gpu)
+            return false;
+        const opts = normalizeOptions(matrix, options);
+        const { source, pixelWidth, pixelHeight } = opts;
+        device = await acquireDevice();
+        if (!device)
+            return false;
+        // Oversized symbols are a legitimate failure, not a crash: say so and let
+        // the caller fall back to a path with no texture ceiling.
+        // 8192 is the floor the specification guarantees, so it is the right
+        // assumption when an implementation does not report its limits.
+        const maxDimension = (device.limits && device.limits.maxTextureDimension2D) || 8192;
+        if (source.width > maxDimension || source.height > maxDimension)
+            return false;
+        const context = canvas.getContext('webgpu');
+        if (!context)
+            return false;
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+        const format = navigator.gpu.getPreferredCanvasFormat();
+        context.configure({ device, format, alphaMode: 'premultiplied' });
+        // One byte per module. r8unorm is the narrowest format every WebGPU
+        // implementation is required to support as a sampled texture.
+        const pixels = new Uint8Array(source.width * source.height);
+        for (let y = 0; y < source.height; y++) {
+            for (let x = 0; x < source.width; x++) {
+                pixels[y * source.width + x] = source.get(x, y) ? 255 : 0;
+            }
+        }
+        texture = device.createTexture({
+            size: { width: source.width, height: source.height, depthOrArrayLayers: 1 },
+            format: 'r8unorm',
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+        });
+        // `bytesPerRow` needs no 256-byte alignment here — that rule belongs to
+        // buffer-to-texture copies, not to writeTexture's linear source data.
+        device.queue.writeTexture({ texture }, pixels, { offset: 0, bytesPerRow: source.width, rowsPerImage: source.height }, { width: source.width, height: source.height, depthOrArrayLayers: 1 });
+        const sampler = device.createSampler({
+            magFilter: 'nearest',
+            minFilter: 'nearest',
+            addressModeU: 'clamp-to-edge',
+            addressModeV: 'clamp-to-edge',
+        });
+        // The canvas is configured as premultiplied, so the colours have to be
+        // too — otherwise a translucent `light` would come out too bright and a
+        // fully transparent one would tint the page behind it.
+        const dark = parseColor(opts.dark);
+        const light = parseColor(opts.light);
+        const premultiplied = (c) => {
+            const a = c[3] / 255;
+            return [(c[0] / 255) * a, (c[1] / 255) * a, (c[2] / 255) * a, a];
+        };
+        const darkF = premultiplied(dark);
+        const lightF = premultiplied(light);
+        // std140-style layout: two vec4 then a vec2, rounded up to the struct's
+        // 16-byte alignment. 48 bytes, of which the last 8 are padding.
+        const style = new Float32Array(12);
+        style.set(darkF, 0);
+        style.set(lightF, 4);
+        style[8] = source.width;
+        style[9] = source.height;
+        uniforms = device.createBuffer({
+            size: style.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        device.queue.writeBuffer(uniforms, 0, style);
+        const shader = device.createShaderModule({ code: SHADER });
+        if (!(await compiles(shader)))
+            return false;
+        // An error scope is the WGSL analogue of checking LINK_STATUS: a rejected
+        // pipeline is reported here instead of surfacing later as a lost device.
+        let pipeline = null;
+        if (typeof device.pushErrorScope === 'function') {
+            device.pushErrorScope('validation');
+            pipeline = device.createRenderPipeline({
+                layout: 'auto',
+                vertex: { module: shader, entryPoint: 'vertexMain' },
+                fragment: { module: shader, entryPoint: 'fragmentMain', targets: [{ format }] },
+                primitive: { topology: 'triangle-list' },
+            });
+            const failure = await device.popErrorScope();
+            if (failure)
+                return false;
+        }
+        else {
+            pipeline = device.createRenderPipeline({
+                layout: 'auto',
+                vertex: { module: shader, entryPoint: 'vertexMain' },
+                fragment: { module: shader, entryPoint: 'fragmentMain', targets: [{ format }] },
+                primitive: { topology: 'triangle-list' },
+            });
+        }
+        if (!pipeline)
+            return false;
+        const bindGroup = device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: texture.createView() },
+                { binding: 1, resource: sampler },
+                { binding: 2, resource: { buffer: uniforms } },
+            ],
+        });
+        const encoder = device.createCommandEncoder();
+        const pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                    view: context.getCurrentTexture().createView(),
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    loadOp: 'clear',
+                    storeOp: 'store',
+                }],
+        });
+        pass.setPipeline(pipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.draw(3);
+        pass.end();
+        device.queue.submit([encoder.finish()]);
+        // Wait for the draw before the `finally` below frees its inputs, so
+        // returning true genuinely means the pixels are there.
+        if (device.queue && typeof device.queue.onSubmittedWorkDone === 'function') {
+            await device.queue.onSubmittedWorkDone();
+        }
+        return true;
     }
-  }
+    catch {
+        return false;
+    }
+    finally {
+        // Release eagerly: a page generating many barcodes would otherwise hold
+        // every texture until GC caught up, and GPU memory is not GC's priority.
+        // The device itself is deliberately kept — it is shared, and destroying it
+        // would blank every canvas already configured with it.
+        try {
+            if (texture && typeof texture.destroy === 'function')
+                texture.destroy();
+            if (uniforms && typeof uniforms.destroy === 'function')
+                uniforms.destroy();
+        }
+        catch {
+            /* device already gone */
+        }
+    }
 }

@@ -27,15 +27,12 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Raster output as ImageData, and 2D-canvas drawing.
  *
  * @module render/image-data
  */
-
 import { normalizeOptions, parseColor } from './options.js';
-
 /**
  * Render to an `ImageData`-shaped object.
  *
@@ -48,37 +45,32 @@ import { normalizeOptions, parseColor } from './options.js';
  * @returns {{data: Uint8ClampedArray, width: number, height: number}}
  */
 export function toImageData(matrix, options = {}) {
-  const opts = normalizeOptions(matrix, options);
-  const { scale, source, pixelWidth, pixelHeight } = opts;
-
-  const dark = parseColor(opts.dark);
-  const light = parseColor(opts.light);
-  const data = new Uint8ClampedArray(pixelWidth * pixelHeight * 4);
-
-  // Fill one scanline per module row, then copy it `scale` times. Barcodes are
-  // wide and repetitive, so this is markedly faster than a per-pixel loop.
-  const line = new Uint8ClampedArray(pixelWidth * 4);
-
-  for (let my = 0; my < source.height; my++) {
-    for (let mx = 0; mx < source.width; mx++) {
-      const colour = source.get(mx, my) ? dark : light;
-      const start = mx * scale * 4;
-      for (let px = 0; px < scale; px++) {
-        const p = start + px * 4;
-        line[p] = colour[0];
-        line[p + 1] = colour[1];
-        line[p + 2] = colour[2];
-        line[p + 3] = colour[3];
-      }
+    const opts = normalizeOptions(matrix, options);
+    const { scale, source, pixelWidth, pixelHeight } = opts;
+    const dark = parseColor(opts.dark);
+    const light = parseColor(opts.light);
+    const data = new Uint8ClampedArray(pixelWidth * pixelHeight * 4);
+    // Fill one scanline per module row, then copy it `scale` times. Barcodes are
+    // wide and repetitive, so this is markedly faster than a per-pixel loop.
+    const line = new Uint8ClampedArray(pixelWidth * 4);
+    for (let my = 0; my < source.height; my++) {
+        for (let mx = 0; mx < source.width; mx++) {
+            const colour = source.get(mx, my) ? dark : light;
+            const start = mx * scale * 4;
+            for (let px = 0; px < scale; px++) {
+                const p = start + px * 4;
+                line[p] = colour[0];
+                line[p + 1] = colour[1];
+                line[p + 2] = colour[2];
+                line[p + 3] = colour[3];
+            }
+        }
+        for (let py = 0; py < scale; py++) {
+            data.set(line, ((my * scale + py) * pixelWidth) * 4);
+        }
     }
-    for (let py = 0; py < scale; py++) {
-      data.set(line, ((my * scale + py) * pixelWidth) * 4);
-    }
-  }
-
-  return { data, width: pixelWidth, height: pixelHeight };
+    return { data, width: pixelWidth, height: pixelHeight };
 }
-
 /**
  * Draw into a canvas using its 2D context.
  *
@@ -91,35 +83,38 @@ export function toImageData(matrix, options = {}) {
  * @returns {boolean} True when it drew.
  */
 export function toCanvas(matrix, canvas, options = {}) {
-  const opts = normalizeOptions(matrix, options);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return false;
-
-  canvas.width = opts.pixelWidth;
-  canvas.height = opts.pixelHeight;
-
-  // Draw with fillRect rather than putImageData: it respects the canvas's
-  // alpha compositing, so a transparent `light` leaves the page showing
-  // through instead of punching a hole.
-  const [, , , lightAlpha] = parseColor(opts.light);
-  if (lightAlpha > 0) {
-    ctx.fillStyle = opts.light;
-    ctx.fillRect(0, 0, opts.pixelWidth, opts.pixelHeight);
-  } else {
-    ctx.clearRect(0, 0, opts.pixelWidth, opts.pixelHeight);
-  }
-
-  ctx.fillStyle = opts.dark;
-  const { source, scale } = opts;
-  for (let y = 0; y < source.height; y++) {
-    let x = 0;
-    while (x < source.width) {
-      if (!source.get(x, y)) { x++; continue; }
-      let run = 1;
-      while (x + run < source.width && source.get(x + run, y)) run++;
-      ctx.fillRect(x * scale, y * scale, run * scale, scale);
-      x += run;
+    const opts = normalizeOptions(matrix, options);
+    const ctx = canvas.getContext('2d');
+    if (!ctx)
+        return false;
+    canvas.width = opts.pixelWidth;
+    canvas.height = opts.pixelHeight;
+    // Draw with fillRect rather than putImageData: it respects the canvas's
+    // alpha compositing, so a transparent `light` leaves the page showing
+    // through instead of punching a hole.
+    const [, , , lightAlpha] = parseColor(opts.light);
+    if (lightAlpha > 0) {
+        ctx.fillStyle = opts.light;
+        ctx.fillRect(0, 0, opts.pixelWidth, opts.pixelHeight);
     }
-  }
-  return true;
+    else {
+        ctx.clearRect(0, 0, opts.pixelWidth, opts.pixelHeight);
+    }
+    ctx.fillStyle = opts.dark;
+    const { source, scale } = opts;
+    for (let y = 0; y < source.height; y++) {
+        let x = 0;
+        while (x < source.width) {
+            if (!source.get(x, y)) {
+                x++;
+                continue;
+            }
+            let run = 1;
+            while (x + run < source.width && source.get(x + run, y))
+                run++;
+            ctx.fillRect(x * scale, y * scale, run * scale, scale);
+            x += run;
+        }
+    }
+    return true;
 }

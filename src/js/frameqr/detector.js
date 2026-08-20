@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Detector for the non-certified Sythos Canvas QR profile.
  *
@@ -45,19 +44,12 @@
  *
  * @module frameqr/detector
  */
-
 import { NotFoundError } from '../core/errors.js';
 import { sampleQuad } from '../image/grid-sampler.js';
 import { detectQR } from '../qr/detector.js';
 import { decodeFrameQR } from './decoder.js';
-import {
-  FRAMEQR_PROFILE,
-  canvasModules,
-  normalizeCanvasSpec,
-} from './tables.js';
-
+import { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec, } from './tables.js';
 /** @typedef {{x:number, y:number}} Point */
-
 /** @typedef {object} FrameQRDetection
  * @property {Point[]} corners Outer corners in reading order.
  * @property {number} dimension QR modules per side.
@@ -69,11 +61,10 @@ import {
  * @property {string} profile Profile identifier.
  * @property {false} certified Always false for this implementation.
  */
-
 function orientationDegrees(corners) {
-  const [tl, tr] = corners;
-  const angle = Math.atan2(tr.y - tl.y, tr.x - tl.x) * 180 / Math.PI;
-  return ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+    const [tl, tr] = corners;
+    const angle = Math.atan2(tr.y - tl.y, tr.x - tl.x) * 180 / Math.PI;
+    return ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
 }
 /**
  * Return the number of canvas modules that are dark in a sampled matrix.
@@ -83,20 +74,20 @@ function orientationDegrees(corners) {
  * artwork; both are rejected because decoding that image would be speculative.
  */
 function canvasDarkCount(matrix, canvas) {
-  let dark = 0;
-  for (const [x, y] of canvasModules(matrix.width, canvas)) {
-    if (matrix.get(x, y)) dark++;
-  }
-  return dark;
+    let dark = 0;
+    for (const [x, y] of canvasModules(matrix.width, canvas)) {
+        if (matrix.get(x, y))
+            dark++;
+    }
+    return dark;
 }
-
 function sameCandidate(left, right) {
-  if (left.dimension !== right.dimension) return false;
-  const a = left.corners[0];
-  const b = right.corners[0];
-  return Math.hypot(a.x - b.x, a.y - b.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
+    if (left.dimension !== right.dimension)
+        return false;
+    const a = left.corners[0];
+    const b = right.corners[0];
+    return Math.hypot(a.x - b.x, a.y - b.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
 }
-
 /**
  * Detect Sythos Canvas QR symbols in a binarized raster.
  *
@@ -109,66 +100,76 @@ function sameCandidate(left, right) {
  *   profile signature is found.
  */
 export function detectFrameQR(binaryImage, options = {}) {
-  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
-    throw new NotFoundError('detectFrameQR: no image supplied');
-  }
-
-  let candidates;
-  try { candidates = detectQR(binaryImage); } catch { return []; }
-  const detections = [];
-
-  for (const candidate of candidates) {
-    // QR detector dimensions are already constrained to legal Model 2 sizes.
-    let canvas;
-    try { canvas = normalizeCanvasSpec(candidate.dimension, options.canvas); }
-    catch { continue; }
-
-    for (const voting of [Boolean(options.voting), !Boolean(options.voting)]) {
-      let matrix;
-      try { matrix = sampleQuad(binaryImage, candidate.dimension, candidate.corners, voting); }
-      catch { continue; }
-
-      // The signature check is intentionally strict. It prevents an ordinary
-      // QR symbol from being relabelled as Canvas QR by the decoder's explicit
-      // allowUnmarked escape hatch.
-      if (canvasDarkCount(matrix, canvas) !== 0) continue;
-
-      const marked = matrix;
-      marked.frameqr = {
-        profile: FRAMEQR_PROFILE.id,
-        certified: false,
-        canvas,
-      };
-      let decoded;
-      try {
-        decoded = decodeFrameQR(marked, {
-          profile: FRAMEQR_PROFILE.id,
-          canvas,
-          allowUnmarked: true,
-        });
-      } catch { continue; }
-
-      const detection = {
-        corners: candidate.corners,
-        dimension: candidate.dimension,
-        version: candidate.version,
-        moduleSize: candidate.moduleSize,
-        rotation: orientationDegrees(candidate.corners),
-        matrix: marked,
-        canvas,
-        profile: FRAMEQR_PROFILE.id,
-        certified: false,
-        result: decoded,
-      };
-      if (!detections.some((entry) => sameCandidate(entry, detection))) detections.push(detection);
-      break;
+    if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+        throw new NotFoundError('detectFrameQR: no image supplied');
     }
-  }
-
-  detections.sort((a, b) => b.moduleSize - a.moduleSize);
-  return detections;
+    let candidates;
+    try {
+        candidates = detectQR(binaryImage);
+    }
+    catch {
+        return [];
+    }
+    const detections = [];
+    for (const candidate of candidates) {
+        // QR detector dimensions are already constrained to legal Model 2 sizes.
+        let canvas;
+        try {
+            canvas = normalizeCanvasSpec(candidate.dimension, options.canvas);
+        }
+        catch {
+            continue;
+        }
+        for (const voting of [Boolean(options.voting), !Boolean(options.voting)]) {
+            let matrix;
+            try {
+                matrix = sampleQuad(binaryImage, candidate.dimension, candidate.corners, voting);
+            }
+            catch {
+                continue;
+            }
+            // The signature check is intentionally strict. It prevents an ordinary
+            // QR symbol from being relabelled as Canvas QR by the decoder's explicit
+            // allowUnmarked escape hatch.
+            if (canvasDarkCount(matrix, canvas) !== 0)
+                continue;
+            const marked = matrix;
+            marked.frameqr = {
+                profile: FRAMEQR_PROFILE.id,
+                certified: false,
+                canvas,
+            };
+            let decoded;
+            try {
+                decoded = decodeFrameQR(marked, {
+                    profile: FRAMEQR_PROFILE.id,
+                    canvas,
+                    allowUnmarked: true,
+                });
+            }
+            catch {
+                continue;
+            }
+            const detection = {
+                corners: candidate.corners,
+                dimension: candidate.dimension,
+                version: candidate.version,
+                moduleSize: candidate.moduleSize,
+                rotation: orientationDegrees(candidate.corners),
+                matrix: marked,
+                canvas,
+                profile: FRAMEQR_PROFILE.id,
+                certified: false,
+                result: decoded,
+            };
+            if (!detections.some((entry) => sameCandidate(entry, detection)))
+                detections.push(detection);
+            break;
+        }
+    }
+    detections.sort((a, b) => b.moduleSize - a.moduleSize);
+    return detections;
 }
-
 /**
  * Detect and decode all verified Canvas QR symbols in one call.
  *
@@ -177,16 +178,22 @@ export function detectFrameQR(binaryImage, options = {}) {
  * @returns {Array<object>}
  */
 export function detectAndDecodeFrameQR(binaryImage, options = {}) {
-  let detections;
-  try { detections = detectFrameQR(binaryImage, options); } catch { return []; }
-  const results = [];
-  const seen = new Set();
-  for (const detection of detections) {
-    const result = detection.result;
-    const key = `${result.version}|${result.text}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    results.push({ ...result, corners: detection.corners, rotation: detection.rotation });
-  }
-  return results;
+    let detections;
+    try {
+        detections = detectFrameQR(binaryImage, options);
+    }
+    catch {
+        return [];
+    }
+    const results = [];
+    const seen = new Set();
+    for (const detection of detections) {
+        const result = detection.result;
+        const key = `${result.version}|${result.text}`;
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        results.push({ ...result, corners: detection.corners, rotation: detection.rotation });
+    }
+    return results;
 }

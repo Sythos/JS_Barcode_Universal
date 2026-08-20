@@ -1,0 +1,23 @@
+{
+  "//": [
+    "TypeScript is the runtime source of truth under src/ts/.",
+    "The compiler emits JavaScript runtime modules under src/js/ and src/.",
+    "Declaration files remain beside their corresponding TypeScript modules.",
+    "Runtime migration checks are syntax-compatible; the public declaration API",
+    "is checked separately by the types:api script."
+  ],
+  "compilerOptions": {
+    "allowJs": false,
+    "noEmit": true,
+    "rootDir": "src/ts",
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "noCheck": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/ts/**/*.ts"],
+  "exclude": ["src/ts/**/*.d.ts", "node_modules", "dist", "temp", "test", "tools", "examples"]
+}

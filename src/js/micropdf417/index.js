@@ -27,22 +27,8 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
-export {
-  MICROPDF417_VARIANTS,
-  microPdf417NextRap,
-  microPdf417VariantByNumber,
-  microPdf417VariantForCapacity,
-  microPdf417RapSequence,
-  microPdf417RowAddress,
-  validateMicroPdf417Tables,
-} from './tables.js';
-export {
-  microPdf417EccLength,
-  microPdf417Generator,
-  microPdf417ErrorCorrection,
-  microPdf417CorrectErrors,
-} from './error-correction.js';
+export { MICROPDF417_VARIANTS, microPdf417NextRap, microPdf417VariantByNumber, microPdf417VariantForCapacity, microPdf417RapSequence, microPdf417RowAddress, validateMicroPdf417Tables, } from './tables.js';
+export { microPdf417EccLength, microPdf417Generator, microPdf417ErrorCorrection, microPdf417CorrectErrors, } from './error-correction.js';
 export { compactMicroPDF417 } from './compaction.js';
 export { encodeMicroPDF417 } from './encoder.js';
 export { decodeMicroPDF417 } from './decoder.js';

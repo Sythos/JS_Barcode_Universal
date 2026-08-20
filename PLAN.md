@@ -1,6 +1,6 @@
 # Sythos Barcode Suite — plan and status
 
-A from-scratch barcode read/write suite. **MIT, © Sythos, original JavaScript implementation, zero runtime dependencies.**
+A from-scratch barcode read/write suite. **MIT, © Sythos, original TypeScript source with compiled JavaScript runtime, zero runtime dependencies.**
 
 ---
 
@@ -43,14 +43,14 @@ The decisive mechanism is still the last one: **a format is not finished until a
 
 ### 0.4 Language, platform, licensing hygiene
 
-- **JavaScript runtime plus TypeScript declarations (ESM).** `src/index.js` remains the stable
-  facade, `src/index.d.ts` is the top-level declaration facade, runtime modules live under `src/js/`,
-  and format declarations live under `src/ts/`. The declarations describe the JavaScript API and
-  do not add a runtime dependency; TypeScript tooling remains development-only.
+- **TypeScript source plus compiled JavaScript runtime (ESM).** `src/ts/` is the runtime source of
+  truth; each implementation module sits beside its `.d.ts` declaration. The compiler emits
+  `src/js/` and the stable `src/index.js` facade consumed by Node, browsers and the bundles.
+  TypeScript tooling remains development-only and adds no runtime dependency.
 - **Syntax floor: iOS Safari 15.** No `Array.prototype.at`, no top-level `await`, no `Object.groupBy`. `OffscreenCanvas`, WebGL2 and WebGPU are feature-detected, never assumed — the 2D canvas path always exists, so nothing is unreachable on an older device.
-- **Every `.js` file carries the full MIT licence text**, naming Sythos as sole copyright holder. No third-party source code is copied into or shipped by the project. Public or normative format values may be represented in original Sythos data structures with provenance recorded in `NOTICE.md`; the header tool reads the licence body from `LICENSE` so the two cannot drift and never overwrites a foreign header.
+- **Every `.ts` source file and emitted `.js` file carries the full MIT licence text**, naming Sythos as sole copyright holder. No third-party source code is copied into or shipped by the project. Public or normative format values may be represented in original Sythos data structures with provenance recorded in `NOTICE.md`; the header tool reads the licence body from `LICENSE` so the two cannot drift and never overwrites a foreign header.
 - The published repository contains only what is needed to *use* the library: `src/index.js`,
-  `src/index.d.ts`, `src/js/`, `src/ts/`, `bundle/`, `examples/`, `licenses/` and the documentation. Test suites,
+  `src/index.d.ts`, `src/ts/`, `src/js/`, `bundle/`, `examples/`, `licenses/` and the documentation. Test suites,
   build tooling and local assistant artefacts are developed alongside but not published.
   Consequence: **`bundle/` is committed**, because the tool that builds it is not — a fresh clone
   must find it ready.
@@ -88,7 +88,7 @@ remain outside the validated robustness envelope.
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
 | **Packaging** — scoped npm package `@sythos/js_barcode_universal`, per-format `licenses/` | ✅ install-verified |
-| **Source layout** — `src/index.js` facade, `src/index.d.ts` declaration facade, JavaScript runtime under `src/js/`, format declarations under `src/ts/` | ✅ |
+| **Source layout** — TypeScript runtime sources and declarations under `src/ts/`, compiled JavaScript runtime under `src/js/`, stable `src/index.js` and public `src/index.d.ts` facades | ✅ |
 
 The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime field GF(929)** — which PDF417 uses. Addition, subtraction and negation are methods, never an inlined `^`.
 

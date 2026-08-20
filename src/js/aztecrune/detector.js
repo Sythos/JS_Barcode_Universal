@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Detector for Aztec Rune symbols.
  *
@@ -39,14 +38,11 @@
  *
  * @module aztecrune/detector
  */
-
 import { NotFoundError } from '../core/errors.js';
 import { BitMatrix } from '../core/bit-matrix.js';
 import { decodeAztecRune } from './decoder.js';
 import { AZTEC_RUNE_SIZE } from './tables.js';
-
 /** @typedef {{x:number,y:number}} Point */
-
 /**
  * Find connected components of a polarity. Components touching the image
  * border are ignored when they exceed the plausible module area; this avoids
@@ -54,73 +50,78 @@ import { AZTEC_RUNE_SIZE } from './tables.js';
  * Rune's isolated light centre module.
  */
 function components(image, value) {
-  const width = image.width;
-  const height = image.height;
-  const seen = new Uint8Array(width * height);
-  const limit = Math.max(64, Math.floor(width * height * 0.04));
-  const found = [];
-
-  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-    const start = y * width + x;
-    if (seen[start] || image.get(x, y) !== value) continue;
-    const queue = [[x, y]];
-    seen[start] = 1;
-    let head = 0;
-    let minX = x; let maxX = x; let minY = y; let maxY = y;
-    let count = 0;
-    let touchesBorder = false;
-
-    while (head < queue.length) {
-      const [px, py] = queue[head++];
-      count++;
-      minX = Math.min(minX, px); maxX = Math.max(maxX, px);
-      minY = Math.min(minY, py); maxY = Math.max(maxY, py);
-      if (px === 0 || py === 0 || px === width - 1 || py === height - 1) touchesBorder = true;
-      for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
-        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-        const at = ny * width + nx;
-        if (!seen[at] && image.get(nx, ny) === value) {
-          seen[at] = 1;
-          queue.push([nx, ny]);
+    const width = image.width;
+    const height = image.height;
+    const seen = new Uint8Array(width * height);
+    const limit = Math.max(64, Math.floor(width * height * 0.04));
+    const found = [];
+    for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+            const start = y * width + x;
+            if (seen[start] || image.get(x, y) !== value)
+                continue;
+            const queue = [[x, y]];
+            seen[start] = 1;
+            let head = 0;
+            let minX = x;
+            let maxX = x;
+            let minY = y;
+            let maxY = y;
+            let count = 0;
+            let touchesBorder = false;
+            while (head < queue.length) {
+                const [px, py] = queue[head++];
+                count++;
+                minX = Math.min(minX, px);
+                maxX = Math.max(maxX, px);
+                minY = Math.min(minY, py);
+                maxY = Math.max(maxY, py);
+                if (px === 0 || py === 0 || px === width - 1 || py === height - 1)
+                    touchesBorder = true;
+                for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+                    if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+                        continue;
+                    const at = ny * width + nx;
+                    if (!seen[at] && image.get(nx, ny) === value) {
+                        seen[at] = 1;
+                        queue.push([nx, ny]);
+                    }
+                }
+            }
+            const boxWidth = maxX - minX + 1;
+            const boxHeight = maxY - minY + 1;
+            if (count <= limit && !touchesBorder &&
+                Math.abs(boxWidth - boxHeight) <= Math.max(1, Math.ceil(Math.max(boxWidth, boxHeight) * 0.35)) &&
+                count >= boxWidth * boxHeight * 0.45) {
+                found.push({ x: (minX + maxX) / 2, y: (minY + maxY) / 2, width: boxWidth, height: boxHeight, count });
+            }
         }
-      }
-    }
-
-    const boxWidth = maxX - minX + 1;
-    const boxHeight = maxY - minY + 1;
-    if (count <= limit && !touchesBorder &&
-      Math.abs(boxWidth - boxHeight) <= Math.max(1, Math.ceil(Math.max(boxWidth, boxHeight) * 0.35)) &&
-      count >= boxWidth * boxHeight * 0.45) {
-      found.push({ x: (minX + maxX) / 2, y: (minY + maxY) / 2, width: boxWidth, height: boxHeight, count });
-    }
-  }
-  return found.sort((a, b) => b.count - a.count);
+    return found.sort((a, b) => b.count - a.count);
 }
 /** @param {import('../core/bit-matrix.js').BitMatrix} image @param {Point} center @param {number} pitch */
 function sample(image, center, pitch) {
-  const matrix = new BitMatrix(AZTEC_RUNE_SIZE);
-  for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
-    const px = Math.round(center.x + (x - 5) * pitch);
-    const py = Math.round(center.y + (y - 5) * pitch);
-    if (px >= 0 && py >= 0 && px < image.width && py < image.height && image.get(px, py)) matrix.set(x, y);
-  }
-  return matrix;
+    const matrix = new BitMatrix(AZTEC_RUNE_SIZE);
+    for (let y = 0; y < AZTEC_RUNE_SIZE; y++)
+        for (let x = 0; x < AZTEC_RUNE_SIZE; x++) {
+            const px = Math.round(center.x + (x - 5) * pitch);
+            const py = Math.round(center.y + (y - 5) * pitch);
+            if (px >= 0 && py >= 0 && px < image.width && py < image.height && image.get(px, py))
+                matrix.set(x, y);
+        }
+    return matrix;
 }
-
 function corners(center, pitch) {
-  const half = AZTEC_RUNE_SIZE * pitch / 2;
-  return [
-    { x: center.x - half, y: center.y - half },
-    { x: center.x + half, y: center.y - half },
-    { x: center.x + half, y: center.y + half },
-    { x: center.x - half, y: center.y + half },
-  ];
+    const half = AZTEC_RUNE_SIZE * pitch / 2;
+    return [
+        { x: center.x - half, y: center.y - half },
+        { x: center.x + half, y: center.y - half },
+        { x: center.x + half, y: center.y + half },
+        { x: center.x - half, y: center.y + half },
+    ];
 }
-
 function sameCandidate(left, right) {
-  return Math.hypot(left.center.x - right.center.x, left.center.y - right.center.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
+    return Math.hypot(left.center.x - right.center.x, left.center.y - right.center.y) <= Math.max(left.moduleSize, right.moduleSize) * 2;
 }
-
 /**
  * Detect the most prominent Aztec Rune in a binarized image.
  *
@@ -128,39 +129,52 @@ function sameCandidate(left, right) {
  * @returns {{corners:Point[],dimension:11,moduleSize:number,matrix:BitMatrix,result:object}|null}
  */
 export function detectAztecRune(binaryImage) {
-  if (!binaryImage || !binaryImage.width || !binaryImage.height) {
-    throw new NotFoundError('detectAztecRune: no image supplied');
-  }
-  const candidates = [];
-  for (const value of [true, false]) {
-    for (const component of components(binaryImage, value)) {
-      const pitch = (component.width + component.height) / 2;
-      if (pitch < 0.8) continue;
-      const matrix = sample(binaryImage, component, pitch);
-      let decoded;
-      try { decoded = decodeAztecRune(matrix); } catch { continue; }
-      const candidate = {
-        center: component,
-        corners: corners(component, pitch),
-        dimension: AZTEC_RUNE_SIZE,
-        moduleSize: pitch,
-        matrix,
-        result: decoded,
-      };
-      if (!candidates.some((entry) => sameCandidate(entry, candidate))) candidates.push(candidate);
+    if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+        throw new NotFoundError('detectAztecRune: no image supplied');
     }
-  }
-  candidates.sort((a, b) => b.moduleSize - a.moduleSize);
-  const best = candidates[0];
-  if (!best) return null;
-  delete best.center;
-  return best;
+    const candidates = [];
+    for (const value of [true, false]) {
+        for (const component of components(binaryImage, value)) {
+            const pitch = (component.width + component.height) / 2;
+            if (pitch < 0.8)
+                continue;
+            const matrix = sample(binaryImage, component, pitch);
+            let decoded;
+            try {
+                decoded = decodeAztecRune(matrix);
+            }
+            catch {
+                continue;
+            }
+            const candidate = {
+                center: component,
+                corners: corners(component, pitch),
+                dimension: AZTEC_RUNE_SIZE,
+                moduleSize: pitch,
+                matrix,
+                result: decoded,
+            };
+            if (!candidates.some((entry) => sameCandidate(entry, candidate)))
+                candidates.push(candidate);
+        }
+    }
+    candidates.sort((a, b) => b.moduleSize - a.moduleSize);
+    const best = candidates[0];
+    if (!best)
+        return null;
+    delete best.center;
+    return best;
 }
-
 /** Detect and decode one Aztec Rune, or return `null` when none is verified. */
 export function detectAndDecodeAztecRune(binaryImage) {
-  let detection;
-  try { detection = detectAztecRune(binaryImage); } catch { return null; }
-  if (!detection) return null;
-  return { ...detection.result, corners: detection.corners, moduleSize: detection.moduleSize };
+    let detection;
+    try {
+        detection = detectAztecRune(binaryImage);
+    }
+    catch {
+        return null;
+    }
+    if (!detection)
+        return null;
+    return { ...detection.result, corners: detection.corners, moduleSize: detection.moduleSize };
 }

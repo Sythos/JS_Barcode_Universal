@@ -35,17 +35,15 @@ jobs:
       - name: Run JavaScript source and API checks
         run: node .github/ci/validate-package.mjs
 
-      - name: Run TypeScript declaration checks
-        run: >-
-          npx --no-install tsc
-          --ignoreConfig
-          --noEmit
-          --skipLibCheck false
-          --moduleResolution nodenext
-          --module nodenext
-          src/index.d.ts
-          src/ts/bundle/sythos-barcode.esm.d.ts
-          src/ts/bundle/sythos-barcode.d.ts
+      - name: Compile TypeScript source and refresh JavaScript output
+        run: npm run build:ts
+
+      - name: Ensure generated JavaScript is synchronized
+        shell: bash
+        run: git diff --exit-code -- src/index.js src/js
+
+      - name: Run public TypeScript declaration checks
+        run: npm run types:api
 
       - name: Verify npm package contents
         run: npm pack --dry-run --json > npm-pack.json

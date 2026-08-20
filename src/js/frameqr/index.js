@@ -27,16 +27,7 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 export { encodeFrameQR } from './encoder.js';
 export { decodeFrameQR } from './decoder.js';
 export { detectFrameQR, detectAndDecodeFrameQR } from './detector.js';
-export {
-  FRAMEQR_PROFILE,
-  FRAMEQR_CANVAS_SHAPES,
-  canvasModules,
-  normalizeCanvasSpec,
-  analyzeCanvasDamage,
-  validateCanvasSpec,
-  validateFrameQrTables,
-} from './tables.js';
+export { FRAMEQR_PROFILE, FRAMEQR_CANVAS_SHAPES, canvasModules, normalizeCanvasSpec, analyzeCanvasDamage, validateCanvasSpec, validateFrameQrTables, } from './tables.js';

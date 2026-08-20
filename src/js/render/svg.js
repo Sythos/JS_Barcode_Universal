@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * SVG output.
  *
@@ -38,21 +37,18 @@
  *
  * @module render/svg
  */
-
 import { normalizeOptions } from './options.js';
-
 /**
  * @param {string} value
  * @returns {string}
  */
 function escapeAttr(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
-
 /**
  * Render to an SVG document.
  *
@@ -61,34 +57,34 @@ function escapeAttr(value) {
  * @returns {string}
  */
 export function toSVG(matrix, options = {}) {
-  const opts = normalizeOptions(matrix, options);
-  const { scale, source, pixelWidth, pixelHeight, rowHeight } = opts;
-
-  let path = '';
-  for (let y = 0; y < source.height; y++) {
-    let x = 0;
-    while (x < source.width) {
-      if (!source.get(x, y)) { x++; continue; }
-      let run = 1;
-      while (x + run < source.width && source.get(x + run, y)) run++;
-      // Relative horizontal-vertical path commands: shorter than rects and
-      // free of the seams that appear between adjacent rects at some zooms.
-      path += `M${x * scale} ${y * rowHeight}h${run * scale}v${rowHeight}h${-run * scale}z`;
-      x += run;
+    const opts = normalizeOptions(matrix, options);
+    const { scale, source, pixelWidth, pixelHeight, rowHeight } = opts;
+    let path = '';
+    for (let y = 0; y < source.height; y++) {
+        let x = 0;
+        while (x < source.width) {
+            if (!source.get(x, y)) {
+                x++;
+                continue;
+            }
+            let run = 1;
+            while (x + run < source.width && source.get(x + run, y))
+                run++;
+            // Relative horizontal-vertical path commands: shorter than rects and
+            // free of the seams that appear between adjacent rects at some zooms.
+            path += `M${x * scale} ${y * rowHeight}h${run * scale}v${rowHeight}h${-run * scale}z`;
+            x += run;
+        }
     }
-  }
-
-  const bg = opts.light === 'none'
-    ? ''
-    : `<rect width="${pixelWidth}" height="${pixelHeight}" fill="${escapeAttr(opts.light)}"/>`;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${pixelWidth}" height="${pixelHeight}" ` +
-    `viewBox="0 0 ${pixelWidth} ${pixelHeight}" shape-rendering="crispEdges">` +
-    bg +
-    `<path d="${path}" fill="${escapeAttr(opts.dark)}"/>` +
-    '</svg>';
+    const bg = opts.light === 'none'
+        ? ''
+        : `<rect width="${pixelWidth}" height="${pixelHeight}" fill="${escapeAttr(opts.light)}"/>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${pixelWidth}" height="${pixelHeight}" ` +
+        `viewBox="0 0 ${pixelWidth} ${pixelHeight}" shape-rendering="crispEdges">` +
+        bg +
+        `<path d="${path}" fill="${escapeAttr(opts.dark)}"/>` +
+        '</svg>';
 }
-
 /**
  * Base64 that works identically in Node and the browser.
  *
@@ -99,15 +95,16 @@ export function toSVG(matrix, options = {}) {
  * @returns {string}
  */
 function toBase64(text) {
-  const bytes = new TextEncoder().encode(text);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  if (typeof btoa === 'function') return btoa(binary);
-  // Node before btoa was global, and non-browser embedders.
-  /* eslint-disable-next-line no-undef */
-  return Buffer.from(bytes).toString('base64');
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++)
+        binary += String.fromCharCode(bytes[i]);
+    if (typeof btoa === 'function')
+        return btoa(binary);
+    // Node before btoa was global, and non-browser embedders.
+    /* eslint-disable-next-line no-undef */
+    return Buffer.from(bytes).toString('base64');
 }
-
 /**
  * Render to a data URI usable directly as an `<img>` src.
  *
@@ -116,5 +113,5 @@ function toBase64(text) {
  * @returns {string}
  */
 export function toSVGDataURI(matrix, options = {}) {
-  return 'data:image/svg+xml;base64,' + toBase64(toSVG(matrix, options));
+    return 'data:image/svg+xml;base64,' + toBase64(toSVG(matrix, options));
 }

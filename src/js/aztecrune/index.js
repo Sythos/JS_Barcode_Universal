@@ -27,23 +27,8 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /** Aztec Rune entry points. @module aztecrune */
-
 export { encodeAztecRune, normalizeAztecRuneValue } from './encoder.js';
 export { decodeAztecRune } from './decoder.js';
 export { detectAztecRune, detectAndDecodeAztecRune } from './detector.js';
-export {
-  AZTEC_RUNE_SIZE,
-  AZTEC_RUNE_DATA_BITS,
-  AZTEC_RUNE_WORD_SIZE,
-  AZTEC_RUNE_DATA_CODEWORDS,
-  AZTEC_RUNE_ECC_CODEWORDS,
-  AZTEC_RUNE_TOTAL_CODEWORDS,
-  AZTEC_RUNE_MASK,
-  AZTEC_RUNE_DATA_POSITIONS,
-  aztecRuneStructuralValue,
-  buildAztecRuneStructure,
-  aztecRuneField,
-  validateAztecRuneTables,
-} from './tables.js';
+export { AZTEC_RUNE_SIZE, AZTEC_RUNE_DATA_BITS, AZTEC_RUNE_WORD_SIZE, AZTEC_RUNE_DATA_CODEWORDS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_TOTAL_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_DATA_POSITIONS, aztecRuneStructuralValue, buildAztecRuneStructure, aztecRuneField, validateAztecRuneTables, } from './tables.js';

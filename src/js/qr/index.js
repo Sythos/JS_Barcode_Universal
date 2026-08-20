@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * QR Code, re-exported.
  *
@@ -37,7 +36,6 @@
  *
  * @module qr
  */
-
 export { encodeQR } from './encoder.js';
 export { decodeQR } from './decoder.js';
 export { detectQR, detectAndDecodeQR } from './detector.js';

@@ -27,30 +27,13 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Core primitives, re-exported.
  *
  * @module core
  */
-
 export { BitMatrix } from './bit-matrix.js';
 export { BitWriter, BitReader } from './bit-buffer.js';
-export {
-  GaloisField,
-  GF256_QR,
-  GF256_DM,
-  GF929,
-  GF16,
-  GF64,
-  GF1024,
-  GF4096,
-} from './galois-field.js';
+export { GaloisField, GF256_QR, GF256_DM, GF929, GF16, GF64, GF1024, GF4096, } from './galois-field.js';
 export { rsEncode, rsDecode, generatorPoly } from './reed-solomon.js';
-export {
-  BarcodeError,
-  EncodeError,
-  NotFoundError,
-  FormatError,
-  ChecksumError,
-} from './errors.js';
+export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './errors.js';

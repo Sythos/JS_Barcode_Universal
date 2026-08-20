@@ -1,7 +1,8 @@
 name: Pull request quality
 
-# The publish checkout has no package lockfile and no lint, test, or build
-# scripts. This gate runs only the repository checks that actually exist.
+# The publish checkout has no package lockfile. This gate validates the
+# JavaScript runtime, TypeScript source tree, public declarations and package
+# surface without adding runtime dependencies.
 on:
   pull_request:
 
@@ -40,7 +41,7 @@ jobs:
         run: node .github/ci/validate-package.mjs
 
   typescript:
-    name: TypeScript declaration validation
+    name: TypeScript source and declaration validation
     runs-on: ubuntu-latest
 
     steps:
@@ -64,17 +65,16 @@ jobs:
             npm install --ignore-scripts --no-audit --no-fund --no-package-lock
           fi
 
-      - name: Run TypeScript declaration checks
+      - name: Compile TypeScript source and refresh JavaScript output
+        run: npm run build:ts
+
+      - name: Ensure generated JavaScript is synchronized
+        shell: bash
+        run: git diff --exit-code -- src/index.js src/js
+
+      - name: Run public TypeScript declaration checks
         run: >-
-          npx --no-install tsc
-          --ignoreConfig
-          --noEmit
-          --skipLibCheck false
-          --moduleResolution nodenext
-          --module nodenext
-          src/index.d.ts
-          src/ts/bundle/sythos-barcode.esm.d.ts
-          src/ts/bundle/sythos-barcode.d.ts
+          npm run types:api
 
   package:
     name: npm package contents

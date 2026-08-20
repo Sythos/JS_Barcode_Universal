@@ -161,18 +161,22 @@ toPNG(ean, { scale: 3, barHeight: 80 }).then((bytes) => {
 
 ### 4. The source directly
 
-[`src/index.js`](src/index.js) is plain ESM with JSDoc types and no build step of its own. Import
-it and let your bundler tree-shake; the package is marked side-effect free. The source layout is
-deliberately explicit:
+[`src/index.js`](src/index.js) is the generated ESM facade emitted from the TypeScript source
+tree. The source layout is deliberately explicit:
 
-- `src/index.js` is the stable public facade.
-- `src/index.d.ts` is the public TypeScript declaration facade for the top-level entry point.
-- `src/js/` contains the zero-dependency JavaScript runtime modules, including format subpaths.
-- `src/ts/` contains the shipped machine-readable TypeScript declaration modules for the format
-  subpaths. These declarations describe the JavaScript runtime and do not add a runtime dependency.
+- `src/ts/` contains the TypeScript runtime sources and their adjacent machine-readable `.d.ts`
+  declarations, including `src/ts/index.ts` and `src/ts/index.d.ts`.
+- `src/js/` contains the compiled JavaScript runtime modules used by Node, browsers and the CDN
+  bundles.
+- `src/index.js` and `src/index.d.ts` are the stable package-root facades.
 
-The package subpath exports therefore pair runtime modules under `src/js/` with their declaration
-counterparts under `src/ts/`; direct source imports should continue to use the facade above.
+From the development workspace, `npm run build:ts` compiles `src/ts/` into `src/js/` and the
+root JavaScript facade; `npm run build` then regenerates both bundles. The published package
+keeps both source languages visible while retaining zero runtime dependencies.
+
+The package subpath exports therefore pair compiled runtime modules under `src/js/` with their
+TypeScript sources and declarations under `src/ts/`; direct source imports should continue to use
+the JavaScript facade above.
 
 ```js
 import { encode, decode, toImageData, listFormats } from './src/index.js';

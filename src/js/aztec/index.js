@@ -27,19 +27,8 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /** Aztec Code entry points. @module aztec */
-
 export { encodeAztec } from './encoder.js';
 export { decodeAztec } from './decoder.js';
 export { detectAztec, detectAndDecodeAztec } from './detector.js';
-export {
-  AZTEC_COMPACT_LAYERS,
-  AZTEC_FULL_LAYERS,
-  AZTEC_LAYERS,
-  AZTEC_DEFAULT_ECC_PERCENT,
-  AZTEC_RS_GENERATOR_BASE,
-  aztecLayer,
-  aztecSymbolSize,
-  validateAztecTables,
-} from './tables.js';
+export { AZTEC_COMPACT_LAYERS, AZTEC_FULL_LAYERS, AZTEC_LAYERS, AZTEC_DEFAULT_ECC_PERCENT, AZTEC_RS_GENERATOR_BASE, aztecLayer, aztecSymbolSize, validateAztecTables, } from './tables.js';

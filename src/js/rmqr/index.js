@@ -27,11 +27,7 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 export { encodeRMQR, ALPHANUMERIC_CHARS } from './encoder.js';
 export { decodeRMQR } from './decoder.js';
 export { detectRMQR, detectAndDecodeRMQR } from './detector.js';
-export {
-  RMQR_SIZES, versionInfo, versionForSize, alignmentCoordinates, dataModuleOrder,
-  functionModules, dataBitCapacity, formatBits, maskBit, validateTables,
-} from './tables.js';
+export { RMQR_SIZES, versionInfo, versionForSize, alignmentCoordinates, dataModuleOrder, functionModules, dataBitCapacity, formatBits, maskBit, validateTables, } from './tables.js';

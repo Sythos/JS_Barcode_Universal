@@ -27,15 +27,12 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Shared render options, normalised once so every backend agrees.
  *
  * @module render/options
  */
-
 import { BitMatrix } from '../core/bit-matrix.js';
-
 /**
  * @typedef {object} RenderOptions
  * @property {number} [scale] Pixels per module. Default 8.
@@ -44,7 +41,6 @@ import { BitMatrix } from '../core/bit-matrix.js';
  * @property {string} [light] Colour of clear modules, or 'none' for transparent.
  * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
  */
-
 /**
  * Expand and pad the matrix, and resolve every dimension.
  *
@@ -57,42 +53,39 @@ import { BitMatrix } from '../core/bit-matrix.js';
  * @param {RenderOptions} options
  */
 export function normalizeOptions(matrix, options = {}) {
-  const scale = Math.max(1, Math.floor(options.scale ?? 8));
-  const margin = Math.max(0, Math.floor(options.margin ?? 4));
-  const dark = options.dark ?? '#000000';
-  const light = options.light ?? '#ffffff';
-  const barHeight = options.barHeight ?? null;
-
-  let base = matrix;
-  const is1D = matrix.height === 1;
-
-  if (is1D) {
-    // Default to a bar height that stays scannable: tall enough that a laser
-    // crossing at a slight angle still passes through the whole symbol.
-    const targetPixels = barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15));
-    const rows = Math.max(1, Math.round(targetPixels / scale));
-    base = new BitMatrix(matrix.width, rows);
-    for (let x = 0; x < matrix.width; x++) {
-      if (!matrix.get(x, 0)) continue;
-      for (let y = 0; y < rows; y++) base.set(x, y);
+    const scale = Math.max(1, Math.floor(options.scale ?? 8));
+    const margin = Math.max(0, Math.floor(options.margin ?? 4));
+    const dark = options.dark ?? '#000000';
+    const light = options.light ?? '#ffffff';
+    const barHeight = options.barHeight ?? null;
+    let base = matrix;
+    const is1D = matrix.height === 1;
+    if (is1D) {
+        // Default to a bar height that stays scannable: tall enough that a laser
+        // crossing at a slight angle still passes through the whole symbol.
+        const targetPixels = barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15));
+        const rows = Math.max(1, Math.round(targetPixels / scale));
+        base = new BitMatrix(matrix.width, rows);
+        for (let x = 0; x < matrix.width; x++) {
+            if (!matrix.get(x, 0))
+                continue;
+            for (let y = 0; y < rows; y++)
+                base.set(x, y);
+        }
     }
-  }
-
-  const source = margin > 0 ? base.withMargin(margin) : base;
-
-  return {
-    scale,
-    margin,
-    dark,
-    light,
-    is1D,
-    source,
-    rowHeight: scale,
-    pixelWidth: source.width * scale,
-    pixelHeight: source.height * scale,
-  };
+    const source = margin > 0 ? base.withMargin(margin) : base;
+    return {
+        scale,
+        margin,
+        dark,
+        light,
+        is1D,
+        source,
+        rowHeight: scale,
+        pixelWidth: source.width * scale,
+        pixelHeight: source.height * scale,
+    };
 }
-
 /**
  * Parse a CSS colour into RGBA bytes.
  *
@@ -103,58 +96,57 @@ export function normalizeOptions(matrix, options = {}) {
  * @returns {[number, number, number, number]}
  */
 export function parseColor(colour) {
-  const value = String(colour).trim().toLowerCase();
-
-  if (value === 'none' || value === 'transparent') return [0, 0, 0, 0];
-  if (value === 'white') return [255, 255, 255, 255];
-  if (value === 'black') return [0, 0, 0, 255];
-
-  if (value[0] === '#') {
-    const hex = value.slice(1);
-    const expand = (c) => parseInt(c + c, 16);
-    if (hex.length === 3) {
-      return [expand(hex[0]), expand(hex[1]), expand(hex[2]), 255];
+    const value = String(colour).trim().toLowerCase();
+    if (value === 'none' || value === 'transparent')
+        return [0, 0, 0, 0];
+    if (value === 'white')
+        return [255, 255, 255, 255];
+    if (value === 'black')
+        return [0, 0, 0, 255];
+    if (value[0] === '#') {
+        const hex = value.slice(1);
+        const expand = (c) => parseInt(c + c, 16);
+        if (hex.length === 3) {
+            return [expand(hex[0]), expand(hex[1]), expand(hex[2]), 255];
+        }
+        if (hex.length === 4) {
+            return [expand(hex[0]), expand(hex[1]), expand(hex[2]), expand(hex[3])];
+        }
+        if (hex.length === 6) {
+            return [
+                parseInt(hex.slice(0, 2), 16),
+                parseInt(hex.slice(2, 4), 16),
+                parseInt(hex.slice(4, 6), 16),
+                255,
+            ];
+        }
+        if (hex.length === 8) {
+            return [
+                parseInt(hex.slice(0, 2), 16),
+                parseInt(hex.slice(2, 4), 16),
+                parseInt(hex.slice(4, 6), 16),
+                parseInt(hex.slice(6, 8), 16),
+            ];
+        }
     }
-    if (hex.length === 4) {
-      return [expand(hex[0]), expand(hex[1]), expand(hex[2]), expand(hex[3])];
+    const fn = value.match(/^rgba?\(([^)]+)\)$/);
+    if (fn) {
+        const parts = fn[1].split(/[,/\s]+/).filter(Boolean);
+        const channel = (s) => (s.endsWith('%')
+            ? Math.round((parseFloat(s) / 100) * 255)
+            : Math.round(parseFloat(s)));
+        const r = channel(parts[0]);
+        const g = channel(parts[1]);
+        const b = channel(parts[2]);
+        let a = 255;
+        if (parts.length > 3) {
+            a = parts[3].endsWith('%')
+                ? Math.round((parseFloat(parts[3]) / 100) * 255)
+                : Math.round(parseFloat(parts[3]) * 255);
+        }
+        return [r, g, b, a];
     }
-    if (hex.length === 6) {
-      return [
-        parseInt(hex.slice(0, 2), 16),
-        parseInt(hex.slice(2, 4), 16),
-        parseInt(hex.slice(4, 6), 16),
-        255,
-      ];
-    }
-    if (hex.length === 8) {
-      return [
-        parseInt(hex.slice(0, 2), 16),
-        parseInt(hex.slice(2, 4), 16),
-        parseInt(hex.slice(4, 6), 16),
-        parseInt(hex.slice(6, 8), 16),
-      ];
-    }
-  }
-
-  const fn = value.match(/^rgba?\(([^)]+)\)$/);
-  if (fn) {
-    const parts = fn[1].split(/[,/\s]+/).filter(Boolean);
-    const channel = (s) => (s.endsWith('%')
-      ? Math.round((parseFloat(s) / 100) * 255)
-      : Math.round(parseFloat(s)));
-    const r = channel(parts[0]);
-    const g = channel(parts[1]);
-    const b = channel(parts[2]);
-    let a = 255;
-    if (parts.length > 3) {
-      a = parts[3].endsWith('%')
-        ? Math.round((parseFloat(parts[3]) / 100) * 255)
-        : Math.round(parseFloat(parts[3]) * 255);
-    }
-    return [r, g, b, a];
-  }
-
-  // Unrecognised: fall back to opaque black rather than throwing, so an
-  // unusual colour never costs someone a barcode.
-  return [0, 0, 0, 255];
+    // Unrecognised: fall back to opaque black rather than throwing, so an
+    // unusual colour never costs someone a barcode.
+    return [0, 0, 0, 255];
 }

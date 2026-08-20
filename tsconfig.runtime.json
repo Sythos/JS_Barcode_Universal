@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "noCheck": true,
+    "noEmitOnError": true,
+    "declaration": false,
+    "sourceMap": false,
+    "outDir": "temp/typescript"
+  }
+}

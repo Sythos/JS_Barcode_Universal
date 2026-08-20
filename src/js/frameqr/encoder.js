@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Sythos Canvas QR profile encoder.
  *
@@ -38,16 +37,9 @@
  *
  * @module frameqr/encoder
  */
-
 import { EncodeError } from '../core/errors.js';
 import { encodeQR } from '../qr/encoder.js';
-import {
-  FRAMEQR_PROFILE,
-  canvasModules,
-  normalizeCanvasSpec,
-  validateCanvasSpec,
-} from './tables.js';
-
+import { FRAMEQR_PROFILE, canvasModules, normalizeCanvasSpec, validateCanvasSpec, } from './tables.js';
 /**
  * @typedef {object} FrameQrEncodeOptions
  * @property {'H'} [ecc] The profile always uses QR error correction H.
@@ -57,15 +49,13 @@ import {
  * @property {boolean} [kanji] Allow QR kanji mode.
  * @property {object} [canvas] Profile artwork reservation.
  */
-
 function versionFor(matrix) {
-  return (matrix.width - 17) / 4;
+    return (matrix.width - 17) / 4;
 }
-
 function clearCanvas(matrix, modules) {
-  for (const [x, y] of modules) matrix.unset(x, y);
+    for (const [x, y] of modules)
+        matrix.unset(x, y);
 }
-
 /**
  * Encode a QR Code with a conservative artwork canvas according to the
  * non-certified Sythos Canvas QR profile.
@@ -83,74 +73,71 @@ function clearCanvas(matrix, modules) {
  *   cannot safely fit the selected QR version.
  */
 export function encodeFrameQR(text, options = {}) {
-  if (typeof text !== 'string') {
-    throw new EncodeError('Sythos Canvas QR: text must be a string');
-  }
-  if (options.ecc !== undefined && options.ecc !== 'H') {
-    throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
-  }
-
-  const qrOptions = {
-    mask: options.mask,
-    charset: options.charset,
-    kanji: options.kanji,
-    ecc: 'H',
-  };
-  for (const key of Object.keys(qrOptions)) {
-    if (qrOptions[key] === undefined) delete qrOptions[key];
-  }
-
-  const versions = options.version === undefined
-    ? Array.from({ length: 40 }, (_, index) => index + 1)
-    : [options.version];
-  let capacityError = null;
-  let unsafeAnalysis = null;
-  let selected = null;
-
-  for (const version of versions) {
-    let matrix;
-    try {
-      matrix = encodeQR(text, { ...qrOptions, version });
-    } catch (error) {
-      capacityError = error;
-      continue;
+    if (typeof text !== 'string') {
+        throw new EncodeError('Sythos Canvas QR: text must be a string');
     }
-
-    let canvas;
-    let analysis;
-    try {
-      canvas = normalizeCanvasSpec(matrix.width, options.canvas);
-      analysis = validateCanvasSpec(versionFor(matrix), canvas);
-    } catch (error) {
-      if (error instanceof EncodeError) throw error;
-      throw new EncodeError(`Sythos Canvas QR: invalid canvas: ${error.message}`);
+    if (options.ecc !== undefined && options.ecc !== 'H') {
+        throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
     }
-    if (!analysis.safe) {
-      unsafeAnalysis = analysis;
-      continue;
+    const qrOptions = {
+        mask: options.mask,
+        charset: options.charset,
+        kanji: options.kanji,
+        ecc: 'H',
+    };
+    for (const key of Object.keys(qrOptions)) {
+        if (qrOptions[key] === undefined)
+            delete qrOptions[key];
     }
-    selected = { matrix, canvas };
-    break;
-  }
-
-  if (!selected) {
-    if (unsafeAnalysis) {
-      throw new EncodeError(
-        'Sythos Canvas QR: canvas is not safe for the selected QR version; ' +
-        `it touches ${unsafeAnalysis.touchedCodewordCount} codewords and has ` +
-        `a per-block correction budget of ${unsafeAnalysis.correctionBudgetPerBlock}`
-      );
+    const versions = options.version === undefined
+        ? Array.from({ length: 40 }, (_, index) => index + 1)
+        : [options.version];
+    let capacityError = null;
+    let unsafeAnalysis = null;
+    let selected = null;
+    for (const version of versions) {
+        let matrix;
+        try {
+            matrix = encodeQR(text, { ...qrOptions, version });
+        }
+        catch (error) {
+            capacityError = error;
+            continue;
+        }
+        let canvas;
+        let analysis;
+        try {
+            canvas = normalizeCanvasSpec(matrix.width, options.canvas);
+            analysis = validateCanvasSpec(versionFor(matrix), canvas);
+        }
+        catch (error) {
+            if (error instanceof EncodeError)
+                throw error;
+            throw new EncodeError(`Sythos Canvas QR: invalid canvas: ${error.message}`);
+        }
+        if (!analysis.safe) {
+            unsafeAnalysis = analysis;
+            continue;
+        }
+        selected = { matrix, canvas };
+        break;
     }
-    if (capacityError) throw capacityError;
-    throw new EncodeError('Sythos Canvas QR: unable to select a QR version');
-  }
-
-  const { matrix, canvas } = selected;
-  clearCanvas(matrix, canvasModules(matrix.width, canvas));
-  matrix.frameqr = {
-    profile: FRAMEQR_PROFILE.id,
-    certified: false,
-    canvas,
-  };
-  return matrix;
+    if (!selected) {
+        if (unsafeAnalysis) {
+            throw new EncodeError('Sythos Canvas QR: canvas is not safe for the selected QR version; ' +
+                `it touches ${unsafeAnalysis.touchedCodewordCount} codewords and has ` +
+                `a per-block correction budget of ${unsafeAnalysis.correctionBudgetPerBlock}`);
+        }
+        if (capacityError)
+            throw capacityError;
+        throw new EncodeError('Sythos Canvas QR: unable to select a QR version');
+    }
+    const { matrix, canvas } = selected;
+    clearCanvas(matrix, canvasModules(matrix.width, canvas));
+    matrix.frameqr = {
+        profile: FRAMEQR_PROFILE.id,
+        certified: false,
+        canvas,
+    };
+    return matrix;
 }

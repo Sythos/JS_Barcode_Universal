@@ -34,11 +34,11 @@ function collectExportTargets(value, targets = []) {
   return targets;
 }
 
-function walkJavaScript(directory) {
+function walkSource(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const absolute = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...walkJavaScript(absolute));
+    if (entry.isDirectory()) files.push(...walkSource(absolute));
     else if (entry.isFile() && absolute.endsWith('.js')) files.push(absolute);
   }
   return files;
@@ -56,7 +56,7 @@ for (const target of exportTargets) {
 }
 
 const sourceRoot = join(repositoryRoot, 'src');
-const sourceFiles = walkJavaScript(sourceRoot);
+const sourceFiles = walkSource(sourceRoot);
 for (const sourceFile of sourceFiles) {
   const syntax = spawnSync(process.execPath, ['--check', sourceFile], { encoding: 'utf8' });
   if (syntax.status !== 0) {
@@ -86,5 +86,15 @@ if (typeof esmBundle.encode !== 'function' || typeof esmBundle.decode !== 'funct
   fail('ESM bundle does not expose the public encode/decode API');
 }
 
-console.log(`Validated ${exportTargets.length} export targets and ${sourceFiles.length} JavaScript source files.`);
+const typeSourceFiles = [];
+function walkTypeScript(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolute = join(directory, entry.name);
+    if (entry.isDirectory()) walkTypeScript(absolute);
+    else if (entry.isFile() && absolute.endsWith('.ts') && !absolute.endsWith('.d.ts')) typeSourceFiles.push(absolute);
+  }
+}
+walkTypeScript(sourceRoot);
+
+console.log(`Validated ${exportTargets.length} export targets, ${sourceFiles.length} JavaScript source files and ${typeSourceFiles.length} TypeScript source files.`);
 console.log(`Runtime dependency check passed; ${publicModule.listFormats().length} format entries are registered.`);

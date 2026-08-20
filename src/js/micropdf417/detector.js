@@ -27,7 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Axis-aligned MicroPDF417 raster detection.
  *
@@ -42,71 +41,74 @@
  *
  * @module micropdf417/detector
  */
-
 import { BitMatrix } from '../core/bit-matrix.js';
 import { decodeMicroPDF417 } from './decoder.js';
-
 /** @typedef {{x:number, y:number}} Point */
-
 // Each row has two 10-module side RAPs, a final separator, and 17 modules for
 // each data column. Three and four columns also contain one central RAP.
 function symbolWidth(columns) { return 21 + columns * 17 + (columns > 2 ? 10 : 0); }
 const WIDTHS = [1, 2, 3, 4].map(symbolWidth);
-
 function rotateClockwise(source) {
-  const rotated = new BitMatrix(source.height, source.width);
-  for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) {
-    if (source.get(x, y)) rotated.set(source.height - 1 - y, x);
-  }
-  return rotated;
+    const rotated = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++)
+        for (let x = 0; x < source.width; x++) {
+            if (source.get(x, y))
+                rotated.set(source.height - 1 - y, x);
+        }
+    return rotated;
 }
-
 function integerScale(width, modules) {
-  if (width % modules) return 0;
-  const scale = width / modules;
-  return Number.isInteger(scale) && scale > 0 ? scale : 0;
+    if (width % modules)
+        return 0;
+    const scale = width / modules;
+    return Number.isInteger(scale) && scale > 0 ? scale : 0;
 }
-
 /** Collapse exact integer scale blocks using a majority vote. */
 function sampleRaster(image, bounds, modulesWide, scale) {
-  const modulesHigh = bounds.height / scale;
-  if (!Number.isInteger(modulesHigh) || modulesHigh < 1) return null;
-  const matrix = new BitMatrix(modulesWide, modulesHigh);
-  for (let y = 0; y < modulesHigh; y++) for (let x = 0; x < modulesWide; x++) {
-    let dark = 0;
-    for (let py = 0; py < scale; py++) for (let px = 0; px < scale; px++) {
-      if (image.get(bounds.x + x * scale + px, bounds.y + y * scale + py)) dark++;
-    }
-    if (dark * 2 >= scale * scale) matrix.set(x, y);
-  }
-  return matrix;
+    const modulesHigh = bounds.height / scale;
+    if (!Number.isInteger(modulesHigh) || modulesHigh < 1)
+        return null;
+    const matrix = new BitMatrix(modulesWide, modulesHigh);
+    for (let y = 0; y < modulesHigh; y++)
+        for (let x = 0; x < modulesWide; x++) {
+            let dark = 0;
+            for (let py = 0; py < scale; py++)
+                for (let px = 0; px < scale; px++) {
+                    if (image.get(bounds.x + x * scale + px, bounds.y + y * scale + py))
+                        dark++;
+                }
+            if (dark * 2 >= scale * scale)
+                matrix.set(x, y);
+        }
+    return matrix;
 }
-
 function rectangle(bounds) {
-  return [
-    { x: bounds.x, y: bounds.y },
-    { x: bounds.x + bounds.width, y: bounds.y },
-    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
-    { x: bounds.x, y: bounds.y + bounds.height },
-  ];
+    return [
+        { x: bounds.x, y: bounds.y },
+        { x: bounds.x + bounds.width, y: bounds.y },
+        { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+        { x: bounds.x, y: bounds.y + bounds.height },
+    ];
 }
-
 function detectAxisAligned(image, options) {
-  const bounds = image.getBounds();
-  if (!bounds) return null;
-  for (const width of WIDTHS) {
-    const scale = integerScale(bounds.width, width);
-    if (!scale || bounds.height % scale) continue;
-    const matrix = sampleRaster(image, bounds, width, scale);
-    if (!matrix) continue;
-    try {
-      const decoded = decodeMicroPDF417(matrix, options);
-      return { matrix, corners: rectangle(bounds), moduleSize: scale, ...decoded };
-    } catch { /* The RAP sequence is not a MicroPDF417 symbol of this width. */ }
-  }
-  return null;
+    const bounds = image.getBounds();
+    if (!bounds)
+        return null;
+    for (const width of WIDTHS) {
+        const scale = integerScale(bounds.width, width);
+        if (!scale || bounds.height % scale)
+            continue;
+        const matrix = sampleRaster(image, bounds, width, scale);
+        if (!matrix)
+            continue;
+        try {
+            const decoded = decodeMicroPDF417(matrix, options);
+            return { matrix, corners: rectangle(bounds), moduleSize: scale, ...decoded };
+        }
+        catch { /* The RAP sequence is not a MicroPDF417 symbol of this width. */ }
+    }
+    return null;
 }
-
 /**
  * Detect and decode one clean, binarized MicroPDF417 raster.
  *
@@ -121,29 +123,30 @@ function detectAxisAligned(image, options) {
  * @returns {(ReturnType<typeof decodeMicroPDF417> & {matrix: BitMatrix, corners: Point[], moduleSize: number, rotation: number}) | null}
  */
 export function detectMicroPDF417(binaryImage, options = {}) {
-  if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function') return null;
-  let oriented = binaryImage;
-  let toOriginal = (point) => ({ x: point.x, y: point.y });
-  for (let turns = 0; turns < 4; turns++) {
-    const found = detectAxisAligned(oriented, options);
-    // Search rotates clockwise to normalize the input. Public rotation has the
-    // opposite meaning: it describes how the input itself was rotated.
-    if (found) return {
-      ...found,
-      rotation: (360 - turns * 90) % 360,
-      corners: found.corners.map(toOriginal),
-    };
-    const previous = oriented;
-    const previousToOriginal = toOriginal;
-    oriented = rotateClockwise(previous);
-    // Boundary coordinates (rather than just pixel centres) are transformed
-    // here, so callers can draw the returned rectangle directly on the input.
-    toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
-  }
-  return null;
+    if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function')
+        return null;
+    let oriented = binaryImage;
+    let toOriginal = (point) => ({ x: point.x, y: point.y });
+    for (let turns = 0; turns < 4; turns++) {
+        const found = detectAxisAligned(oriented, options);
+        // Search rotates clockwise to normalize the input. Public rotation has the
+        // opposite meaning: it describes how the input itself was rotated.
+        if (found)
+            return {
+                ...found,
+                rotation: (360 - turns * 90) % 360,
+                corners: found.corners.map(toOriginal),
+            };
+        const previous = oriented;
+        const previousToOriginal = toOriginal;
+        oriented = rotateClockwise(previous);
+        // Boundary coordinates (rather than just pixel centres) are transformed
+        // here, so callers can draw the returned rectangle directly on the input.
+        toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
+    }
+    return null;
 }
-
 /** Alias kept symmetric with the other 2D readers. */
 export function detectAndDecodeMicroPDF417(binaryImage, options = {}) {
-  return detectMicroPDF417(binaryImage, options);
+    return detectMicroPDF417(binaryImage, options);
 }

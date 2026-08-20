@@ -27,21 +27,18 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 import { EncodeError } from '../core/errors.js';
 import { GF929 } from '../core/galois-field.js';
 import { rsDecode, rsEncode } from '../core/reed-solomon.js';
-
 export function pdf417EccLength(level) {
-  if (!Number.isInteger(level) || level < 0 || level > 8) throw new EncodeError('PDF417: error correction level must be in 0..8');
-  return 1 << (level + 1);
+    if (!Number.isInteger(level) || level < 0 || level > 8)
+        throw new EncodeError('PDF417: error correction level must be in 0..8');
+    return 1 << (level + 1);
 }
-
 export function pdf417ErrorCorrection(data, level) {
-  return rsEncode(data, pdf417EccLength(level), GF929, 1);
+    return rsEncode(data, pdf417EccLength(level), GF929, 1);
 }
-
 /** Correct PDF417 codewords, optionally marking unreadable codewords as erasures. */
 export function pdf417CorrectErrors(codewords, level, erasures = []) {
-  return rsDecode(codewords, pdf417EccLength(level), GF929, 1, erasures);
+    return rsDecode(codewords, pdf417EccLength(level), GF929, 1, erasures);
 }

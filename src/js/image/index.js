@@ -27,13 +27,11 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /**
  * Image pipeline, re-exported.
  *
  * @module image
  */
-
 export { LuminanceSource } from './luminance.js';
 export { binarize, binarizeGlobal, binarizeHybrid } from './binarizer.js';
 export { PerspectiveTransform } from './perspective.js';

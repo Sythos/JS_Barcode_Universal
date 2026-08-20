@@ -27,16 +27,8 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-
 /** Data Matrix ECC 200 entry points. @module datamatrix */
-
 export { encodeDataMatrix, encodeDataMatrixCodewords } from './encoder.js';
 export { decodeDataMatrix } from './decoder.js';
 export { detectDataMatrix, detectAndDecodeDataMatrix } from './detector.js';
-export {
-  DATAMATRIX_SYMBOLS,
-  SYMBOLS,
-  symbolForDataCodewords,
-  validateDataMatrixTables,
-  validateTables,
-} from './tables.js';
+export { DATAMATRIX_SYMBOLS, SYMBOLS, symbolForDataCodewords, validateDataMatrixTables, validateTables, } from './tables.js';
