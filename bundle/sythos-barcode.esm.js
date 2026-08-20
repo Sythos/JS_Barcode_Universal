@@ -1,5 +1,5 @@
 /*!
- * Sythos Barcode Suite v1.5.7
+ * Sythos Barcode Suite v1.5.8
  *
  * MIT License
  *
@@ -17140,7 +17140,7 @@ function decodeStrict(image, options) {
 }
 
 /** Library version, matching package.json. */
-const VERSION = '1.5.7';
+const VERSION = '1.5.8';
 
 __exports.listFormats = listFormats;
 __exports.encode = encode;
