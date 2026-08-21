@@ -58,7 +58,7 @@ npm install @sythos/js_barcode_universal
 
 `yarn add @sythos/js_barcode_universal` and `pnpm add @sythos/js_barcode_universal` do the same thing. Nothing is installed
 alongside it — there are no runtime dependencies, no postinstall script and no native build. The
-package is plain ESM (`"type": "module"`) and asks for Node 18 or newer.
+package is plain ESM (`"type": "module"`) and asks for Node 24 or newer.
 
 ```js
 import { encode, decode, toSVG, toImageData } from '@sythos/js_barcode_universal';
@@ -112,8 +112,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.8"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.8"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.9"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.9"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under

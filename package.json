@@ -1,6 +1,6 @@
 {
   "name": "@sythos/js_barcode_universal",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "Read and write barcodes in JavaScript and TypeScript with zero runtime dependencies. TypeScript sources compile to the JavaScript runtime and bundles. QR Code, Micro QR, rMQR, FrameQR Code, Aztec Code and Rune, PDF417 variants, GS1 DataBar Omnidirectional/Truncated, EAN supplements and one-dimensional formats.",
   "author": {
     "name": "Sythos",
@@ -15,7 +15,7 @@
   "jsdelivr": "./bundle/sythos-barcode.js",
   "sideEffects": false,
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "publishConfig": {
     "access": "public"

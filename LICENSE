@@ -61,7 +61,7 @@ qualified attorney.
     --------------------------------  -----------  ---------------------------
     independent barcode               various      differential encode and
       implementations                              decode oracles
-    typescript (tsc)                  Apache-2.0   .d.ts generation from JSDoc
+    typescript (tsc)                  Apache-2.0   runtime compilation and public type checks
 
 THE PROJECT RULE, STATED PRECISELY:
 
@@ -75,9 +75,10 @@ and legal review where required. None of this is a legal conclusion about
 derivative works or license obligations.
 
 typescript (tsc) is not a barcode library and carries no symbology logic at
-all. It is an optional generator: it reads the JSDoc annotations already
-present in this project's own source and emits .d.ts declarations from them.
-There is no TypeScript source in this project.
+all. It is a development-only compiler and validator: it compiles this
+project's own TypeScript runtime source into JavaScript and checks its public
+declarations. TypeScript is not a runtime dependency and does not contribute
+barcode data or algorithms.
 
 No barcode library is a dependency of this package. None of the tools above is
 a runtime dependency, none ships in the published package, and running or not
