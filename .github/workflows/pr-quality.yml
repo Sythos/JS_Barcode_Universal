@@ -103,3 +103,6 @@ jobs:
 
       - name: Verify npm package contents
         run: npm pack --dry-run --ignore-scripts --json > npm-pack.json
+
+      - name: Validate artifact attestation workflows
+        run: node .github/ci/validate-attestations.mjs

@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: github-packages-publish-${{ github.ref }}
@@ -157,6 +156,12 @@ jobs:
     needs: [validate, check-version]
     if: needs.check-version.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
 
     steps:
       - name: Checkout repository
@@ -194,8 +199,28 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish to GitHub Packages
+      - name: Create publish tarball
+        id: pack
+        if: steps.package-check.outputs.exists == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm pack --ignore-scripts --json > npm-pack.json
+          PACKAGE_FILE=$(node -e "const fs=require('node:fs'); const result=JSON.parse(fs.readFileSync('npm-pack.json','utf8')); if (!Array.isArray(result) || result.length !== 1 || typeof result[0].filename !== 'string') process.exit(1); process.stdout.write(result[0].filename);")
+
+          test -f "$PACKAGE_FILE"
+          echo "filename=$PACKAGE_FILE" >> "$GITHUB_OUTPUT"
+          echo "Created $PACKAGE_FILE"
+
+      - name: Attest publish tarball
+        if: steps.package-check.outputs.exists == 'false'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ github.workspace }}/${{ steps.pack.outputs.filename }}
+
+      - name: Publish exact attested tarball to GitHub Packages
         if: steps.package-check.outputs.exists == 'false'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish --registry=https://npm.pkg.github.com
+        run: npm publish "${{ steps.pack.outputs.filename }}" --registry=https://npm.pkg.github.com

@@ -157,6 +157,30 @@ Official references:
 
 ---
 
+### Build provenance and release attestations
+
+The public npm workflow, `.github/workflows/npm-publish.yml`, requests npm provenance with
+`npm publish --provenance`. This is distinct from GitHub Artifact Attestations: npm provenance is
+attached to the registry publication, while a GitHub attestation binds an exact build artifact
+and digest to the GitHub Actions workflow, repository, commit and ref that produced it.
+
+The release-specific workflow is expected at `.github/workflows/release.yml`. Its release assets
+must be verified from the exact downloaded file, for example:
+
+```sh
+gh attestation verify path/to/release-asset.tgz -R Sythos/JS_Barcode_Universal
+```
+
+The verification result is build-provenance evidence only. It does not certify barcode conformance,
+patent status, trademark permission or the absence of security defects. The current GitHub Packages
+workflow remains a separate publication path; package publication and artifact attestation must not
+be treated as interchangeable controls.
+
+This task is CI/documentation-only: it does not increment the package version or create a new Git
+tag. The current release remains `1.5.9`.
+
+---
+
 ## 2. On GPU acceleration
 
 WebGL2/WebGPU accelerate **drawing** a barcode, not **computing** one. Worth stating plainly, because "GPU barcode generation" naturally suggests the latter.

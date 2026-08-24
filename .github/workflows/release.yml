@@ -1,0 +1,153 @@
+name: Build and publish GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to rebuild and refresh
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Build, attest and publish release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Validate release tag and package version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Unsupported release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null
+
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          EXPECTED_VERSION="${RELEASE_TAG#v}"
+          if [[ "$PACKAGE_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "Tag/package version mismatch: $RELEASE_TAG vs $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+
+          echo "Preparing $RELEASE_TAG for package version $PACKAGE_VERSION"
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+
+      - name: Install validation dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Validate package exports and runtime smoke test
+        run: node .github/ci/validate-package.mjs
+
+      - name: Compile TypeScript runtime
+        run: npm run build:ts
+
+      - name: Verify generated JavaScript is synchronized
+        shell: bash
+        run: git diff --exit-code -- src/index.js src/js
+
+      - name: Validate public TypeScript declarations
+        run: npm run types
+
+      - name: Validate public API declarations
+        run: npm run types:api
+
+      - name: Build exact release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf release
+          mkdir -p release
+
+          # This tarball is the exact package artifact used for the release.
+          npm pack --ignore-scripts --pack-destination release
+          cp bundle/sythos-barcode.js release/sythos-barcode.js
+          cp bundle/sythos-barcode.esm.js release/sythos-barcode.esm.js
+
+          (
+            cd release
+            sha256sum *.tgz sythos-barcode*.js > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+          mapfile -t package_assets < <(find release -maxdepth 1 -type f -name '*.tgz' -printf '%f\n')
+          if [[ "${#package_assets[@]}" -ne 1 ]]; then
+            echo "Expected exactly one npm package tarball, found ${#package_assets[@]}" >&2
+            exit 1
+          fi
+
+          find release -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Generate artifact attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: '${{ github.workspace }}/release/*'
+          # Release assets are attested in GitHub; no registry storage record is created.
+          create-storage-record: false
+          show-summary: true
+
+      - name: Create or refresh GitHub Release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mapfile -t asset_ids < <(
+              gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+                --jq '.assets[]?.id'
+            )
+
+            for asset_id in "${asset_ids[@]}"; do
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            done
+
+            gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" release/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "Sythos Barcode Universal $RELEASE_TAG" \
+              --generate-notes
+          fi
+
+      - name: Verify release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          asset_count=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')
+          if [[ "$asset_count" -ne 4 ]]; then
+            echo "Expected four release assets, found $asset_count" >&2
+            exit 1
+          fi
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,assets \
+            --jq '{tag: .tagName, assets: [.assets[].name]}'

@@ -656,6 +656,34 @@ and reports which backend actually drew.
 
 ---
 
+## Build provenance and artifact attestations
+
+The package publication workflow in [`.github/workflows/npm-publish.yml`](.github/workflows/npm-publish.yml)
+uses npm provenance when publishing to the public npm registry. npm provenance and GitHub Artifact
+Attestations are related but separate records:
+
+- **npm provenance** is issued by npm for a package publication and links the published package to
+  its source repository and trusted build workflow;
+- **GitHub Artifact Attestations** bind a build artifact, its digest and its build context to the
+  GitHub Actions workflow that produced it. They can be verified independently of the npm registry.
+
+The release-specific attestation workflow is expected at
+[`.github/workflows/release.yml`](.github/workflows/release.yml). Release assets must be verified
+against this repository and their exact local file contents:
+
+```sh
+gh attestation verify path/to/release-asset.tgz -R Sythos/JS_Barcode_Universal
+```
+
+The same command can be used for any other attested release asset by replacing the path. An
+attestation confirms build provenance; it is not an ISO barcode-conformance certificate, a patent
+clearance, or a guarantee that the implementation is vulnerability-free.
+
+This attestation documentation and CI scope does not change the package version or Git tag; the
+current release remains `1.5.9`.
+
+---
+
 ## Licence
 
 MIT © 2026 Sythos (https://www.sythos.net). Every source file carries the header.
