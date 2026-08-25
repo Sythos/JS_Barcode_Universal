@@ -239,7 +239,9 @@ already exist:
 - **M4:** browser, Node.js, Worker, camera, image-pipeline and performance
   guides — complete; start with the [browser guide](guides/browser.md) or the
   [camera guide](guides/camera-reading.md).
-- **M5:** dedicated security, licensing and release-verification guides.
+- **M5:** dedicated security, licensing and release-verification guides —
+  complete; start with the [security guide](guides/security.md) or the
+  [release verification checklist](release-verification.md).
 - **M6:** focused recipes, FAQ and troubleshooting pages — pending.
 - **M7–M8:** link checks, generated capability checks and README/release
   integration — pending.

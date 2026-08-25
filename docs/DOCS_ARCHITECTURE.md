@@ -254,7 +254,8 @@ not a second source tree:
 - `.github/workflows/docs-pages.yml` deploys on pushes to `main` when `docs/**`,
   `mkdocs.yml` or the documentation requirements change, so a documentation
   edit updates Pages automatically;
-- pull requests should run a build/link check without publishing;
+- `.github/workflows/docs-pages-pr.yml` runs a build/link check for pull
+  requests without publishing or requesting deploy permissions;
 - the workflow pins its actions and installs MkDocs Material as a CI-only
   dependency, leaving the SDK package at zero runtime dependencies;
 - generated site files stay in the Pages deployment channel and are not copied

@@ -12,9 +12,6 @@ docs_dir: docs
 # is reviewed and promoted into the public documentation set.
 exclude_docs: |
   DOCS_ARCHITECTURE.md
-  guides/security.md
-  guides/licensing.md
-  release-verification.md
 
 theme:
   name: material
@@ -86,3 +83,6 @@ nav:
       - Camera reading: guides/camera-reading.md
       - Image pipeline: guides/image-pipeline.md
       - Performance: guides/performance.md
+      - Security: guides/security.md
+      - Licensing and provenance: guides/licensing.md
+      - Release verification: release-verification.md
