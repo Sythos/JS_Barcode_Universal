@@ -20,7 +20,7 @@ theme:
   name: material
   custom_dir: overrides
   language: en
-  logo: assets/branding/barcode-to-qr.png
+  logo: assets/branding/qr-sythos-net.png
   favicon: assets/branding/qr-sythos-net.png
   features:
     - navigation.instant
