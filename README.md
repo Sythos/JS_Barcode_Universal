@@ -112,8 +112,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.11"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.11"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.12"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.12"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -728,7 +728,7 @@ attestation confirms build provenance; it is not an ISO barcode-conformance cert
 clearance, or a guarantee that the implementation is vulnerability-free.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.5.11`.
+or increment versions by itself. The current release is `1.5.12`.
 
 ---
 

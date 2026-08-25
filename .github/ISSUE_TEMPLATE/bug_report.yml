@@ -25,7 +25,7 @@ body:
     attributes:
       label: SDK version
       description: Which release or commit shows the problem?
-      placeholder: 1.5.11 or 81d7d3c
+      placeholder: 1.5.12 or 81d7d3c
     validations:
       required: true
   - type: input
