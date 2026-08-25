@@ -75,6 +75,23 @@ The build:ts step is checked for a clean generated-JavaScript diff. If it
 changes src/index.js or src/js, stop. A release must not mix TypeScript from
 one source state with generated JavaScript from another.
 
+## CI toolchain baseline
+
+The workflow toolchain uses maintained, explicitly selected baselines rather
+than floating major ranges:
+
+| Component | Baseline | Why it is pinned |
+| --- | --- | --- |
+| Node.js | 24 | The project runtime and the current LTS line used by CI. |
+| Python | 3.14 | Current stable interpreter for the documentation-only job. |
+| MkDocs | 1.6.1 | Latest stable MkDocs 1.x line supported by the selected Material release. |
+| Material for MkDocs | 9.7.7 | Current stable documentation theme release. |
+| TypeScript | 7.0.2 | Exact development dependency recorded in package.json and package-lock.json. |
+
+Every GitHub Action is pinned to a full commit SHA. The Pages actions use
+Node.js 24-compatible releases; a warning from an older action runtime should
+be treated as dependency drift and fixed before the next release cycle.
+
 ## Verify the tag and package version
 
 The release workflow accepts v*.*.* tags, checks that the tag resolves to a
