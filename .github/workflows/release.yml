@@ -118,6 +118,9 @@ jobs:
         run: |
           set -euo pipefail
 
+          RELEASE_NAME="${GITHUB_REPOSITORY##*/}"
+          RELEASE_NAME="${RELEASE_NAME//_/ }"
+
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             mapfile -t asset_ids < <(
               gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
@@ -129,11 +132,14 @@ jobs:
             done
 
             gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_NAME $RELEASE_TAG"
           else
             gh release create "$RELEASE_TAG" release/* \
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
-              --title "Sythos Barcode Universal $RELEASE_TAG" \
+              --title "$RELEASE_NAME $RELEASE_TAG" \
               --generate-notes
           fi
 

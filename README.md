@@ -112,8 +112,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.9"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.9"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.10"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.10"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -656,6 +656,22 @@ and reports which backend actually drew.
 
 ---
 
+## Security automation
+
+The repository runs [CodeQL](.github/workflows/codeql.yml) for JavaScript and TypeScript
+code-scanning analysis on pushes to `main`, pull requests and a scheduled weekly scan. The
+workflow uses CodeQL's `javascript-typescript` language pack in no-build mode because the source
+is analyzed directly and the runtime has no native compilation step.
+
+[Dependabot](.github/dependabot.yml) checks the development TypeScript toolchain and GitHub Actions
+references weekly. Updates are repository-development controls only; the published SDK remains
+zero-dependency at runtime.
+
+These security workflows report findings and propose maintenance updates. They do not replace
+review of barcode conformance, licensing, patent status or release attestations.
+
+---
+
 ## Build provenance and artifact attestations
 
 The package publication workflow in [`.github/workflows/npm-publish.yml`](.github/workflows/npm-publish.yml)
@@ -679,8 +695,8 @@ The same command can be used for any other attested release asset by replacing t
 attestation confirms build provenance; it is not an ISO barcode-conformance certificate, a patent
 clearance, or a guarantee that the implementation is vulnerability-free.
 
-This attestation documentation and CI scope does not change the package version or Git tag; the
-current release remains `1.5.9`.
+Release automation validates the package version against the selected Git tag; it does not invent
+or increment versions by itself. The current release is `1.5.10`.
 
 ---
 

@@ -349,6 +349,9 @@ export function classifyWorkflow(fileName, text) {
   const name = String(fileName).toLowerCase();
   const source = String(text);
   const withoutComments = normalizedLines(source).map(stripYamlComment).join('\n');
+  // CodeQL intentionally needs security-events: write even though it also
+  // listens to pull_request events; it is not an artifact-attestation PR gate.
+  if (name.includes('codeql') || /github\/codeql-action\/(?:init|analyze)@/u.test(withoutComments)) return 'other';
   if (name.includes('pr') || /\bpull_request(?:_target)?\s*:/u.test(withoutComments)) return 'pull-request';
   if (name.includes('github-packages') || /npm\.pkg\.github\.com/u.test(withoutComments)) return 'github-packages';
   if (name.includes('release') || /softprops\/action-gh-release|gh\s+release\s+(?:create|upload)|upload-release-asset/u.test(withoutComments)) return 'release';

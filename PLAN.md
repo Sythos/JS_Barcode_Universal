@@ -157,6 +157,14 @@ Official references:
 
 ---
 
+### Security automation
+
+The repository now includes a pinned CodeQL workflow at `.github/workflows/codeql.yml` for
+JavaScript/TypeScript code scanning on `main` pushes, pull requests and a weekly scheduled run.
+Dependabot is configured in `.github/dependabot.yml` to review the development TypeScript
+toolchain and GitHub Actions references weekly. These controls are development and repository
+maintenance features; they do not add runtime dependencies to the SDK.
+
 ### Build provenance and release attestations
 
 The public npm workflow, `.github/workflows/npm-publish.yml`, requests npm provenance with
@@ -176,8 +184,8 @@ patent status, trademark permission or the absence of security defects. The curr
 workflow remains a separate publication path; package publication and artifact attestation must not
 be treated as interchangeable controls.
 
-This task is CI/documentation-only: it does not increment the package version or create a new Git
-tag. The current release remains `1.5.9`.
+Release automation validates the package version against the selected Git tag; it does not invent
+or increment versions by itself. The current release is `1.5.10`.
 
 ---
 
