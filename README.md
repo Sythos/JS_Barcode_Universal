@@ -658,10 +658,10 @@ and reports which backend actually drew.
 
 ## Security automation
 
-The repository runs [CodeQL](.github/workflows/codeql.yml) for JavaScript and TypeScript
-code-scanning analysis on pushes to `main`, pull requests and a scheduled weekly scan. The
-workflow uses CodeQL's `javascript-typescript` language pack in no-build mode because the source
-is analyzed directly and the runtime has no native compilation step.
+The repository is covered by GitHub's configured [CodeQL default setup](https://github.com/Sythos/JS_Barcode_Universal/security/code-scanning)
+for JavaScript and TypeScript code-scanning analysis. GitHub manages the analysis schedule and
+the security-events upload; this avoids running a duplicate advanced workflow alongside the
+repository-level default setup.
 
 [Dependabot](.github/dependabot.yml) checks the development TypeScript toolchain and GitHub Actions
 references weekly. Updates are repository-development controls only; the published SDK remains

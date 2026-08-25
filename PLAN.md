@@ -159,11 +159,12 @@ Official references:
 
 ### Security automation
 
-The repository now includes a pinned CodeQL workflow at `.github/workflows/codeql.yml` for
-JavaScript/TypeScript code scanning on `main` pushes, pull requests and a weekly scheduled run.
-Dependabot is configured in `.github/dependabot.yml` to review the development TypeScript
-toolchain and GitHub Actions references weekly. These controls are development and repository
-maintenance features; they do not add runtime dependencies to the SDK.
+The repository is covered by GitHub's configured CodeQL default setup for JavaScript/TypeScript
+code scanning. GitHub manages its analysis schedule and security-events upload; no duplicate
+advanced workflow is kept in the repository. Dependabot is configured in `.github/dependabot.yml`
+to review the development TypeScript toolchain and GitHub Actions references weekly. These
+controls are development and repository maintenance features; they do not add runtime
+dependencies to the SDK.
 
 ### Build provenance and release attestations
 

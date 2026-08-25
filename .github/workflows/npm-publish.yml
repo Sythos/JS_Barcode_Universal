@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      force_publish:
+        description: Publish the current version manually when it is not yet on npm
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -101,6 +107,17 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_publish }}" == "true" ]]; then
+            if npm view "$PACKAGE_NAME@$CURRENT_VERSION" version >/dev/null 2>&1; then
+              echo "$PACKAGE_NAME@$CURRENT_VERSION already exists on npm; refusing manual republish."
+              echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "Manual publish requested for unpublished $PACKAGE_NAME@$CURRENT_VERSION."
+              echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
 
           if ! git rev-parse HEAD^ >/dev/null 2>&1; then
             echo "No previous commit available. Skipping publish."
@@ -243,4 +260,4 @@ jobs:
 
       - name: Publish attested npm package
         if: steps.npm-check.outputs.exists == 'false'
-        run: npm publish "${{ steps.package.outputs.tarball }}" --provenance --ignore-scripts
+        run: npm publish "./${{ steps.package.outputs.tarball }}" --provenance --ignore-scripts
