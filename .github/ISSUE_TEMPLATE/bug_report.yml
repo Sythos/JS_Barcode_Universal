@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible non-security defect in the SDK
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please keep it focused and reproducible.
+
+        **Do not report suspected security vulnerabilities here.** Use the
+        [security policy](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md)
+        and the private reporting channel instead.
+  - type: checkboxes
+    id: security-screen
+    attributes:
+      label: Security screening
+      description: Confirm that this is a normal bug report, not a vulnerability disclosure.
+      options:
+        - label: This report does not include a suspected security vulnerability or exploit details.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      description: Which release or commit shows the problem?
+      placeholder: 1.5.11 or 81d7d3c
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime
+      description: Browser and version, Node.js version, or other relevant environment.
+      placeholder: Chrome 140 on Android 17
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest example, input and steps that reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+      description: Tell us what you expected and what happened instead.
+    validations:
+      required: true

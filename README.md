@@ -670,6 +670,12 @@ zero-dependency at runtime.
 These security workflows report findings and propose maintenance updates. They do not replace
 review of barcode conformance, licensing, patent status or release attestations.
 
+Security reports follow the [security policy](SECURITY.md). Please use GitHub's private reporting
+channel for every suspected vulnerability; public Issues are for non-security bugs after security
+impact has been ruled out. Reports involving code execution, data or secret exposure, CI/release/npm
+integrity or host/runner compromise should also be sent to `devsec@sythos.net`. Exploit details are
+better kept private than turned into an accidental community fireworks show.
+
 The image I/O boundary treats camera and file rasters as untrusted input. It validates finite
 positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-valued channels,
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected

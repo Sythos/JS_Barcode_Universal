@@ -171,6 +171,14 @@ positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
 before detector work begins.
 
+### Vulnerability reporting policy
+
+The repository policy is documented in [`SECURITY.md`](SECURITY.md). Suspected vulnerabilities
+must be reported through GitHub Private Vulnerability Reporting rather than a public issue. High
+and Critical findings involving code execution, data or secret exposure, CI/release/npm integrity,
+or host/runner compromise must also be notified to `devsec@sythos.net`. Public Issues remain for
+non-security bugs after security impact has been ruled out; when in doubt, keep the report private.
+
 ### Build provenance and release attestations
 
 The public npm workflow, `.github/workflows/npm-publish.yml`, requests npm provenance with
