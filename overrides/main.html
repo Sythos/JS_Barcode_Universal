@@ -2,7 +2,7 @@
 
 {% block extrahead %}
   {{ super() }}
-  {% if page and page.file and page.file.src_uri == "index.md" %}
-    <meta name="google-site-verification" content="S48wpepgNs-76l-hkn9hVyxCQA420iultO8u7PI4GR8" />
+  {% if page and page.file and page.file.src_uri == "index.md" and config.extra.google_site_verification %}
+    <meta name="google-site-verification" content="{{ config.extra.google_site_verification }}" />
   {% endif %}
 {% endblock %}

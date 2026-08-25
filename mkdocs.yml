@@ -6,6 +6,9 @@ repo_url: https://github.com/Sythos/JS_Barcode_Universal
 edit_uri: edit/main/docs/
 copyright: Copyright © Sythos
 
+extra:
+  google_site_verification: "S48wpepgNs-76l-hkn9hVyxCQA420iultO8u7PI4GR8"
+
 docs_dir: docs
 
 # Keep unfinished milestone pages out of the published site until their content
