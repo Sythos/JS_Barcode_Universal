@@ -244,7 +244,7 @@ the archive contents or provenance. It should describe the actual package,
 checksum and attestation verification steps only after those steps are present
 and tested in the workflows.
 
-## Documentation site delivery (M7–M9 implemented, M10 pending)
+## Documentation site delivery (M7–M10 implemented)
 
 The repository is now configured to publish the same `docs/` tree as a GitHub
 Pages site using **MkDocs Material**. This is a documentation delivery layer,
@@ -269,10 +269,11 @@ M7 is complete when link, navigation and registry consistency checks are
 available. M8 is complete when README, PLAN and machine-readable release
 references point readers to the same documentation surface. M9 is complete
 when the MkDocs Material configuration and quality workflow are checked in.
-M10 still covers the first public Pages deployment, custom-domain
-or SEO checks, and consumer-side verification of the published site. A green
-workflow proves that the site can be built and deployed; it does not by itself
-prove that every external crawler has indexed it.
+M10 is complete: the first public Pages deployment succeeded through workflow
+`32900310547`, and consumer-side HTTP 200 checks passed for the home page, API,
+format catalogue, recipes, FAQ and troubleshooting routes. This proves that
+the site is publicly served; it does not by itself prove that every external
+crawler has indexed it.
 
 ## M0 exit criteria
 

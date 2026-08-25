@@ -252,7 +252,8 @@ already exist:
 - **M9:** MkDocs Material configuration and automatic GitHub Pages deployment
   on documentation changes — implemented.
 - **M10:** first public Pages deployment, custom-domain/SEO checks and
-  consumer-side verification — pending.
+  consumer-side verification — complete; the site is live at
+  [sythos.github.io/JS_Barcode_Universal](https://sythos.github.io/JS_Barcode_Universal/).
 
 Until the remaining pages land, this file links only to checked-in repository files.
 That little rule prevents the documentation menu from becoming a collection of

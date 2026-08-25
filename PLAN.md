@@ -227,7 +227,7 @@ runtime dependencies.
 | M7 — link, navigation and capability consistency | ✅ complete | `tools/check-docs.mjs`, `pr-quality.yml`, Pages workflows |
 | M8 — README, PLAN, package and machine-readable integration | ✅ complete | README Documentation section, `homepage`, `llms.txt` |
 | M9 — MkDocs Material and automatic Pages deployment | ✅ complete | `mkdocs.yml`, `docs-pages.yml`, `docs-pages-pr.yml` |
-| M10 — first public deployment and consumer-side SEO verification | ⏳ pending | Requires a pushed build and live Pages checks |
+| M10 — first public deployment and consumer-side SEO verification | ✅ complete | Pages workflow `32900310547`; public HTTP 200 checks for home, API, formats, recipes, FAQ and troubleshooting |
 
 The checker derives the registry count and read/write totals from `listFormats()` and compares
 them with the format catalogue. It also verifies that Markdown targets exist, every navigation
