@@ -70,6 +70,27 @@ for (const name of ['encode', 'decode', 'listFormats']) {
   if (typeof publicModule[name] !== 'function') fail(`public API export is missing: ${name}`);
 }
 
+for (const invalidImage of [
+  null,
+  { data: new Uint8Array(4), width: 0, height: 1 },
+  { data: new Uint8Array(4), width: 1, height: 16_777_217 },
+  { data: [-1, 0, 0, 255], width: 1, height: 1 },
+]) {
+  try {
+    publicModule.decode(invalidImage, { formats: ['qr'] });
+  } catch {
+    continue;
+  }
+  fail('image input validation accepted malformed or unsafe raster data');
+}
+
+const callerOwnedGrey = new Uint8Array([17]);
+const greySnapshot = publicModule.LuminanceSource.fromGrey(callerOwnedGrey, 1, 1);
+callerOwnedGrey[0] = 231;
+if (greySnapshot.get(0, 0) !== 17) {
+  fail('greyscale input is still backed by caller-owned mutable data');
+}
+
 const qrMatrix = publicModule.encode('CI smoke', { format: 'qr' });
 if (!qrMatrix || !Number.isInteger(qrMatrix.width) || !Number.isInteger(qrMatrix.height)) {
   fail('QR encoder did not return a valid BitMatrix');

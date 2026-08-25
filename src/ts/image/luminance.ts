@@ -42,6 +42,49 @@
 
 import { NotFoundError } from '../core/errors.js';
 
+// Camera and file inputs are untrusted. Keep allocations bounded before any
+// raster is copied into the decoder pipeline.
+const MAX_IMAGE_DIMENSION = 16_384;
+const MAX_IMAGE_PIXELS = 16_777_216;
+
+function validateDimensions(width, height) {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+    || width < 1 || height < 1
+    || width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+    throw new NotFoundError(
+      `Image dimensions must be positive safe integers no larger than ${MAX_IMAGE_DIMENSION}`
+    );
+  }
+  const pixels = width * height;
+  if (pixels > MAX_IMAGE_PIXELS) {
+    throw new NotFoundError(
+      `Image contains too many pixels: ${pixels} (maximum ${MAX_IMAGE_PIXELS})`
+    );
+  }
+  return pixels;
+}
+
+function isByteArray(data) {
+  return data instanceof Uint8Array || data instanceof Uint8ClampedArray;
+}
+
+function validateByteData(data, expected, label) {
+  if (!isByteArray(data) && !Array.isArray(data)) {
+    throw new NotFoundError(`${label} must be a Uint8Array, Uint8ClampedArray, or number[]`);
+  }
+  if (!Number.isSafeInteger(data.length) || data.length < expected) {
+    throw new NotFoundError(`${label} is shorter than the required ${expected} bytes`);
+  }
+  if (Array.isArray(data)) {
+    for (let i = 0; i < expected; i++) {
+      const value = data[i];
+      if (!Number.isInteger(value) || value < 0 || value > 255) {
+        throw new NotFoundError(`${label} contains a non-byte value at index ${i}`);
+      }
+    }
+  }
+}
+
 /**
  * @typedef {object} ImageLike
  * @property {Uint8ClampedArray | Uint8Array | number[]} data RGBA, 4 bytes per pixel.
@@ -56,6 +99,10 @@ export class LuminanceSource {
    * @param {number} height
    */
   constructor(grey, width, height) {
+    const pixels = validateDimensions(width, height);
+    if (!isByteArray(grey) || grey.length < pixels) {
+      throw new NotFoundError(`Greyscale buffer is shorter than the required ${pixels} bytes`);
+    }
     this.grey = grey;
     this.width = width;
     this.height = height;
@@ -72,18 +119,15 @@ export class LuminanceSource {
    * @returns {LuminanceSource}
    */
   static fromImageData(image) {
+    if (!image || typeof image !== 'object') {
+      throw new NotFoundError('Image must be an object with RGBA data');
+    }
     const { data, width, height } = image;
-    if (!data || !width || !height) {
-      throw new NotFoundError('Image must be { data, width, height } with RGBA data');
-    }
-    if (data.length < width * height * 4) {
-      throw new NotFoundError(
-        `Image data too short: ${data.length} bytes for ${width}x${height} RGBA ` +
-        `(expected ${width * height * 4})`
-      );
-    }
+    const pixels = validateDimensions(width, height);
+    const expected = pixels * 4;
+    validateByteData(data, expected, 'Image data');
 
-    const grey = new Uint8Array(width * height);
+    const grey = new Uint8Array(pixels);
     for (let i = 0, p = 0; i < grey.length; i++, p += 4) {
       const a = data[p + 3];
       let r = data[p], g = data[p + 1], b = data[p + 2];
@@ -109,10 +153,11 @@ export class LuminanceSource {
    * @returns {LuminanceSource}
    */
   static fromGrey(grey, width, height) {
-    if (grey.length < width * height) {
-      throw new NotFoundError('Greyscale buffer shorter than width * height');
-    }
-    return new LuminanceSource(grey, width, height);
+    const pixels = validateDimensions(width, height);
+    validateByteData(grey, pixels, 'Greyscale buffer');
+    // Snapshot caller-owned data so later mutations cannot alter a decode in progress.
+    const copy = Uint8Array.from(Array.isArray(grey) ? grey.slice(0, pixels) : grey.subarray(0, pixels));
+    return new LuminanceSource(copy, width, height);
   }
 
   /**
@@ -129,6 +174,9 @@ export class LuminanceSource {
    * @returns {Uint8Array}
    */
   getRow(y, out) {
+    if (!Number.isSafeInteger(y) || y < 0 || y >= this.height) {
+      throw new RangeError(`LuminanceSource row is outside the image: ${y}`);
+    }
     const row = out && out.length >= this.width ? out : new Uint8Array(this.width);
     row.set(this.grey.subarray(y * this.width, (y + 1) * this.width));
     return row;

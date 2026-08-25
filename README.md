@@ -112,8 +112,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.10"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.10"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.11"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -670,6 +670,11 @@ zero-dependency at runtime.
 These security workflows report findings and propose maintenance updates. They do not replace
 review of barcode conformance, licensing, patent status or release attestations.
 
+The image I/O boundary treats camera and file rasters as untrusted input. It validates finite
+positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-valued channels,
+and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
+before detector work begins.
+
 ---
 
 ## Build provenance and artifact attestations
@@ -696,7 +701,7 @@ attestation confirms build provenance; it is not an ISO barcode-conformance cert
 clearance, or a guarantee that the implementation is vulnerability-free.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.5.10`.
+or increment versions by itself. The current release is `1.5.11`.
 
 ---
 
