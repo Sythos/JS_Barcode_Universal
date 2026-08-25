@@ -242,27 +242,29 @@ the archive contents or provenance. It should describe the actual package,
 checksum and attestation verification steps only after those steps are present
 and tested in the workflows.
 
-## Documentation site delivery (planned M9–M10)
+## Documentation site delivery (M9 implemented, M10 pending)
 
-The repository can later publish the same `docs/` tree as a GitHub Pages site
-using **MkDocs Material**. This is a documentation delivery layer, not a second
-source tree:
+The repository is now configured to publish the same `docs/` tree as a GitHub
+Pages site using **MkDocs Material**. This is a documentation delivery layer,
+not a second source tree:
 
 - `docs/` remains the canonical Markdown content;
-- a root `mkdocs.yml` owns navigation, theme, site metadata and link checking;
-- the workflow should deploy on pushes to `main` when `docs/**` or
-  `mkdocs.yml` changes, so a documentation edit updates Pages automatically;
+- the root `mkdocs.yml` owns navigation, theme, site metadata and strict link
+  checking;
+- `.github/workflows/docs-pages.yml` deploys on pushes to `main` when `docs/**`,
+  `mkdocs.yml` or the documentation requirements change, so a documentation
+  edit updates Pages automatically;
 - pull requests should run a build/link check without publishing;
-- the workflow must pin its actions and install MkDocs Material as a CI-only
+- the workflow pins its actions and installs MkDocs Material as a CI-only
   dependency, leaving the SDK package at zero runtime dependencies;
 - generated site files stay in the Pages deployment channel and are not copied
   into the npm tarball unless a separate packaging decision says otherwise.
 
-M9 is the recommended milestone for the MkDocs Material configuration and
-quality workflow. M10 can then cover the first public Pages deployment,
-custom-domain or SEO checks, and a consumer-side verification of the published
-site. Until those milestones are approved and implemented, this repository
-does not claim that GitHub Pages is live.
+M9 is complete when the MkDocs Material configuration and quality workflow are
+checked in. M10 still covers the first public Pages deployment, custom-domain
+or SEO checks, and consumer-side verification of the published site. A green
+workflow proves that the site can be built and deployed; it does not by itself
+prove that every external crawler has indexed it.
 
 ## M0 exit criteria
 

@@ -1,0 +1,80 @@
+site_name: Sythos Barcode Universal
+site_description: JavaScript and TypeScript barcode generation and reading SDK documentation
+site_url: https://sythos.github.io/JS_Barcode_Universal/
+repo_name: Sythos/JS_Barcode_Universal
+repo_url: https://github.com/Sythos/JS_Barcode_Universal
+edit_uri: edit/main/docs/
+copyright: Copyright © Sythos
+
+docs_dir: docs
+
+# Keep unfinished milestone pages out of the published site until their content
+# is reviewed and promoted into the public documentation set.
+exclude_docs: |
+  DOCS_ARCHITECTURE.md
+  guides/**
+  release-verification.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.share
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - First steps: getting-started.md
+  - API reference:
+      - Overview: api/overview.md
+      - Encoding: api/encoding.md
+      - Decoding: api/decoding.md
+      - Rendering: api/rendering.md
+      - TypeScript: api/typescript.md
+      - Subpath exports: api/subpath-exports.md
+  - Formats:
+      - Overview: formats/overview.md
+      - Linear 1D: formats/oned.md
+      - QR family: formats/qr-family.md
+      - Data Matrix ECC 200: formats/datamatrix.md
+      - Aztec family: formats/aztec.md
+      - PDF417 family: formats/pdf417-family.md
+      - GS1, EAN and UPC: formats/gs1-and-ean.md
+      - Sythos Canvas QR profile: formats/frameqr-profile.md
+      - Excluded and out-of-scope formats: formats/excluded-formats.md

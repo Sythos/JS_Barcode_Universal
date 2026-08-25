@@ -227,25 +227,30 @@ Existing repository references:
 - [Machine-readable summary](../llms.txt) — concise facts for tools and
   external indexing systems.
 
-The following destinations are planned for later milestones and are not links
-yet, so this page does not pretend that unfinished pages already exist:
+The following destinations are either complete or planned for later milestones;
+the list stays explicit so this page does not pretend that unfinished pages
+already exist:
 
-- **M1:** landing, installation and getting-started foundation (the pages above).
+- **M1:** landing, installation and getting-started foundation — complete.
 - **M2:** API reference for encoding, decoding, rendering, TypeScript and
-  subpath exports.
-- **M3:** format-by-format capability and limitation guides.
+  subpath exports — complete.
+- **M3:** format-by-format capability and limitation guides — complete; start
+  with the [format catalogue](formats/overview.md).
 - **M4:** browser, Node.js, Worker, camera, image-pipeline and performance
-  guides.
+  guides — pending.
 - **M5:** dedicated security, licensing and release-verification guides.
-- **M6:** focused recipes, FAQ and troubleshooting pages.
+- **M6:** focused recipes, FAQ and troubleshooting pages — pending.
 - **M7–M8:** link checks, generated capability checks and README/release
-  integration.
-- **M9–M10:** MkDocs Material configuration, automatic GitHub Pages deployment
-  on documentation changes, and post-deployment verification.
+  integration — pending.
+- **M9:** MkDocs Material configuration and automatic GitHub Pages deployment
+  on documentation changes — implemented.
+- **M10:** first public Pages deployment, custom-domain/SEO checks and
+  consumer-side verification — pending.
 
-Until those pages land, this file links only to checked-in repository files.
+Until the remaining pages land, this file links only to checked-in repository files.
 That little rule prevents the documentation menu from becoming a collection of
-beautiful 404s.
+beautiful 404s. The Pages workflow follows the same rule and publishes only
+the checked-in navigation.
 
 ## Build and verification notes
 

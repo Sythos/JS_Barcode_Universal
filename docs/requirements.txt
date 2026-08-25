@@ -1,0 +1,2 @@
+# CI-only dependencies for building the MkDocs Material documentation site.
+mkdocs-material==9.6.20
