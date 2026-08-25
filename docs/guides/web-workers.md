@@ -212,7 +212,7 @@ decoder error and report a safe status to the UI.
 `DecodeResult` can include `format`, `text`, `rotation`, `bounds`,
 `confidence` and format-specific metadata. Send the entire result when the UI
 needs the camera overlay; otherwise project it to a small view model and keep
-the raw payload out of an HTML sink. The [security policy](../../SECURITY.md)
+the raw payload out of an HTML sink. The [security policy](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md)
 defines the trust boundary for camera and file rasters.
 
 ## Worker performance rules

@@ -2,7 +2,7 @@
 
 This guide explains the security boundary around Sythos Barcode Universal and
 the checks that protect the published package. It is a practical companion to
-the repository's [Security Policy](../../SECURITY.md), not a replacement for
+the repository's [Security Policy](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md), not a replacement for
 it. The policy is the source of truth for reporting channels, supported
 versions and coordinated disclosure.
 
@@ -204,7 +204,7 @@ impact. Remove credentials, personal data, customer identifiers and live
 tokens. Please avoid testing systems or data that you do not own, service
 disruption, persistence and data exfiltration.
 
-The full response and disclosure process is in [SECURITY.md](../../SECURITY.md).
+The full response and disclosure process is in [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md).
 
 ## Local security and quality checks
 
@@ -236,5 +236,5 @@ issue. Artifact attestations and npm provenance add build evidence; they do
 not replace review, consumer-side verification or legal advice.
 
 For licensing and provenance boundaries, see [licensing.md](licensing.md)
-and [NOTICE.md](../../NOTICE.md). For the exact release artifact procedure,
+and [NOTICE.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md). For the exact release artifact procedure,
 see [release-verification.md](../release-verification.md).

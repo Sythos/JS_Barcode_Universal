@@ -66,6 +66,7 @@ tools/*
 !tools/compile-typescript.mjs
 !tools/check-public-types.mjs
 !tools/check-zero-deps.mjs
+!tools/check-docs.mjs
 
 # --- Build configuration a consumer never runs ----------------------------
 tsconfig.json
@@ -80,6 +81,7 @@ eslint.config.*
 # bundle/ is deliberately NOT ignored: it is committed on purpose, because the
 # tool that builds it is not published, so a fresh clone must find it ready.
 dist/
+site/
 types/
 coverage/
 .nyc_output/

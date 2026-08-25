@@ -1,6 +1,6 @@
 # Encoding barcodes
 
-Encoding starts with a payload and ends with a [`BitMatrix`](../../src/ts/core/bit-matrix.d.ts).
+Encoding starts with a payload and ends with a [`BitMatrix`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/src/ts/core/bit-matrix.d.ts).
 The matrix contains one bit per barcode module: a set bit is dark ink and an
 unset bit is the light background. It has no quiet zone; choose that later in a
 renderer.

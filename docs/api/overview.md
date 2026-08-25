@@ -3,7 +3,7 @@
 The public API is deliberately small. It follows one piece of data through
 three clear stages:
 
-1. an encoder turns text or bytes into a [`BitMatrix`](../../src/ts/core/bit-matrix.d.ts);
+1. an encoder turns text or bytes into a [`BitMatrix`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/src/ts/core/bit-matrix.d.ts);
 2. a renderer turns that matrix into SVG, PNG, canvas pixels or an
    `ImageData`-shaped object;
 3. a decoder validates an image and returns zero or more decoded results.
@@ -43,9 +43,9 @@ The stable root surface contains these main groups:
 | Image primitives | `LuminanceSource`, `binarize`, `binarizeGlobal`, `binarizeHybrid` | Converts image-shaped data into detector input. |
 | Core primitives | `BitMatrix`, `BarcodeError`, `EncodeError`, `NotFoundError`, `FormatError`, `ChecksumError` | Exposes the common matrix and error types. |
 
-The declarations in [`src/index.d.ts`](../../src/index.d.ts) are the root API
+The declarations in [`src/index.d.ts`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/src/index.d.ts) are the root API
 contract. The TypeScript implementation and the declarations beside it live
-under [`src/ts/`](../../src/ts/); those files are useful references, but an
+under [`src/ts/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/src/ts/); those files are useful references, but an
 application should import the package root or one of the documented exports.
 
 ## A complete round trip
@@ -143,10 +143,10 @@ without applying the validation and allowlisting rules of your own application.
 
 ## Source and package boundaries
 
-The package’s public subpaths are declared in [`package.json`](../../package.json)
+The package’s public subpaths are declared in [`package.json`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/package.json)
 and documented in [Subpath exports](subpath-exports.md). Deep imports into
 unlisted source files are not part of the compatibility contract. The committed
 browser examples remain the most concrete platform references:
 
-- [Create example](../../examples/create.html) for generation and rendering;
-- [Read example](../../examples/read.html) for image input and camera reading.
+- [Create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html) for generation and rendering;
+- [Read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) for image input and camera reading.

@@ -19,7 +19,7 @@ focused subpath exports from `package.json`.
 | A small feature-specific bundle | a public package subpath such as `@sythos/js_barcode_universal/qr` or `.../render/svg` |
 
 The [installation guide](../installation.md) shows the package, CDN and
-source layouts. The checked-in [create example](../../examples/create.html) is
+source layouts. The checked-in [create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html) is
 the quickest way to see the IIFE bundle in a plain HTML file.
 
 The package is ESM-first and has no runtime dependencies. A browser does not
@@ -159,7 +159,7 @@ an allowed CORS response or an application-side image adapter.
 
 For a repeated read loop, create the working canvas and its 2D context once,
 reuse them, and keep the decoded payload as text. The canonical
-[read example](../../examples/read.html) renders payloads with DOM text nodes
+[read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) renders payloads with DOM text nodes
 instead of treating scanned content as HTML.
 
 ## Optional rendering backends

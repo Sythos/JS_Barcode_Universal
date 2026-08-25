@@ -7,7 +7,7 @@ and a camera-test image without re-encoding the barcode.
 
 ## Shared render options
 
-The public [`RenderOptions`](../../src/ts/render/options.d.ts) type is shared by
+The public [`RenderOptions`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/src/ts/render/options.d.ts) type is shared by
 the SVG, PNG, image-data and canvas paths:
 
 | Option | Default | Meaning |

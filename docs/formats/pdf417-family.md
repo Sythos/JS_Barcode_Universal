@@ -106,13 +106,13 @@ For binary data, use the format-specific byte/ECI options and preserve the
 returned bytes or segments when the application needs byte-for-byte fidelity.
 Do not assume that a decoded JavaScript string is a lossless representation of
 every external byte sequence. The project records exactly which independent
-black-box vectors have passed in [`NOTICE.md`](../../NOTICE.md) and the release
+black-box vectors have passed in [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md) and the release
 notes; round-trip tests alone are not proof of interoperability.
 
 ZXing, bwip-js and other independent implementations were used only as
 black-box verification tools where recorded. No third-party source code or
 tables are runtime dependencies or distributed assets. The engineering and
-legal review inventory is in [`LICENSE`](../../LICENSE),
-[`NOTICE.md`](../../NOTICE.md), [`licenses/pdf417.license`](../../licenses/pdf417.license),
-[`licenses/compact-pdf417.license`](../../licenses/compact-pdf417.license), and
-[`licenses/micropdf417.license`](../../licenses/micropdf417.license).
+legal review inventory is in [`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE),
+[`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md), [`licenses/pdf417.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/pdf417.license),
+[`licenses/compact-pdf417.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/compact-pdf417.license), and
+[`licenses/micropdf417.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/micropdf417.license).

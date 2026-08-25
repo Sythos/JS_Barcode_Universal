@@ -198,7 +198,7 @@
   "bugs": {
     "url": "https://github.com/Sythos/JS_Barcode_Universal/issues"
   },
-  "homepage": "https://github.com/Sythos/JS_Barcode_Universal#readme",
+  "homepage": "https://sythos.github.io/JS_Barcode_Universal/",
   "scripts": {
     "build:ts": "node tools/compile-typescript.mjs",
     "types": "tsc -p tsconfig.json",

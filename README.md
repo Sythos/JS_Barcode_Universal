@@ -491,6 +491,23 @@ camera loop that decodes continuously from the video stream.
 
 ---
 
+## Documentation
+
+The full, searchable documentation lives on [GitHub Pages](https://sythos.github.io/JS_Barcode_Universal/)
+and is built from the checked-in [`docs/`](docs/) tree with MkDocs Material. It includes the
+[API reference](https://sythos.github.io/JS_Barcode_Universal/api/overview/),
+[format catalogue](https://sythos.github.io/JS_Barcode_Universal/formats/overview/),
+[camera and image guides](https://sythos.github.io/JS_Barcode_Universal/guides/camera-reading/),
+[practical recipes](https://sythos.github.io/JS_Barcode_Universal/examples/create-barcode/),
+[FAQ](https://sythos.github.io/JS_Barcode_Universal/faq/) and
+[troubleshooting](https://sythos.github.io/JS_Barcode_Universal/troubleshooting/).
+
+Every documentation change is checked for local links, navigation coverage and registry drift in
+CI before the Pages build is published. The compact README remains the versioned project
+overview; the Pages site is the place for the longer explanations and copy-ready examples.
+
+---
+
 ## API summary
 
 Two functions carry the whole surface. Everything else is a renderer or a format-specific escape

@@ -101,5 +101,5 @@ integration, but that adaptation is governed by the applicable DENSO terms.
 This repository does not grant or replace that licence.
 
 The project’s compatibility boundary and consultation record are in
-[`PLAN.md`](../../PLAN.md), [`NOTICE.md`](../../NOTICE.md),
-[`LICENSE`](../../LICENSE) and [`licenses/frameqr.license`](../../licenses/frameqr.license).
+[`PLAN.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/PLAN.md), [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md),
+[`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE) and [`licenses/frameqr.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/frameqr.license).

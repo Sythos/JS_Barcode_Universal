@@ -50,7 +50,7 @@ could be added to the registry.
 
 ## Proprietary or unclear-status formats
 
-The root [`LICENSE`](../../LICENSE) deliberately excludes the following from
+The root [`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE) deliberately excludes the following from
 the current distribution because they are proprietary, licence-encumbered or
 not sufficiently clear to redistribute with confidence:
 
@@ -65,8 +65,8 @@ not sufficiently clear to redistribute with confidence:
 - Ultracode
 
 The list is maintained together with the legal-review notes in
-[`NOTICE.md`](../../NOTICE.md) and the per-format inventory under
-[`licenses/`](../../licenses/). Removing a format from this page requires the
+[`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md) and the per-format inventory under
+[`licenses/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/). Removing a format from this page requires the
 same evidence and documentation update as adding it to the runtime.
 
 ## Unsupported variants are not “almost supported”
@@ -93,8 +93,8 @@ A future addition should update, in one atomic change:
 1. the JavaScript runtime and TypeScript declarations;
 2. `listFormats()` and the package exports;
 3. focused tests, black-box checks and real-device evidence where relevant;
-4. the per-format licence/provenance file and [`NOTICE.md`](../../NOTICE.md);
-5. this catalogue, [`PLAN.md`](../../PLAN.md), the README and machine-readable
+4. the per-format licence/provenance file and [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md);
+5. this catalogue, [`PLAN.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/PLAN.md), the README and machine-readable
    release metadata.
 
 Until all of those are green, the format belongs on this page rather than in

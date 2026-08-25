@@ -159,6 +159,6 @@ whole GS1 DataBar family.
 GS1 syntax and physical format names are not a grant to use GS1 identifiers in
 a business process. Validate decoded content before acting on it. The SDK is
 MIT-licensed original Sythos code with no runtime dependencies; its provenance
-and review boundaries are recorded in [`NOTICE.md`](../../NOTICE.md),
-[`LICENSE`](../../LICENSE), [`licenses/gs1-128.license`](../../licenses/gs1-128.license),
-and [`licenses/gs1-databar.license`](../../licenses/gs1-databar.license).
+and review boundaries are recorded in [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md),
+[`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE), [`licenses/gs1-128.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/gs1-128.license),
+and [`licenses/gs1-databar.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/gs1-databar.license).

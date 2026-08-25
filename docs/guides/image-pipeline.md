@@ -158,7 +158,7 @@ const hits = decode(frame, { formats: ['qr'], binarizer: 'auto' });
 
 `getImageData()` can fail before the SDK sees the bytes when a cross-origin
 image taints the canvas. Configure CORS or use a same-origin resource. The
-canonical [read example](../../examples/read.html) uses a hidden work canvas
+canonical [read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) uses a hidden work canvas
 for both file and camera frames.
 
 ## Input errors and empty results
@@ -173,6 +173,6 @@ guess as a barcode result. Only the returned `DecodeResult` has crossed the
 format decoder and validation path. If the input is user-controlled, apply
 application-level checks to `result.text` and keep it out of HTML sinks.
 
-The resource boundary mirrors [SECURITY.md](../../SECURITY.md): image data is
+The resource boundary mirrors [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md): image data is
 untrusted, allocations are bounded, and a crash that becomes denial of service,
 memory abuse or code/data compromise should be treated as a security report.

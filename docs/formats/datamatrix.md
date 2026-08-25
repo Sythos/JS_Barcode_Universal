@@ -102,5 +102,5 @@ if (result) console.log(result.text);
 
 The runtime code is MIT-licensed original Sythos work. Provenance, third-party
 black-box validation and legal-review labels are recorded in
-[`NOTICE.md`](../../NOTICE.md), [`LICENSE`](../../LICENSE), and
-[`licenses/data-matrix.license`](../../licenses/data-matrix.license).
+[`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md), [`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE), and
+[`licenses/data-matrix.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/data-matrix.license).

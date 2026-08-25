@@ -44,7 +44,7 @@ bytes unexpectedly:
 <img id="barcode" alt="Generated QR code">
 ```
 
-The repository’s [IIFE bundle](../bundle/sythos-barcode.js) is the same browser
+The repository’s [IIFE bundle](https://github.com/Sythos/JS_Barcode_Universal/blob/main/bundle/sythos-barcode.js) is the same browser
 surface used by the package. It also works from a local HTML file, while camera
 access still follows browser permission and secure-context rules.
 
@@ -73,9 +73,9 @@ of relying on a network request at runtime.
 
 The canonical examples are already part of the repository:
 
-- [Create](../examples/create.html) uses the IIFE bundle to render symbols and
+- [Create](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html) uses the IIFE bundle to render symbols and
   lets the user choose a payload and format.
-- [Read](../examples/read.html) accepts image input and demonstrates the
+- [Read](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) accepts image input and demonstrates the
   progressive camera profile.
 
 They are plain HTML files. Opening the create example from `file://` is enough
@@ -128,6 +128,6 @@ Use `type="module"` for the ESM bundle or the IIFE bundle for a classic
 
 Camera access is a browser capability, not an npm installation feature. Use
 HTTPS or `localhost`, grant permission, and make sure the page is not inside a
-context that forbids camera access. See the [read example](../examples/read.html)
-and the [security policy](../SECURITY.md) before treating an empty decode as a
+context that forbids camera access. See the [read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html)
+and the [security policy](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md) before treating an empty decode as a
 software installation failure.

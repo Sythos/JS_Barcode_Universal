@@ -1,6 +1,6 @@
 # Licensing and provenance
 
-Sythos Barcode Universal is distributed under the [MIT License](../../LICENSE).
+Sythos Barcode Universal is distributed under the [MIT License](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE).
 This page explains what that statement covers, where engineering provenance is
 recorded and where it deliberately stops. It is an engineering guide, not a
 patent opinion, trademark clearance or legal advice.
@@ -23,7 +23,7 @@ The effective package metadata says:
 ~~~
 
 The metadata is a convenient summary. The complete legal text in
-[LICENSE](../../LICENSE) is the authority.
+[LICENSE](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE) is the authority.
 
 ## What ships in the package
 
@@ -63,7 +63,7 @@ not reproduced or redistributed here. A format name, mathematical rule or
 publicly described encoding value is not itself a third-party source file.
 
 That distinction is useful, but it is not a universal legal conclusion. The
-format inventories in [licenses/](../../licenses/) record the known
+format inventories in [licenses/](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/) record the known
 specification, patent and trademark questions for each supported format. The
 root LICENSE appendix consolidates the same review labels. Entries marked
 [TO VERIFY] or [LEGAL REVIEW] must stay visible; removing a marker requires a
@@ -73,14 +73,14 @@ documented source and appropriate review.
 
 Independent implementations and public technical materials may be used for
 engineering review, fixture generation or black-box comparison. The repository
-records that activity in [NOTICE.md](../../NOTICE.md), including the
+records that activity in [NOTICE.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md), including the
 distinction between consulting or invoking a tool and incorporating its code.
 
 The project does not copy third-party barcode implementation source code into
 the published SDK. Independent barcode libraries used as oracles, including
 their source and tables, are not runtime dependencies and are not shipped in
 the package. Normative or public values may still be represented in original
-Sythos structures: for example, [NOTICE.md](../../NOTICE.md) attributes the
+Sythos structures: for example, [NOTICE.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md) attributes the
 PDF417 pattern-order table transcribed from the AIM USS-PDF417 Appendix H /
 Table H1 reference. That attributed engineering input is not a copied barcode
 library. The independent tools' licenses remain their own licenses; the MIT
@@ -145,4 +145,4 @@ published contract.
 
 For reproducibility, integrity checks and consumer-side verification of a
 release, see [release-verification.md](../release-verification.md). For
-vulnerability reporting, see [SECURITY.md](../../SECURITY.md).
+vulnerability reporting, see [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md).

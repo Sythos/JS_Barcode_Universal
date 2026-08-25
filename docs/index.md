@@ -142,8 +142,8 @@ The data is RGBA, four values per pixel, row-major. A browser canvas can supply
 it with `ctx.getImageData(0, 0, width, height)`. A Worker or Node adapter can
 provide the same shape without constructing a DOM `ImageData` object.
 
-For a runnable browser reference, see the repository’s [create example](../examples/create.html)
-and [read example](../examples/read.html). They use the checked-in IIFE bundle
+For a runnable browser reference, see the repository’s [create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html)
+and [read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html). They use the checked-in IIFE bundle
 and demonstrate file input, camera permissions, rendering and safe display of
 decoded text.
 
@@ -189,16 +189,16 @@ should return no result when detection or checksum validation is not convincing
 enough; “almost readable” is not a useful success state.
 
 For the project’s reporting boundary and contact rules, read
-[SECURITY.md](../SECURITY.md). The repository’s [security automation](../.github/workflows)
+[SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md). The repository’s [security automation](https://github.com/Sythos/JS_Barcode_Universal/tree/main/.github/workflows)
 and package validation are useful release checks, but a green workflow is not a
 substitute for reviewing the inputs and trust boundary of the application that
 embeds the SDK.
 
 ## Licensing and provenance
 
-The distributed SDK is released under the [MIT License](../LICENSE). The
-provenance and engineering notes are collected in [NOTICE.md](../NOTICE.md)
-and the files under [`licenses/`](../licenses/). Those notes document the
+The distributed SDK is released under the [MIT License](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE). The
+provenance and engineering notes are collected in [NOTICE.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md)
+and the files under [`licenses/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/). Those notes document the
 materials and verification boundaries used by the project; they are not a
 patent opinion, trademark clearance or certification.
 
@@ -211,20 +211,20 @@ separate adaptation before using those formats.
 ## Documentation map
 
 This landing page is the first user-facing page of the documentation set. The
-[documentation architecture record](DOCS_ARCHITECTURE.md) explains the source
-map, ownership rules and the planned navigation in more detail.
+[documentation architecture record](https://github.com/Sythos/JS_Barcode_Universal/blob/main/docs/DOCS_ARCHITECTURE.md)
+explains the source map, ownership rules and the navigation in more detail.
 
 Existing repository references:
 
-- [Project README](../README.md) — the compact project overview and current
+- [Project README](https://github.com/Sythos/JS_Barcode_Universal/blob/main/README.md) — the compact project overview and current
   release-facing quick start.
-- [Create example](../examples/create.html) — browser-side generation and
+- [Create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html) — browser-side generation and
   rendering.
-- [Read example](../examples/read.html) — image input and progressive camera
+- [Read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) — image input and progressive camera
   reading.
-- [Project plan](../PLAN.md) — implemented formats, exclusions and future
+- [Project plan](https://github.com/Sythos/JS_Barcode_Universal/blob/main/PLAN.md) — implemented formats, exclusions and future
   work.
-- [Machine-readable summary](../llms.txt) — concise facts for tools and
+- [Machine-readable summary](https://github.com/Sythos/JS_Barcode_Universal/blob/main/llms.txt) — concise facts for tools and
   external indexing systems.
 
 The following destinations are either complete or planned for later milestones;
@@ -242,9 +242,13 @@ already exist:
 - **M5:** dedicated security, licensing and release-verification guides —
   complete; start with the [security guide](guides/security.md) or the
   [release verification checklist](release-verification.md).
-- **M6:** focused recipes, FAQ and troubleshooting pages — pending.
-- **M7–M8:** link checks, generated capability checks and README/release
-  integration — pending.
+- **M6:** focused recipes, FAQ and troubleshooting pages — complete; start
+  with the [create recipe](examples/create-barcode.md), [FAQ](faq.md) or
+  [troubleshooting guide](troubleshooting.md).
+- **M7:** link checks, navigation coverage and generated capability checks —
+  complete; CI runs `tools/check-docs.mjs` before the Pages build.
+- **M8:** README, PLAN, package metadata and machine-readable release
+  integration — complete; all public entry points link to the same Pages site.
 - **M9:** MkDocs Material configuration and automatic GitHub Pages deployment
   on documentation changes — implemented.
 - **M10:** first public Pages deployment, custom-domain/SEO checks and
@@ -274,5 +278,6 @@ gate. The release version remains owned by `package.json`; examples and guides
 should avoid hard-coding patch versions unless they are explicitly documenting
 a historical release.
 
-The next milestone can expand this foundation into the dedicated onboarding
-and installation pages. It has not been started by this landing-page change.
+The onboarding and installation pages are part of the checked-in M1
+foundation. Future milestones can extend the guides without changing the
+published runtime surface.

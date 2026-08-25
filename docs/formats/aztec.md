@@ -83,6 +83,6 @@ Rune’s numeric contract.
 Aztec Rune values were compared exhaustively with an independent black-box
 implementation during project validation. External tools are test oracles
 only; their source code and tables are not shipped. The project’s provenance
-record and scope labels are in [`NOTICE.md`](../../NOTICE.md),
-[`LICENSE`](../../LICENSE) and [`licenses/aztec-rune.license`](../../licenses/aztec-rune.license).
+record and scope labels are in [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md),
+[`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE) and [`licenses/aztec-rune.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/aztec-rune.license).
 The names are used descriptively and do not imply certification or endorsement.

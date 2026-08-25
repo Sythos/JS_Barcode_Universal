@@ -129,8 +129,8 @@ adapter.
 ## Independent checks and legal boundary
 
 ZXing and other independent implementations may be used as black-box
-verification tools, as recorded in [`NOTICE.md`](../../NOTICE.md). No external
+verification tools, as recorded in [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md). No external
 barcode source code or tables are shipped as runtime dependencies. Standard,
 patent and trademark questions remain subject to the review labels in
-[`LICENSE`](../../LICENSE) and the individual files under
-[`licenses/`](../../licenses/).
+[`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE) and the individual files under
+[`licenses/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/).

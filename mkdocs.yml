@@ -86,3 +86,10 @@ nav:
       - Security: guides/security.md
       - Licensing and provenance: guides/licensing.md
       - Release verification: release-verification.md
+  - Recipes:
+      - Create a barcode: examples/create-barcode.md
+      - Read a barcode: examples/read-barcode.md
+      - Camera loop: examples/camera-loop.md
+      - TypeScript project: examples/typescript-project.md
+  - FAQ: faq.md
+  - Troubleshooting: troubleshooting.md

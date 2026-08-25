@@ -126,6 +126,6 @@ be fed back into the generic decoder without its own validation boundary.
 
 The runtime code is MIT-licensed original Sythos work. The format names are
 descriptive; they are not a certification or endorsement. The engineering
-inventory and review labels live in [`LICENSE`](../../LICENSE),
-[`NOTICE.md`](../../NOTICE.md), and the matching files in
-[`licenses/`](../../licenses/).
+inventory and review labels live in [`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE),
+[`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md), and the matching files in
+[`licenses/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/).

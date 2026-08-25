@@ -14,7 +14,14 @@
 - Development tooling: TypeScript is a development-only dependency
 - Repository: https://github.com/Sythos/JS_Barcode_Universal
 - npm: https://www.npmjs.com/package/@sythos/js_barcode_universal
-- Documentation: https://github.com/Sythos/JS_Barcode_Universal#readme
+- Documentation: https://sythos.github.io/JS_Barcode_Universal/
+- Documentation source: https://github.com/Sythos/JS_Barcode_Universal/tree/main/docs
+- API reference: https://sythos.github.io/JS_Barcode_Universal/api/overview/
+- Format catalogue: https://sythos.github.io/JS_Barcode_Universal/formats/overview/
+- Recipes: https://sythos.github.io/JS_Barcode_Universal/examples/create-barcode/
+- FAQ: https://sythos.github.io/JS_Barcode_Universal/faq/
+- Troubleshooting: https://sythos.github.io/JS_Barcode_Universal/troubleshooting/
+- Compact project overview: https://github.com/Sythos/JS_Barcode_Universal#readme
 - Issue tracker: https://github.com/Sythos/JS_Barcode_Universal/issues
 
 ## What this SDK does
@@ -148,6 +155,8 @@ professional review where required.
 ## Canonical project files
 
 - Human documentation: `README.md`
+- Published documentation: https://sythos.github.io/JS_Barcode_Universal/
+- Documentation source tree: `docs/`
 - Roadmap and implementation boundaries: `PLAN.md`
 - MIT terms: `LICENSE`
 - Attribution and provenance: `NOTICE.md`

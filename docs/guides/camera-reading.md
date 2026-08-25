@@ -12,7 +12,7 @@ decision not to return an unvalidated payload.
 - serve the page over HTTPS; or
 - use `http://localhost` during local development.
 
-Opening [examples/read.html](../../examples/read.html) from `file://` is useful
+Opening [examples/read.html](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) from `file://` is useful
 for the file-input half of the example, but it cannot grant normal camera
 access. The browser also needs a user permission, the document must not be
 inside a context that forbids camera use, and the selected device must expose a
@@ -70,7 +70,7 @@ the result is empty rather than a partial or guessed value.
 
 This is a compact browser implementation. It uses a reduced working raster,
 reuses its canvas and stops after the first validated result. The complete
-repository [read example](../../examples/read.html) adds file input, status
+repository [read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) adds file input, status
 panels and safe DOM rendering.
 
 ```html
@@ -223,7 +223,7 @@ Camera pixels are untrusted input. Do not put decoded content into
 `innerHTML`, execute a decoded URL automatically or treat `confidence` as an
 authorization decision. Render status with `textContent`, validate the payload
 against the application's scheme and business rules, and apply the reporting
-boundary in [SECURITY.md](../../SECURITY.md) if the behavior looks like a
+boundary in [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md) if the behavior looks like a
 security issue.
 
 The SDK rejects malformed dimensions, short buffers, non-byte array values and

@@ -4,7 +4,7 @@ The package root is the easiest starting point, but the package also exposes
 focused ESM subpaths. They let an application import a format family or a
 renderer without maintaining filesystem-relative imports.
 
-The list below mirrors the current `exports` map in [`package.json`](../../package.json).
+The list below mirrors the current `exports` map in [`package.json`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/package.json).
 Only these public subpaths are compatibility promises; arbitrary paths under
 `src/` are not.
 
@@ -62,7 +62,7 @@ avoids importing the root facade when the application already knows its format.
 ## Bundle choices
 
 The ESM bundle is available through the `./bundle` export and as the committed
-[`bundle/sythos-barcode.esm.js`](../../bundle/sythos-barcode.esm.js) asset. The
+[`bundle/sythos-barcode.esm.js`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/bundle/sythos-barcode.esm.js) asset. The
 IIFE bundle is available through `./bundle/iife` and is the asset used by the
 repository’s plain HTML examples:
 

@@ -40,7 +40,7 @@ Use these files rather than guessing from a release title or a stale README:
 | Tagged GitHub release assets | .github/workflows/release.yml |
 | Source and provenance context | LICENSE, NOTICE.md, licenses/ |
 
-The root [documentation architecture](DOCS_ARCHITECTURE.md) defines the same
+The root [documentation architecture](https://github.com/Sythos/JS_Barcode_Universal/blob/main/docs/DOCS_ARCHITECTURE.md) defines the same
 source-of-truth rule for future pages.
 
 ## Reproduce the local validation
@@ -217,10 +217,10 @@ Before deploying a release into a sensitive application:
 - inspect the npm package file list and runtime dependency graph;
 - verify SHA256SUMS for downloaded release assets;
 - verify GitHub attestation and npm provenance when your policy requires them;
-- read [SECURITY.md](../SECURITY.md) for decoder and rendering boundaries;
+- read [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md) for decoder and rendering boundaries;
 - read [licensing.md](guides/licensing.md) and the format inventories for legal
   questions;
 - apply your own payload, URL, privacy, memory and business-policy checks.
 
 For a vulnerability or supply-chain concern, use the private reporting route
-in [SECURITY.md](../SECURITY.md), not a public Issue with sensitive details.
+in [SECURITY.md](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md), not a public Issue with sensitive details.

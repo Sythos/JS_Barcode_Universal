@@ -214,6 +214,29 @@ or increment versions by itself. The current release is `1.5.13`.
 
 ---
 
+## 1.1 Documentation delivery status
+
+The long-form documentation is maintained in `docs/` and published through MkDocs Material at
+<https://sythos.github.io/JS_Barcode_Universal/>. The repository keeps the source tree and the
+published site separate: documentation is not part of the npm runtime package and does not add
+runtime dependencies.
+
+| Milestone | State | Evidence |
+|---|---|---|
+| M6 — practical recipes, FAQ and troubleshooting | ✅ complete | `docs/examples/`, `docs/faq.md`, `docs/troubleshooting.md` |
+| M7 — link, navigation and capability consistency | ✅ complete | `tools/check-docs.mjs`, `pr-quality.yml`, Pages workflows |
+| M8 — README, PLAN, package and machine-readable integration | ✅ complete | README Documentation section, `homepage`, `llms.txt` |
+| M9 — MkDocs Material and automatic Pages deployment | ✅ complete | `mkdocs.yml`, `docs-pages.yml`, `docs-pages-pr.yml` |
+| M10 — first public deployment and consumer-side SEO verification | ⏳ pending | Requires a pushed build and live Pages checks |
+
+The checker derives the registry count and read/write totals from `listFormats()` and compares
+them with the format catalogue. It also verifies that Markdown targets exist, every navigation
+target is present, release references match `package.json`, and the M6 pages are actually linked.
+External links to root repository files use canonical GitHub URLs so they remain valid when the
+same Markdown is rendered on GitHub Pages.
+
+---
+
 ## 2. On GPU acceleration
 
 WebGL2/WebGPU accelerate **drawing** a barcode, not **computing** one. Worth stating plainly, because "GPU barcode generation" naturally suggests the latter.

@@ -97,10 +97,11 @@ turning the count into marketing copy:
 When a page needs a count, prefer a generated value or a release audit note.
 Manual “28 formats” prose is an invitation for documentation drift.
 
-## Planned documentation tree
+## Documentation tree
 
-M1 and later milestones may create the following structure. Files not yet
-present are planned destinations, not promised links in the current release.
+The checked-in documentation follows this structure. New destinations should
+be added to the ownership map and navigation in the same change, so the site
+never advertises a page that has not been reviewed.
 
 ```text
 docs/
@@ -109,6 +110,7 @@ docs/
 ├── getting-started.md
 ├── installation.md
 ├── faq.md
+├── troubleshooting.md
 ├── api/
 │   ├── overview.md
 │   ├── encoding.md
@@ -134,8 +136,7 @@ docs/
 │   ├── image-pipeline.md
 │   ├── performance.md
 │   ├── security.md
-│   ├── licensing.md
-│   └── troubleshooting.md
+│   └── licensing.md
 ├── examples/
 │   ├── create-barcode.md
 │   ├── read-barcode.md
@@ -155,6 +156,7 @@ docs/
 | Camera and image pipeline | `guides/camera-reading.md`, `image-pipeline.md` | detector metadata, image modules, `examples/read.html`, security limits |
 | Rendering and performance | `guides/performance.md`, `api/rendering.md` | renderer options, pixel limits and actual smoke checks |
 | Security and licensing | `guides/security.md`, `guides/licensing.md` | `SECURITY.md`, `LICENSE`, `NOTICE.md`, `licenses/*` |
+| FAQ and troubleshooting | `faq.md`, `troubleshooting.md` | public API, platform guides, security and release boundaries |
 | Practical recipes | `examples/*` | the two canonical HTML examples and public API snippets |
 | Release verification | `release-verification.md` | lockfile, `.github/ci/`, workflows, bundles, checksums and attestations |
 | Navigation and search | `docs/index.md`, page front matter if a site is added | only pages that really exist |
@@ -242,7 +244,7 @@ the archive contents or provenance. It should describe the actual package,
 checksum and attestation verification steps only after those steps are present
 and tested in the workflows.
 
-## Documentation site delivery (M9 implemented, M10 pending)
+## Documentation site delivery (M7–M9 implemented, M10 pending)
 
 The repository is now configured to publish the same `docs/` tree as a GitHub
 Pages site using **MkDocs Material**. This is a documentation delivery layer,
@@ -251,9 +253,11 @@ not a second source tree:
 - `docs/` remains the canonical Markdown content;
 - the root `mkdocs.yml` owns navigation, theme, site metadata and strict link
   checking;
+- `tools/check-docs.mjs` checks local Markdown targets, navigation coverage,
+  registry counts and README/llms release references before the site build;
 - `.github/workflows/docs-pages.yml` deploys on pushes to `main` when `docs/**`,
-  `mkdocs.yml` or the documentation requirements change, so a documentation
-  edit updates Pages automatically;
+  `mkdocs.yml`, the documentation requirements or the documentation checker
+  change, so a documentation edit updates Pages automatically;
 - `.github/workflows/docs-pages-pr.yml` runs a build/link check for pull
   requests without publishing or requesting deploy permissions;
 - the workflow pins its actions and installs MkDocs Material as a CI-only
@@ -261,8 +265,11 @@ not a second source tree:
 - generated site files stay in the Pages deployment channel and are not copied
   into the npm tarball unless a separate packaging decision says otherwise.
 
-M9 is complete when the MkDocs Material configuration and quality workflow are
-checked in. M10 still covers the first public Pages deployment, custom-domain
+M7 is complete when link, navigation and registry consistency checks are
+available. M8 is complete when README, PLAN and machine-readable release
+references point readers to the same documentation surface. M9 is complete
+when the MkDocs Material configuration and quality workflow are checked in.
+M10 still covers the first public Pages deployment, custom-domain
 or SEO checks, and consumer-side verification of the published site. A green
 workflow proves that the site can be built and deployed; it does not by itself
 prove that every external crawler has indexed it.

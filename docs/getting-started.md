@@ -133,11 +133,11 @@ normally keep scanning instead of throwing for every empty frame.
 
 - [Installation options](installation.md) covers npm, CDN, bundles and source
   layout.
-- [Create example](../examples/create.html) shows browser-side generation.
-- [Read example](../examples/read.html) shows image input and camera setup.
-- [Project README](../README.md) contains the current compact API and format
+- [Create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html) shows browser-side generation.
+- [Read example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/read.html) shows image input and camera setup.
+- [Project README](https://github.com/Sythos/JS_Barcode_Universal/blob/main/README.md) contains the current compact API and format
   overview.
-- [Security policy](../SECURITY.md) defines reporting channels and impact
+- [Security policy](https://github.com/Sythos/JS_Barcode_Universal/blob/main/SECURITY.md) defines reporting channels and impact
   boundaries.
-- [Documentation architecture](DOCS_ARCHITECTURE.md) explains the source map
+- [Documentation architecture](https://github.com/Sythos/JS_Barcode_Universal/blob/main/docs/DOCS_ARCHITECTURE.md) explains the source map
   and the pages planned for later milestones.

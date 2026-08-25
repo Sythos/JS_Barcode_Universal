@@ -63,7 +63,7 @@ console.log(toSVG(qr, options).startsWith('<svg'));
 console.log(dataMatrix.width, linear.height);
 ```
 
-The package’s [`exports`](../../package.json) map points each public subpath to
+The package’s [`exports`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/package.json) map points each public subpath to
 its JavaScript module and matching declaration. Do not import TypeScript
 implementation files by filesystem path; those paths are implementation
 details even though the published package includes readable source.
@@ -111,8 +111,8 @@ dependency, while the published package remains zero-runtime-dependency.
 
 ## Type declarations are the compatibility boundary
 
-The root declaration facade is [`src/index.d.ts`](../../src/index.d.ts), and
-the generated TypeScript declarations are under [`src/ts/`](../../src/ts/).
+The root declaration facade is [`src/index.d.ts`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/src/index.d.ts), and
+the generated TypeScript declarations are under [`src/ts/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/src/ts/).
 When a declaration and an internal helper disagree, the exported declaration
 and `package.json` export map are the public contract to review first. Report a
 real mismatch with a minimal TypeScript reproduction rather than relying on a
