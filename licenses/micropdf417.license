@@ -1,8 +1,9 @@
 MicroPDF417 — format provenance and usability
 ==========================================================================
 
-This file records where the MicroPDF417 symbology comes from, what governs
-it, and the basis on which this project implements and redistributes it.
+This file records the provenance of MicroPDF417, the public technical
+material consulted, and the basis on which this project implements and
+redistributes the format.
 
 It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
@@ -11,8 +12,8 @@ have not been independently confirmed by the author.
 ORIGIN
 --------------------------------------------------------------------------
 
-MicroPDF417 is a compact stacked 2D symbology specified by ISO/IEC
-24728:2006. The fixed variants, RAP structures and compact symbol geometry
+MicroPDF417 is a compact, stacked 2D symbology specified by ISO/IEC
+24728:2006. Its fixed variants, RAP structures and compact symbol geometry
 are recorded here as technical provenance, not as a legal conclusion.
 
 
@@ -23,25 +24,25 @@ ISO/IEC 24728:2006 — MicroPDF417 bar code symbology specification.
 The standard text is copyrighted by ISO/IEC and is not reproduced here.
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
-describes is not — an encoding scheme is a system, not a work of
-authorship. This project implements the symbology; it does not reproduce,
-redistribute or excerpt any specification document.
+describes is not — an encoding scheme is a system, not a work of authorship.
+This project implements the symbology; it does not reproduce, redistribute
+or excerpt any specification document.
 
 
 PATENT STATUS
 --------------------------------------------------------------------------
 
-US 6,047,892 is a historical patent record associated with
-MicroPDF417-style implicit version information. Patent families,
-continuations, foreign equivalents and jurisdictional status require a
-dedicated review. [LEGAL REVIEW]
+US 6,047,892 is a historical patent record associated with MicroPDF417-style
+implicit version information. Patent families, continuations, foreign
+equivalents and jurisdictional status require a dedicated patent review.
+[LEGAL REVIEW]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
-The current registration status and ownership of the term "MicroPDF417"
-have not been independently established. [LEGAL REVIEW] The term is used
+The current registration status and ownership of the term "MicroPDF417" have
+not been independently established. [LEGAL REVIEW] The term is used
 descriptively and does not imply endorsement by a rights holder.
 
 A trademark does not restrict implementing a symbology. It restricts
@@ -52,23 +53,24 @@ IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
 MicroPDF417 is implemented here from published descriptions of the format,
-which are systems and facts rather than works of authorship. No source
-code or constant table from any other barcode implementation is copied or
+which are systems and facts rather than works of authorship. No source code
+or constant table from any other barcode implementation is copied or
 shipped. Public technical material and independent implementations may be
 consulted for engineering review or black-box verification; provenance is
-recorded in NOTICE.md.
+recorded in NOTICE.md. Third-party software cited in NOTICE.md was used
+exclusively for independent verification and cross-checking of which parts
+of the published MicroPDF417 standard could be exercised under comparable
+conditions. It is not a runtime dependency, and no third-party source code
+or table is copied or shipped.
 
 
 CONCLUSION
 --------------------------------------------------------------------------
 
-This project's original MicroPDF417 implementation is distributed under
-the MIT License. Third-party software cited in this inventory was used
-exclusively for independent verification and cross-checking of which
-portions of the published MicroPDF417 standard could be exercised under
-comparable conditions. It is not a runtime dependency; no third-party
-source code or table is copied or shipped. Patent, copyright and trademark
-questions remain subject to the review labels above.
+This project's original MicroPDF417 implementation is distributed under the MIT License.
+The standard text is not reproduced, and patent, copyright and
+trademark questions remain subject to the review labels above. This
+implementation is not a certification or legal clearance.
 
 References relied upon:
   - ISO/IEC 24728:2006, ISO/IEC

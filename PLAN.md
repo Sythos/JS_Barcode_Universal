@@ -210,7 +210,7 @@ and release validation workflows use `npm ci --ignore-scripts`. These measures m
 toolchain reproducible without adding a runtime dependency to the SDK.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.5.12`.
+or increment versions by itself. The current release is `1.5.13`.
 
 ---
 

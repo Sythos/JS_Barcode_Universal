@@ -360,4 +360,4 @@ export declare function decodeStrict(image: {
     height: number;
 }, options?: object): DecodeResult;
 /** Library version, matching package.json. */
-export declare const VERSION = "1.5.12";
+export declare const VERSION = "1.5.13";

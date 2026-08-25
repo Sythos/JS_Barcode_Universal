@@ -1,8 +1,9 @@
 PDF417 — format provenance and usability
 ==========================================================================
 
-This file records where the PDF417 symbology comes from, what governs
-it, and the basis on which this project implements and redistributes it.
+This file records the provenance of PDF417, the public technical material
+consulted, and the basis on which this project implements and redistributes
+the format.
 
 It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
 have not been independently confirmed by the author.
@@ -11,7 +12,7 @@ have not been independently confirmed by the author.
 ORIGIN
 --------------------------------------------------------------------------
 
-PDF417 was developed by Symbol Technologies in the early 1990s. The
+PDF417 was developed by Symbol Technologies in the early 1990s. This
 historical attribution and ownership record are documented here as
 engineering provenance, not as a legal conclusion.
 
@@ -20,28 +21,28 @@ SPECIFICATION
 --------------------------------------------------------------------------
 
 ISO/IEC 15438:2015 — PDF417 bar code symbology specification.
-AIM USS-PDF417 public reference, Appendix H / Table H1, used only as
-an attributed technical source for the normative pattern ordering.
+AIM USS-PDF417 public reference, Appendix H / Table H1, was consulted only
+as an attributed technical reference for normative pattern ordering.
 
 Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
-describes is not — an encoding scheme is a system, not a work of
-authorship. This project implements the symbology; it does not reproduce,
-redistribute or excerpt any specification document.
+describes is not — an encoding scheme is a system, not a work of authorship.
+This project implements the symbology; it does not reproduce, redistribute
+or excerpt any specification document.
 
 
 PATENT STATUS
 --------------------------------------------------------------------------
 
 US 5,243,655 and US 5,304,786 are historical PDF417 patent records. Their
-current family, continuation and jurisdictional status requires a
-dedicated patent review. [LEGAL REVIEW]
+current family, continuation and jurisdictional status requires a dedicated
+patent review. [LEGAL REVIEW]
 
 
 TRADEMARK
 --------------------------------------------------------------------------
 
-The current registration status and ownership of the term "PDF417" have
-not been independently established. [LEGAL REVIEW] The term is used
+The current registration status and ownership of the term "PDF417" have not
+been independently established. [LEGAL REVIEW] The term is used
 descriptively and does not imply endorsement by a rights holder.
 
 A trademark does not restrict implementing a symbology. It restricts
@@ -51,21 +52,24 @@ branding — how a product names and presents itself.
 IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
-PDF417 is implemented here from published descriptions of the format,
-which are systems and facts rather than works of authorship. No source
-code or constant table from any other barcode implementation is copied or
-shipped. Public technical material and independent implementations may be
-consulted for engineering review or black-box verification; provenance is
-recorded in NOTICE.md.
+PDF417 is implemented here from published descriptions of the format, which
+are systems and facts rather than works of authorship. No source code or
+constant table from any other barcode implementation is copied or shipped.
+Public technical material and independent implementations may be consulted
+for engineering review or black-box verification; provenance is recorded in
+NOTICE.md. Third-party software cited in NOTICE.md was used exclusively as
+an independent verification and cross-checking tool; it is not a runtime
+dependency, and no third-party source code or table is copied or shipped.
 
 
 CONCLUSION
 --------------------------------------------------------------------------
 
-This project's original implementation is distributed under the MIT
-License. Normative values are attributed engineering inputs; the standard
-text is not reproduced, and patent, copyright and trademark questions
-remain subject to the review labels above.
+This project's original PDF417 implementation is distributed under the MIT License.
+Normative values are attributed engineering inputs; the standard
+text is not reproduced, and patent, copyright and trademark questions remain
+subject to the review labels above. This implementation is not a
+certification or legal clearance.
 
 References relied upon:
   - ISO/IEC 15438:2015, ISO/IEC

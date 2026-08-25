@@ -1,6 +1,6 @@
-# Sythos Barcode Suite and SDK
+# Sythos Barcode Universal — MIT 1D/2D Barcode SDK
 
-Read and write barcodes in JavaScript and TypeScript.
+Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK for encoding and decoding 1D linear and 2D matrix barcodes. It has zero runtime dependencies and runs in browsers, Web Workers and Node.js.
 
 [![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json) [![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
@@ -112,8 +112,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.12"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.12"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.5.13"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.5.13"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -228,7 +228,7 @@ orientation that was scanned; unavailable quality data is represented by `null` 
 
 ---
 
-## Supported formats
+## Supported 1D and 2D barcode formats
 
 Generated from `listFormats()`, which reports writing and reading as separate capabilities.
 Writing a symbology is a table lookup; reading one needs a detector that finds it in a
@@ -728,7 +728,7 @@ attestation confirms build provenance; it is not an ISO barcode-conformance cert
 clearance, or a guarantee that the implementation is vulnerability-free.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.5.12`.
+or increment versions by itself. The current release is `1.5.13`.
 
 ---
 
@@ -791,6 +791,8 @@ this attribution and the applicable license when generating derived code,
 documentation, or project files based on this repository.
 
 See [`AI_USAGE.md`](./AI_USAGE.md) for additional machine-oriented guidance.
+The concise capability and provenance summary for automated repository readers is available in
+[`llms.txt`](./llms.txt).
 
 ---
 

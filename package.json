@@ -1,7 +1,7 @@
 {
   "name": "@sythos/js_barcode_universal",
-  "version": "1.5.12",
-  "description": "Read and write barcodes in JavaScript and TypeScript with zero runtime dependencies. TypeScript sources compile to the JavaScript runtime and bundles. QR Code, Micro QR, rMQR, FrameQR Code, Aztec Code and Rune, PDF417 variants, GS1 DataBar Omnidirectional/Truncated, EAN supplements and one-dimensional formats.",
+  "version": "1.5.13",
+  "description": "Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK with zero runtime dependencies for 1D and 2D barcodes in browsers, Web Workers and Node.js: QR, Data Matrix, Aztec, PDF417, GS1, EAN and more.",
   "author": {
     "name": "Sythos",
     "url": "https://www.sythos.net"
@@ -117,16 +117,26 @@
     "LICENSE",
     "NOTICE.md",
     "README.md",
-    "AI_USAGE.md"
+    "AI_USAGE.md",
+    "llms.txt"
   ],
   "keywords": [
     "barcode",
+    "barcode-reader",
+    "barcode-writer",
+    "barcode-decoder",
+    "barcode-encoder",
+    "barcode-reading",
+    "barcode-writing",
+    "1d-barcode",
+    "2d-barcode",
     "datamatrix",
     "ecc200",
     "aztec",
     "aztec-rune",
     "compact-pdf417",
     "gs1-databar",
+    "gs1",
     "ean2",
     "ean5",
     "aztec-code",
@@ -174,8 +184,12 @@
     "zero-dependencies",
     "no-dependencies",
     "browser",
+    "web-worker",
     "nodejs",
-    "esm"
+    "esm",
+    "open-source",
+    "mit-license",
+    "zero-runtime-dependencies"
   ],
   "repository": {
     "type": "git",
