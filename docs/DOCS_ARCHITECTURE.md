@@ -242,6 +242,28 @@ the archive contents or provenance. It should describe the actual package,
 checksum and attestation verification steps only after those steps are present
 and tested in the workflows.
 
+## Documentation site delivery (planned M9–M10)
+
+The repository can later publish the same `docs/` tree as a GitHub Pages site
+using **MkDocs Material**. This is a documentation delivery layer, not a second
+source tree:
+
+- `docs/` remains the canonical Markdown content;
+- a root `mkdocs.yml` owns navigation, theme, site metadata and link checking;
+- the workflow should deploy on pushes to `main` when `docs/**` or
+  `mkdocs.yml` changes, so a documentation edit updates Pages automatically;
+- pull requests should run a build/link check without publishing;
+- the workflow must pin its actions and install MkDocs Material as a CI-only
+  dependency, leaving the SDK package at zero runtime dependencies;
+- generated site files stay in the Pages deployment channel and are not copied
+  into the npm tarball unless a separate packaging decision says otherwise.
+
+M9 is the recommended milestone for the MkDocs Material configuration and
+quality workflow. M10 can then cover the first public Pages deployment,
+custom-domain or SEO checks, and a consumer-side verification of the published
+site. Until those milestones are approved and implemented, this repository
+does not claim that GitHub Pages is live.
+
 ## M0 exit criteria
 
 M0 is complete when all of the following are true:
@@ -254,5 +276,7 @@ M0 is complete when all of the following are true:
 - the architecture file passes `git diff --check`;
 - no M1 user-facing page has been created.
 
-The next milestone is M1, which may create the documentation skeleton and
-landing-page foundation. This file intentionally stops before that work.
+M1 consumes this contract by establishing `docs/index.md`,
+`docs/getting-started.md` and `docs/installation.md` as the first user-facing
+foundation. The next milestone is M2, which may build the detailed API
+reference. This file intentionally does not duplicate those guides.
