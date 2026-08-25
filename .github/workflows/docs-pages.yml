@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - docs/**
+      - overrides/**
       - docs/requirements.txt
       - mkdocs.yml
       - tools/check-docs.mjs

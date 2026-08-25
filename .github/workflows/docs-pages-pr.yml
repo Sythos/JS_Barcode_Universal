@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - docs/**
+      - overrides/**
       - docs/requirements.txt
       - mkdocs.yml
       - tools/check-docs.mjs
