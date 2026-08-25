@@ -191,6 +191,6 @@
     "types:api": "node tools/check-public-types.mjs"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "7.0.2"
   }
 }

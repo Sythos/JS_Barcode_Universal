@@ -682,6 +682,17 @@ the pixel count of a standard 4K image — and accepts only byte-valued channels
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
 before detector work begins.
 
+Rendering applies the same allocation discipline before creating an SVG, PNG, `ImageData`, canvas,
+WebGL or WebGPU output. Matrix dimensions, `scale`, `margin` and `barHeight` must be safe integers
+within documented bounds, and the final image must be no larger than 16,384 pixels on either side
+or 16,777,216 pixels in total. Invalid, fractional or oversized values are rejected with
+`RangeError`; callers that expose rendering controls should handle that result rather than silently
+coercing it.
+
+The browser examples treat decoded payloads and browser error messages as text. They create DOM
+nodes and set `textContent` instead of interpolating those values into HTML, so scanned content is
+not interpreted as markup.
+
 ---
 
 ## Build provenance and artifact attestations
@@ -694,6 +705,15 @@ Attestations are related but separate records:
   its source repository and trusted build workflow;
 - **GitHub Artifact Attestations** bind a build artifact, its digest and its build context to the
   GitHub Actions workflow that produced it. They can be verified independently of the npm registry.
+
+Every third-party GitHub Action referenced by the repository workflows is pinned to its immutable
+commit SHA. Dependabot tracks the action references, but an update is still reviewed and then
+records a new explicit SHA rather than relying on a movable tag.
+
+The development toolchain is also reproducible: `package-lock.json` records the resolved packages,
+TypeScript is declared at an exact version, and the pull-request and release validation workflows
+install the lockfile with `npm ci --ignore-scripts`. The published SDK remains free of runtime
+dependencies.
 
 The release-specific attestation workflow is expected at
 [`.github/workflows/release.yml`](.github/workflows/release.yml). Release assets must be verified

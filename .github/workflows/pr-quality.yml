@@ -1,8 +1,7 @@
 name: Pull request quality
 
-# The publish checkout has no package lockfile. This gate validates the
-# JavaScript runtime, TypeScript source tree, public declarations and package
-# surface without adding runtime dependencies.
+# This gate validates the JavaScript runtime, TypeScript source tree, public
+# declarations and package surface without adding runtime dependencies.
 on:
   pull_request:
 
@@ -25,17 +24,8 @@ jobs:
         with:
           node-version: 24
 
-      # No lockfile is published, so npm caching is intentionally omitted.
-
       - name: Install dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
-            npm ci --ignore-scripts --no-audit --no-fund
-          else
-            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-          fi
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Validate JavaScript and public package surface
         run: node .github/ci/validate-package.mjs
@@ -56,14 +46,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
-            npm ci --ignore-scripts --no-audit --no-fund
-          else
-            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-          fi
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Compile TypeScript source and refresh JavaScript output
         run: npm run build:ts
@@ -92,14 +75,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
-            npm ci --ignore-scripts --no-audit --no-fund
-          else
-            npm install --ignore-scripts --no-audit --no-fund --no-package-lock
-          fi
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Verify npm package contents
         run: npm pack --dry-run --ignore-scripts --json > npm-pack.json

@@ -149,7 +149,7 @@
 
   function show(hits, source) {
     if (!hits.length) return false;
-    results.innerHTML = '';
+    results.textContent = '';
     hits.forEach(function (h) {
       var div = document.createElement('div');
       div.className = 'hit';
@@ -243,7 +243,11 @@
       el('fileStatus').textContent =
         w + '×' + h + ' · ' + ms.toFixed(0) + ' ms · ' + hits.length + ' found';
       if (!show(hits, 'image')) {
-        results.innerHTML = '<div class="status">No barcode found in that image.</div>';
+        results.textContent = '';
+        var status = document.createElement('div');
+        status.className = 'status';
+        status.textContent = 'No barcode found in that image.';
+        results.appendChild(status);
       }
     };
     img.onerror = function () {
@@ -259,20 +263,44 @@
   var stream = null;
   var raf = null;
 
+  function setCameraNoteNode(note) {
+    var container = el('camNote');
+    container.textContent = '';
+    container.appendChild(note);
+  }
+
+  function setCameraNote(text) {
+    var note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = text;
+    setCameraNoteNode(note);
+  }
+
+  function appendNoteCode(note, text) {
+    var code = document.createElement('code');
+    code.textContent = text;
+    note.appendChild(code);
+  }
+
   var secure = window.isSecureContext ||
     location.protocol === 'https:' ||
     location.hostname === 'localhost';
 
   if (!secure) {
-    el('camNote').innerHTML =
-      '<div class="note">The camera needs a secure context, so it is unavailable ' +
-      'when this page is opened from <code>file://</code>. Serve the folder over ' +
-      'http and reload &mdash; for example <code>npx serve</code> &mdash; or use ' +
-      'the image input above, which works anywhere.</div>';
+    var secureNote = document.createElement('div');
+    secureNote.className = 'note';
+    secureNote.appendChild(document.createTextNode(
+      'The camera needs a secure context, so it is unavailable when this page is opened from '));
+    appendNoteCode(secureNote, 'file://');
+    secureNote.appendChild(document.createTextNode(
+      '. Serve the folder over http and reload — for example '));
+    appendNoteCode(secureNote, 'npx serve');
+    secureNote.appendChild(document.createTextNode(
+      ' — or use the image input above, which works anywhere.'));
+    setCameraNoteNode(secureNote);
     el('camStart').disabled = true;
   } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    el('camNote').innerHTML =
-      '<div class="note">This browser does not expose a camera API.</div>';
+    setCameraNote('This browser does not expose a camera API.');
     el('camStart').disabled = true;
   }
 
@@ -292,8 +320,7 @@
     }).then(function () {
       loop();
     }).catch(function (e) {
-      el('camNote').innerHTML =
-        '<div class="note">Camera unavailable: ' + String(e.message || e) + '</div>';
+      setCameraNote('Camera unavailable: ' + String(e.message || e));
     });
   });
 

@@ -171,6 +171,12 @@ positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
 before detector work begins.
 
+Renderer inputs follow the same resource boundary. Matrix dimensions and `scale`, `margin` and
+`barHeight` must be safe integers within fixed bounds; the final image is limited to 16,384 pixels
+per side and 16,777,216 pixels in total before any output allocation. Invalid, fractional and
+oversized values are rejected rather than coerced. The browser examples likewise present scanned
+payloads and browser error messages through DOM text nodes, never by interpolating them into HTML.
+
 ### Vulnerability reporting policy
 
 The repository policy is documented in [`SECURITY.md`](SECURITY.md). Suspected vulnerabilities
@@ -197,6 +203,11 @@ The verification result is build-provenance evidence only. It does not certify b
 patent status, trademark permission or the absence of security defects. The current GitHub Packages
 workflow remains a separate publication path; package publication and artifact attestation must not
 be treated as interchangeable controls.
+
+All referenced GitHub Actions are pinned to immutable commit SHAs. The lockfile records the
+development dependency graph, TypeScript is an exact development dependency, and the pull-request
+and release validation workflows use `npm ci --ignore-scripts`. These measures make the validated
+toolchain reproducible without adding a runtime dependency to the SDK.
 
 Release automation validates the package version against the selected Git tag; it does not invent
 or increment versions by itself. The current release is `1.5.11`.

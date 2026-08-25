@@ -58,7 +58,7 @@ jobs:
           node-version: 24
 
       - name: Install validation dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Validate package exports and runtime smoke test
         run: node .github/ci/validate-package.mjs

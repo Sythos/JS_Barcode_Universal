@@ -81,6 +81,23 @@ Reports are in scope when they affect the published JavaScript or TypeScript run
 bundles, image/camera input boundary, browser examples, build and release workflows, provenance,
 or the npm/GitHub package publication path.
 
+## Security controls
+
+Camera and file rasters are untrusted input. The decoder accepts only byte-valued channels and
+positive safe-integer dimensions, with a maximum of 16,384 pixels per side and 16,777,216 pixels
+in total. Renderers enforce the same final-image limits before allocating output and reject invalid,
+fractional or oversized `scale`, `margin` and `barHeight` values.
+
+The browser examples render scanned payloads and browser error messages as DOM text, not HTML.
+Applications using decoded data should preserve that boundary and apply their own scheme and
+business-policy checks before acting on a scanned value.
+
+Release integrity depends on review as well as automation: third-party GitHub Actions are pinned to
+immutable commit SHAs, and the development toolchain is bound by `package-lock.json`, an exact
+TypeScript version and `npm ci --ignore-scripts` in the pull-request and release validation paths.
+Artifact attestations and npm provenance provide build evidence; neither replaces code review or
+consumer-side verification.
+
 Good-faith research is welcome. Please avoid privacy violations, service disruption, persistence,
 data exfiltration and testing against systems or data that you do not own. We will treat careful,
 non-destructive research made through this policy as authorized for triage, subject to applicable law.

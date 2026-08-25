@@ -45,6 +45,54 @@ import { BitMatrix } from '../core/bit-matrix.js';
  * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
  */
 
+// Keep renderer allocations aligned with the image decoder's resource limits.
+const MAX_RENDER_DIMENSION = 16_384;
+const MAX_RENDER_PIXELS = 16_777_216;
+const MAX_RENDER_SCALE = MAX_RENDER_DIMENSION;
+const MAX_RENDER_MARGIN = Math.floor((MAX_RENDER_DIMENSION - 1) / 2);
+const MAX_RENDER_BAR_HEIGHT = MAX_RENDER_DIMENSION;
+
+function boundedInteger(value, name, defaultValue, minimum, maximum) {
+  const resolved = value ?? defaultValue;
+  if (!Number.isSafeInteger(resolved)) {
+    throw new RangeError(
+      `Render option "${name}" must be a finite safe integer between ${minimum} and ${maximum}, got ${resolved}`
+    );
+  }
+  if (resolved < minimum || resolved > maximum) {
+    throw new RangeError(
+      `Render option "${name}" must be between ${minimum} and ${maximum}, got ${resolved}`
+    );
+  }
+  return resolved;
+}
+
+function validateMatrixDimensions(matrix) {
+  if (!matrix || !Number.isSafeInteger(matrix.width) || !Number.isSafeInteger(matrix.height)
+    || matrix.width < 1 || matrix.height < 1
+    || matrix.width > MAX_RENDER_DIMENSION || matrix.height > MAX_RENDER_DIMENSION) {
+    throw new RangeError(
+      `Render matrix dimensions must be positive safe integers no larger than ${MAX_RENDER_DIMENSION}`
+    );
+  }
+}
+
+function validatePixelDimensions(width, height) {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+    || width < 1 || height < 1
+    || width > MAX_RENDER_DIMENSION || height > MAX_RENDER_DIMENSION) {
+    throw new RangeError(
+      `Render dimensions must be positive safe integers no larger than ${MAX_RENDER_DIMENSION}`
+    );
+  }
+  const pixels = width * height;
+  if (!Number.isSafeInteger(pixels) || pixels > MAX_RENDER_PIXELS) {
+    throw new RangeError(
+      `Render image contains too many pixels: ${pixels} (maximum ${MAX_RENDER_PIXELS})`
+    );
+  }
+}
+
 /**
  * Expand and pad the matrix, and resolve every dimension.
  *
@@ -57,20 +105,29 @@ import { BitMatrix } from '../core/bit-matrix.js';
  * @param {RenderOptions} options
  */
 export function normalizeOptions(matrix, options = {}) {
-  const scale = Math.max(1, Math.floor(options.scale ?? 8));
-  const margin = Math.max(0, Math.floor(options.margin ?? 4));
+  validateMatrixDimensions(matrix);
+  const scale = boundedInteger(options.scale, 'scale', 8, 1, MAX_RENDER_SCALE);
+  const margin = boundedInteger(options.margin, 'margin', 4, 0, MAX_RENDER_MARGIN);
   const dark = options.dark ?? '#000000';
   const light = options.light ?? '#ffffff';
-  const barHeight = options.barHeight ?? null;
+  const barHeight = options.barHeight == null
+    ? null
+    : boundedInteger(options.barHeight, 'barHeight', 1, 1, MAX_RENDER_BAR_HEIGHT);
+
+  const is1D = matrix.height === 1;
+  const targetPixels = is1D
+    ? barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15))
+    : null;
+  const rows = is1D ? Math.max(1, Math.round(targetPixels / scale)) : matrix.height;
+  const sourceWidth = matrix.width + margin * 2;
+  const sourceHeight = rows + margin * 2;
+  validatePixelDimensions(sourceWidth * scale, sourceHeight * scale);
 
   let base = matrix;
-  const is1D = matrix.height === 1;
 
   if (is1D) {
     // Default to a bar height that stays scannable: tall enough that a laser
     // crossing at a slight angle still passes through the whole symbol.
-    const targetPixels = barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15));
-    const rows = Math.max(1, Math.round(targetPixels / scale));
     base = new BitMatrix(matrix.width, rows);
     for (let x = 0; x < matrix.width; x++) {
       if (!matrix.get(x, 0)) continue;
