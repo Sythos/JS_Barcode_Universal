@@ -237,7 +237,8 @@ already exist:
 - **M3:** format-by-format capability and limitation guides — complete; start
   with the [format catalogue](formats/overview.md).
 - **M4:** browser, Node.js, Worker, camera, image-pipeline and performance
-  guides — pending.
+  guides — complete; start with the [browser guide](guides/browser.md) or the
+  [camera guide](guides/camera-reading.md).
 - **M5:** dedicated security, licensing and release-verification guides.
 - **M6:** focused recipes, FAQ and troubleshooting pages — pending.
 - **M7–M8:** link checks, generated capability checks and README/release
