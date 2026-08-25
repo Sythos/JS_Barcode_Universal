@@ -677,7 +677,8 @@ integrity or host/runner compromise should also be sent to `devsec@sythos.net`. 
 better kept private than turned into an accidental community fireworks show.
 
 The image I/O boundary treats camera and file rasters as untrusted input. It validates finite
-positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-valued channels,
+positive dimensions, bounds allocations to 16,777,216 pixels — still a high limit, roughly twice
+the pixel count of a standard 4K image — and accepts only byte-valued channels,
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
 before detector work begins.
 
