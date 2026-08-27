@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { containsExactUrlReference } from './exact-url.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const docsRoot = resolve(root, 'docs');
@@ -84,8 +85,8 @@ if (!readme.includes(`current release is \`${packageJson.version}\``)) {
 if (!llms.includes(`Current repository release: \`${packageJson.version}\``)) {
   reportFailure('llms.txt does not expose the package version consistently');
 }
-if (!readme.includes(pagesUrl)) reportFailure('README.md is missing the canonical Pages URL');
-if (!llms.includes(pagesUrl)) reportFailure('llms.txt is missing the canonical Pages URL');
+if (!containsExactUrlReference(readme, pagesUrl)) reportFailure('README.md is missing the canonical Pages URL');
+if (!containsExactUrlReference(llms, pagesUrl)) reportFailure('llms.txt is missing the canonical Pages URL');
 if (packageJson.homepage !== pagesUrl) reportFailure('package.json homepage is not the canonical Pages URL');
 const index = await readFile(resolve(docsRoot, 'index.md'), 'utf8');
 if (!/\*\*M6:\*\*[^\n]*complete/u.test(index)) {

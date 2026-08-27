@@ -10,6 +10,8 @@ on:
       - docs/requirements.txt
       - mkdocs.yml
       - tools/check-docs.mjs
+      - tools/exact-url.mjs
+      - tools/exact-url.test.mjs
   workflow_dispatch:
 
 permissions:
@@ -47,6 +49,9 @@ jobs:
 
       - name: Validate documentation links and capability references
         run: node tools/check-docs.mjs
+
+      - name: Test exact documentation URL assertions
+        run: npm run test:docs
 
       - name: Build the documentation site
         run: mkdocs build --strict

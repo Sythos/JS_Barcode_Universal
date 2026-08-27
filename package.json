@@ -201,6 +201,7 @@
   "homepage": "https://sythos.github.io/JS_Barcode_Universal/",
   "scripts": {
     "build:ts": "node tools/compile-typescript.mjs",
+    "test:docs": "node --test tools/exact-url.test.mjs",
     "types": "tsc -p tsconfig.json",
     "types:api": "node tools/check-public-types.mjs"
   },
