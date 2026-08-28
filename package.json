@@ -203,12 +203,14 @@
     "build:ts": "node tools/compile-typescript.mjs",
     "lint": "eslint --max-warnings=0 src/index.js src/js tools .github/ci",
     "test:docs": "node --test tools/exact-url.test.mjs",
+    "test:fuzz": "node --test test/fuzz/property.test.mjs",
     "types": "tsc -p tsconfig.json",
     "types:api": "node tools/check-public-types.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.9.1",
+    "fast-check": "4.9.0",
     "typescript": "7.0.2"
   }
 }

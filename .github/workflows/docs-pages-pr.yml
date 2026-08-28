@@ -6,6 +6,7 @@ on:
       - docs/**
       - overrides/**
       - docs/requirements.txt
+      - docs/requirements.lock
       - mkdocs.yml
       - tools/check-docs.mjs
       - tools/exact-url.mjs
@@ -39,7 +40,10 @@ jobs:
           python-version: '3.14'
 
       - name: Install documentation dependencies
-        run: python -m pip install --disable-pip-version-check --requirement docs/requirements.txt
+        # The lockfile contains hashes for every direct and transitive wheel.
+        # Keep --require-hashes enabled so a changed artifact cannot be trusted
+        # merely because its version number is unchanged.
+        run: python -m pip install --disable-pip-version-check --require-hashes --requirement docs/requirements.lock
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

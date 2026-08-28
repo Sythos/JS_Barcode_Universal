@@ -11,6 +11,11 @@ on:
         required: true
         type: string
 
+# Keep the workflow default read-only. The release job below explicitly
+# elevates only the permissions required to create releases and attest assets.
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Build, attest and publish release assets

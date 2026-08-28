@@ -698,6 +698,11 @@ expression mistakes. The allow-list records Blue Oak 1.0.0 only for the developm
 transitive dependency; it is not shipped in the SDK package. These checks use repository or
 GitHub-provided permissions only; they do not add runtime dependencies to the SDK.
 
+The same pull-request gate runs a bounded, deterministic `fast-check` property suite across the
+supported 1D and 2D encoders and decoders. It checks matrix invariants and round-trip payloads with
+small, reproducible inputs; the fuzzing harness stays in development-only test files and is excluded
+from the published npm package.
+
 APIsec is intentionally not enabled: this repository is a client-side barcode SDK with no HTTP API
 or OpenAPI service to scan, and the hosted APIsec action requires an account and secrets. OWASP ZAP
 API scanning is likewise outside the current boundary because it needs an authorized live target or

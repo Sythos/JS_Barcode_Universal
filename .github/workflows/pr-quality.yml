@@ -33,6 +33,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run bounded property-based barcode checks
+        run: npm run test:fuzz
+
       - name: Validate JavaScript and public package surface
         run: node .github/ci/validate-package.mjs
 

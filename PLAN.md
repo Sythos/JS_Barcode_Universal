@@ -179,6 +179,11 @@ or GitHub-provided permissions. Blue Oak 1.0.0 is allow-listed only for the deve
 `minimatch` transitive dependency and is not included in the published SDK; the checks do not change
 the package's runtime dependency graph.
 
+The same pull-request gate runs a bounded, deterministic `fast-check` property suite across the
+supported 1D and 2D encoders and decoders. It checks matrix invariants and round-trip payloads with
+small, reproducible inputs; the fuzzing harness remains development-only and is excluded from the
+published npm package.
+
 APIsec is deliberately not part of the mandatory workflow: this project exposes no HTTP/OpenAPI
 service, while the hosted scanner requires an account and secrets. OWASP ZAP API scanning also
 requires an authorized live target or API specification, so it is outside the present SDK boundary.

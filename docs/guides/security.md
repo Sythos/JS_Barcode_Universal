@@ -167,6 +167,11 @@ the repository and its development toolchain; the Blue Oak 1.0.0 allow-list entr
 development-only `minimatch` transitive dependency and is not shipped in the SDK. The controls do
 not become part of the SDK consumed at runtime.
 
+The same pull-request gate runs a bounded, deterministic `fast-check` property suite across the
+supported 1D and 2D encoders and decoders. It checks matrix invariants and round-trip payloads with
+small, reproducible inputs; the fuzzing harness remains development-only and is excluded from the
+published npm package.
+
 APIsec is intentionally not enabled because this repository is a barcode SDK, not an HTTP/OpenAPI
 service, and the hosted scanner requires an account and secrets. OWASP ZAP API scanning needs an
 authorized live target or API specification, so it is outside this project's current boundary.

@@ -2,8 +2,9 @@ name: OSV-Scanner
 
 # Run a complete dependency scan on main and on a weekly schedule. Pull
 # request dependency changes are covered by the dedicated Dependency Review
-# workflow. The reusable workflow is pinned to an immutable commit and
-# requires no third-party account or secret.
+# workflow. The scanner runs without SARIF upload, so this workflow needs only
+# read access and no third-party account or secret. The CLI release asset is
+# verified with its published SHA-256 before it is executed.
 on:
   push:
     branches:
@@ -18,12 +19,36 @@ permissions:
 jobs:
   scan:
     name: Full dependency scan
-    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@0c58c542420dfd23fcac08dd9c8ca3cca9c36f1a # v2.5.0
-    with:
-      scan-args: |-
-        --lockfile=./package-lock.json
+    runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: read
-      security-events: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download and verify OSV-Scanner
+        shell: bash
+        env:
+          OSV_SCANNER_SHA256: edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c
+        run: |
+          set -euo pipefail
+
+          scanner_path="${RUNNER_TEMP}/osv-scanner"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+            --silent --show-error \
+            https://github.com/google/osv-scanner/releases/download/v2.5.0/osv-scanner_linux_amd64 \
+            --output "${scanner_path}"
+          printf '%s  %s\n' "${OSV_SCANNER_SHA256}" "${scanner_path}" \
+            | sha256sum --check --strict
+          chmod 0755 "${scanner_path}"
+          "${scanner_path}" --version
+
+      - name: Scan the npm lockfile with OSV-Scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/osv-scanner" scan source \
+            --lockfile=./package-lock.json
