@@ -2,7 +2,7 @@
 
 **Milestone:** M0 — information architecture and source audit
 **Status:** complete
-**Repository release audited:** `1.5.13` (`v1.5.13`)
+**Repository release audited:** `1.5.14` (`v1.5.14`)
 **Owner:** Sythos
 
 This file is the hand-off document for the documentation work. It records what
