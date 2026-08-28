@@ -91,7 +91,7 @@ jobs:
 
           (
             cd release
-            sha256sum *.tgz sythos-barcode*.js > SHA256SUMS
+            sha256sum ./*.tgz ./sythos-barcode*.js > SHA256SUMS
             sha256sum -c SHA256SUMS
           )
 

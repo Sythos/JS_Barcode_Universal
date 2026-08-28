@@ -694,8 +694,9 @@ create a release.
 Pull-request dependency changes are checked by GitHub's Dependency Review action with read-only
 permissions. Separate tokenless workflows run OSV Scanner for known dependency vulnerabilities,
 OSSF Scorecard for repository supply-chain posture and `actionlint` for GitHub Actions syntax and
-expression mistakes. These checks use repository or GitHub-provided permissions only; they do not
-add runtime dependencies to the SDK.
+expression mistakes. The allow-list records Blue Oak 1.0.0 only for the development-only `minimatch`
+transitive dependency; it is not shipped in the SDK package. These checks use repository or
+GitHub-provided permissions only; they do not add runtime dependencies to the SDK.
 
 APIsec is intentionally not enabled: this repository is a client-side barcode SDK with no HTTP API
 or OpenAPI service to scan, and the hosted APIsec action requires an account and secrets. OWASP ZAP

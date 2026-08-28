@@ -175,7 +175,9 @@ It has no publish credentials and cannot publish a package or create a release.
 Dependency changes in pull requests are checked with GitHub Dependency Review. Separate tokenless
 checks run OSV Scanner for known dependency vulnerabilities, OSSF Scorecard for supply-chain
 posture and `actionlint` for workflow syntax and expression errors. These checks use only repository
-or GitHub-provided permissions and do not change the published package's dependency graph.
+or GitHub-provided permissions. Blue Oak 1.0.0 is allow-listed only for the development-only
+`minimatch` transitive dependency and is not included in the published SDK; the checks do not change
+the package's runtime dependency graph.
 
 APIsec is deliberately not part of the mandatory workflow: this project exposes no HTTP/OpenAPI
 service, while the hosted scanner requires an account and secrets. OWASP ZAP API scanning also

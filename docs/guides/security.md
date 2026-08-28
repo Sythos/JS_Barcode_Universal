@@ -163,7 +163,9 @@ dependencies.
 GitHub Dependency Review checks dependency changes in pull requests. Additional tokenless workflows
 run OSV Scanner for known dependency vulnerabilities, OSSF Scorecard for repository supply-chain
 posture and `actionlint` for GitHub Actions syntax and expression mistakes. These controls validate
-the repository and its development toolchain; they do not become part of the SDK consumed at runtime.
+the repository and its development toolchain; the Blue Oak 1.0.0 allow-list entry is limited to the
+development-only `minimatch` transitive dependency and is not shipped in the SDK. The controls do
+not become part of the SDK consumed at runtime.
 
 APIsec is intentionally not enabled because this repository is a barcode SDK, not an HTTP/OpenAPI
 service, and the hosted scanner requires an account and secrets. OWASP ZAP API scanning needs an

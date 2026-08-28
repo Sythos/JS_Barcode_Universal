@@ -21,7 +21,9 @@ jobs:
         with:
           fail-on-severity: high
           fail-on-scopes: runtime, development
-          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, CC0-1.0
+          # minimatch is a development-only transitive dependency and publishes
+          # under the permissive Blue Oak Model License 1.0.0.
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, CC0-1.0, BlueOak-1.0.0
           license-check: true
           vulnerability-check: true
           retry-on-snapshot-warnings: true
