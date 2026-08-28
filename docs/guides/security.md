@@ -154,6 +154,24 @@ Pull-request and release workflows install with:
 npm ci --ignore-scripts --no-audit --no-fund
 ~~~
 
+The pull-request quality workflow also runs on pushes to `main`. Its read-only Node jobs run ESLint,
+the TypeScript compiler and public-type checks, package-surface and zero-runtime-dependency checks,
+documentation consistency checks and the local workflow-attestation validator. No publish token or
+release credential is available to that gate, and the published package still has zero runtime
+dependencies.
+
+GitHub Dependency Review checks dependency changes in pull requests. Additional tokenless workflows
+run OSV Scanner for known dependency vulnerabilities, OSSF Scorecard for repository supply-chain
+posture and `actionlint` for GitHub Actions syntax and expression mistakes. These controls validate
+the repository and its development toolchain; they do not become part of the SDK consumed at runtime.
+
+APIsec is intentionally not enabled because this repository is a barcode SDK, not an HTTP/OpenAPI
+service, and the hosted scanner requires an account and secrets. OWASP ZAP API scanning needs an
+authorized live target or API specification, so it is outside this project's current boundary.
+`zizmor` is not a mandatory check while its action remains an early-development option, and Gitleaks
+is excluded because organization use can require an external licence. No scanner is allowed to
+silently introduce a registration, secret or runtime dependency requirement.
+
 Package and release publication jobs request the permissions needed for OIDC,
 artifact metadata and attestations. The documentation Pages deploy job also
 uses an OIDC token for Pages deployment, but it does not publish the SDK or

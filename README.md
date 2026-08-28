@@ -684,6 +684,27 @@ repository-level default setup.
 references weekly. Updates are repository-development controls only; the published SDK remains
 zero-dependency at runtime.
 
+The read-only quality gate in [`.github/workflows/pr-quality.yml`](.github/workflows/pr-quality.yml)
+runs for pull requests and pushes to `main`. Its Node jobs install the locked development toolchain
+with `npm ci --ignore-scripts --no-audit --no-fund`, then run ESLint, the TypeScript compiler and
+public-type checks, package-surface and zero-runtime-dependency checks, documentation checks and
+the workflow attestation validator. It has no publish credentials and cannot publish a package or
+create a release.
+
+Pull-request dependency changes are checked by GitHub's Dependency Review action with read-only
+permissions. Separate tokenless workflows run OSV Scanner for known dependency vulnerabilities,
+OSSF Scorecard for repository supply-chain posture and `actionlint` for GitHub Actions syntax and
+expression mistakes. These checks use repository or GitHub-provided permissions only; they do not
+add runtime dependencies to the SDK.
+
+APIsec is intentionally not enabled: this repository is a client-side barcode SDK with no HTTP API
+or OpenAPI service to scan, and the hosted APIsec action requires an account and secrets. OWASP ZAP
+API scanning is likewise outside the current boundary because it needs an authorized live target or
+API specification. `zizmor` is kept out of the mandatory gate while its action remains an early
+development option, and Gitleaks is not made a required check because organization use can require
+an external licence. Those tools may be reconsidered only if the repository boundary changes and
+their no-secret, no-registration requirements can be met.
+
 These security workflows report findings and propose maintenance updates. They do not replace
 review of barcode conformance, licensing, patent status or release attestations.
 

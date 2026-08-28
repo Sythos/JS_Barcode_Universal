@@ -201,11 +201,14 @@
   "homepage": "https://sythos.github.io/JS_Barcode_Universal/",
   "scripts": {
     "build:ts": "node tools/compile-typescript.mjs",
+    "lint": "eslint --max-warnings=0 src/index.js src/js tools .github/ci",
     "test:docs": "node --test tools/exact-url.test.mjs",
     "types": "tsc -p tsconfig.json",
     "types:api": "node tools/check-public-types.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.9.1",
     "typescript": "7.0.2"
   }
 }

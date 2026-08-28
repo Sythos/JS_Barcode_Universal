@@ -166,6 +166,24 @@ to review the development TypeScript toolchain and GitHub Actions references wee
 controls are development and repository maintenance features; they do not add runtime
 dependencies to the SDK.
 
+The read-only quality gate in `.github/workflows/pr-quality.yml` runs on pull requests and pushes
+to `main`. It installs the locked development toolchain with `npm ci --ignore-scripts --no-audit
+--no-fund`, runs ESLint and the TypeScript/compiler and public-type checks, and validates the
+package surface, zero-runtime-dependency promise, documentation and workflow attestation rules.
+It has no publish credentials and cannot publish a package or create a release.
+
+Dependency changes in pull requests are checked with GitHub Dependency Review. Separate tokenless
+checks run OSV Scanner for known dependency vulnerabilities, OSSF Scorecard for supply-chain
+posture and `actionlint` for workflow syntax and expression errors. These checks use only repository
+or GitHub-provided permissions and do not change the published package's dependency graph.
+
+APIsec is deliberately not part of the mandatory workflow: this project exposes no HTTP/OpenAPI
+service, while the hosted scanner requires an account and secrets. OWASP ZAP API scanning also
+requires an authorized live target or API specification, so it is outside the present SDK boundary.
+`zizmor` is not enabled as a required gate while its action remains an early-development option, and
+Gitleaks is excluded because organization use can require an external licence. Reconsidering any of
+these tools requires a changed project boundary and a no-secret, no-registration path.
+
 The image I/O boundary treats camera and file rasters as untrusted input. It validates finite
 positive dimensions, bounds allocations to 16,777,216 pixels, accepts only byte-valued channels,
 and snapshots greyscale buffers before decoding. Malformed or oversized rasters are rejected
