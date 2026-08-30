@@ -15649,6 +15649,1733 @@ function encodeDataBar14(value, options = {}) {
 __exports.encodeDataBar14 = encodeDataBar14;
 };
 
+__modules["js/core/detection-contract.js"] = function (__require, __exports) {
+function hasOwn(value, property) {
+    return Object.prototype.hasOwnProperty.call(value, property);
+}
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function isFiniteNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+function cross(a, b, c) {
+    return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+}
+/**
+ * Normalize a detector rotation to one of the supported 45-degree turns.
+ *
+ * This function is intentionally strict: arbitrary angles are not silently
+ * snapped to a nearby orientation. The accepted domain is the integer range
+ * `0..359`, and only exact multiples of 45 degrees are canonical.
+ *
+ * @throws {TypeError} If `rotation` is not a number.
+ * @throws {RangeError} If `rotation` is outside the canonical domain.
+ */
+function normalizeRotation(rotation) {
+    if (typeof rotation !== 'number') {
+        throw new TypeError('Rotation must be a number');
+    }
+    if (!Number.isFinite(rotation) || !Number.isInteger(rotation)
+        || rotation < 0 || rotation >= 360 || rotation % 45 !== 0) {
+        throw new RangeError('Rotation must be an integer multiple of 45 degrees in 0..359');
+    }
+    return rotation;
+}
+/**
+ * Return whether four finite points form an ordered, non-degenerate quad.
+ *
+ * The required order is top-left, top-right, bottom-right, bottom-left. Both
+ * clockwise and counter-clockwise winding are accepted; repeated points,
+ * zero-length edges, collinear turns, concave quads, and self-intersections
+ * are rejected.
+ */
+function isValidCorners(corners) {
+    if (!Array.isArray(corners) || corners.length !== 4)
+        return false;
+    const points = [];
+    for (const value of corners) {
+        if (!isRecord(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y)) {
+            return false;
+        }
+        points.push({ x: value.x, y: value.y });
+    }
+    for (let first = 0; first < points.length; first++) {
+        for (let second = first + 1; second < points.length; second++) {
+            if (points[first].x === points[second].x && points[first].y === points[second].y) {
+                return false;
+            }
+        }
+    }
+    let winding = 0;
+    for (let index = 0; index < points.length; index++) {
+        const turn = cross(points[index], points[(index + 1) % points.length], points[(index + 2) % points.length]);
+        if (!Number.isFinite(turn) || turn === 0)
+            return false;
+        const sign = Math.sign(turn);
+        if (winding === 0)
+            winding = sign;
+        else if (sign !== winding)
+            return false;
+    }
+    return true;
+}
+function isValidQuality(value) {
+    if (!isRecord(value))
+        return false;
+    if (hasOwn(value, 'quietZone') && typeof value.quietZone !== 'boolean')
+        return false;
+    if (hasOwn(value, 'checksum')
+        && value.checksum !== null && typeof value.checksum !== 'boolean')
+        return false;
+    if (hasOwn(value, 'rows') && value.rows !== null
+        && (!isFiniteNumber(value.rows) || !Number.isInteger(value.rows) || value.rows < 0)) {
+        return false;
+    }
+    if (hasOwn(value, 'consistency') && value.consistency !== null
+        && (!isFiniteNumber(value.consistency) || value.consistency < 0 || value.consistency > 1)) {
+        return false;
+    }
+    return true;
+}
+function isValidConfidence(value) {
+    return value === undefined
+        || (isFiniteNumber(value) && value >= 0 && value <= 1);
+}
+function isValidScore(value) {
+    return value === undefined || isFiniteNumber(value);
+}
+/**
+ * Create a validated detector candidate.
+ *
+ * All optional decoded-result and ranking metadata must be supplied in the
+ * options object: `createDetectionCandidate(geometry, { result, quality, score })`.
+ * Keeping the decoded result under the explicit `result` key avoids confusing
+ * a result object with candidate metadata. The returned value owns a fresh
+ * corner array and canonical rotation, and the input objects are never
+ * mutated.
+ *
+ * @throws {TypeError} If the geometry, matrix, or options have an invalid type.
+ * @throws {RangeError} If a numeric geometry or metadata value is invalid.
+ */
+function createDetectionCandidate(geometry, options) {
+    if (!isRecord(geometry)) {
+        throw new TypeError('Detection geometry must be an object');
+    }
+    const geometryValue = geometry;
+    const corners = geometryValue.corners;
+    if (!isValidCorners(corners)) {
+        throw new RangeError('Detection geometry must contain four non-degenerate corners');
+    }
+    const moduleSize = geometryValue.moduleSize;
+    if (!isFiniteNumber(moduleSize) || moduleSize <= 0) {
+        throw new RangeError('Detection geometry moduleSize must be a positive finite number');
+    }
+    const rotation = normalizeRotation(geometryValue.rotation);
+    if (!hasOwn(geometryValue, 'matrix') || geometryValue.matrix === null
+        || geometryValue.matrix === undefined) {
+        throw new TypeError('Detection geometry must contain a matrix');
+    }
+    if (!isValidConfidence(geometryValue.confidence)) {
+        throw new RangeError('Detection geometry confidence must be a finite number in 0..1');
+    }
+    const candidateOptions = options === undefined ? {} : options;
+    if (!isRecord(candidateOptions)) {
+        throw new TypeError('Detection candidate options must be an object');
+    }
+    const validatedOptions = candidateOptions;
+    const quality = validatedOptions.quality;
+    if (quality !== undefined && !isValidQuality(quality)) {
+        throw new TypeError('Detection candidate quality must be an object');
+    }
+    if (!isValidScore(validatedOptions.score)) {
+        throw new RangeError('Detection candidate score must be a finite number');
+    }
+    const candidate = {
+        ...geometry,
+        corners: corners.map((point) => ({ x: point.x, y: point.y })),
+        moduleSize,
+        rotation,
+    };
+    if (hasOwn(validatedOptions, 'result') && validatedOptions.result !== undefined)
+        candidate.result = validatedOptions.result;
+    if (hasOwn(validatedOptions, 'quality') && quality !== undefined)
+        candidate.quality = quality;
+    if (hasOwn(validatedOptions, 'score') && validatedOptions.score !== undefined)
+        candidate.score = validatedOptions.score;
+    return candidate;
+}
+
+__exports.normalizeRotation = normalizeRotation;
+__exports.isValidCorners = isValidCorners;
+__exports.createDetectionCandidate = createDetectionCandidate;
+};
+
+__modules["js/databar/limited.js"] = function (__require, __exports) {
+/**
+ * GS1 DataBar Limited writer, clean-raster reader and detector.
+ *
+ * The implementation is deliberately limited to the standalone GTIN element
+ * string (01). Composite linkage is represented by the standard linkage flag,
+ * but the companion 2D component is outside this module.
+ *
+ * @module databar/limited
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { ChecksumError, EncodeError, FormatError } = __require("js/core/errors.js");
+const { createDetectionCandidate } = __require("js/core/detection-contract.js");
+const { decodeDataBarLimitedGTIN, encodeDataBarLimitedGTIN } = __require("js/databar/codec.js");
+const { dataBarWidths } = __require("js/databar/patterns.js");
+const SYMBOL_MODULES = 79;
+const DATA_CHARACTER_MODULES = 26;
+const CHECK_CHARACTER_MODULES = 18;
+const DATA_CHARACTER_ELEMENTS = 7;
+const CHECK_CHARACTER_ELEMENTS = 6;
+const CHECK_CHARACTER_COMBINATIONS = 21;
+const MIN_HEIGHT_MODULES = 10;
+const MAX_DIMENSION = 32768;
+const MAX_MODULES = 16777216;
+const GROUPS = Object.freeze([
+    Object.freeze({
+        first: 0, last: 183063, gsum: 0,
+        oddModules: 17, evenModules: 9,
+        oddWidest: 6, evenWidest: 3,
+        oddTotal: 6538, evenTotal: 28,
+    }),
+    Object.freeze({
+        first: 183064, last: 820063, gsum: 183064,
+        oddModules: 13, evenModules: 13,
+        oddWidest: 5, evenWidest: 4,
+        oddTotal: 875, evenTotal: 728,
+    }),
+    Object.freeze({
+        first: 820064, last: 1000775, gsum: 820064,
+        oddModules: 9, evenModules: 17,
+        oddWidest: 3, evenWidest: 6,
+        oddTotal: 28, evenTotal: 6454,
+    }),
+    Object.freeze({
+        first: 1000776, last: 1491020, gsum: 1000776,
+        oddModules: 15, evenModules: 11,
+        oddWidest: 5, evenWidest: 4,
+        oddTotal: 2415, evenTotal: 203,
+    }),
+    Object.freeze({
+        first: 1491021, last: 1979844, gsum: 1491021,
+        oddModules: 11, evenModules: 15,
+        oddWidest: 4, evenWidest: 5,
+        oddTotal: 203, evenTotal: 2408,
+    }),
+    Object.freeze({
+        first: 1979845, last: 1996938, gsum: 1979845,
+        oddModules: 19, evenModules: 7,
+        oddWidest: 8, evenWidest: 1,
+        oddTotal: 17094, evenTotal: 1,
+    }),
+    Object.freeze({
+        first: 1996939, last: 2013570, gsum: 1996939,
+        oddModules: 7, evenModules: 19,
+        oddWidest: 1, evenWidest: 8,
+        oddTotal: 1, evenTotal: 16632,
+    }),
+]);
+const CHECKSUM_WEIGHTS = Object.freeze([
+    1, 3, 9, 27, 81, 65, 17, 51, 64, 14, 42, 37, 22, 66,
+    20, 60, 2, 6, 18, 54, 73, 41, 34, 13, 39, 28, 84, 74,
+]);
+/* Annex C sequence values for check values 0 through 88. */
+const CHECKSUM_SEQUENCES = Object.freeze([
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+    40, 41, 42, 43, 45, 52, 57, 63, 64, 65,
+    66, 73, 74, 75, 76, 77, 78, 79, 82, 126,
+    127, 128, 129, 130, 132, 141, 142, 143, 144, 145,
+    146, 210, 211, 212, 213, 214, 215, 216, 217, 220,
+    316, 317, 318, 319, 320, 322, 323, 326, 337,
+]);
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function positiveInteger(value, label) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+        throw new EncodeError(`GS1 DataBar Limited ${label} must be a positive integer`);
+    }
+    return value;
+}
+function checkedGeometry(options) {
+    if (options === undefined)
+        options = {};
+    if (!isRecord(options))
+        throw new TypeError('GS1 DataBar Limited options must be an object');
+    if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+        throw new TypeError('GS1 DataBar linkage must be a boolean');
+    }
+    if (options.moduleScale !== undefined && options.scale !== undefined
+        && options.moduleScale !== options.scale) {
+        throw new EncodeError('GS1 DataBar Limited moduleScale and scale disagree');
+    }
+    const scale = positiveInteger(options.moduleScale ?? options.scale ?? 1, 'moduleScale');
+    const height = positiveInteger(options.height ?? MIN_HEIGHT_MODULES * scale, 'height');
+    if (height < MIN_HEIGHT_MODULES * scale) {
+        throw new EncodeError('GS1 DataBar Limited height is below the normative 10-module minimum');
+    }
+    const width = SYMBOL_MODULES * scale;
+    if (width > MAX_DIMENSION || height > MAX_DIMENSION || width * height > MAX_MODULES) {
+        throw new EncodeError('GS1 DataBar Limited dimensions exceed the safe matrix limit');
+    }
+    return Object.freeze({ scale, height, width, linkage: options.linkage === true });
+}
+function combinations(n, r) {
+    if (n < r || r < 0)
+        return 0;
+    if (r === 0 || n === r)
+        return 1;
+    const k = Math.min(r, n - r);
+    let result = 1;
+    for (let i = 1; i <= k; i++)
+        result = result * (n - k + i) / i;
+    return result;
+}
+function candidateCount(remaining, bar, width, elements, maximumWidth, noNarrow, narrowMask) {
+    let count = combinations(remaining - width - 1, elements - bar - 2);
+    if (noNarrow && narrowMask === 0
+        && remaining - width - (elements - bar - 1) >= elements - bar - 1) {
+        count -= combinations(remaining - width - (elements - bar), elements - bar - 2);
+    }
+    if (elements - bar - 1 > 1) {
+        let tooWide = 0;
+        for (let last = remaining - width - (elements - bar - 2); last > maximumWidth; last--) {
+            tooWide += combinations(remaining - width - last - 1, elements - bar - 3);
+        }
+        count -= tooWide * (elements - 1 - bar);
+    }
+    else if (remaining - width > maximumWidth) {
+        count--;
+    }
+    return count;
+}
+function unrankWidths(rank, modules, elements, maximumWidth, noNarrow) {
+    return dataBarWidths(rank, modules, elements, maximumWidth, noNarrow);
+}
+function rankWidths(widths, modules, elements, maximumWidth, noNarrow) {
+    if (!Array.isArray(widths) || widths.length !== elements
+        || widths.some((width) => !Number.isSafeInteger(width) || width < 1 || width > maximumWidth)
+        || widths.reduce((sum, width) => sum + width, 0) !== modules) {
+        throw new FormatError('GS1 DataBar Limited subset widths are invalid');
+    }
+    let rank = 0;
+    let remaining = modules;
+    let narrowMask = 0;
+    for (let bar = 0; bar < elements - 1; bar++) {
+        const selected = widths[bar];
+        for (let width = 1; width < selected; width++) {
+            if (width === 1)
+                narrowMask |= 1 << bar;
+            rank += candidateCount(remaining, bar, width, elements, maximumWidth, noNarrow, narrowMask);
+            narrowMask &= ~(1 << bar);
+        }
+        if (selected === 1)
+            narrowMask |= 1 << bar;
+        else
+            narrowMask &= ~(1 << bar);
+        remaining -= selected;
+    }
+    if (widths[elements - 1] !== remaining) {
+        throw new FormatError('GS1 DataBar Limited subset rank is not canonical');
+    }
+    const canonical = unrankWidths(rank, modules, elements, maximumWidth, noNarrow);
+    if (canonical.some((width, index) => width !== widths[index])) {
+        throw new FormatError('GS1 DataBar Limited subset width sequence is not canonical');
+    }
+    return rank;
+}
+function groupForValue(value) {
+    const group = GROUPS.find((entry) => value >= entry.first && value <= entry.last);
+    if (!group)
+        throw new RangeError('GS1 DataBar Limited character value is out of range');
+    return group;
+}
+function dataCharacterWidths(value) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS.at(-1).last) {
+        throw new RangeError('GS1 DataBar Limited character value is out of range');
+    }
+    const group = groupForValue(value);
+    const offset = value - group.gsum;
+    const oddRank = Math.floor(offset / group.evenTotal);
+    const evenRank = offset % group.evenTotal;
+    const odd = unrankWidths(oddRank, group.oddModules, DATA_CHARACTER_ELEMENTS, group.oddWidest, false);
+    const even = unrankWidths(evenRank, group.evenModules, DATA_CHARACTER_ELEMENTS, group.evenWidest, true);
+    const widths = [];
+    for (let index = 0; index < DATA_CHARACTER_ELEMENTS; index++)
+        widths.push(odd[index], even[index]);
+    if (widths.reduce((sum, width) => sum + width, 0) !== DATA_CHARACTER_MODULES) {
+        throw new EncodeError('GS1 DataBar Limited data character width total is invalid');
+    }
+    return widths;
+}
+function dataCharacterValue(widths) {
+    if (!Array.isArray(widths) || widths.length !== DATA_CHARACTER_ELEMENTS * 2) {
+        throw new FormatError('GS1 DataBar Limited data character must contain 14 elements');
+    }
+    const odd = widths.filter((_, index) => (index & 1) === 0);
+    const even = widths.filter((_, index) => (index & 1) === 1);
+    const oddModules = odd.reduce((sum, width) => sum + width, 0);
+    const group = GROUPS.find((entry) => entry.oddModules === oddModules
+        && entry.evenModules === even.reduce((sum, width) => sum + width, 0));
+    if (!group)
+        throw new FormatError('GS1 DataBar Limited data character module totals are invalid');
+    const oddRank = rankWidths(odd, group.oddModules, DATA_CHARACTER_ELEMENTS, group.oddWidest, false);
+    const evenRank = rankWidths(even, group.evenModules, DATA_CHARACTER_ELEMENTS, group.evenWidest, true);
+    const value = group.gsum + oddRank * group.evenTotal + evenRank;
+    if (value < group.first || value > group.last) {
+        throw new FormatError('GS1 DataBar Limited data character value is out of range');
+    }
+    return value;
+}
+function checksumForWidths(left, right) {
+    let checksum = 0;
+    for (let index = 0; index < DATA_CHARACTER_ELEMENTS * 2; index++) {
+        checksum += CHECKSUM_WEIGHTS[index] * left[index];
+        checksum += CHECKSUM_WEIGHTS[index + DATA_CHARACTER_ELEMENTS * 2] * right[index];
+    }
+    return checksum % 89;
+}
+function checksumWidths(checksum) {
+    if (!Number.isInteger(checksum) || checksum < 0 || checksum >= CHECKSUM_SEQUENCES.length) {
+        throw new RangeError('GS1 DataBar Limited checksum is out of range');
+    }
+    const sequence = CHECKSUM_SEQUENCES[checksum];
+    const spaces = unrankWidths(Math.floor(sequence / CHECK_CHARACTER_COMBINATIONS), 8, CHECK_CHARACTER_ELEMENTS, 3, true);
+    const bars = unrankWidths(sequence % CHECK_CHARACTER_COMBINATIONS, 8, CHECK_CHARACTER_ELEMENTS, 3, true);
+    return Object.freeze([
+        ...spaces.flatMap((width, index) => [width, bars[index]]),
+        1, 1,
+    ]);
+}
+const CHECKSUM_PATTERNS = Object.freeze(Array.from({ length: CHECKSUM_SEQUENCES.length }, (_, checksum) => checksumWidths(checksum)));
+const CHECKSUM_PATTERN_VALUES = new Map(CHECKSUM_PATTERNS.map((widths, checksum) => [widths.join(','), checksum]));
+function paintRuns(widths, height, scale) {
+    const matrix = new BitMatrix(SYMBOL_MODULES * scale, height);
+    let cursor = 0;
+    let dark = false;
+    for (const width of widths) {
+        if (dark)
+            matrix.setRegion(cursor * scale, 0, width * scale, height);
+        cursor += width;
+        dark = !dark;
+    }
+    if (cursor !== SYMBOL_MODULES)
+        throw new EncodeError('GS1 DataBar Limited symbol width is invalid');
+    return matrix;
+}
+/**
+ * Encode a checked GTIN as GS1 DataBar Limited.
+ *
+ * The accepted GTIN forms are the same as the shared DataBar codec: GTIN-8,
+ * GTIN-12, GTIN-13 and GTIN-14, normalized to fourteen digits. The indicator
+ * digit must be zero or one. The returned matrix is 79 modules wide and at
+ * least 10 modules high.
+ */
+function encodeDataBarLimited(value, options = {}) {
+    const geometry = checkedGeometry(options);
+    const compacted = encodeDataBarLimitedGTIN(value, { linkage: geometry.linkage });
+    const left = dataCharacterWidths(compacted.left);
+    const right = dataCharacterWidths(compacted.right);
+    const checksum = checksumForWidths(left, right);
+    const widths = [1, 1, ...left, ...checksumWidths(checksum), ...right, 1, 1, 5];
+    const matrix = paintRuns(widths, geometry.height, geometry.scale);
+    matrix.databar = Object.freeze({
+        variant: 'limited',
+        gtin: compacted.gtin,
+        linkage: compacted.linkage,
+        checksum,
+        modules: SYMBOL_MODULES,
+        moduleScale: geometry.scale,
+        height: geometry.height,
+    });
+    return matrix;
+}
+function requireMatrix(matrix) {
+    if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)
+        || matrix.width < 1 || matrix.height < 1 || typeof matrix.get !== 'function') {
+        throw new TypeError('GS1 DataBar Limited decoder expects a BitMatrix-like value');
+    }
+}
+function sampledRuns(matrix) {
+    requireMatrix(matrix);
+    if (matrix.width % SYMBOL_MODULES !== 0) {
+        throw new FormatError('GS1 DataBar Limited matrix width must be a multiple of 79 modules');
+    }
+    const scale = matrix.width / SYMBOL_MODULES;
+    if (!Number.isSafeInteger(scale) || scale < 1 || matrix.height < MIN_HEIGHT_MODULES * scale) {
+        throw new FormatError('GS1 DataBar Limited matrix scale or height is invalid');
+    }
+    const y = Math.floor(matrix.height / 2);
+    const bits = [];
+    for (let x = 0; x < SYMBOL_MODULES; x++) {
+        const value = Boolean(matrix.get(x * scale + Math.floor(scale / 2), y));
+        for (let dx = 0; dx < scale; dx++) {
+            if (Boolean(matrix.get(x * scale + dx, y)) !== value) {
+                throw new FormatError('GS1 DataBar Limited horizontal modules are not integer-scaled');
+            }
+        }
+        bits.push(value);
+    }
+    // Limited is a single-row linear symbol: a clean raster must repeat the
+    // same module pattern through its complete height. Sampling only one row
+    // would otherwise accept a partially erased bar above or below that row.
+    for (let row = 0; row < matrix.height; row++) {
+        for (let x = 0; x < SYMBOL_MODULES; x++) {
+            const expected = bits[x];
+            for (let dx = 0; dx < scale; dx++) {
+                if (Boolean(matrix.get(x * scale + dx, row)) !== expected) {
+                    throw new FormatError('GS1 DataBar Limited rows are inconsistent');
+                }
+            }
+        }
+    }
+    const runs = [];
+    let dark = bits[0];
+    let width = 0;
+    for (const bit of bits) {
+        if (bit === dark)
+            width++;
+        else {
+            runs.push({ dark, width });
+            dark = bit;
+            width = 1;
+        }
+    }
+    runs.push({ dark, width });
+    if (runs.length !== 47) {
+        throw new FormatError('GS1 DataBar Limited element count is invalid');
+    }
+    const expected = [1, 1, 1, 1, 5];
+    if (runs[0].dark || runs[0].width !== expected[0]
+        || !runs[1].dark || runs[1].width !== expected[1]
+        || runs[44].dark || runs[44].width !== expected[2]
+        || !runs[45].dark || runs[45].width !== expected[3]
+        || runs[46].dark || runs[46].width !== expected[4]) {
+        throw new FormatError('GS1 DataBar Limited guard pattern is invalid');
+    }
+    return { runs, scale };
+}
+/** Decode a clean or integer-scaled GS1 DataBar Limited matrix. */
+function decodeDataBarLimited(matrix) {
+    const { runs, scale } = sampledRuns(matrix);
+    const leftWidths = runs.slice(2, 16).map(({ width }) => width);
+    const checkWidths = runs.slice(16, 30).map(({ width }) => width);
+    const rightWidths = runs.slice(30, 44).map(({ width }) => width);
+    const checksum = CHECKSUM_PATTERN_VALUES.get(checkWidths.join(','));
+    if (checksum === undefined) {
+        throw new FormatError('GS1 DataBar Limited check character is invalid');
+    }
+    const expectedChecksum = checksumForWidths(leftWidths, rightWidths);
+    if (checksum !== expectedChecksum) {
+        throw new ChecksumError('GS1 DataBar Limited checksum mismatch');
+    }
+    const left = dataCharacterValue(leftWidths);
+    const right = dataCharacterValue(rightWidths);
+    const decoded = decodeDataBarLimitedGTIN({ left, right });
+    const element = Object.freeze({ ai: '01', value: decoded.gtin, fixed: true });
+    return Object.freeze({
+        format: 'databar-limited',
+        variant: 'limited',
+        text: decoded.gtin,
+        gtin: decoded.gtin,
+        gs1: true,
+        linkage: decoded.linkage,
+        checksum,
+        checksumValid: true,
+        moduleScale: scale,
+        height: matrix.height,
+        symbologyIdentifier: ']e0',
+        elements: Object.freeze([element]),
+    });
+}
+function crop(source, box) {
+    const output = new BitMatrix(box.width, box.height);
+    for (let y = 0; y < box.height; y++) {
+        for (let x = 0; x < box.width; x++) {
+            if (source.get(box.x + x, box.y + y))
+                output.set(x, y);
+        }
+    }
+    return output;
+}
+function rotateClockwise(source) {
+    const output = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++) {
+        for (let x = 0; x < source.width; x++) {
+            if (source.get(x, y))
+                output.set(source.height - 1 - y, x);
+        }
+    }
+    return output;
+}
+function cornersFor(box) {
+    return [
+        { x: box.x, y: box.y },
+        { x: box.x + box.width, y: box.y },
+        { x: box.x + box.width, y: box.y + box.height },
+        { x: box.x, y: box.y + box.height },
+    ];
+}
+function canonicalCorners(points) {
+    const byRow = [...points].sort((left, right) => left.y - right.y || left.x - right.x);
+    const [topLeft, topRight] = byRow.slice(0, 2).sort((left, right) => left.x - right.x);
+    const [bottomLeft, bottomRight] = byRow.slice(2).sort((left, right) => left.x - right.x);
+    return [topLeft, topRight, bottomRight, bottomLeft];
+}
+function mapPoint(point, previous) {
+    return { x: point.y, y: previous.height - point.x };
+}
+function validImage(image) {
+    return isRecord(image) && typeof image.get === 'function'
+        && Number.isSafeInteger(image.width) && Number.isSafeInteger(image.height)
+        && image.width > 0 && image.height > 0
+        && image.width <= MAX_DIMENSION && image.height <= MAX_DIMENSION
+        && image.width * image.height <= MAX_MODULES;
+}
+/**
+ * Detect and decode a complete, dark-on-light Limited symbol in a binary
+ * image. The clean detector accepts integer module scaling and quarter turns;
+ * perspective, grayscale thresholding and partial symbols are intentionally
+ * rejected so a detector never returns a plausible-looking partial value.
+ */
+function detectDataBarLimited(binaryImage, options = {}) {
+    if (!validImage(binaryImage) || !isRecord(options))
+        return null;
+    let oriented = binaryImage;
+    let toOriginal = (point) => ({ x: point.x, y: point.y });
+    for (let rotation = 0; rotation < 4; rotation++) {
+        const bounds = oriented.getBounds?.();
+        if (bounds && bounds.width > 0 && bounds.height > 0) {
+            const scale = bounds.width / 73;
+            const x = bounds.x - scale;
+            if (Number.isSafeInteger(scale) && scale >= 1 && x >= 0
+                && x + SYMBOL_MODULES * scale <= oriented.width
+                && bounds.height >= MIN_HEIGHT_MODULES * scale) {
+                const candidateBox = { x, y: bounds.y, width: SYMBOL_MODULES * scale, height: bounds.height };
+                try {
+                    const matrix = crop(oriented, candidateBox);
+                    const result = decodeDataBarLimited(matrix);
+                    const geometry = createDetectionCandidate({
+                        corners: canonicalCorners(cornersFor(candidateBox).map((point) => toOriginal(point))),
+                        moduleSize: scale,
+                        rotation: rotation * 90,
+                        matrix,
+                        confidence: 1,
+                    }, {
+                        result,
+                        quality: {
+                            quietZone: bounds.x > 0 && bounds.y > 0
+                                && bounds.x + bounds.width < oriented.width
+                                && bounds.y + bounds.height < oriented.height,
+                            checksum: true,
+                            rows: 1,
+                            consistency: 1,
+                        },
+                        score: 1,
+                    });
+                    return Object.freeze({ ...result, ...geometry });
+                }
+                catch {
+                    // The complete dark bounds may belong to another linear symbol.
+                }
+            }
+        }
+        const previous = oriented;
+        const previousToOriginal = toOriginal;
+        oriented = rotateClockwise(previous);
+        toOriginal = (point) => previousToOriginal(mapPoint(point, previous));
+    }
+    return null;
+}
+/** Detect-and-decode alias matching the other DataBar modules. */
+const detectAndDecodeDataBarLimited = detectDataBarLimited;
+/**
+ * Decode a complete, unscaled binary scanline. This helper is intentionally
+ * strict: callers that have only one sampled row must provide a full 79-module
+ * symbol and the reader expands it to the normative minimum height.
+ */
+function decodeDataBarLimitedScanline(row) {
+    if (!row || (typeof row.length !== 'number') || row.length !== SYMBOL_MODULES)
+        return null;
+    const matrix = new BitMatrix(SYMBOL_MODULES, MIN_HEIGHT_MODULES);
+    for (let x = 0; x < SYMBOL_MODULES; x++) {
+        if (row[x])
+            matrix.setRegion(x, 0, 1, MIN_HEIGHT_MODULES);
+    }
+    try {
+        return decodeDataBarLimited(matrix);
+    }
+    catch {
+        return null;
+    }
+}
+
+__exports.encodeDataBarLimited = encodeDataBarLimited;
+__exports.decodeDataBarLimited = decodeDataBarLimited;
+__exports.detectDataBarLimited = detectDataBarLimited;
+__exports.detectAndDecodeDataBarLimited = detectAndDecodeDataBarLimited;
+__exports.decodeDataBarLimitedScanline = decodeDataBarLimitedScanline;
+};
+
+__modules["js/databar/stacked.js"] = function (__require, __exports) {
+/** GS1 DataBar Stacked encoder, decoder and clean-raster detector. @module databar/stacked */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { ChecksumError, EncodeError, FormatError } = __require("js/core/errors.js");
+const { decodeDataBar14GTIN, encodeDataBar14GTIN, normalizeGTIN } = __require("js/databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths, dataBar14ValueForWidths } = __require("js/databar/patterns.js");
+const STACKED_MODULES = 50;
+const TOP_ROW_MINIMUM = 5;
+const BOTTOM_ROW_MINIMUM = 7;
+const SEPARATOR_MINIMUM = 1;
+const HALF_ELEMENT_COUNT = 23;
+const MAX_SYMBOL_DIMENSION = 32768;
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function positiveInteger(value, label) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+        throw new EncodeError(`GS1 DataBar Stacked ${label} must be a positive integer`);
+    }
+    return value;
+}
+function resolveGeometry(options) {
+    if (options === undefined)
+        options = {};
+    if (!isRecord(options))
+        throw new TypeError('GS1 DataBar Stacked options must be an object');
+    if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
+        throw new TypeError('GS1 DataBar linkage must be a boolean');
+    }
+    const hasHeight = options.height !== undefined;
+    const hasRows = options.topHeight !== undefined
+        || options.bottomHeight !== undefined
+        || options.separatorHeight !== undefined;
+    const hasScale = options.moduleScale !== undefined || options.scale !== undefined;
+    if (hasHeight && (hasRows || hasScale)) {
+        throw new EncodeError('GS1 DataBar Stacked height cannot be combined with row heights or moduleScale');
+    }
+    if (hasHeight) {
+        const height = positiveInteger(options.height, 'height');
+        if (height % 13 !== 0) {
+            throw new EncodeError('GS1 DataBar Stacked height must be a multiple of the 13-module profile');
+        }
+        const scale = height / 13;
+        return boundedGeometry(Object.freeze({
+            moduleScale: scale,
+            topHeight: TOP_ROW_MINIMUM * scale,
+            separatorHeight: SEPARATOR_MINIMUM * scale,
+            bottomHeight: BOTTOM_ROW_MINIMUM * scale,
+        }));
+    }
+    if (options.moduleScale !== undefined && options.scale !== undefined
+        && options.moduleScale !== options.scale) {
+        throw new EncodeError('GS1 DataBar Stacked moduleScale and scale disagree');
+    }
+    const scale = positiveInteger(options.moduleScale ?? options.scale ?? 1, 'moduleScale');
+    const requestedTopHeight = positiveInteger(options.topHeight ?? TOP_ROW_MINIMUM, 'topHeight');
+    const requestedSeparatorHeight = positiveInteger(options.separatorHeight ?? SEPARATOR_MINIMUM, 'separatorHeight');
+    const requestedBottomHeight = positiveInteger(options.bottomHeight ?? BOTTOM_ROW_MINIMUM, 'bottomHeight');
+    if (hasScale && hasRows) {
+        throw new EncodeError('GS1 DataBar Stacked explicit row heights cannot be combined with moduleScale');
+    }
+    const topHeight = hasRows ? requestedTopHeight : requestedTopHeight * scale;
+    const separatorHeight = hasRows ? requestedSeparatorHeight : requestedSeparatorHeight * scale;
+    const bottomHeight = hasRows ? requestedBottomHeight : requestedBottomHeight * scale;
+    if (topHeight < TOP_ROW_MINIMUM * scale
+        || separatorHeight < SEPARATOR_MINIMUM * scale
+        || bottomHeight < BOTTOM_ROW_MINIMUM * scale) {
+        throw new EncodeError('GS1 DataBar Stacked row heights are below their normative minima');
+    }
+    return boundedGeometry(Object.freeze({ moduleScale: scale, topHeight, separatorHeight, bottomHeight }));
+}
+function boundedGeometry(geometry) {
+    const width = STACKED_MODULES * geometry.moduleScale;
+    const height = geometry.topHeight + geometry.separatorHeight + geometry.bottomHeight;
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+        || width > MAX_SYMBOL_DIMENSION || height > MAX_SYMBOL_DIMENSION) {
+        throw new EncodeError('GS1 DataBar Stacked dimensions exceed the safe matrix limit');
+    }
+    return geometry;
+}
+function strictGTIN14(value) {
+    const text = String(value);
+    if (!/^\d+$/.test(text))
+        throw new TypeError('GTIN must contain only decimal digits');
+    if (text.length !== 14) {
+        throw new RangeError('GS1 DataBar Stacked requires a 14-digit GTIN including its check digit');
+    }
+    return normalizeGTIN(text);
+}
+function finderIndexes(characters) {
+    const widths = characters.map((value, index) => dataBar14CharacterWidths(value, index === 0 || index === 3 ? 'outside' : 'inside'));
+    let checksum = 0;
+    const weightOffsets = [0, 8, 24, 16];
+    for (let character = 0; character < 4; character++) {
+        for (let element = 0; element < 8; element++) {
+            checksum += widths[character][element]
+                * DATABAR14_CHECKSUM_WEIGHTS[weightOffsets[character] + element];
+        }
+    }
+    checksum %= 79;
+    if (checksum >= 8)
+        checksum++;
+    if (checksum >= 72)
+        checksum++;
+    return { widths, checksum, left: Math.floor(checksum / 9), right: checksum % 9 };
+}
+function linearWidths(compacted) {
+    const check = finderIndexes(compacted.physicalCharacters);
+    const widths = [1, 1];
+    widths.push(...check.widths[0]);
+    widths.push(...DATABAR14_FINDERS[check.left]);
+    widths.push(...check.widths[1].slice().reverse());
+    widths.push(...check.widths[2]);
+    widths.push(...DATABAR14_FINDERS[check.right].slice().reverse());
+    widths.push(...check.widths[3].slice().reverse());
+    widths.push(1, 1);
+    if (widths.length !== 46 || widths.reduce((sum, width) => sum + width, 0) !== 96) {
+        throw new EncodeError('GS1 DataBar Stacked internal element geometry is invalid');
+    }
+    return { widths, checksum: check.checksum, left: check.left, right: check.right };
+}
+function writeRuns(row, start, dark, widths) {
+    let cursor = start;
+    let colour = dark;
+    for (const width of widths) {
+        if (!Number.isInteger(width) || width < 1 || cursor + width > row.length) {
+            throw new EncodeError('GS1 DataBar Stacked row geometry exceeds 50 modules');
+        }
+        if (colour) {
+            for (let x = cursor; x < cursor + width; x++)
+                row[x] = true;
+        }
+        cursor += width;
+        colour = !colour;
+    }
+    return { cursor, dark: colour };
+}
+function rowBits(widths, half) {
+    const row = new Array(STACKED_MODULES).fill(false);
+    if (half === 'top') {
+        const written = writeRuns(row, 0, false, widths.slice(0, HALF_ELEMENT_COUNT));
+        if (written.cursor !== 48)
+            throw new EncodeError('GS1 DataBar Stacked top row is not 50 modules wide');
+        row[48] = true;
+    }
+    else {
+        row[0] = true;
+        const written = writeRuns(row, 2, true, widths.slice(HALF_ELEMENT_COUNT));
+        if (written.cursor !== STACKED_MODULES)
+            throw new EncodeError('GS1 DataBar Stacked bottom row is not 50 modules wide');
+    }
+    return row;
+}
+function separatorBits(top, bottom) {
+    const separator = new Array(STACKED_MODULES).fill(false);
+    for (let x = 1; x < 46; x++) {
+        if (top[x] === bottom[x]) {
+            if (!top[x])
+                separator[x] = true;
+        }
+        else if (!separator[x - 1]) {
+            separator[x] = true;
+        }
+    }
+    // The four modules at both outside edges remain quiet in the separator.
+    for (let x = 0; x < 4; x++)
+        separator[x] = false;
+    for (let x = 46; x < STACKED_MODULES; x++)
+        separator[x] = false;
+    return separator;
+}
+function paintRow(matrix, y, height, bits, scale) {
+    for (let x = 0; x < bits.length; x++) {
+        if (bits[x])
+            matrix.setRegion(x * scale, y, scale, height);
+    }
+}
+/**
+ * Encode a checked 14-digit GTIN as GS1 DataBar Stacked.
+ *
+ * The default matrix is 50 by 13 modules: a five-module top row, one-module
+ * separator, and seven-module bottom row. `moduleScale` (or `scale`) produces
+ * an integer nearest-neighbour raster. Explicit row heights are accepted when
+ * they satisfy the same minima and are already expressed in output modules.
+ */
+function encodeDataBar14Stacked(value, options = {}) {
+    const gtin = strictGTIN14(value);
+    const geometry = resolveGeometry(options);
+    const compacted = encodeDataBar14GTIN(gtin, { linkage: options.linkage });
+    const pattern = linearWidths(compacted);
+    const top = rowBits(pattern.widths, 'top');
+    const bottom = rowBits(pattern.widths, 'bottom');
+    const separator = separatorBits(top, bottom);
+    const width = STACKED_MODULES * geometry.moduleScale;
+    const matrix = new BitMatrix(width, geometry.topHeight + geometry.separatorHeight + geometry.bottomHeight);
+    paintRow(matrix, 0, geometry.topHeight, top, geometry.moduleScale);
+    paintRow(matrix, geometry.topHeight + geometry.separatorHeight, geometry.bottomHeight, bottom, geometry.moduleScale);
+    paintRow(matrix, geometry.topHeight, geometry.separatorHeight, separator, geometry.moduleScale);
+    matrix.databar = Object.freeze({
+        variant: 'stacked',
+        gtin: compacted.gtin,
+        linkage: compacted.linkage,
+        checksum: pattern.checksum,
+        rows: 2,
+        modulesPerRow: STACKED_MODULES,
+        moduleScale: geometry.moduleScale,
+        topHeight: geometry.topHeight,
+        separatorHeight: geometry.separatorHeight,
+        bottomHeight: geometry.bottomHeight,
+    });
+    return matrix;
+}
+function requireMatrix(matrix) {
+    if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)
+        || matrix.width < 1 || matrix.height < 1 || typeof matrix.get !== 'function') {
+        throw new TypeError('GS1 DataBar Stacked decoder expects a BitMatrix-like value');
+    }
+}
+function logicalRows(matrix) {
+    requireMatrix(matrix);
+    if (matrix.width % STACKED_MODULES !== 0) {
+        throw new FormatError('GS1 DataBar Stacked matrix width must be a positive multiple of 50 modules');
+    }
+    const scale = matrix.width / STACKED_MODULES;
+    if (!Number.isSafeInteger(scale) || scale < 1) {
+        throw new FormatError('GS1 DataBar Stacked horizontal module scale is invalid');
+    }
+    const rows = [];
+    for (let y = 0; y < matrix.height; y++) {
+        const bits = new Array(STACKED_MODULES);
+        for (let x = 0; x < STACKED_MODULES; x++) {
+            const value = Boolean(matrix.get(x * scale + Math.floor(scale / 2), y));
+            // A clean integer-scaled raster must not contain a transition inside a
+            // horizontal module. This rejects silently aliased or partial symbols.
+            for (let dx = 0; dx < scale; dx++) {
+                if (Boolean(matrix.get(x * scale + dx, y)) !== value) {
+                    throw new FormatError('GS1 DataBar Stacked horizontal modules are not integer-scaled');
+                }
+            }
+            bits[x] = value;
+        }
+        rows.push({ bits, scale });
+    }
+    return rows;
+}
+function rowKind(bits) {
+    if (!bits[0] && bits[1])
+        return 'top';
+    if (bits[0] && !bits[1])
+        return 'bottom';
+    if (!bits[0] && !bits[1] && !bits[2] && !bits[3])
+        return 'separator';
+    return 'invalid';
+}
+function equalBits(left, right) {
+    for (let x = 0; x < STACKED_MODULES; x++)
+        if (left[x] !== right[x])
+            return false;
+    return true;
+}
+function runs(bits) {
+    const result = [];
+    let dark = bits[0];
+    let width = 0;
+    for (const bit of bits) {
+        if (bit === dark)
+            width++;
+        else {
+            result.push({ dark, width });
+            dark = bit;
+            width = 1;
+        }
+    }
+    result.push({ dark, width });
+    return result;
+}
+function extractWidths(rows) {
+    if (!rows.length)
+        throw new FormatError('GS1 DataBar Stacked has no rows');
+    const scale = rows[0].scale;
+    const kinds = rows.map(({ bits }) => rowKind(bits));
+    if (kinds.some((kind) => kind === 'invalid')) {
+        throw new FormatError('GS1 DataBar Stacked row guard pattern is invalid');
+    }
+    let topEnd = 0;
+    while (topEnd < kinds.length && kinds[topEnd] === 'top')
+        topEnd++;
+    let separatorEnd = topEnd;
+    while (separatorEnd < kinds.length && kinds[separatorEnd] === 'separator')
+        separatorEnd++;
+    if (topEnd < 1 || separatorEnd === topEnd || separatorEnd >= kinds.length) {
+        throw new FormatError('GS1 DataBar Stacked requires top, separator and bottom rows');
+    }
+    if (kinds.slice(separatorEnd).some((kind) => kind !== 'bottom')) {
+        throw new FormatError('GS1 DataBar Stacked rows are out of order');
+    }
+    const topHeight = topEnd;
+    const separatorHeight = separatorEnd - topEnd;
+    const bottomHeight = kinds.length - separatorEnd;
+    if (topHeight < TOP_ROW_MINIMUM * scale
+        || separatorHeight < SEPARATOR_MINIMUM * scale
+        || bottomHeight < BOTTOM_ROW_MINIMUM * scale) {
+        throw new FormatError('GS1 DataBar Stacked row heights are below their normative minima');
+    }
+    const top = rows[0].bits;
+    const bottom = rows[separatorEnd].bits;
+    for (let y = 1; y < topEnd; y++) {
+        if (!equalBits(top, rows[y].bits))
+            throw new FormatError('GS1 DataBar Stacked top row is inconsistent');
+    }
+    for (let y = topEnd; y < separatorEnd; y++) {
+        if (!equalBits(rows[topEnd].bits, rows[y].bits)) {
+            throw new FormatError('GS1 DataBar Stacked separator rows are inconsistent');
+        }
+    }
+    for (let y = separatorEnd + 1; y < rows.length; y++) {
+        if (!equalBits(bottom, rows[y].bits))
+            throw new FormatError('GS1 DataBar Stacked bottom row is inconsistent');
+    }
+    const expectedSeparator = separatorBits(top, bottom);
+    if (!equalBits(expectedSeparator, rows[topEnd].bits)) {
+        throw new FormatError('GS1 DataBar Stacked separator pattern is invalid');
+    }
+    const topRuns = runs(top);
+    const bottomRuns = runs(bottom);
+    if (topRuns.length !== 25 || bottomRuns.length !== 25) {
+        throw new FormatError('GS1 DataBar Stacked element count is invalid');
+    }
+    if (topRuns[0].dark || topRuns[0].width !== 1
+        || !topRuns[23].dark || topRuns[23].width !== 1
+        || topRuns[24].dark || topRuns[24].width !== 1) {
+        throw new FormatError('GS1 DataBar Stacked top guard pattern is invalid');
+    }
+    if (!bottomRuns[0].dark || bottomRuns[0].width !== 1
+        || bottomRuns[1].dark || bottomRuns[1].width !== 1
+        || !bottomRuns[24].dark || bottomRuns[24].width !== 1) {
+        throw new FormatError('GS1 DataBar Stacked bottom guard pattern is invalid');
+    }
+    const widths = [
+        ...topRuns.slice(0, HALF_ELEMENT_COUNT).map((run) => run.width),
+        ...bottomRuns.slice(2).map((run) => run.width),
+    ];
+    if (widths.length !== 46 || widths.reduce((sum, width) => sum + width, 0) !== 96) {
+        throw new FormatError('GS1 DataBar Stacked linear element geometry is invalid');
+    }
+    return { widths, scale, topHeight, separatorHeight, bottomHeight };
+}
+function finderIndex(widths) {
+    const key = widths.join(',');
+    return DATABAR14_FINDERS.findIndex((candidate) => candidate.join(',') === key);
+}
+function expectedChecksum(widths) {
+    const offsets = [0, 8, 24, 16];
+    let checksum = 0;
+    for (let character = 0; character < 4; character++) {
+        for (let element = 0; element < 8; element++) {
+            checksum += widths[character][element]
+                * DATABAR14_CHECKSUM_WEIGHTS[offsets[character] + element];
+        }
+    }
+    checksum %= 79;
+    if (checksum >= 8)
+        checksum++;
+    if (checksum >= 72)
+        checksum++;
+    return checksum;
+}
+/** Decode a clean or integer-scaled GS1 DataBar Stacked matrix. */
+function decodeDataBar14Stacked(matrix) {
+    const geometry = extractWidths(logicalRows(matrix));
+    const widths = geometry.widths;
+    const characters = [
+        widths.slice(2, 10),
+        widths.slice(15, 23).slice().reverse(),
+        widths.slice(23, 31),
+        widths.slice(36, 44).slice().reverse(),
+    ];
+    const leftFinder = finderIndex(widths.slice(10, 15));
+    const rightFinder = finderIndex(widths.slice(31, 36).slice().reverse());
+    if (leftFinder < 0 || rightFinder < 0) {
+        throw new FormatError('GS1 DataBar Stacked finder pattern is invalid');
+    }
+    const encodedChecksum = leftFinder * 9 + rightFinder;
+    if (encodedChecksum !== expectedChecksum(characters)) {
+        throw new ChecksumError('GS1 DataBar Stacked checksum mismatch');
+    }
+    let decoded;
+    try {
+        decoded = decodeDataBar14GTIN({
+            outerLeft: dataBar14ValueForWidths(characters[0], 'outside'),
+            innerLeft: dataBar14ValueForWidths(characters[1], 'inside'),
+            outerRight: dataBar14ValueForWidths(characters[3], 'outside'),
+            innerRight: dataBar14ValueForWidths(characters[2], 'inside'),
+        });
+    }
+    catch (error) {
+        throw new FormatError(`GS1 DataBar Stacked character widths are invalid: ${error.message}`);
+    }
+    return Object.freeze({
+        format: 'databar-stacked',
+        variant: 'stacked',
+        text: decoded.gtin,
+        gtin: decoded.gtin,
+        gs1: true,
+        linkage: decoded.linkage,
+        checksum: encodedChecksum,
+        rows: 2,
+        topHeight: geometry.topHeight,
+        separatorHeight: geometry.separatorHeight,
+        bottomHeight: geometry.bottomHeight,
+        moduleScale: geometry.scale,
+        symbologyIdentifier: ']e0',
+        elements: [{ ai: '01', value: decoded.gtin, fixed: true }],
+    });
+}
+function rotateClockwise(source) {
+    const out = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++) {
+        for (let x = 0; x < source.width; x++) {
+            if (source.get(x, y))
+                out.set(source.height - 1 - y, x);
+        }
+    }
+    return out;
+}
+function crop(source, box) {
+    const out = new BitMatrix(box.width, box.height);
+    for (let y = 0; y < box.height; y++) {
+        for (let x = 0; x < box.width; x++) {
+            if (source.get(box.x + x, box.y + y))
+                out.set(x, y);
+        }
+    }
+    return out;
+}
+function cornersFor(box) {
+    return [
+        { x: box.x, y: box.y },
+        { x: box.x + box.width, y: box.y },
+        { x: box.x + box.width, y: box.y + box.height },
+        { x: box.x, y: box.y + box.height },
+    ];
+}
+function mapRotationPoint(point, source) {
+    return { x: point.y, y: source.height - point.x };
+}
+/**
+ * Detect one clean, axis-aligned or quarter-turned DataBar Stacked symbol.
+ * The input may contain a light quiet zone and an integer nearest-neighbour
+ * scale. Arbitrary perspective and grayscale sampling are outside this API.
+ */
+function detectDataBar14Stacked(binaryImage) {
+    if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function')
+        return null;
+    let oriented = binaryImage;
+    let toOriginal = (point) => ({ x: point.x, y: point.y });
+    for (let rotation = 0; rotation < 4; rotation++) {
+        const bounds = oriented.getBounds?.();
+        if (bounds && Number.isInteger(bounds.width) && Number.isInteger(bounds.height)) {
+            const scale = bounds.width / STACKED_MODULES;
+            if (Number.isInteger(scale) && scale >= 1) {
+                const candidate = crop(oriented, bounds);
+                try {
+                    const result = decodeDataBar14Stacked(candidate);
+                    const corners = cornersFor(bounds).map(toOriginal);
+                    return {
+                        ...result,
+                        result,
+                        matrix: candidate,
+                        corners,
+                        rotation: rotation * 90,
+                        moduleSize: scale,
+                    };
+                }
+                catch {
+                    // The dark bounds may belong to another one-dimensional symbol.
+                }
+            }
+        }
+        const previous = oriented;
+        const previousToOriginal = toOriginal;
+        oriented = rotateClockwise(previous);
+        toOriginal = (point) => previousToOriginal(mapRotationPoint(point, previous));
+    }
+    return null;
+}
+/** Detect and decode one clean GS1 DataBar Stacked symbol, or return null. */
+function detectAndDecodeDataBar14Stacked(binaryImage) {
+    return detectDataBar14Stacked(binaryImage);
+}
+// Descriptive aliases keep the variant discoverable without changing the
+// existing DataBar-14 API surface or its index module.
+const encodeDataBarStacked = encodeDataBar14Stacked;
+const decodeDataBarStacked = decodeDataBar14Stacked;
+const detectDataBarStacked = detectDataBar14Stacked;
+const detectAndDecodeDataBarStacked = detectAndDecodeDataBar14Stacked;
+const encodeGS1DataBarStacked = encodeDataBar14Stacked;
+const decodeGS1DataBarStacked = decodeDataBar14Stacked;
+const detectGS1DataBarStacked = detectDataBar14Stacked;
+const detectAndDecodeGS1DataBarStacked = detectAndDecodeDataBar14Stacked;
+
+__exports.encodeDataBar14Stacked = encodeDataBar14Stacked;
+__exports.decodeDataBar14Stacked = decodeDataBar14Stacked;
+__exports.detectDataBar14Stacked = detectDataBar14Stacked;
+__exports.detectAndDecodeDataBar14Stacked = detectAndDecodeDataBar14Stacked;
+__exports.encodeDataBarStacked = encodeDataBarStacked;
+__exports.decodeDataBarStacked = decodeDataBarStacked;
+__exports.detectDataBarStacked = detectDataBarStacked;
+__exports.detectAndDecodeDataBarStacked = detectAndDecodeDataBarStacked;
+__exports.encodeGS1DataBarStacked = encodeGS1DataBarStacked;
+__exports.decodeGS1DataBarStacked = decodeGS1DataBarStacked;
+__exports.detectGS1DataBarStacked = detectGS1DataBarStacked;
+__exports.detectAndDecodeGS1DataBarStacked = detectAndDecodeGS1DataBarStacked;
+};
+
+__modules["js/databar/stacked-omnidirectional.js"] = function (__require, __exports) {
+/** GS1 DataBar Stacked Omnidirectional writer, reader and clean-raster detector. */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { ChecksumError, EncodeError, FormatError } = __require("js/core/errors.js");
+const { createDetectionCandidate } = __require("js/core/detection-contract.js");
+const { decodeDataBar14 } = __require("js/databar/decoder.js");
+const { encodeDataBar14GTIN } = __require("js/databar/codec.js");
+const { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths } = __require("js/databar/patterns.js");
+const ROW_MODULES = 50;
+const LINEAR_MODULES = 96;
+const MIN_ROW_HEIGHT = 33;
+const SEPARATOR_MODULES = 3;
+const MAX_DIMENSION = 32768;
+const MAX_MODULES = 16777216;
+// These two public DataBar separator fragments are the only fixed geometry
+// beyond the four symbol characters. They are expressed as module values so
+// the same code serves the writer and the strict reader.
+const FINDER_SEPARATOR = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]);
+const FINDER_SEPARATOR_TRIGGER = Object.freeze([1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1]);
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function isSafeDimension(value) {
+    return Number.isSafeInteger(value) && value > 0 && value <= MAX_DIMENSION;
+}
+function isDark(value) {
+    return Boolean(value);
+}
+function normalizedOptions(options, errorType) {
+    if (options === undefined)
+        return {};
+    if (!isRecord(options))
+        throw new errorType('GS1 DataBar Stacked Omnidirectional options must be an object');
+    return options;
+}
+function resolveRowHeight(options, errorType) {
+    const values = [];
+    for (const name of ['rowHeight', 'barHeight', 'height']) {
+        if (options[name] !== undefined) {
+            if (!Number.isSafeInteger(options[name])) {
+                throw new errorType(`GS1 DataBar Stacked Omnidirectional ${name} must be a safe integer`);
+            }
+            values.push({ name, value: options[name] });
+        }
+    }
+    const rowHeight = values.length === 0 ? MIN_ROW_HEIGHT : values[0].value;
+    for (const entry of values) {
+        if (entry.value !== rowHeight) {
+            throw new errorType('GS1 DataBar Stacked Omnidirectional row height options disagree');
+        }
+    }
+    if (rowHeight < MIN_ROW_HEIGHT || 2 * rowHeight + SEPARATOR_MODULES > MAX_DIMENSION) {
+        throw new errorType('GS1 DataBar Stacked Omnidirectional row height is outside the safe range');
+    }
+    return rowHeight;
+}
+function validateVariant(options) {
+    if (options.variant === undefined)
+        return;
+    if (options.variant !== 'stacked-omnidirectional'
+        && options.variant !== 'stacked-omni'
+        && options.variant !== 'stackedomni') {
+        throw new EncodeError('GS1 DataBar physical encoder only supports stacked omnidirectional');
+    }
+}
+function validateSeparatorOption(options, errorType) {
+    if (options.separatorModules !== undefined
+        && options.separatorModules !== SEPARATOR_MODULES) {
+        throw new errorType('GS1 DataBar Stacked Omnidirectional requires a three-module separator');
+    }
+}
+function runsToBits(runs, darkFirst) {
+    const bits = [];
+    let dark = darkFirst;
+    for (const width of runs) {
+        if (!Number.isSafeInteger(width) || width < 1) {
+            throw new EncodeError('GS1 DataBar Stacked Omnidirectional contains an invalid element width');
+        }
+        for (let i = 0; i < width; i++)
+            bits.push(dark ? 1 : 0);
+        dark = !dark;
+    }
+    return bits;
+}
+function checksumAndFinders(characters) {
+    const widths = characters.map((value, index) => dataBar14CharacterWidths(value, index === 0 || index === 3 ? 'outside' : 'inside'));
+    const offsets = [0, 8, 24, 16];
+    let checksum = 0;
+    for (let character = 0; character < widths.length; character++) {
+        for (let element = 0; element < widths[character].length; element++) {
+            checksum += widths[character][element]
+                * DATABAR14_CHECKSUM_WEIGHTS[offsets[character] + element];
+        }
+    }
+    checksum %= 79;
+    if (checksum >= 8)
+        checksum++;
+    if (checksum >= 72)
+        checksum++;
+    return {
+        checksum,
+        left: Math.floor(checksum / 9),
+        right: checksum % 9,
+        widths,
+    };
+}
+function separatorRows(top, bottom) {
+    if (top.length !== ROW_MODULES || bottom.length !== ROW_MODULES) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional rows must contain 50 modules');
+    }
+    // The first separator row follows the top row edge and is forced light at
+    // both outer four-module pads. The centre transition follows the edge rule
+    // defined for the omnidirectional stacked symbol.
+    const first = top.map((value) => 1 - value);
+    first.fill(0, 0, 4);
+    first.fill(0, 46, 50);
+    for (let index = 18; index <= 30; index++) {
+        if (top[index] === 0) {
+            first[index] = top[index - 1] === 1 ? 1 : 1 - first[index - 1];
+        }
+        else {
+            first[index] = 0;
+        }
+    }
+    // The middle separator row is a fixed alternating clock pattern with four
+    // light modules at each end.
+    const second = new Array(ROW_MODULES).fill(0);
+    for (let index = 4; index < 46; index++)
+        second[index] = (index - 4) % 2;
+    const third = bottom.map((value) => 1 - value);
+    third.fill(0, 0, 4);
+    third.fill(0, 46, 50);
+    for (let index = 19; index <= 31; index++) {
+        if (bottom[index] === 0) {
+            third[index] = bottom[index - 1] === 1 ? 1 : 1 - third[index - 1];
+        }
+        else {
+            third[index] = 0;
+        }
+    }
+    let isFinderEdge = true;
+    for (let index = 0; index < FINDER_SEPARATOR_TRIGGER.length; index++) {
+        if (bottom[index + 19] !== FINDER_SEPARATOR_TRIGGER[index]) {
+            isFinderEdge = false;
+            break;
+        }
+    }
+    if (isFinderEdge)
+        third.splice(19, FINDER_SEPARATOR.length, ...FINDER_SEPARATOR);
+    return [first, second, third];
+}
+function physicalRows(compacted) {
+    const [outerLeft, innerLeft, innerRight, outerRight] = compacted.physicalCharacters;
+    const check = checksumAndFinders([outerLeft, innerLeft, innerRight, outerRight]);
+    const topRuns = [
+        1, 1,
+        ...check.widths[0],
+        ...DATABAR14_FINDERS[check.left],
+        ...check.widths[1].slice().reverse(),
+        1, 1,
+    ];
+    const bottomRuns = [
+        1, 1,
+        ...check.widths[2],
+        ...DATABAR14_FINDERS[check.right].slice().reverse(),
+        ...check.widths[3].slice().reverse(),
+        1, 1,
+    ];
+    const top = runsToBits(topRuns, false);
+    const bottom = runsToBits(bottomRuns, true);
+    if (top.length !== ROW_MODULES || bottom.length !== ROW_MODULES) {
+        throw new EncodeError('GS1 DataBar Stacked Omnidirectional row width is not 50 modules');
+    }
+    return Object.freeze({
+        top: Object.freeze(top),
+        bottom: Object.freeze(bottom),
+        separator: Object.freeze(separatorRows(top, bottom).map((row) => Object.freeze(row))),
+        checksum: check.checksum,
+    });
+}
+function setRow(matrix, bits, y) {
+    for (let x = 0; x < bits.length; x++)
+        if (bits[x])
+            matrix.set(x, y);
+}
+function matrixForRows(rows, rowHeight, compacted) {
+    const height = 2 * rowHeight + SEPARATOR_MODULES;
+    if (!isSafeDimension(ROW_MODULES) || !isSafeDimension(height)
+        || ROW_MODULES > MAX_MODULES / height) {
+        throw new EncodeError('GS1 DataBar Stacked Omnidirectional matrix exceeds the safe allocation budget');
+    }
+    const matrix = new BitMatrix(ROW_MODULES, height);
+    for (let y = 0; y < rowHeight; y++)
+        setRow(matrix, rows.top, y);
+    for (let separator = 0; separator < SEPARATOR_MODULES; separator++) {
+        setRow(matrix, rows.separator[separator], rowHeight + separator);
+    }
+    for (let y = 0; y < rowHeight; y++)
+        setRow(matrix, rows.bottom, rowHeight + SEPARATOR_MODULES + y);
+    matrix.databar = Object.freeze({
+        variant: 'stacked-omnidirectional',
+        gtin: compacted.gtin,
+        linkage: compacted.linkage,
+        checksum: rows.checksum,
+        rowHeight,
+        separatorModules: SEPARATOR_MODULES,
+    });
+    return matrix;
+}
+/** Encode a checked GTIN as a GS1 DataBar Stacked Omnidirectional matrix. */
+function encodeDataBarStackedOmnidirectional(value, options = {}) {
+    const opts = normalizedOptions(options, TypeError);
+    validateVariant(opts);
+    validateSeparatorOption(opts, EncodeError);
+    const rowHeight = resolveRowHeight(opts, EncodeError);
+    if (opts.linkage !== undefined && typeof opts.linkage !== 'boolean') {
+        throw new EncodeError('GS1 DataBar linkage must be a boolean');
+    }
+    const compacted = encodeDataBar14GTIN(value, { linkage: opts.linkage });
+    return matrixForRows(physicalRows(compacted), rowHeight, compacted);
+}
+function checkedMatrix(matrix) {
+    if (!isRecord(matrix) || typeof matrix.get !== 'function') {
+        throw new TypeError('GS1 DataBar Stacked Omnidirectional decoder expects a BitMatrix-like value');
+    }
+    if (!isSafeDimension(matrix.width) || !isSafeDimension(matrix.height)
+        || matrix.width * matrix.height > MAX_MODULES) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional matrix dimensions are unsafe');
+    }
+    if (matrix.width % ROW_MODULES !== 0) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional matrix width must be a multiple of 50 modules');
+    }
+    const scale = matrix.width / ROW_MODULES;
+    const logicalHeight = matrix.height / scale;
+    if (!Number.isSafeInteger(logicalHeight)
+        || logicalHeight < 2 * MIN_ROW_HEIGHT + SEPARATOR_MODULES
+        || (logicalHeight - SEPARATOR_MODULES) % 2 !== 0) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional matrix height is invalid');
+    }
+    const rowHeight = (logicalHeight - SEPARATOR_MODULES) / 2;
+    if (rowHeight < MIN_ROW_HEIGHT) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional row height is below the normative minimum');
+    }
+    return { scale, rowHeight };
+}
+function readLogicalRow(matrix, y, scale) {
+    const row = new Array(ROW_MODULES);
+    const firstY = y * scale;
+    for (let x = 0; x < ROW_MODULES; x++) {
+        const firstX = x * scale;
+        const value = isDark(matrix.get(firstX + Math.floor(scale / 2), firstY + Math.floor(scale / 2))) ? 1 : 0;
+        row[x] = value;
+        for (let dy = 0; dy < scale; dy++) {
+            for (let dx = 0; dx < scale; dx++) {
+                const sampled = isDark(matrix.get(firstX + dx, firstY + dy)) ? 1 : 0;
+                if (sampled !== value) {
+                    throw new FormatError('GS1 DataBar Stacked Omnidirectional module contains an internal transition');
+                }
+            }
+        }
+    }
+    return row;
+}
+function rowsFromMatrix(matrix, rowHeight, scale) {
+    try {
+        const top = readLogicalRow(matrix, Math.floor(rowHeight / 2), scale);
+        for (let y = 0; y < rowHeight; y++) {
+            if (!sameBits(top, readLogicalRow(matrix, y, scale))) {
+                throw new FormatError('GS1 DataBar Stacked Omnidirectional top row is inconsistent');
+            }
+        }
+        const bottom = readLogicalRow(matrix, rowHeight + SEPARATOR_MODULES + Math.floor(rowHeight / 2), scale);
+        for (let y = 0; y < rowHeight; y++) {
+            if (!sameBits(bottom, readLogicalRow(matrix, rowHeight + SEPARATOR_MODULES + y, scale))) {
+                throw new FormatError('GS1 DataBar Stacked Omnidirectional bottom row is inconsistent');
+            }
+        }
+        const separator = [
+            readLogicalRow(matrix, rowHeight, scale),
+            readLogicalRow(matrix, rowHeight + 1, scale),
+            readLogicalRow(matrix, rowHeight + 2, scale),
+        ];
+        return { top, bottom, separator };
+    }
+    catch (error) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional matrix could not be sampled');
+    }
+}
+function sameBits(actual, expected) {
+    if (actual.length !== expected.length)
+        return false;
+    for (let index = 0; index < actual.length; index++)
+        if (actual[index] !== expected[index])
+            return false;
+    return true;
+}
+function linearMatrix(top, bottom) {
+    // The top row carries the first 48 modules of the linear symbol and the
+    // bottom row carries the final 48. Each row contributes two guard modules
+    // adjacent to the separator; those four modules are not data and are
+    // intentionally omitted here.
+    const bits = top.slice(0, 48).concat(bottom.slice(2));
+    if (bits.length !== LINEAR_MODULES) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional rows cannot form a 96-module symbol');
+    }
+    const matrix = new BitMatrix(LINEAR_MODULES, 1);
+    for (let x = 0; x < bits.length; x++)
+        if (bits[x])
+            matrix.set(x, 0);
+    return matrix;
+}
+function decodedResult(decoded, rows, rowHeight) {
+    const element = Object.freeze({ ai: '01', value: decoded.gtin, fixed: true });
+    return Object.freeze({
+        format: 'databar-stacked-omnidirectional',
+        variant: 'stacked-omnidirectional',
+        text: decoded.gtin,
+        gtin: decoded.gtin,
+        gs1: true,
+        linkage: decoded.linkage,
+        symbologyIdentifier: ']e0',
+        checksum: rows.checksum,
+        checksumValid: true,
+        rows: 2,
+        rowHeight,
+        separatorModules: SEPARATOR_MODULES,
+        elements: Object.freeze([element]),
+    });
+}
+/** Decode a clean, upright GS1 DataBar Stacked Omnidirectional matrix. */
+function decodeDataBarStackedOmnidirectional(matrix, options = {}) {
+    const opts = normalizedOptions(options, TypeError);
+    validateSeparatorOption(opts, FormatError);
+    const geometry = checkedMatrix(matrix);
+    const requestedHeight = opts.rowHeight ?? opts.barHeight ?? opts.height;
+    if (requestedHeight !== undefined && requestedHeight !== geometry.rowHeight) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional row height does not match the matrix');
+    }
+    const sampled = rowsFromMatrix(matrix, geometry.rowHeight, geometry.scale);
+    let decoded;
+    try {
+        decoded = decodeDataBar14(linearMatrix(sampled.top, sampled.bottom));
+    }
+    catch (error) {
+        if (error instanceof ChecksumError || error instanceof FormatError)
+            throw error;
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional payload is invalid');
+    }
+    const expected = physicalRows(encodeDataBar14GTIN(decoded.gtin, { linkage: decoded.linkage }));
+    if (!sameBits(sampled.top, expected.top) || !sameBits(sampled.bottom, expected.bottom)) {
+        throw new FormatError('GS1 DataBar Stacked Omnidirectional row structure is invalid');
+    }
+    for (let row = 0; row < SEPARATOR_MODULES; row++) {
+        if (!sameBits(sampled.separator[row], expected.separator[row])) {
+            throw new FormatError('GS1 DataBar Stacked Omnidirectional separator is invalid');
+        }
+    }
+    return decodedResult(decoded, expected, geometry.rowHeight);
+}
+function boundsFor(image) {
+    if (typeof image.getBounds === 'function') {
+        const bounds = image.getBounds();
+        if (bounds === null)
+            return null;
+        if (isRecord(bounds)
+            && Number.isSafeInteger(bounds.x) && Number.isSafeInteger(bounds.y)
+            && Number.isSafeInteger(bounds.width) && Number.isSafeInteger(bounds.height)
+            && bounds.x >= 0 && bounds.y >= 0 && bounds.width > 0 && bounds.height > 0
+            && bounds.x + bounds.width <= image.width && bounds.y + bounds.height <= image.height
+            && bounds.width * bounds.height <= MAX_MODULES) {
+            return {
+                minX: bounds.x,
+                minY: bounds.y,
+                maxX: bounds.x + bounds.width - 1,
+                maxY: bounds.y + bounds.height - 1,
+                width: bounds.width,
+                height: bounds.height,
+            };
+        }
+    }
+    let minX = image.width;
+    let minY = image.height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < image.height; y++) {
+        for (let x = 0; x < image.width; x++) {
+            if (!isDark(image.get(x, y)))
+                continue;
+            if (x < minX)
+                minX = x;
+            if (x > maxX)
+                maxX = x;
+            if (y < minY)
+                minY = y;
+            if (y > maxY)
+                maxY = y;
+        }
+    }
+    if (maxX < 0)
+        return null;
+    return { minX, minY, maxX, maxY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+function rotateClockwise(source) {
+    const out = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++) {
+        for (let x = 0; x < source.width; x++) {
+            if (isDark(source.get(x, y)))
+                out.set(source.height - 1 - y, x);
+        }
+    }
+    return out;
+}
+function sampledCandidate(image, bounds, scale) {
+    const logicalHeight = bounds.height / scale;
+    const rowHeight = (logicalHeight - SEPARATOR_MODULES) / 2;
+    if (!Number.isSafeInteger(scale) || scale < 1
+        || !Number.isSafeInteger(logicalHeight)
+        || logicalHeight < 2 * MIN_ROW_HEIGHT + SEPARATOR_MODULES
+        || (logicalHeight - SEPARATOR_MODULES) % 2 !== 0
+        || rowHeight < MIN_ROW_HEIGHT)
+        return null;
+    const matrix = new BitMatrix(ROW_MODULES, logicalHeight);
+    for (let y = 0; y < logicalHeight; y++) {
+        const sampleY = bounds.minY + y * scale + Math.floor(scale / 2);
+        for (let x = 0; x < ROW_MODULES; x++) {
+            const sampleX = bounds.minX + x * scale + Math.floor(scale / 2);
+            if (isDark(image.get(sampleX, sampleY)))
+                matrix.set(x, y);
+        }
+    }
+    return { matrix, rowHeight, scale };
+}
+function cornersFor(bounds) {
+    return [
+        { x: bounds.minX, y: bounds.minY },
+        { x: bounds.minX + bounds.width, y: bounds.minY },
+        { x: bounds.minX + bounds.width, y: bounds.minY + bounds.height },
+        { x: bounds.minX, y: bounds.minY + bounds.height },
+    ];
+}
+/**
+ * Detect and decode one clean, integer-scaled Stacked Omnidirectional symbol.
+ *
+ * The detector intentionally accepts only a complete dark bounding box whose
+ * dimensions are a legal 50-module symbol. This keeps ordinary one-row
+ * DataBar symbols and arbitrary two-row artwork out of the result.
+ */
+function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
+    if (!isRecord(binaryImage) || typeof binaryImage.get !== 'function'
+        || !isSafeDimension(binaryImage.width) || !isSafeDimension(binaryImage.height)
+        || binaryImage.width * binaryImage.height > MAX_MODULES)
+        return null;
+    if (!isRecord(options))
+        return null;
+    let oriented = binaryImage;
+    let toOriginal = (point) => ({ x: point.x, y: point.y });
+    for (let rotation = 0; rotation < 4; rotation++) {
+        try {
+            const bounds = boundsFor(oriented);
+            if (bounds && bounds.width % ROW_MODULES === 0) {
+                const scale = bounds.width / ROW_MODULES;
+                const candidate = sampledCandidate(oriented, bounds, scale);
+                if (candidate) {
+                    const decoded = decodeDataBarStackedOmnidirectional(candidate.matrix, options);
+                    const corners = cornersFor(bounds).map((point) => toOriginal(point));
+                    const geometry = createDetectionCandidate({
+                        corners,
+                        moduleSize: scale,
+                        rotation: rotation * 90,
+                        matrix: candidate.matrix,
+                        confidence: 1,
+                    }, {
+                        result: decoded,
+                        quality: {
+                            quietZone: bounds.minX > 0 && bounds.minY > 0
+                                && bounds.maxX < oriented.width - 1 && bounds.maxY < oriented.height - 1,
+                            checksum: true,
+                            rows: 2,
+                            consistency: 1,
+                        },
+                        score: 1,
+                    });
+                    return Object.freeze({
+                        ...decoded,
+                        ...geometry,
+                    });
+                }
+            }
+        }
+        catch (error) {
+            // A geometric candidate is not necessarily a valid symbol. Continue
+            // with the next orientation without leaking implementation errors.
+        }
+        const previous = oriented;
+        const previousToOriginal = toOriginal;
+        try {
+            oriented = rotateClockwise(previous);
+        }
+        catch (error) {
+            return null;
+        }
+        toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
+    }
+    return null;
+}
+/** Detect-and-decode alias matching the other matrix-format modules. */
+const detectAndDecodeDataBarStackedOmnidirectional = detectDataBarStackedOmnidirectional;
+// Short and DataBar-14 spellings keep direct module consumers compatible with
+// the naming used by the existing DataBar-14 helpers without widening package
+// facades or changing the public index in this focused milestone.
+const encodeDataBarStackedOmni = encodeDataBarStackedOmnidirectional;
+const decodeDataBarStackedOmni = decodeDataBarStackedOmnidirectional;
+const detectDataBarStackedOmni = detectDataBarStackedOmnidirectional;
+const detectAndDecodeDataBarStackedOmni = detectDataBarStackedOmnidirectional;
+const encodeDataBar14StackedOmnidirectional = encodeDataBarStackedOmnidirectional;
+const decodeDataBar14StackedOmnidirectional = decodeDataBarStackedOmnidirectional;
+const detectDataBar14StackedOmnidirectional = detectDataBarStackedOmnidirectional;
+const encodeDataBar14StackedOmni = encodeDataBarStackedOmnidirectional;
+const decodeDataBar14StackedOmni = decodeDataBarStackedOmnidirectional;
+const detectDataBar14StackedOmni = detectDataBarStackedOmnidirectional;
+
+__exports.encodeDataBarStackedOmnidirectional = encodeDataBarStackedOmnidirectional;
+__exports.decodeDataBarStackedOmnidirectional = decodeDataBarStackedOmnidirectional;
+__exports.detectDataBarStackedOmnidirectional = detectDataBarStackedOmnidirectional;
+__exports.detectAndDecodeDataBarStackedOmnidirectional = detectAndDecodeDataBarStackedOmnidirectional;
+__exports.encodeDataBarStackedOmni = encodeDataBarStackedOmni;
+__exports.decodeDataBarStackedOmni = decodeDataBarStackedOmni;
+__exports.detectDataBarStackedOmni = detectDataBarStackedOmni;
+__exports.detectAndDecodeDataBarStackedOmni = detectAndDecodeDataBarStackedOmni;
+__exports.encodeDataBar14StackedOmnidirectional = encodeDataBar14StackedOmnidirectional;
+__exports.decodeDataBar14StackedOmnidirectional = decodeDataBar14StackedOmnidirectional;
+__exports.detectDataBar14StackedOmnidirectional = detectDataBar14StackedOmnidirectional;
+__exports.encodeDataBar14StackedOmni = encodeDataBar14StackedOmni;
+__exports.decodeDataBar14StackedOmni = decodeDataBar14StackedOmni;
+__exports.detectDataBar14StackedOmni = detectDataBar14StackedOmni;
+};
+
 __modules["js/databar/index.js"] = function (__require, __exports) {
 /** Verified GS1 DataBar data-layer primitives. @module databar */
 const __reexport0 = __require("js/databar/codec.js"); __exports.dataBarGtinTransmission = __reexport0.dataBarGtinTransmission; __exports.decodeDataBar14GTIN = __reexport0.decodeDataBar14GTIN; __exports.decodeDataBarLimitedGTIN = __reexport0.decodeDataBarLimitedGTIN; __exports.encodeDataBar14GTIN = __reexport0.encodeDataBar14GTIN; __exports.encodeDataBarLimitedGTIN = __reexport0.encodeDataBarLimitedGTIN; __exports.gtinCheckDigit = __reexport0.gtinCheckDigit; __exports.makeGTIN14 = __reexport0.makeGTIN14; __exports.normalizeGTIN = __reexport0.normalizeGTIN;
@@ -15656,7 +17383,911 @@ const __reexport1 = __require("js/databar/gs1.js"); __exports.GS1_SEPARATOR = __
 const __reexport2 = __require("js/databar/tables.js"); __exports.DATABAR14_VARIANTS = __reexport2.DATABAR14_VARIANTS; __exports.DATABAR_LIMITED_VARIANT = __reexport2.DATABAR_LIMITED_VARIANT; __exports.dataBar14GroupFor = __reexport2.dataBar14GroupFor; __exports.validateDataBarTables = __reexport2.validateDataBarTables;
 const __reexport3 = __require("js/databar/encoder.js"); __exports.encodeDataBar14 = __reexport3.encodeDataBar14;
 const __reexport4 = __require("js/databar/decoder.js"); __exports.decodeDataBar14 = __reexport4.decodeDataBar14; __exports.decodeDataBar14Scanline = __reexport4.decodeDataBar14Scanline;
-const __reexport5 = __require("js/databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport5.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport5.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport5.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport5.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport5.dataBarWidths;
+const __reexport5 = __require("js/databar/limited.js"); __exports.encodeDataBarLimited = __reexport5.encodeDataBarLimited; __exports.decodeDataBarLimited = __reexport5.decodeDataBarLimited; __exports.detectDataBarLimited = __reexport5.detectDataBarLimited; __exports.detectAndDecodeDataBarLimited = __reexport5.detectAndDecodeDataBarLimited; __exports.decodeDataBarLimitedScanline = __reexport5.decodeDataBarLimitedScanline;
+const __reexport6 = __require("js/databar/stacked.js"); __exports.encodeDataBar14Stacked = __reexport6.encodeDataBar14Stacked; __exports.decodeDataBar14Stacked = __reexport6.decodeDataBar14Stacked; __exports.detectDataBar14Stacked = __reexport6.detectDataBar14Stacked; __exports.detectAndDecodeDataBar14Stacked = __reexport6.detectAndDecodeDataBar14Stacked; __exports.encodeDataBarStacked = __reexport6.encodeDataBarStacked; __exports.decodeDataBarStacked = __reexport6.decodeDataBarStacked; __exports.detectDataBarStacked = __reexport6.detectDataBarStacked; __exports.detectAndDecodeDataBarStacked = __reexport6.detectAndDecodeDataBarStacked; __exports.encodeGS1DataBarStacked = __reexport6.encodeGS1DataBarStacked; __exports.decodeGS1DataBarStacked = __reexport6.decodeGS1DataBarStacked; __exports.detectGS1DataBarStacked = __reexport6.detectGS1DataBarStacked; __exports.detectAndDecodeGS1DataBarStacked = __reexport6.detectAndDecodeGS1DataBarStacked;
+const __reexport7 = __require("js/databar/stacked-omnidirectional.js"); __exports.encodeDataBarStackedOmnidirectional = __reexport7.encodeDataBarStackedOmnidirectional; __exports.decodeDataBarStackedOmnidirectional = __reexport7.decodeDataBarStackedOmnidirectional; __exports.detectDataBarStackedOmnidirectional = __reexport7.detectDataBarStackedOmnidirectional; __exports.detectAndDecodeDataBarStackedOmnidirectional = __reexport7.detectAndDecodeDataBarStackedOmnidirectional; __exports.encodeDataBarStackedOmni = __reexport7.encodeDataBarStackedOmni; __exports.decodeDataBarStackedOmni = __reexport7.decodeDataBarStackedOmni; __exports.detectDataBarStackedOmni = __reexport7.detectDataBarStackedOmni; __exports.detectAndDecodeDataBarStackedOmni = __reexport7.detectAndDecodeDataBarStackedOmni; __exports.encodeDataBar14StackedOmnidirectional = __reexport7.encodeDataBar14StackedOmnidirectional; __exports.decodeDataBar14StackedOmnidirectional = __reexport7.decodeDataBar14StackedOmnidirectional; __exports.detectDataBar14StackedOmnidirectional = __reexport7.detectDataBar14StackedOmnidirectional; __exports.encodeDataBar14StackedOmni = __reexport7.encodeDataBar14StackedOmni; __exports.decodeDataBar14StackedOmni = __reexport7.decodeDataBar14StackedOmni; __exports.detectDataBar14StackedOmni = __reexport7.detectDataBar14StackedOmni;
+const __reexport8 = __require("js/databar/patterns.js"); __exports.DATABAR14_CHECKSUM_WEIGHTS = __reexport8.DATABAR14_CHECKSUM_WEIGHTS; __exports.DATABAR14_FINDERS = __reexport8.DATABAR14_FINDERS; __exports.dataBar14CharacterWidths = __reexport8.dataBar14CharacterWidths; __exports.dataBar14ValueForWidths = __reexport8.dataBar14ValueForWidths; __exports.dataBarWidths = __reexport8.dataBarWidths;
+
+
+};
+
+__modules["js/maxicode/tables.js"] = function (__require, __exports) {
+/**
+ * MaxiCode structural constants and the module sequence from ISO/IEC 16023
+ * Figure 5.  The sequence is transcribed from the published standard figure,
+ * not imported from another implementation.  Zero entries are the alternating
+ * row gaps, finder reservation and orientation markers; values 1..864 identify
+ * the six-bit data modules in wire order.
+ *
+ * @module maxicode/tables
+ */
+const MAXICODE_WIDTH = 30;
+const MAXICODE_HEIGHT = 33;
+const MAXICODE_CODEWORDS = 144;
+const MAXICODE_DATA_MODULES = 864;
+const MAXICODE_FIELD_SIZE = 64;
+/** ISO 16023 Figure 5, laid out as 33 rows of 30 logical positions. */
+const MAXICODE_GRID_ROWS = [
+    [122, 121, 128, 127, 134, 133, 140, 139, 146, 145, 152, 151, 158, 157, 164, 163, 170, 169, 176, 175, 182, 181, 188, 187, 194, 193, 200, 199, 0, 0],
+    [124, 123, 130, 129, 136, 135, 142, 141, 148, 147, 154, 153, 160, 159, 166, 165, 172, 171, 178, 177, 184, 183, 190, 189, 196, 195, 202, 201, 817, 0],
+    [126, 125, 132, 131, 138, 137, 144, 143, 150, 149, 156, 155, 162, 161, 168, 167, 174, 173, 180, 179, 186, 185, 192, 191, 198, 197, 204, 203, 819, 818],
+    [284, 283, 278, 277, 272, 271, 266, 265, 260, 259, 254, 253, 248, 247, 242, 241, 236, 235, 230, 229, 224, 223, 218, 217, 212, 211, 206, 205, 820, 0],
+    [286, 285, 280, 279, 274, 273, 268, 267, 262, 261, 256, 255, 250, 249, 244, 243, 238, 237, 232, 231, 226, 225, 220, 219, 214, 213, 208, 207, 822, 821],
+    [288, 287, 282, 281, 276, 275, 270, 269, 264, 263, 258, 257, 252, 251, 246, 245, 240, 239, 234, 233, 228, 227, 222, 221, 216, 215, 210, 209, 823, 0],
+    [290, 289, 296, 295, 302, 301, 308, 307, 314, 313, 320, 319, 326, 325, 332, 331, 338, 337, 344, 343, 350, 349, 356, 355, 362, 361, 368, 367, 825, 824],
+    [292, 291, 298, 297, 304, 303, 310, 309, 316, 315, 322, 321, 328, 327, 334, 333, 340, 339, 346, 345, 352, 351, 358, 357, 364, 363, 370, 369, 826, 0],
+    [294, 293, 300, 299, 306, 305, 312, 311, 318, 317, 324, 323, 330, 329, 336, 335, 342, 341, 348, 347, 354, 353, 360, 359, 366, 365, 372, 371, 828, 827],
+    [410, 409, 404, 403, 398, 397, 392, 391, 80, 79, 0, 0, 14, 13, 38, 37, 3, 0, 45, 44, 110, 109, 386, 385, 380, 379, 374, 373, 829, 0],
+    [412, 411, 406, 405, 400, 399, 394, 393, 82, 81, 41, 0, 16, 15, 40, 39, 4, 0, 0, 46, 112, 111, 388, 387, 382, 381, 376, 375, 831, 830],
+    [414, 413, 408, 407, 402, 401, 396, 395, 84, 83, 42, 0, 0, 0, 0, 0, 6, 5, 48, 47, 114, 113, 390, 389, 384, 383, 378, 377, 832, 0],
+    [416, 415, 422, 421, 428, 427, 104, 103, 56, 55, 17, 0, 0, 0, 0, 0, 0, 0, 21, 20, 86, 85, 434, 433, 440, 439, 446, 445, 834, 833],
+    [418, 417, 424, 423, 430, 429, 106, 105, 58, 57, 0, 0, 0, 0, 0, 0, 0, 0, 23, 22, 88, 87, 436, 435, 442, 441, 448, 447, 835, 0],
+    [420, 419, 426, 425, 432, 431, 108, 107, 60, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 90, 89, 438, 437, 444, 443, 450, 449, 837, 836],
+    [482, 481, 476, 475, 470, 469, 49, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 54, 53, 464, 463, 458, 457, 452, 451, 838, 0],
+    [484, 483, 478, 477, 472, 471, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 466, 465, 460, 459, 454, 453, 840, 839],
+    [486, 485, 480, 479, 474, 473, 52, 51, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 43, 468, 467, 462, 461, 456, 455, 841, 0],
+    [488, 487, 494, 493, 500, 499, 98, 97, 62, 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 92, 91, 506, 505, 512, 511, 518, 517, 843, 842],
+    [490, 489, 496, 495, 502, 501, 100, 99, 64, 63, 0, 0, 0, 0, 0, 0, 0, 0, 29, 28, 94, 93, 508, 507, 514, 513, 520, 519, 844, 0],
+    [492, 491, 498, 497, 504, 503, 102, 101, 66, 65, 18, 0, 0, 0, 0, 0, 0, 0, 19, 30, 96, 95, 510, 509, 516, 515, 522, 521, 846, 845],
+    [560, 559, 554, 553, 548, 547, 542, 541, 74, 73, 33, 0, 0, 0, 0, 0, 0, 11, 68, 67, 116, 115, 536, 535, 530, 529, 524, 523, 847, 0],
+    [562, 561, 556, 555, 550, 549, 544, 543, 76, 75, 0, 0, 8, 7, 36, 35, 12, 0, 70, 69, 118, 117, 538, 537, 532, 531, 526, 525, 849, 848],
+    [564, 563, 558, 557, 552, 551, 546, 545, 78, 77, 0, 34, 10, 9, 26, 25, 0, 0, 72, 71, 120, 119, 540, 539, 534, 533, 528, 527, 850, 0],
+    [566, 565, 572, 571, 578, 577, 584, 583, 590, 589, 596, 595, 602, 601, 608, 607, 614, 613, 620, 619, 626, 625, 632, 631, 638, 637, 644, 643, 852, 851],
+    [568, 567, 574, 573, 580, 579, 586, 585, 592, 591, 598, 597, 604, 603, 610, 609, 616, 615, 622, 621, 628, 627, 634, 633, 640, 639, 646, 645, 853, 0],
+    [570, 569, 576, 575, 582, 581, 588, 587, 594, 593, 600, 599, 606, 605, 612, 611, 618, 617, 624, 623, 630, 629, 636, 635, 642, 641, 648, 647, 855, 854],
+    [728, 727, 722, 721, 716, 715, 710, 709, 704, 703, 698, 697, 692, 691, 686, 685, 680, 679, 674, 673, 668, 667, 662, 661, 656, 655, 650, 649, 856, 0],
+    [730, 729, 724, 723, 718, 717, 712, 711, 706, 705, 700, 699, 694, 693, 688, 687, 682, 681, 676, 675, 670, 669, 664, 663, 658, 657, 652, 651, 858, 857],
+    [732, 731, 726, 725, 720, 719, 714, 713, 708, 707, 702, 701, 696, 695, 690, 689, 684, 683, 678, 677, 672, 671, 666, 665, 660, 659, 654, 653, 859, 0],
+    [734, 733, 740, 739, 746, 745, 752, 751, 758, 757, 764, 763, 770, 769, 776, 775, 782, 781, 788, 787, 794, 793, 800, 799, 806, 805, 812, 811, 861, 860],
+    [736, 735, 742, 741, 748, 747, 754, 753, 760, 759, 766, 765, 772, 771, 778, 777, 784, 783, 790, 789, 796, 795, 802, 801, 808, 807, 814, 813, 862, 0],
+    [738, 737, 744, 743, 750, 749, 756, 755, 762, 761, 768, 767, 774, 773, 780, 779, 786, 785, 792, 791, 798, 797, 804, 803, 810, 809, 816, 815, 864, 863],
+];
+/** Flattened standard module sequence. */
+const MAXICODE_GRID = MAXICODE_GRID_ROWS.flat();
+/** Fixed orientation modules, expressed as [x, y] logical positions. */
+const MAXICODE_ORIENTATION_DARK = Object.freeze([
+    [28, 0], [29, 0],
+    [10, 9], [11, 9], [11, 10],
+    [7, 15], [8, 16],
+    [20, 16], [20, 17],
+    [10, 22], [10, 23],
+    [17, 22], [17, 23],
+]);
+/**
+ * Return the fixed colour of a structural module, or null for a data module.
+ *
+ * MaxiCode's finder is drawn on a staggered hexagonal lattice.  The logical
+ * interchange grid keeps one cell per module, so the standard ring radii are
+ * evaluated at the centre of each staggered cell.  Using the structural zero
+ * entries from Figure 5 here is important: treating the entire circular area
+ * as finder cells would overwrite payload modules at the edge of the rings.
+ */
+function maxicodeFinderValue(x, y) {
+    if (MAXICODE_GRID[y * MAXICODE_WIDTH + x] !== 0)
+        return null;
+    // Coordinates are scaled only to preserve the 30:33 staggered lattice
+    // proportions.  The constants are the normalized centres and radii of the
+    // three standard annuli; a scale factor cancels out of the classification.
+    const cellX = (y & 1) ? x + 34.5 / 35 : x + 16.5 / 35;
+    const cellY = y + 20 / 30;
+    const centreX = 507 / 35;
+    const centreY = 506 / 30;
+    const distance = Math.hypot((cellX - centreX) * 35, (cellY - centreY) * 30);
+    return (distance >= 20 && distance < 46) ||
+        (distance >= 73 && distance < 100) ||
+        (distance >= 126 && distance < 153);
+}
+/** Verify that the transcribed standard sequence is complete and one-to-one. */
+function validateMaxiCodeTables() {
+    const errors = [];
+    if (MAXICODE_GRID.length !== MAXICODE_WIDTH * MAXICODE_HEIGHT) {
+        errors.push(`grid length ${MAXICODE_GRID.length} is not ${MAXICODE_WIDTH * MAXICODE_HEIGHT}`);
+    }
+    const values = MAXICODE_GRID.filter((value) => value > 0);
+    if (values.length !== MAXICODE_DATA_MODULES)
+        errors.push(`grid has ${values.length} data modules`);
+    const seen = new Set(values);
+    if (seen.size !== values.length)
+        errors.push('grid contains duplicate module sequence numbers');
+    for (let value = 1; value <= MAXICODE_DATA_MODULES; value++) {
+        if (!seen.has(value))
+            errors.push(`grid is missing module sequence ${value}`);
+    }
+    return errors;
+}
+
+__exports.MAXICODE_WIDTH = MAXICODE_WIDTH;
+__exports.MAXICODE_HEIGHT = MAXICODE_HEIGHT;
+__exports.MAXICODE_CODEWORDS = MAXICODE_CODEWORDS;
+__exports.MAXICODE_DATA_MODULES = MAXICODE_DATA_MODULES;
+__exports.MAXICODE_FIELD_SIZE = MAXICODE_FIELD_SIZE;
+__exports.MAXICODE_GRID = MAXICODE_GRID;
+__exports.MAXICODE_ORIENTATION_DARK = MAXICODE_ORIENTATION_DARK;
+__exports.maxicodeFinderValue = maxicodeFinderValue;
+__exports.validateMaxiCodeTables = validateMaxiCodeTables;
+};
+
+__modules["js/maxicode/encoder.js"] = function (__require, __exports) {
+/** MaxiCode encoder for ISO/IEC 16023 modes 2 through 5. @module maxicode/encoder */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { GF64 } = __require("js/core/galois-field.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { MAXICODE_CODEWORDS, MAXICODE_DATA_MODULES, MAXICODE_GRID, MAXICODE_HEIGHT, MAXICODE_ORIENTATION_DARK, MAXICODE_WIDTH, maxicodeFinderValue } = __require("js/maxicode/tables.js");
+/** @typedef {'A'|'B'|'C'|'D'|'E'} MaxiCodeSet */
+/**
+ * @typedef {object} MaxiCodePrimary
+ * @property {string} postalCode Mode 2 numeric postal code, or Mode 3 text.
+ * @property {number} countryCode ISO numeric country code 0..999.
+ * @property {number} serviceClass Three-digit service class 0..999.
+ */
+/**
+ * @typedef {object} MaxiCodeEncodeOptions
+ * @property {2|3|4|5} [mode] MaxiCode mode. Default 4.
+ * @property {MaxiCodePrimary} [primary] Required for modes 2 and 3.
+ * @property {'latin1'} [charset] Accepted for API clarity; ISO-8859-1 only.
+ */
+/**
+ * A matrix returned by the encoder carries non-enumerable-free metadata used
+ * by the focused reader tests and by applications that want the mode.
+ * @typedef {import('../core/bit-matrix.js').BitMatrix & {maxicode?: object}} MaxiCodeMatrix
+ */
+/** @param {number} cp @returns {number|null} Code Set A symbol value. */
+function codeSetAValue(cp) {
+    if (cp === 28 || cp === 29 || cp === 30)
+        return cp;
+    if (cp === 32)
+        return 32;
+    if (cp >= 34 && cp <= 58)
+        return cp;
+    if (cp >= 48 && cp <= 57)
+        return cp;
+    if (cp >= 65 && cp <= 90)
+        return cp - 64;
+    return null;
+}
+/** @param {number} cp @returns {number|null} Code Set B symbol value. */
+function codeSetBValue(cp) {
+    if (cp === 96)
+        return 0;
+    if (cp >= 97 && cp <= 122)
+        return cp - 96;
+    if (cp === 28 || cp === 29 || cp === 30)
+        return cp;
+    const values = {
+        32: 47, 33: 53, 44: 48, 46: 49, 47: 50, 58: 51,
+        59: 37, 60: 38, 61: 39, 62: 40, 63: 41, 64: 52,
+        91: 42, 92: 43, 93: 44, 94: 45, 95: 46,
+        123: 32, 124: 54, 125: 34, 126: 35, 127: 36,
+    };
+    return Object.prototype.hasOwnProperty.call(values, cp) ? values[cp] : null;
+}
+/** @param {number} value @returns {number|null} Code Set A value to ASCII. */
+function codeSetACharacter(value) {
+    if (value >= 1 && value <= 26)
+        return value + 64;
+    if (value === 28 || value === 29 || value === 30 || value === 32)
+        return value;
+    if (value >= 34 && value <= 58)
+        return value;
+    if (value >= 48 && value <= 57)
+        return value;
+    return null;
+}
+/** @param {number} value @returns {number|null} Code Set B value to ASCII. */
+function codeSetBCharacter(value) {
+    if (value === 0)
+        return 96;
+    if (value >= 1 && value <= 26)
+        return value + 96;
+    const chars = new Map([
+        [32, 123], [34, 125], [35, 126], [36, 127], [37, 59], [38, 60],
+        [39, 61], [40, 62], [41, 63], [42, 91], [43, 92], [44, 93],
+        [45, 94], [46, 95], [47, 32], [48, 44], [49, 46], [50, 47],
+        [51, 58], [52, 64], [53, 33], [54, 124],
+    ]);
+    return chars.get(value) ?? null;
+}
+/** @param {number} cp @returns {number|null} Code Set C symbol value. */
+function codeSetCValue(cp) {
+    if (cp >= 192 && cp <= 218)
+        return cp - 192;
+    if (cp >= 219 && cp <= 223)
+        return cp - 187;
+    const values = {
+        128: 48, 129: 49, 130: 50, 131: 51, 132: 52, 133: 53, 134: 54, 135: 55, 136: 56, 137: 57,
+        170: 37, 172: 38, 177: 39, 178: 40, 179: 41, 181: 42, 185: 43, 186: 44, 188: 45, 189: 46, 190: 47,
+    };
+    return Object.prototype.hasOwnProperty.call(values, cp) ? values[cp] : null;
+}
+/** @param {number} cp @returns {number|null} Code Set D symbol value. */
+function codeSetDValue(cp) {
+    if (cp >= 224 && cp <= 250)
+        return cp - 224;
+    if (cp >= 251 && cp <= 255)
+        return cp - 219;
+    const values = {
+        138: 47, 139: 48, 140: 49, 141: 50, 142: 51, 143: 52, 144: 53, 145: 54, 146: 55, 147: 56, 148: 57,
+        161: 37, 168: 38, 171: 39, 175: 40, 176: 41, 180: 42, 183: 43, 184: 44, 187: 45, 191: 46,
+    };
+    return Object.prototype.hasOwnProperty.call(values, cp) ? values[cp] : null;
+}
+/** @param {number} cp @returns {number|null} Code Set E symbol value. */
+function codeSetEValue(cp) {
+    if (cp >= 0 && cp <= 26)
+        return cp;
+    if (cp === 27)
+        return 30;
+    if (cp >= 28 && cp <= 30)
+        return cp + 4;
+    if (cp === 31)
+        return 35;
+    if (cp === 32)
+        return 59;
+    if (cp >= 149 && cp <= 158)
+        return cp - 101;
+    const values = {
+        159: 36, 160: 37, 162: 38, 163: 39, 164: 40, 165: 41, 166: 42, 167: 43,
+        169: 44, 173: 45, 174: 46, 182: 47,
+    };
+    return Object.prototype.hasOwnProperty.call(values, cp) ? values[cp] : null;
+}
+/** @param {number} value @returns {number|null} Code Set C value to ISO-8859-1. */
+function codeSetCCharacter(value) {
+    if (value >= 0 && value <= 26)
+        return value + 192;
+    if (value >= 32 && value <= 36)
+        return value + 187;
+    const chars = new Map([
+        [37, 170], [38, 172], [39, 177], [40, 178], [41, 179], [42, 181], [43, 185], [44, 186], [45, 188], [46, 189], [47, 190],
+        [48, 128], [49, 129], [50, 130], [51, 131], [52, 132], [53, 133], [54, 134], [55, 135], [56, 136], [57, 137],
+    ]);
+    return chars.get(value) ?? null;
+}
+/** @param {number} value @returns {number|null} Code Set D value to ISO-8859-1. */
+function codeSetDCharacter(value) {
+    if (value >= 0 && value <= 26)
+        return value + 224;
+    if (value >= 32 && value <= 36)
+        return value + 219;
+    const chars = new Map([
+        [37, 161], [38, 168], [39, 171], [40, 175], [41, 176], [42, 180], [43, 183], [44, 184], [45, 187], [46, 191],
+        [47, 138], [48, 139], [49, 140], [50, 141], [51, 142], [52, 143], [53, 144], [54, 145], [55, 146], [56, 147], [57, 148],
+    ]);
+    return chars.get(value) ?? null;
+}
+/** @param {number} value @returns {number|null} Code Set E value to ISO-8859-1. */
+function codeSetECharacter(value) {
+    if (value >= 0 && value <= 26)
+        return value;
+    if (value === 30)
+        return 27;
+    if (value >= 32 && value <= 34)
+        return value - 4;
+    if (value === 35)
+        return 31;
+    if (value === 36)
+        return 159;
+    if (value === 37)
+        return 160;
+    if (value >= 38 && value <= 43)
+        return value + 124;
+    if (value === 44)
+        return 169;
+    if (value === 45)
+        return 173;
+    if (value === 46)
+        return 174;
+    if (value === 47)
+        return 182;
+    if (value >= 48 && value <= 57)
+        return value + 101;
+    if (value === 59)
+        return 32;
+    return null;
+}
+/** @param {number} cp @returns {{set:'C'|'D'|'E', value:number}|null} */
+function extendedCodeSetValue(cp) {
+    const c = codeSetCValue(cp);
+    if (c !== null)
+        return { set: 'C', value: c };
+    const d = codeSetDValue(cp);
+    if (d !== null)
+        return { set: 'D', value: d };
+    const e = codeSetEValue(cp);
+    return e === null ? null : { set: 'E', value: e };
+}
+/** @param {string|Uint8Array|number[]} value @returns {number[]} Latin-1 bytes. */
+function inputBytes(value) {
+    if (value instanceof Uint8Array)
+        return Array.from(value);
+    if (Array.isArray(value)) {
+        if (value.some((v) => !Number.isInteger(v) || v < 0 || v > 255)) {
+            throw new EncodeError('MaxiCode: numeric byte input must contain values from 0 to 255');
+        }
+        return value.slice();
+    }
+    if (typeof value !== 'string')
+        throw new EncodeError('MaxiCode: value must be text or bytes');
+    const bytes = [];
+    for (const character of value) {
+        const cp = character.codePointAt(0);
+        if (cp === undefined || cp > 255) {
+            throw new EncodeError('MaxiCode: text must be representable in ISO-8859-1');
+        }
+        bytes.push(cp);
+    }
+    return bytes;
+}
+/** Convert source bytes to MaxiCode codewords using explicit A/B latches. */
+function encodeMaxiCodeText(value) {
+    const bytes = inputBytes(value);
+    const out = [];
+    /** @type {MaxiCodeSet} */
+    let current = 'A';
+    for (const cp of bytes) {
+        const a = codeSetAValue(cp);
+        const b = codeSetBValue(cp);
+        if (current === 'A') {
+            if (a !== null) {
+                out.push(a);
+            }
+            else if (b !== null) {
+                // Latch B is deterministic and keeps the stream easy to audit. A
+                // following A character emits Latch A, so no implicit state leaks.
+                out.push(63, b);
+                current = 'B';
+            }
+            else {
+                const extended = extendedCodeSetValue(cp);
+                if (extended === null)
+                    throw new EncodeError(`MaxiCode: character U+${cp.toString(16).padStart(4, '0')} is not encodable`);
+                out.push(extended.set === 'C' ? 60 : extended.set === 'D' ? 61 : 62, extended.value);
+            }
+        }
+        else if (b !== null) {
+            out.push(b);
+        }
+        else if (a !== null) {
+            out.push(63, a);
+            current = 'A';
+        }
+        else {
+            const extended = extendedCodeSetValue(cp);
+            if (extended === null)
+                throw new EncodeError(`MaxiCode: character U+${cp.toString(16).padStart(4, '0')} is not encodable`);
+            out.push(extended.set === 'C' ? 60 : extended.set === 'D' ? 61 : 62, extended.value);
+        }
+    }
+    return out;
+}
+/** @param {string} postal @param {number} country @param {number} service */
+function mode2Primary(postal, country, service) {
+    if (!/^\d{1,9}$/.test(postal))
+        throw new EncodeError('MaxiCode Mode 2: postalCode must contain 1 to 9 digits');
+    const numericPostal = Number(postal);
+    return [
+        ((numericPostal & 0x03) << 4) | 2,
+        (numericPostal & 0xfc) >> 2,
+        (numericPostal & 0x3f00) >> 8,
+        (numericPostal & 0xfc000) >> 14,
+        (numericPostal & 0x3f00000) >> 20,
+        ((numericPostal & 0x3c000000) >> 26) | ((postal.length & 0x3) << 4),
+        ((postal.length & 0x3c) >> 2) | ((country & 0x3) << 4),
+        (country & 0xfc) >> 2,
+        ((country & 0x300) >> 8) | ((service & 0xf) << 2),
+        (service & 0x3f0) >> 4,
+    ].map((word) => word & 0x3f);
+}
+/** @param {string} postal @param {number} country @param {number} service */
+function mode3Primary(postal, country, service) {
+    if (typeof postal !== 'string' || postal.length < 1 || postal.length > 6) {
+        throw new EncodeError('MaxiCode Mode 3: postalCode must contain 1 to 6 Code Set A characters');
+    }
+    const values = postal.toUpperCase().padEnd(6, ' ').split('').map((c) => codeSetAValue(c.charCodeAt(0)));
+    if (values.some((value) => value === null))
+        throw new EncodeError('MaxiCode Mode 3: postalCode contains an unsupported character');
+    const v = /** @type {number[]} */ (values);
+    return [
+        ((v[5] & 0x03) << 4) | 3,
+        ((v[4] & 0x03) << 4) | ((v[5] & 0x3c) >> 2),
+        ((v[3] & 0x03) << 4) | ((v[4] & 0x3c) >> 2),
+        ((v[2] & 0x03) << 4) | ((v[3] & 0x3c) >> 2),
+        ((v[1] & 0x03) << 4) | ((v[2] & 0x3c) >> 2),
+        ((v[0] & 0x03) << 4) | ((v[1] & 0x3c) >> 2),
+        ((v[0] & 0x3c) >> 2) | ((country & 0x3) << 4),
+        (country & 0xfc) >> 2,
+        ((country & 0x300) >> 8) | ((service & 0xf) << 2),
+        (service & 0x3f0) >> 4,
+    ].map((word) => word & 0x3f);
+}
+/** @param {MaxiCodeEncodeOptions} options @returns {2|3|4|5} */
+function normalizeMode(options) {
+    const mode = options.mode ?? 4;
+    if (!Number.isInteger(mode) || mode < 2 || mode > 5) {
+        throw new EncodeError('MaxiCode: mode must be 2, 3, 4 or 5');
+    }
+    return /** @type {2|3|4|5} */ (mode);
+}
+/** @param {MaxiCodeEncodeOptions} options @param {2|3|4|5} mode @param {number[]} [payload] */
+function primaryCodewords(options, mode, payload = []) {
+    if (mode === 4 || mode === 5) {
+        const primary = [mode, ...payload.slice(0, 9)];
+        while (primary.length < 10)
+            primary.push(33);
+        return primary;
+    }
+    const primary = options.primary;
+    if (!primary || typeof primary.postalCode !== 'string') {
+        throw new EncodeError(`MaxiCode Mode ${mode}: primary { postalCode, countryCode, serviceClass } is required`);
+    }
+    const country = primary.countryCode;
+    const service = primary.serviceClass;
+    if (!Number.isInteger(country) || country < 0 || country > 999 ||
+        !Number.isInteger(service) || service < 0 || service > 999) {
+        throw new EncodeError('MaxiCode: countryCode and serviceClass must be integers from 0 to 999');
+    }
+    return mode === 2
+        ? mode2Primary(primary.postalCode, country, service)
+        : mode3Primary(primary.postalCode, country, service);
+}
+/** @param {number[]} data @param {number} eccLength @returns {number[]} */
+function secondaryErrorCorrection(data, eccLength) {
+    const halfData = data.length / 2;
+    const even = [];
+    const odd = [];
+    for (let i = 0; i < data.length; i++)
+        (i % 2 === 0 ? even : odd).push(data[i]);
+    if (even.length !== halfData || odd.length !== halfData)
+        throw new EncodeError('MaxiCode: secondary data must have an even length');
+    const evenParity = rsEncode(even, eccLength / 2, GF64, 1);
+    const oddParity = rsEncode(odd, eccLength / 2, GF64, 1);
+    const parity = [];
+    for (let i = 0; i < evenParity.length; i++) {
+        parity.push(evenParity[i], oddParity[i]);
+    }
+    return parity;
+}
+/** @param {number[]} codewords @returns {BitMatrix} */
+function placeMaxiCodeCodewords(codewords) {
+    if (!Array.isArray(codewords) || codewords.length !== MAXICODE_CODEWORDS ||
+        codewords.some((word) => !Number.isInteger(word) || word < 0 || word > 63)) {
+        throw new EncodeError('MaxiCode: internal codeword stream must contain 144 six-bit values');
+    }
+    const matrix = new BitMatrix(MAXICODE_WIDTH, MAXICODE_HEIGHT);
+    for (let y = 0; y < MAXICODE_HEIGHT; y++) {
+        for (let x = 0; x < MAXICODE_WIDTH; x++) {
+            const sequence = MAXICODE_GRID[y * MAXICODE_WIDTH + x];
+            if (sequence === 0)
+                continue;
+            const wire = sequence + 5;
+            const codeword = Math.floor(wire / 6) - 1;
+            const bit = 5 - (wire % 6);
+            matrix.setValue(x, y, ((codewords[codeword] >>> bit) & 1) !== 0);
+        }
+    }
+    // Finder: the standard's hexagonal bull's-eye is sampled as concentric
+    // rings by the square-module interchange representation used by this SDK.
+    for (let y = 0; y < MAXICODE_HEIGHT; y++)
+        for (let x = 0; x < MAXICODE_WIDTH; x++) {
+            const value = maxicodeFinderValue(x, y);
+            if (value !== null)
+                matrix.setValue(x, y, value);
+        }
+    for (const [x, y] of MAXICODE_ORIENTATION_DARK)
+        matrix.set(x, y);
+    return matrix;
+}
+/**
+ * Encode a MaxiCode symbol. Modes 2 and 3 carry a structured primary message;
+ * modes 4 and 5 encode an unstructured secondary text message.
+ *
+ * @param {string|Uint8Array|number[]} value
+ * @param {MaxiCodeEncodeOptions} [options]
+ * @returns {MaxiCodeMatrix}
+ */
+function encodeMaxiCode(value, options = {}) {
+    const mode = normalizeMode(options);
+    const data = encodeMaxiCodeText(value);
+    const secondaryLength = mode === 5 ? 68 : 84;
+    const secondaryEccLength = mode === 5 ? 56 : 40;
+    const primaryDataLength = mode === 4 || mode === 5 ? 9 : 0;
+    if (data.length > primaryDataLength + secondaryLength) {
+        throw new EncodeError(`MaxiCode Mode ${mode}: payload needs ${data.length} codewords, maximum is ` +
+            `${primaryDataLength + secondaryLength}`);
+    }
+    const primary = primaryCodewords(options, mode, data);
+    const secondary = data.slice(primaryDataLength);
+    while (secondary.length < secondaryLength)
+        secondary.push(33);
+    const primaryParity = rsEncode(primary, 10, GF64, 1);
+    const codewords = primary.concat(primaryParity, secondary, secondaryErrorCorrection(secondary, secondaryEccLength));
+    if (codewords.length !== MAXICODE_CODEWORDS)
+        throw new EncodeError('MaxiCode: internal codeword length mismatch');
+    const matrix = /** @type {MaxiCodeMatrix} */ (placeMaxiCodeCodewords(codewords));
+    matrix.maxicode = {
+        mode,
+        codewords: codewords.slice(),
+        dataCodewords: secondary.slice(),
+        dataModules: MAXICODE_DATA_MODULES,
+        moduleShape: 'hexagonal',
+        width: MAXICODE_WIDTH,
+        height: MAXICODE_HEIGHT,
+    };
+    return matrix;
+}
+__exports.mode2Primary = mode2Primary; __exports.mode3Primary = mode3Primary; __exports.primaryCodewords = primaryCodewords;
+
+__exports.codeSetAValue = codeSetAValue;
+__exports.codeSetBValue = codeSetBValue;
+__exports.codeSetACharacter = codeSetACharacter;
+__exports.codeSetBCharacter = codeSetBCharacter;
+__exports.codeSetCValue = codeSetCValue;
+__exports.codeSetDValue = codeSetDValue;
+__exports.codeSetEValue = codeSetEValue;
+__exports.codeSetCCharacter = codeSetCCharacter;
+__exports.codeSetDCharacter = codeSetDCharacter;
+__exports.codeSetECharacter = codeSetECharacter;
+__exports.encodeMaxiCodeText = encodeMaxiCodeText;
+__exports.placeMaxiCodeCodewords = placeMaxiCodeCodewords;
+__exports.encodeMaxiCode = encodeMaxiCode;
+};
+
+__modules["js/maxicode/decoder.js"] = function (__require, __exports) {
+/** MaxiCode decoder for ISO/IEC 16023 modes 2 through 5. @module maxicode/decoder */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { FormatError } = __require("js/core/errors.js");
+const { GF64 } = __require("js/core/galois-field.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { MAXICODE_CODEWORDS, MAXICODE_GRID, MAXICODE_HEIGHT, MAXICODE_ORIENTATION_DARK, MAXICODE_WIDTH, maxicodeFinderValue } = __require("js/maxicode/tables.js");
+const { codeSetACharacter, codeSetBCharacter, codeSetCCharacter, codeSetDCharacter, codeSetECharacter } = __require("js/maxicode/encoder.js");
+/** @param {BitMatrix} matrix @returns {BitMatrix} */
+function rotate180(matrix) {
+    const out = new BitMatrix(matrix.width, matrix.height);
+    for (let y = 0; y < matrix.height; y++)
+        for (let x = 0; x < matrix.width; x++) {
+            if (matrix.get(x, y))
+                out.set(matrix.width - 1 - x, matrix.height - 1 - y);
+        }
+    return out;
+}
+/** @param {BitMatrix} matrix @returns {BitMatrix} */
+function invert(matrix) {
+    const out = matrix.clone();
+    for (let y = 0; y < out.height; y++)
+        for (let x = 0; x < out.width; x++)
+            out.flip(x, y);
+    return out;
+}
+/** Check the finder and orientation markers without trusting payload bits. */
+function maxicodeStructureMatches(matrix) {
+    if (matrix.width !== MAXICODE_WIDTH || matrix.height !== MAXICODE_HEIGHT)
+        return false;
+    for (let y = 0; y < MAXICODE_HEIGHT; y++)
+        for (let x = 0; x < MAXICODE_WIDTH; x++) {
+            const finder = maxicodeFinderValue(x, y);
+            // A few orientation modules intentionally overlap the outer finder ring.
+            // They are fixed dark modules in the standard and therefore take
+            // precedence over the ring predicate at those coordinates.
+            const orientationDark = MAXICODE_ORIENTATION_DARK.some(([ox, oy]) => ox === x && oy === y);
+            if (finder !== null && !orientationDark && matrix.get(x, y) !== finder)
+                return false;
+        }
+    for (const [x, y] of MAXICODE_ORIENTATION_DARK)
+        if (!matrix.get(x, y))
+            return false;
+    // The two fixed upper-right cells are deliberately dark in every symbol.
+    return matrix.get(28, 0) && matrix.get(29, 0);
+}
+/** @param {BitMatrix} matrix @returns {number[]} */
+function readMaxiCodeCodewords(matrix) {
+    if (matrix.width !== MAXICODE_WIDTH || matrix.height !== MAXICODE_HEIGHT) {
+        throw new FormatError(`MaxiCode: expected a ${MAXICODE_WIDTH}x${MAXICODE_HEIGHT} module matrix`);
+    }
+    const codewords = new Array(MAXICODE_CODEWORDS).fill(0);
+    for (let y = 0; y < MAXICODE_HEIGHT; y++)
+        for (let x = 0; x < MAXICODE_WIDTH; x++) {
+            const sequence = MAXICODE_GRID[y * MAXICODE_WIDTH + x];
+            if (sequence === 0)
+                continue;
+            const wire = sequence + 5;
+            const codeword = Math.floor(wire / 6) - 1;
+            const bit = 5 - (wire % 6);
+            if (matrix.get(x, y))
+                codewords[codeword] |= 1 << bit;
+        }
+    return codewords;
+}
+/** @param {number[]} codewords @param {number} length @returns {{data:number[],corrections:number}} */
+function correctSecondary(codewords, length) {
+    const eccLength = codewords.length - length;
+    const data = codewords.slice(0, length);
+    const even = [];
+    const odd = [];
+    for (let i = 0; i < length; i++)
+        (i % 2 === 0 ? even : odd).push(data[i]);
+    const evenParity = [];
+    const oddParity = [];
+    for (let i = 0; i < eccLength / 2; i++) {
+        evenParity.push(codewords[length + i * 2]);
+        oddParity.push(codewords[length + i * 2 + 1]);
+    }
+    const evenReceived = even.concat(evenParity);
+    const oddReceived = odd.concat(oddParity);
+    const corrections = rsDecode(evenReceived, eccLength / 2, GF64, 1) +
+        rsDecode(oddReceived, eccLength / 2, GF64, 1);
+    for (let i = 0; i < length; i++)
+        data[i] = i % 2 === 0 ? evenReceived[i / 2] : oddReceived[(i - 1) / 2];
+    return { data, corrections };
+}
+/** @param {number[]} words @returns {{text:string,bytes:Uint8Array}} */
+function decodeMaxiCodeText(words) {
+    /** @type {string[]} */
+    const chars = [];
+    let set = 'A';
+    let i = 0;
+    let padding = false;
+    while (i < words.length) {
+        const value = words[i++];
+        if (!Number.isInteger(value) || value < 0 || value > 63)
+            throw new FormatError('MaxiCode: codeword is outside the six-bit range');
+        if (value === 33) {
+            padding = true;
+            for (let j = i; j < words.length; j++)
+                if (words[j] !== 33)
+                    throw new FormatError('MaxiCode: data appears after a pad codeword');
+            break;
+        }
+        if (padding)
+            throw new FormatError('MaxiCode: non-padding data follows a pad codeword');
+        if (value === 63) {
+            set = set === 'A' ? 'B' : 'A';
+            continue;
+        }
+        if (value === 59) {
+            if (i >= words.length)
+                throw new FormatError('MaxiCode: truncated shift sequence');
+            const shifted = words[i++];
+            const character = set === 'A' ? codeSetBCharacter(shifted) : codeSetACharacter(shifted);
+            if (character === null)
+                throw new FormatError('MaxiCode: shift targets an invalid codeword');
+            chars.push(String.fromCharCode(character));
+            continue;
+        }
+        if (value >= 60 && value <= 62) {
+            if (i >= words.length)
+                throw new FormatError('MaxiCode: truncated shift sequence');
+            const shifted = words[i++];
+            const character = value === 60 ? codeSetCCharacter(shifted) :
+                value === 61 ? codeSetDCharacter(shifted) : codeSetECharacter(shifted);
+            if (character === null)
+                throw new FormatError('MaxiCode: shift targets an invalid codeword');
+            chars.push(String.fromCharCode(character));
+            continue;
+        }
+        if (value === 31) {
+            if (i + 5 > words.length)
+                throw new FormatError('MaxiCode: truncated numeric shift');
+            let compact = 0;
+            for (let j = 0; j < 5; j++)
+                compact = compact * 64 + words[i++];
+            if (compact > 999999999)
+                throw new FormatError('MaxiCode: numeric shift value exceeds nine digits');
+            chars.push(String(compact).padStart(9, '0'));
+            continue;
+        }
+        if (value === 27)
+            throw new FormatError('MaxiCode: ECI sequences are not enabled in this build');
+        const character = set === 'A' ? codeSetACharacter(value) : codeSetBCharacter(value);
+        if (character === null)
+            throw new FormatError(`MaxiCode: codeword ${value} is not assigned in Code Set ${set}`);
+        chars.push(String.fromCharCode(character));
+    }
+    const text = chars.join('');
+    return { text, bytes: Uint8Array.from(chars.map((character) => character.charCodeAt(0))) };
+}
+/** @param {number[]} primary @param {2|3} mode */
+function decodePrimary(primary, mode) {
+    const countryCode = ((primary[6] >>> 4) & 0x03) | (primary[7] << 2) | ((primary[8] & 0x03) << 8);
+    const serviceClass = ((primary[8] >>> 2) & 0x0f) | (primary[9] << 4);
+    if (mode === 2) {
+        const length = ((primary[5] >>> 4) & 0x03) | ((primary[6] & 0x0f) << 2);
+        let postal = ((primary[0] >>> 4) & 0x03) |
+            (primary[1] << 2) |
+            (primary[2] << 8) |
+            (primary[3] << 14) |
+            (primary[4] << 20) |
+            ((primary[5] & 0x0f) << 26);
+        postal = String(postal).padStart(length, '0');
+        return { postalCode: postal, countryCode, serviceClass };
+    }
+    const values = [
+        ((primary[5] >>> 4) & 0x03) | ((primary[6] & 0x0f) << 2),
+        ((primary[4] >>> 4) & 0x03) | ((primary[5] & 0x0f) << 2),
+        ((primary[3] >>> 4) & 0x03) | ((primary[4] & 0x0f) << 2),
+        ((primary[2] >>> 4) & 0x03) | ((primary[3] & 0x0f) << 2),
+        ((primary[1] >>> 4) & 0x03) | ((primary[2] & 0x0f) << 2),
+        ((primary[0] >>> 4) & 0x03) | ((primary[1] & 0x0f) << 2),
+    ];
+    const postal = values.map((value) => {
+        const cp = codeSetACharacter(value);
+        if (cp === null)
+            throw new FormatError('MaxiCode Mode 3: primary postal code contains an invalid value');
+        return String.fromCharCode(cp);
+    }).join('').trimEnd();
+    return { postalCode: postal, countryCode, serviceClass };
+}
+/**
+ * Decode an upright MaxiCode matrix. The reader accepts the canonical matrix
+ * and its 180-degree turn; arbitrary perspective belongs to the detector.
+ *
+ * @param {BitMatrix} matrix
+ * @param {{inverted?: boolean|'auto',rotation?:0|180|'auto'}} [options]
+ * @returns {object}
+ */
+function decodeMaxiCode(matrix, options = {}) {
+    if (!matrix || matrix.width !== MAXICODE_WIDTH || matrix.height !== MAXICODE_HEIGHT) {
+        throw new FormatError(`MaxiCode: expected a ${MAXICODE_WIDTH}x${MAXICODE_HEIGHT} module matrix`);
+    }
+    const rotations = options.rotation === 180 ? [180] : options.rotation === 0 ? [0] : [0, 180];
+    const invertedModes = options.inverted === true ? [true] : options.inverted === false ? [false] : [false, true];
+    let lastError = null;
+    for (const rotation of rotations) {
+        const oriented = rotation === 180 ? rotate180(matrix) : matrix;
+        for (const inverted of invertedModes) {
+            const candidate = inverted ? invert(oriented) : oriented;
+            if (!maxicodeStructureMatches(candidate))
+                continue;
+            try {
+                const codewords = readMaxiCodeCodewords(candidate);
+                const primaryReceived = codewords.slice(0, 20);
+                const primaryCorrections = rsDecode(primaryReceived, 10, GF64, 1);
+                const primary = primaryReceived.slice(0, 10);
+                const mode = primary[0] & 0x0f;
+                if (mode < 2 || mode > 5)
+                    throw new FormatError(`MaxiCode: unsupported mode ${mode}`);
+                const secondaryLength = mode === 5 ? 68 : 84;
+                const secondaryWords = codewords.slice(20, 20 + secondaryLength + (mode === 5 ? 56 : 40));
+                const secondary = correctSecondary(secondaryWords, secondaryLength);
+                // Modes 4 and 5 place the first nine secondary codewords in the
+                // primary message (after the mode indicator).  Padding in that
+                // prefix must be removed before joining the corrected secondary part.
+                const primaryPayload = (mode === 4 || mode === 5) ? primary.slice(1) : [];
+                while (primaryPayload.length && primaryPayload[primaryPayload.length - 1] === 33)
+                    primaryPayload.pop();
+                const payload = decodeMaxiCodeText(primaryPayload.concat(secondary.data));
+                const result = {
+                    format: 'maxicode',
+                    text: payload.text,
+                    bytes: payload.bytes,
+                    mode,
+                    corrections: primaryCorrections + secondary.corrections,
+                    rows: MAXICODE_HEIGHT,
+                    columns: MAXICODE_WIDTH,
+                    inverted,
+                    rotation,
+                };
+                if (mode === 2 || mode === 3)
+                    result.primary = decodePrimary(primary, mode);
+                return result;
+            }
+            catch (error) {
+                lastError = error;
+            }
+        }
+    }
+    if (lastError)
+        throw new FormatError(`MaxiCode: Reed-Solomon or payload validation failed: ${lastError.message}`);
+    throw new FormatError('MaxiCode: finder or orientation structure is invalid');
+}
+
+__exports.maxicodeStructureMatches = maxicodeStructureMatches;
+__exports.readMaxiCodeCodewords = readMaxiCodeCodewords;
+__exports.decodeMaxiCodeText = decodeMaxiCodeText;
+__exports.decodeMaxiCode = decodeMaxiCode;
+};
+
+__modules["js/maxicode/detector.js"] = function (__require, __exports) {
+/** MaxiCode detector for fixed 30 by 33 module images. @module maxicode/detector */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { decodeMaxiCode } = __require("js/maxicode/decoder.js");
+const { MAXICODE_HEIGHT, MAXICODE_WIDTH } = __require("js/maxicode/tables.js");
+/** @param {BitMatrix} source @param {{x:number,y:number,width:number,height:number}} bounds */
+function sampleBounds(source, bounds) {
+    const matrix = new BitMatrix(MAXICODE_WIDTH, MAXICODE_HEIGHT);
+    for (let y = 0; y < MAXICODE_HEIGHT; y++)
+        for (let x = 0; x < MAXICODE_WIDTH; x++) {
+            const px = Math.min(source.width - 1, Math.max(0, Math.floor(bounds.x + ((x + 0.5) * bounds.width) / MAXICODE_WIDTH)));
+            const py = Math.min(source.height - 1, Math.max(0, Math.floor(bounds.y + ((y + 0.5) * bounds.height) / MAXICODE_HEIGHT)));
+            if (source.get(px, py))
+                matrix.set(x, y);
+        }
+    return matrix;
+}
+/** @param {BitMatrix} source @returns {BitMatrix} */
+function inverted(source) {
+    const out = source.clone();
+    for (let y = 0; y < out.height; y++)
+        for (let x = 0; x < out.width; x++)
+            out.flip(x, y);
+    return out;
+}
+/**
+ * Detect a MaxiCode in a binarized image. The detector intentionally accepts a
+ * single prominent symbol and an integer or near-integer scale; callers that
+ * have a perspective quadrilateral can sample it first and call the matrix
+ * decoder directly.
+ *
+ * @param {BitMatrix} binaryImage
+ * @returns {{corners:Array<{x:number,y:number}>,dimension:{width:number,height:number},moduleSize:number,matrix:BitMatrix,result:object}|null}
+ */
+function detectMaxiCode(binaryImage) {
+    if (!binaryImage || !binaryImage.width || !binaryImage.height) {
+        throw new NotFoundError('detectMaxiCode: no image supplied');
+    }
+    const candidates = [];
+    for (const source of [binaryImage, inverted(binaryImage)]) {
+        const bounds = source.width === MAXICODE_WIDTH && source.height === MAXICODE_HEIGHT
+            ? { x: 0, y: 0, width: source.width, height: source.height }
+            : source.getBounds();
+        if (!bounds || bounds.width < MAXICODE_WIDTH || bounds.height < MAXICODE_HEIGHT)
+            continue;
+        const ratio = bounds.width / bounds.height;
+        if (Math.abs(ratio - MAXICODE_WIDTH / MAXICODE_HEIGHT) > 0.2)
+            continue;
+        // A valid symbol may legitimately fill the complete input frame (for
+        // example an integer-scaled 30x33 matrix).  Payload validation below
+        // rejects a uniform background, so do not discard full-frame candidates
+        // before sampling them.
+        const matrix = sampleBounds(source, bounds);
+        let result;
+        try {
+            result = decodeMaxiCode(matrix);
+        }
+        catch {
+            continue;
+        }
+        candidates.push({
+            corners: [
+                { x: bounds.x, y: bounds.y },
+                { x: bounds.x + bounds.width, y: bounds.y },
+                { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+                { x: bounds.x, y: bounds.y + bounds.height },
+            ],
+            dimension: { width: MAXICODE_WIDTH, height: MAXICODE_HEIGHT },
+            moduleSize: (bounds.width / MAXICODE_WIDTH + bounds.height / MAXICODE_HEIGHT) / 2,
+            matrix,
+            result,
+        });
+    }
+    candidates.sort((a, b) => b.moduleSize - a.moduleSize);
+    return candidates[0] ?? null;
+}
+/** Detect and decode a MaxiCode or return null when no verified symbol exists. */
+function detectAndDecodeMaxiCode(binaryImage) {
+    let detection;
+    try {
+        detection = detectMaxiCode(binaryImage);
+    }
+    catch {
+        return null;
+    }
+    if (!detection)
+        return null;
+    return { ...detection.result, corners: detection.corners, moduleSize: detection.moduleSize };
+}
+
+__exports.detectMaxiCode = detectMaxiCode;
+__exports.detectAndDecodeMaxiCode = detectAndDecodeMaxiCode;
+};
+
+__modules["js/maxicode/index.js"] = function (__require, __exports) {
+/** MaxiCode public entry points. @module maxicode */
+const __reexport0 = __require("js/maxicode/encoder.js"); __exports.encodeMaxiCode = __reexport0.encodeMaxiCode; __exports.encodeMaxiCodeText = __reexport0.encodeMaxiCodeText; __exports.placeMaxiCodeCodewords = __reexport0.placeMaxiCodeCodewords;
+const __reexport1 = __require("js/maxicode/decoder.js"); __exports.decodeMaxiCode = __reexport1.decodeMaxiCode; __exports.decodeMaxiCodeText = __reexport1.decodeMaxiCodeText; __exports.maxicodeStructureMatches = __reexport1.maxicodeStructureMatches; __exports.readMaxiCodeCodewords = __reexport1.readMaxiCodeCodewords;
+const __reexport2 = __require("js/maxicode/detector.js"); __exports.detectMaxiCode = __reexport2.detectMaxiCode; __exports.detectAndDecodeMaxiCode = __reexport2.detectAndDecodeMaxiCode;
+const __reexport3 = __require("js/maxicode/tables.js"); __exports.MAXICODE_CODEWORDS = __reexport3.MAXICODE_CODEWORDS; __exports.MAXICODE_DATA_MODULES = __reexport3.MAXICODE_DATA_MODULES; __exports.MAXICODE_FIELD_SIZE = __reexport3.MAXICODE_FIELD_SIZE; __exports.MAXICODE_GRID = __reexport3.MAXICODE_GRID; __exports.MAXICODE_HEIGHT = __reexport3.MAXICODE_HEIGHT; __exports.MAXICODE_WIDTH = __reexport3.MAXICODE_WIDTH; __exports.validateMaxiCodeTables = __reexport3.validateMaxiCodeTables;
 
 
 };
@@ -15676,6 +18307,40 @@ const { BitMatrix } = __require("js/core/bit-matrix.js");
  * @property {string} [light] Colour of clear modules, or 'none' for transparent.
  * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
  */
+// Keep renderer allocations aligned with the image decoder's resource limits.
+const MAX_RENDER_DIMENSION = 16384;
+const MAX_RENDER_PIXELS = 16777216;
+const MAX_RENDER_SCALE = MAX_RENDER_DIMENSION;
+const MAX_RENDER_MARGIN = Math.floor((MAX_RENDER_DIMENSION - 1) / 2);
+const MAX_RENDER_BAR_HEIGHT = MAX_RENDER_DIMENSION;
+function boundedInteger(value, name, defaultValue, minimum, maximum) {
+    const resolved = value ?? defaultValue;
+    if (!Number.isSafeInteger(resolved)) {
+        throw new RangeError(`Render option "${name}" must be a finite safe integer between ${minimum} and ${maximum}, got ${resolved}`);
+    }
+    if (resolved < minimum || resolved > maximum) {
+        throw new RangeError(`Render option "${name}" must be between ${minimum} and ${maximum}, got ${resolved}`);
+    }
+    return resolved;
+}
+function validateMatrixDimensions(matrix) {
+    if (!matrix || !Number.isSafeInteger(matrix.width) || !Number.isSafeInteger(matrix.height)
+        || matrix.width < 1 || matrix.height < 1
+        || matrix.width > MAX_RENDER_DIMENSION || matrix.height > MAX_RENDER_DIMENSION) {
+        throw new RangeError(`Render matrix dimensions must be positive safe integers no larger than ${MAX_RENDER_DIMENSION}`);
+    }
+}
+function validatePixelDimensions(width, height) {
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+        || width < 1 || height < 1
+        || width > MAX_RENDER_DIMENSION || height > MAX_RENDER_DIMENSION) {
+        throw new RangeError(`Render dimensions must be positive safe integers no larger than ${MAX_RENDER_DIMENSION}`);
+    }
+    const pixels = width * height;
+    if (!Number.isSafeInteger(pixels) || pixels > MAX_RENDER_PIXELS) {
+        throw new RangeError(`Render image contains too many pixels: ${pixels} (maximum ${MAX_RENDER_PIXELS})`);
+    }
+}
 /**
  * Expand and pad the matrix, and resolve every dimension.
  *
@@ -15688,18 +18353,26 @@ const { BitMatrix } = __require("js/core/bit-matrix.js");
  * @param {RenderOptions} options
  */
 function normalizeOptions(matrix, options = {}) {
-    const scale = Math.max(1, Math.floor(options.scale ?? 8));
-    const margin = Math.max(0, Math.floor(options.margin ?? 4));
+    validateMatrixDimensions(matrix);
+    const scale = boundedInteger(options.scale, 'scale', 8, 1, MAX_RENDER_SCALE);
+    const margin = boundedInteger(options.margin, 'margin', 4, 0, MAX_RENDER_MARGIN);
     const dark = options.dark ?? '#000000';
     const light = options.light ?? '#ffffff';
-    const barHeight = options.barHeight ?? null;
-    let base = matrix;
+    const barHeight = options.barHeight == null
+        ? null
+        : boundedInteger(options.barHeight, 'barHeight', 1, 1, MAX_RENDER_BAR_HEIGHT);
     const is1D = matrix.height === 1;
+    const targetPixels = is1D
+        ? barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15))
+        : null;
+    const rows = is1D ? Math.max(1, Math.round(targetPixels / scale)) : matrix.height;
+    const sourceWidth = matrix.width + margin * 2;
+    const sourceHeight = rows + margin * 2;
+    validatePixelDimensions(sourceWidth * scale, sourceHeight * scale);
+    let base = matrix;
     if (is1D) {
         // Default to a bar height that stays scannable: tall enough that a laser
         // crossing at a slight angle still passes through the whole symbol.
-        const targetPixels = barHeight ?? Math.max(40, Math.round(matrix.width * scale * 0.15));
-        const rows = Math.max(1, Math.round(targetPixels / scale));
         base = new BitMatrix(matrix.width, rows);
         for (let x = 0; x < matrix.width; x++) {
             if (!matrix.get(x, 0))
@@ -16879,6 +19552,7 @@ const frameqr = __require("js/frameqr/index.js");
 const aztecRune = __require("js/aztecrune/index.js");
 const compactPdf417 = __require("js/compactpdf417/index.js");
 const databar = __require("js/databar/index.js");
+const maxicode = __require("js/maxicode/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("js/core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("js/image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -16895,13 +19569,14 @@ const __reexport10 = __require("js/aztec/index.js"); __exports.encodeAztec = __r
 Object.assign(__exports, __require("js/aztecrune/index.js"));
 const __reexport11 = __require("js/pdf417/index.js"); __exports.encodePDF417 = __reexport11.encodePDF417; __exports.decodePDF417 = __reexport11.decodePDF417; __exports.detectPDF417 = __reexport11.detectPDF417; __exports.detectAndDecodePDF417 = __reexport11.detectAndDecodePDF417;
 Object.assign(__exports, __require("js/compactpdf417/index.js"));
-// DataBar exports include both the verified GTIN/data layer and the
-// Omnidirectional/Truncated physical image path.
+// DataBar exports include the verified GTIN/data layer and the supported
+// Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional paths.
 Object.assign(__exports, __require("js/databar/index.js"));
-const __reexport12 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport12.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport12.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport12.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport12.detectAndDecodeMicroPDF417;
-const __reexport13 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport13.encodeMicroQR; __exports.decodeMicroQR = __reexport13.decodeMicroQR; __exports.detectMicroQR = __reexport13.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport13.detectAndDecodeMicroQR;
-const __reexport14 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport14.encodeRMQR; __exports.decodeRMQR = __reexport14.decodeRMQR; __exports.detectRMQR = __reexport14.detectRMQR; __exports.detectAndDecodeRMQR = __reexport14.detectAndDecodeRMQR;
-const __reexport15 = __require("js/frameqr/index.js"); __exports.encodeFrameQR = __reexport15.encodeFrameQR; __exports.decodeFrameQR = __reexport15.decodeFrameQR; __exports.detectFrameQR = __reexport15.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport15.detectAndDecodeFrameQR;
+const __reexport12 = __require("js/maxicode/index.js"); __exports.encodeMaxiCode = __reexport12.encodeMaxiCode; __exports.decodeMaxiCode = __reexport12.decodeMaxiCode; __exports.detectMaxiCode = __reexport12.detectMaxiCode; __exports.detectAndDecodeMaxiCode = __reexport12.detectAndDecodeMaxiCode;
+const __reexport13 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport13.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport13.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport13.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport13.detectAndDecodeMicroPDF417;
+const __reexport14 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport14.encodeMicroQR; __exports.decodeMicroQR = __reexport14.decodeMicroQR; __exports.detectMicroQR = __reexport14.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport14.detectAndDecodeMicroQR;
+const __reexport15 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport15.encodeRMQR; __exports.decodeRMQR = __reexport15.decodeRMQR; __exports.detectRMQR = __reexport15.detectRMQR; __exports.detectAndDecodeRMQR = __reexport15.detectAndDecodeRMQR;
+const __reexport16 = __require("js/frameqr/index.js"); __exports.encodeFrameQR = __reexport16.encodeFrameQR; __exports.decodeFrameQR = __reexport16.decodeFrameQR; __exports.detectFrameQR = __reexport16.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport16.detectAndDecodeFrameQR;
 /**
  * @typedef {object} FormatInfo
  * @property {string} id
@@ -16948,6 +19623,14 @@ const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'fun
 const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
 const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
 const dataBarCanDecode = typeof databar.decodeDataBar14Scanline === 'function';
+const dataBarStackedCanEncode = typeof databar.encodeDataBar14Stacked === 'function';
+const dataBarStackedCanDecode = typeof databar.detectAndDecodeDataBar14Stacked === 'function';
+const dataBarStackedOmniCanEncode = typeof databar.encodeDataBarStackedOmnidirectional === 'function';
+const dataBarStackedOmniCanDecode = typeof databar.detectAndDecodeDataBarStackedOmnidirectional === 'function';
+const dataBarLimitedCanEncode = typeof databar.encodeDataBarLimited === 'function';
+const dataBarLimitedCanDecode = typeof databar.detectAndDecodeDataBarLimited === 'function';
+const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
+const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
 /**
  * Every format this build supports.
  *
@@ -17044,6 +19727,34 @@ function listFormats() {
         canRead: dataBarCanDecode,
         kind: /** @type {'1D'} */ ('1D'),
     });
+    formats.push({
+        id: 'gs1databar-stacked',
+        label: 'GS1 DataBar Stacked',
+        canWrite: dataBarStackedCanEncode,
+        canRead: dataBarStackedCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'gs1databar-stacked-omnidirectional',
+        label: 'GS1 DataBar Stacked Omnidirectional',
+        canWrite: dataBarStackedOmniCanEncode,
+        canRead: dataBarStackedOmniCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'gs1databar-limited',
+        label: 'GS1 DataBar Limited',
+        canWrite: dataBarLimitedCanEncode,
+        canRead: dataBarLimitedCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'maxicode',
+        label: 'MaxiCode',
+        canWrite: maxicodeCanEncode,
+        canRead: maxicodeCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -17072,6 +19783,12 @@ function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {2|3|4|5} [options.mode] MaxiCode mode.
+ * @param {{postalCode:string,countryCode:number,serviceClass:number}} [options.primary] MaxiCode structured primary data for modes 2 and 3.
+ * @param {'latin1'} [options.charset] MaxiCode character set declaration.
+ * @param {boolean} [options.linkage] GS1 DataBar composite linkage flag.
+ * @param {number} [options.moduleScale] Integer module scale for GS1 DataBar physical variants.
+ * @param {number} [options.height] Output height for a GS1 DataBar physical variant.
  * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
@@ -17118,9 +19835,23 @@ function encode(text, options = {}) {
     if (format === 'gs1databar14' || format === 'gs1-databar14' || format === 'databar') {
         return databar.encodeDataBar14(value, options);
     }
+    if (format === 'gs1databar-stacked' || format === 'gs1-databar-stacked' || format === 'databar-stacked') {
+        return databar.encodeDataBar14Stacked(value, options);
+    }
+    if (format === 'gs1databar-stacked-omnidirectional'
+        || format === 'gs1-databar-stacked-omnidirectional'
+        || format === 'databar-stacked-omni') {
+        return databar.encodeDataBarStackedOmnidirectional(value, options);
+    }
+    if (format === 'gs1databar-limited' || format === 'gs1-databar-limited' || format === 'databar-limited') {
+        return databar.encodeDataBarLimited(value, options);
+    }
+    if (format === 'maxicode' || format === 'maxi-code') {
+        return maxicode.encodeMaxiCode(value, options);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
-        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14'].join(', ');
+        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -17187,10 +19918,22 @@ function decode(image, options = {}) {
     const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
     const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
     const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
-    const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
+    const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
+    const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
+    const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
+        || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
+    const wantDataBarLimited = !want || want.has('gs1databar-limited')
+        || want.has('gs1-databar-limited') || want.has('databar-limited');
+    const oneDAliases = new Set([
+        'gs1databar14', 'databar', 'gs1-databar14',
+        'gs1databar-stacked', 'gs1-databar-stacked', 'databar-stacked',
+        'gs1databar-stacked-omnidirectional', 'gs1-databar-stacked-omnidirectional', 'databar-stacked-omni',
+        'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
+    ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
-        || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR;
+        || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
+        || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
     // Light-on-dark symbols are common on screens and packaging, so a second
@@ -17339,6 +20082,46 @@ function decode(image, options = {}) {
                     /* no Sythos Canvas QR profile in this pass */
                 }
             }
+            if (wantMaxiCode && maxicodeCanDecode) {
+                try {
+                    const found = maxicode.detectAndDecodeMaxiCode(candidateBits);
+                    if (found)
+                        add(found, 'maxicode');
+                }
+                catch {
+                    /* no MaxiCode in this pass */
+                }
+            }
+            if (wantDataBarStacked && dataBarStackedCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBar14Stacked(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-stacked');
+                }
+                catch {
+                    /* no GS1 DataBar Stacked in this pass */
+                }
+            }
+            if (wantDataBarStackedOmni && dataBarStackedOmniCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBarStackedOmnidirectional(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-stacked-omnidirectional');
+                }
+                catch {
+                    /* no GS1 DataBar Stacked Omnidirectional in this pass */
+                }
+            }
+            if (wantDataBarLimited && dataBarLimitedCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBarLimited(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-limited');
+                }
+                catch {
+                    /* no GS1 DataBar Limited in this pass */
+                }
+            }
             return results.length > before;
         };
         const twoDFound = readTwoD(bits);
@@ -17428,17 +20211,19 @@ function decode(image, options = {}) {
         return true;
     });
     // On large clean rasters, hybrid thresholding can erase otherwise uniform
-    // QR/PDF417 modules. Keep auto/hybrid as the primary strategy, then make one
-    // focused global retry only when the complete primary pass found nothing.
+    // QR, PDF417 and MaxiCode modules. Keep auto/hybrid as the primary strategy,
+    // then make one focused global retry only when the complete primary pass
+    // found nothing.
     // This deliberately leaves an explicit global request single-pass.
     const retryFormats = formats
         ? formats.filter((format) => {
             const id = String(format).toLowerCase();
             return id === 'qr' || id === 'qrcode'
                 || id === 'pdf417' || id === 'pdf-417'
-                || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417';
+                || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417'
+                || id === 'maxicode' || id === 'maxi-code';
         })
-        : ['qr', 'pdf417', 'compactpdf417'];
+        : ['qr', 'pdf417', 'compactpdf417', 'maxicode'];
     const shouldRetryGlobal = unique.length === 0
         && (binarizer === 'auto' || binarizer === 'hybrid')
         && retryFormats.length > 0;

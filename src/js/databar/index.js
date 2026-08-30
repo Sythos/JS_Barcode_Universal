@@ -33,4 +33,7 @@ export { GS1_SEPARATOR, decodeGS1ElementString, encodeGS1ElementString, formatGS
 export { DATABAR14_VARIANTS, DATABAR_LIMITED_VARIANT, dataBar14GroupFor, validateDataBarTables, } from './tables.js';
 export { encodeDataBar14 } from './encoder.js';
 export { decodeDataBar14, decodeDataBar14Scanline } from './decoder.js';
+export { encodeDataBarLimited, decodeDataBarLimited, detectDataBarLimited, detectAndDecodeDataBarLimited, decodeDataBarLimitedScanline, } from './limited.js';
+export { encodeDataBar14Stacked, decodeDataBar14Stacked, detectDataBar14Stacked, detectAndDecodeDataBar14Stacked, encodeDataBarStacked, decodeDataBarStacked, detectDataBarStacked, detectAndDecodeDataBarStacked, encodeGS1DataBarStacked, decodeGS1DataBarStacked, detectGS1DataBarStacked, detectAndDecodeGS1DataBarStacked, } from './stacked.js';
+export { encodeDataBarStackedOmnidirectional, decodeDataBarStackedOmnidirectional, detectDataBarStackedOmnidirectional, detectAndDecodeDataBarStackedOmnidirectional, encodeDataBarStackedOmni, decodeDataBarStackedOmni, detectDataBarStackedOmni, detectAndDecodeDataBarStackedOmni, encodeDataBar14StackedOmnidirectional, decodeDataBar14StackedOmnidirectional, detectDataBar14StackedOmnidirectional, encodeDataBar14StackedOmni, decodeDataBar14StackedOmni, detectDataBar14StackedOmni, } from './stacked-omnidirectional.js';
 export { DATABAR14_CHECKSUM_WEIGHTS, DATABAR14_FINDERS, dataBar14CharacterWidths, dataBar14ValueForWidths, dataBarWidths, } from './patterns.js';

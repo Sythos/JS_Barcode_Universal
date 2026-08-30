@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **28 entries**: all 28 are writable and
-27 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **32 entries**: all 32 are writable and
+31 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -50,7 +50,8 @@ corrected in the same change.
 | Aztec family | `aztec`, `aztecrune` | 2 | 2 | Aztec Code and Aztec Rune are separate grammars. |
 | PDF417 family | `pdf417`, `compactpdf417`, `micropdf417` | 3 | 3 | Full, truncated and Micro geometry are not aliases. |
 | Project profile | `frameqr` | 1 | 1 | Sythos Canvas QR is not DENSO FrameQR compatibility. |
-| GS1 DataBar | `gs1databar14` | 1 | 1 | Physical support is Omnidirectional and Truncated only. |
+| GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` | 4 | 4 | Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional physical variants; Expanded remains outside scope. |
+| MaxiCode | `maxicode` | 1 | 1 | Fixed 30×33 geometry, Modes 2–5 and ISO-8859-1 Code Sets A–E. |
 
 Use the family pages for payload modes, options, image-reading limits and
 examples:
@@ -61,6 +62,7 @@ examples:
 - [Aztec family](aztec.md)
 - [PDF417 family](pdf417-family.md)
 - [GS1, EAN and UPC](gs1-and-ean.md)
+- [MaxiCode](maxicode.md)
 - [Sythos Canvas QR profile](frameqr-profile.md)
 - [Excluded and intentionally out-of-scope formats](excluded-formats.md)
 
@@ -120,7 +122,8 @@ successful camera decode.
 | High-density 2D payload or stacked rows | `pdf417` | Text, Byte and Numeric compaction with ECC levels 0–8. |
 | Small PDF417-shaped symbol | `micropdf417` | Fixed MicroPDF417 variants and constrained geometry options. |
 | Truncated PDF417 geometry | `compactpdf417` | Compact/truncated layout when full PDF417 row structure is unnecessary. |
-| GS1 retail or logistics payload | `gs1128`, `gs1databar14`, or EAN/UPC | Choose by the physical symbology and AI/application rules, not only by payload text. |
+| GS1 retail or logistics payload | `gs1128`, a GS1 DataBar variant, or EAN/UPC | Choose by the physical symbology and AI/application rules, not only by payload text. |
+| Fixed carrier/logistics matrix | `maxicode` | Use Modes 2–5 with the required primary data for Modes 2 and 3; the detector expects one clean prominent symbol. |
 | Artwork inside a QR-like symbol | `frameqr` | Use only for the Sythos Canvas QR profile; it is not native DENSO FrameQR. |
 
 This catalogue does not grant a standard certification, patent opinion,

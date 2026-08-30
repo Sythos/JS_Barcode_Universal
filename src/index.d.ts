@@ -62,6 +62,12 @@ export * from './ts/aztecrune/index.js';
 export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './ts/pdf417/index.js';
 export * from './ts/compactpdf417/index.js';
 export * from './ts/databar/index.js';
+export {
+    encodeMaxiCode,
+    decodeMaxiCode,
+    detectMaxiCode,
+    detectAndDecodeMaxiCode,
+} from './ts/maxicode/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './ts/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './ts/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './ts/rmqr/index.js';
@@ -138,6 +144,17 @@ export declare function encode(text: string | number, options?: {
     compaction?: 'auto' | 'text' | 'byte' | 'numeric';
     eci?: number;
     aspectRatio?: number;
+    mode?: 2 | 3 | 4 | 5;
+    primary?: {
+        postalCode: string;
+        countryCode: number;
+        serviceClass: number;
+    };
+    charset?: 'latin1';
+    linkage?: boolean;
+    moduleScale?: number;
+    scale?: number;
+    height?: number;
     canvas?: {
         shape?: 'square' | 'circle' | 'diamond';
         size?: number;
@@ -286,6 +303,14 @@ export type DecodeResult = {
      * GS1 DataBar linkage flag.
      */
     linkage?: boolean;
+    /** MaxiCode mode (2, 3, 4 or 5). */
+    mode?: 2 | 3 | 4 | 5;
+    /** MaxiCode structured primary message for modes 2 and 3. */
+    primary?: {
+        postalCode: string;
+        countryCode: number;
+        serviceClass: number;
+    };
 };
 /**
  * @typedef {object} DecodeResult

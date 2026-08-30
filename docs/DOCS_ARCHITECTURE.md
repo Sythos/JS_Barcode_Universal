@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 28 entries and 27 generally readable
+The current registry snapshot reports 32 entries and 31 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -89,13 +89,18 @@ turning the count into marketing copy:
   symbol;
 - the Sythos Canvas QR profile is a project profile and is not DENSO FrameQR
   compatibility or certification;
+- GS1 DataBar Omnidirectional/Truncated, Limited, Stacked and Stacked
+  Omnidirectional are separate physical variants, while Expanded remains out
+  of scope;
+- MaxiCode is a fixed 30×33 path with Modes 2–5 and a clean single-symbol
+  detector;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
   licensing boundary is documented in `PLAN.md`;
 - any future unsupported variant must be labelled as unsupported, not silently
   grouped under a similar name.
 
 When a page needs a count, prefer a generated value or a release audit note.
-Manual “28 formats” prose is an invitation for documentation drift.
+Manual format-count prose is an invitation for documentation drift.
 
 ## Documentation tree
 

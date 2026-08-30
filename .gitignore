@@ -64,6 +64,10 @@ dev-*.mjs
 !test/
 test/*
 !test/foundation.test.js
+!test/maxicode.test.js
+!test/databar-stacked.test.js
+!test/databar-stacked-omnidirectional.test.js
+!test/databar-limited.test.js
 !tools/
 tools/*
 !tools/compile-typescript.mjs

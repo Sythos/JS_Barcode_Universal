@@ -96,11 +96,12 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/aztecrune` | `encodeAztecRune`, `decodeAztecRune`, `detectAztecRune`, `detectAndDecodeAztecRune` |
 | `@sythos/js_barcode_universal/pdf417` | `encodePDF417`, `decodePDF417`, `detectPDF417`, `detectAndDecodePDF417` |
 | `@sythos/js_barcode_universal/compactpdf417` | `encodeCompactPDF417`, `decodeCompactPDF417`, `detectCompactPDF417`, `detectAndDecodeCompactPDF417` |
-| `@sythos/js_barcode_universal/databar` | GS1 DataBar GTIN/AI codecs plus Omnidirectional/Truncated physical helpers |
+| `@sythos/js_barcode_universal/databar` | GS1 DataBar GTIN/AI codecs plus Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional physical helpers |
 | `@sythos/js_barcode_universal/micropdf417` | `encodeMicroPDF417`, `decodeMicroPDF417`, `detectMicroPDF417`, `detectAndDecodeMicroPDF417` |
 | `@sythos/js_barcode_universal/microqr` | `encodeMicroQR`, `decodeMicroQR`, `detectMicroQR`, `detectAndDecodeMicroQR` |
 | `@sythos/js_barcode_universal/rmqr` | `encodeRMQR`, `decodeRMQR`, `detectRMQR`, `detectAndDecodeRMQR` |
 | `@sythos/js_barcode_universal/frameqr` | `encodeFrameQR`, `decodeFrameQR`, `detectFrameQR`, `detectAndDecodeFrameQR` |
+| `@sythos/js_barcode_universal/maxicode` | `encodeMaxiCode`, `decodeMaxiCode`, `detectMaxiCode`, `detectAndDecodeMaxiCode` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -263,13 +264,18 @@ time.
 | Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
 | Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
 | GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | ✅ |
+| GS1 DataBar Stacked | `gs1databar-stacked` | 1D | ✅ | ✅ |
+| GS1 DataBar Stacked Omnidirectional | `gs1databar-stacked-omnidirectional` | 1D | ✅ | ✅ |
+| GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
+| MaxiCode | `maxicode` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Twenty-eight listed formats are writable and twenty-seven are readable (EAN-2 and EAN-5 are
+Thirty-two listed formats are writable and thirty-one are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
-pipeline.** Code 11 and MSI Plessey use the scanline reader; GS1 DataBar uses the
-Omnidirectional/Truncated scanline layer over the verified GTIN decoder. PDF417 exposes direct matrix decoding, automatic
+pipeline.** Code 11 and MSI Plessey use the scanline reader; the GS1 DataBar physical variants use
+strict clean-raster readers and variant-specific detectors over the verified GTIN decoder. MaxiCode
+uses a fixed 30×33 matrix and a clean binary-raster detector for one prominent symbol. PDF417 exposes direct matrix decoding, automatic
 camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
 validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
 tests; external black-box vectors from ZXing 3.5.3 and bwip-js also pass in both directions.
@@ -447,19 +453,68 @@ the returned `format`; an absent, malformed or unrequested supplement never reje
 
 ### GS1 DataBar
 
-The `databar` subpath exposes original GS1 GTIN/AI codecs plus physical
-Omnidirectional and Truncated writers, scanline readers and clean-matrix decoders. Four GTIN
-vectors were compared bit-for-bit with Zint 2.16.0 as a black box. Limited,
-Stacked, Stacked Omnidirectional and Expanded physical layouts remain planned;
-their data-layer helpers do not imply complete scanner support.
+The `databar` subpath exposes original GS1 GTIN/AI codecs and four physical
+variants: Omnidirectional and Truncated through `encodeDataBar14`, Limited through
+`encodeDataBarLimited`, Stacked through `encodeDataBar14Stacked`, and Stacked
+Omnidirectional through `encodeDataBarStackedOmnidirectional`. The physical paths
+encode the fixed GS1 `(01)` GTIN element and can carry the standard composite
+linkage flag; the companion composite component is not part of these helpers.
 
-### Not implemented
+The clean readers require a complete dark-on-light or inverted binary raster,
+integer module scaling and valid checksum/guard structure. The Limited and
+Stacked readers accept quarter turns; the Stacked Omnidirectional reader accepts
+the same clean integer-scaled geometry. Their detectors intentionally reject
+partial symbols, arbitrary perspective and grayscale input. Use a binarized
+image or call the matrix decoder after an application-owned perspective sample.
 
-GS1 DataBar physical support currently covers Omnidirectional and Truncated writing plus
-scanline and clean-matrix decoding; Limited, Stacked and Expanded physical layouts remain planned. MaxiCode is
-not implemented. Data Matrix ECC
-200 is implemented for its classic square and rectangular symbols;
-DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining symbologies.
+The Stacked variant uses a 50-module row with a five-module top row, one-module
+separator and seven-module bottom row. Stacked Omnidirectional uses two 50-module
+rows, a three-module separator and a minimum 33-module row height. Limited uses
+a 79-module row and a minimum 10-module output height; its accepted GTIN
+indicator is 0 or 1. These geometry constraints are part of the format API,
+not an interoperability claim for arbitrary photographs.
+
+```js
+import {
+  encodeDataBarLimited,
+  encodeDataBar14Stacked,
+  encodeDataBarStackedOmnidirectional,
+} from '@sythos/js_barcode_universal/databar';
+
+const limited = encodeDataBarLimited('01234567890128', { moduleScale: 2 });
+const stacked = encodeDataBar14Stacked('01234567890128');
+const stackedOmni = encodeDataBarStackedOmnidirectional('01234567890128');
+```
+
+### MaxiCode
+
+The `maxicode` subpath exposes `encodeMaxiCode`, `decodeMaxiCode`,
+`detectMaxiCode` and `detectAndDecodeMaxiCode`. The implementation uses the
+fixed 30×33-module MaxiCode geometry and supports modes 2–5. Modes 2 and 3
+require structured `primary` data (`postalCode`, `countryCode` and
+`serviceClass`); modes 4 and 5 carry an unstructured secondary message. Text
+and byte input are restricted to ISO-8859-1 (`charset: 'latin1'`).
+
+```js
+import { encodeMaxiCode, decodeMaxiCode } from '@sythos/js_barcode_universal/maxicode';
+
+const symbol = encodeMaxiCode('HELLO FROM SYTHOS', { mode: 4 });
+const result = decodeMaxiCode(symbol);
+console.log(result.text, result.mode);
+```
+
+`decodeMaxiCode` works on a canonical 30×33 matrix and can validate its
+180-degree and inverted forms. `detectMaxiCode` is deliberately a clean binary
+detector for one prominent symbol at integer or near-integer scale. It does not
+promise arbitrary perspective, grayscale thresholding, severe occlusion or
+multi-symbol scene handling.
+
+### Remaining out of scope
+
+GS1 DataBar Expanded physical support remains outside the current release. Data
+Matrix ECC 200 is implemented for its classic square and rectangular symbols;
+DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining
+symbologies.
 
 ---
 
@@ -557,7 +612,7 @@ and go faster), `tryHarder` (retry inverted, default `true`), `binarizer`
 (`'global' | 'hybrid' | 'auto'`). A `Result` carries at least `text` and `format`; QR results also
 carry `bytes`, `version` and `ecc`.
 
-For larger clean QR Code and PDF417 rasters, `auto` and `hybrid` retain their primary local-threshold pass and retry once with the global threshold only when that pass finds no result. An explicit `binarizer: 'global'` request remains single-pass.
+For larger clean QR Code, PDF417 and MaxiCode rasters, `auto` and `hybrid` retain their primary local-threshold pass and retry once with the global threshold only when that pass finds no result. An explicit `binarizer: 'global'` request remains single-pass.
 
 ```js
 listFormats() → { id, label, canWrite, canRead, kind }[]
@@ -803,9 +858,11 @@ General Specifications and a leading FNC1. Its engineering provenance, patent an
 research notes are recorded in [`licenses/data-matrix.license`](licenses/data-matrix.license),
 with unresolved claims kept explicitly marked using scoped review labels.
 
-PDF417 and MicroPDF417 provenance and legal review notes are recorded in
+PDF417, MicroPDF417, MaxiCode and GS1 DataBar provenance and legal review notes are recorded in
 [`licenses/pdf417.license`](licenses/pdf417.license),
-[`licenses/micropdf417.license`](licenses/micropdf417.license) and the attribution log in
+[`licenses/micropdf417.license`](licenses/micropdf417.license),
+[`licenses/maxicode.license`](licenses/maxicode.license),
+[`licenses/gs1-databar.license`](licenses/gs1-databar.license) and the attribution log in
 [`NOTICE.md`](NOTICE.md).
 
 Micro QR and rMQR provenance and scoped legal-review notes are recorded in

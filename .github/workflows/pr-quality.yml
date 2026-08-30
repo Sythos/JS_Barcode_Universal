@@ -67,6 +67,9 @@ jobs:
         shell: bash
         run: git diff --exit-code -- src/index.js src/js
 
+      - name: Run focused format tests
+        run: npm run test:formats
+
       - name: Run public TypeScript declaration checks
         run: >-
           npm run types:api

@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-28 listed formats write, 27 read; PDF417 image reading is now enabled after synthetic, black-box and
+32 listed formats write, 31 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -71,7 +71,7 @@ remain outside the validated robustness envelope.
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
 | **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, Pharmacode | ✅ 32 tests |
-| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, EAN-2/5 parent-bound supplements, GS1 DataBar-14 | ✅ phantom-free |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Codabar, Code 11, MSI, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
@@ -81,9 +81,10 @@ remain outside the validated robustness envelope.
 | **Micro QR** — M1–M4, Numeric/Alphanumeric/Byte/Kanji, BCH format, four masks, Reed–Solomon and detector | ✅ write + read; ECI/FNC1/Structured Append out of scope |
 | **rMQR** — 32 standard rectangular geometries, M/H ECC, Numeric/Alphanumeric/Byte/Kanji, ECI and detector | ✅ write + read; clean scaled raster and fixed 45°-step camera detector |
 | **Sythos Canvas QR profile — not DENSO FrameQR® compatible** — bounded square/circle/diamond artwork canvas on QR Model 2 ECC-H | ✅ write + read; clean raster detector |
-| **GS1 DataBar Omnidirectional / Truncated** — GTIN-14, linkage, Mod-79, physical writer, scanline and clean decoder | ✅ write + image read; other physical variants pending |
+| **GS1 DataBar physical variants** — Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional; GTIN-14, linkage, Mod-79 and strict raster detectors | ✅ write + image read; Expanded remains pending |
 | **EAN-2 / EAN-5 supplements** — parity, guards, checksum, composition and parent-bound image reader | ✅ write + attached image read |
 | **GS1 semantic layer** — FNC1 classification and shared Application Identifier parser | ✅ GS1-128 and DataBar-14 |
+| **MaxiCode** — fixed 30×33 geometry, modes 2–5, ISO-8859-1 Code Sets A–E, Reed–Solomon and clean raster detector | ✅ write + image read |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 34 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -95,9 +96,11 @@ The `GaloisField` deliberately serves GF(2⁴) through GF(2¹²) **and the prime
 ### Image-reading completion gate (M0–M14)
 
 The incremental 1D completion workflow is green: Code 11, MSI Plessey, parent-bound EAN-2/EAN-5,
-GS1-128 classification plus Application Identifier parsing, and GS1 DataBar-14
-Omnidirectional/Truncated scanline decoding are integrated without replacing the existing reader.
-The regression and false-positive corpus contains **295 passing tests**, including automatic global-threshold fallback coverage for large clean QR Code and PDF417 rasters plus strict camera-profile coverage for blank, textured, noisy and low-contrast frames. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
+GS1-128 classification plus Application Identifier parsing, and the GS1 DataBar
+Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional physical readers are
+integrated without replacing the existing reader. MaxiCode modes 2–5 are likewise integrated as a
+separate fixed-grid 2D path.
+The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M5 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
 the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
 no dispatch rewrite was necessary. This finite 45°-step retry policy does not claim arbitrary
 perspective, curved-media, severe-occlusion or multi-symbol robustness. Pharmacode remains deliberately `readable: false` because its
@@ -114,6 +117,25 @@ advertises `canRead: true`; extreme glare, severe occlusion, curved media and
 multi-symbol scenes remain outside the validated robustness envelope. Black-box
 Text/Numeric interop is recorded; byte-for-byte interop remains explicitly unclaimed.
 
+### M2–M5 format group
+
+The four-format group that followed the PDF417 work is complete locally and is
+kept as one reviewable gate because all four paths share the strict raster and
+GTIN validation boundaries:
+
+| Milestone | Format | Scope delivered | Focused evidence |
+|---|---|---|---|
+| M2 | MaxiCode | Fixed 30×33 symbol, Modes 2–5, primary data, ISO-8859-1 Code Sets A–E, Reed–Solomon and clean detector | 8 MaxiCode tests, including every ISO-8859-1 byte, rendered-raster fallback, inversion, rotation and damage recovery |
+| M3 | GS1 DataBar Stacked | Two-row writer/reader, linkage, row/separator validation and quarter-turn detection | 6 focused tests plus random GTIN round trips |
+| M4 | GS1 DataBar Stacked Omnidirectional | Two-row omnidirectional geometry, linkage, strict row/module consistency and detector | 5 focused tests, including invalid/artefact rejection |
+| M5 | GS1 DataBar Limited | 79-module geometry, indicator validation, linkage, canonical corners and artefact rejection | 3 focused tests covering boundaries, rotations and partial-input rejection |
+
+The JavaScript runtime and TypeScript declarations are generated and checked
+together. The grouped CI gate runs `test:formats`, TypeScript checks, lint,
+package/export validation, the foundation suite, fuzz properties and the
+zero-runtime-dependency guard. GS1 DataBar Expanded, arbitrary perspective and
+multi-symbol photographic scenes remain outside this group.
+
 ### Remaining
 
 **P5 — the remaining 2D formats**, in descending value / ascending pain:
@@ -122,7 +144,9 @@ Text/Numeric interop is recorded; byte-for-byte interop remains explicitly uncla
 
 - *Nearly free given what exists:* Telepen, industrial/IATA 2-of-5 variants. Plus the **postal family** (POSTNET, PLANET, IMb, RM4SCC, KIX, Australia Post, Japan Post) — all 4-state height-modulated, sharing **one** engine.
 - *Moderate, reuses existing 2D machinery:* Codablock-F and Code 16K (stacked Code 128).
-- *Each effectively its own project:* MaxiCode (hexagonal grid, own detector), DotCode, Han Xin and GS1 Composite. GS1 DataBar is partially shipped: Omnidirectional/Truncated physical support is complete; Limited/Stacked/Expanded remain gated on verified physical tables and detectors.
+- *Each effectively its own project:* DotCode, Han Xin and GS1 Composite. GS1 DataBar
+Expanded remains gated on verified physical tables and detectors; the
+Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional variants are shipped.
 
 **Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Ultracode. Listed with reasons in `LICENSE` §6.
 

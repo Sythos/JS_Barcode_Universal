@@ -27,6 +27,7 @@ Only these public subpaths are compatibility promises; arbitrary paths under
 | `@sythos/js_barcode_universal/microqr` | Micro QR encoder, decoder and detector. |
 | `@sythos/js_barcode_universal/rmqr` | rMQR encoder, decoder, detector and size/table helpers. |
 | `@sythos/js_barcode_universal/frameqr` | Sythos Canvas QR profile encoder, decoder, detector and profile helpers. |
+| `@sythos/js_barcode_universal/maxicode` | MaxiCode Modes 2–5 encoder, decoder, detector and fixed-grid helpers. |
 | `@sythos/js_barcode_universal/render` | All renderers, canvas backends, option normalisation and colour parsing. |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI`. |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI`, `deflateStored`. |

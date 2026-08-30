@@ -61,6 +61,7 @@ import * as frameqr from './js/frameqr/index.js';
 import * as aztecRune from './js/aztecrune/index.js';
 import * as compactPdf417 from './js/compactpdf417/index.js';
 import * as databar from './js/databar/index.js';
+import * as maxicode from './js/maxicode/index.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './js/core/errors.js';
 export { LuminanceSource } from './js/image/luminance.js';
@@ -77,9 +78,10 @@ export { encodeAztec, decodeAztec, detectAztec, detectAndDecodeAztec } from './j
 export * from './js/aztecrune/index.js';
 export { encodePDF417, decodePDF417, detectPDF417, detectAndDecodePDF417 } from './js/pdf417/index.js';
 export * from './js/compactpdf417/index.js';
-// DataBar exports include both the verified GTIN/data layer and the
-// Omnidirectional/Truncated physical image path.
+// DataBar exports include the verified GTIN/data layer and the supported
+// Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional paths.
 export * from './js/databar/index.js';
+export { encodeMaxiCode, decodeMaxiCode, detectMaxiCode, detectAndDecodeMaxiCode, } from './js/maxicode/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './js/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './js/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './js/rmqr/index.js';
@@ -130,6 +132,14 @@ const compactPdf417CanEncode = typeof compactPdf417.encodeCompactPDF417 === 'fun
 const compactPdf417CanDecode = typeof compactPdf417.detectAndDecodeCompactPDF417 === 'function';
 const dataBarCanEncode = typeof databar.encodeDataBar14 === 'function';
 const dataBarCanDecode = typeof databar.decodeDataBar14Scanline === 'function';
+const dataBarStackedCanEncode = typeof databar.encodeDataBar14Stacked === 'function';
+const dataBarStackedCanDecode = typeof databar.detectAndDecodeDataBar14Stacked === 'function';
+const dataBarStackedOmniCanEncode = typeof databar.encodeDataBarStackedOmnidirectional === 'function';
+const dataBarStackedOmniCanDecode = typeof databar.detectAndDecodeDataBarStackedOmnidirectional === 'function';
+const dataBarLimitedCanEncode = typeof databar.encodeDataBarLimited === 'function';
+const dataBarLimitedCanDecode = typeof databar.detectAndDecodeDataBarLimited === 'function';
+const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
+const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
 /**
  * Every format this build supports.
  *
@@ -226,6 +236,34 @@ export function listFormats() {
         canRead: dataBarCanDecode,
         kind: /** @type {'1D'} */ ('1D'),
     });
+    formats.push({
+        id: 'gs1databar-stacked',
+        label: 'GS1 DataBar Stacked',
+        canWrite: dataBarStackedCanEncode,
+        canRead: dataBarStackedCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'gs1databar-stacked-omnidirectional',
+        label: 'GS1 DataBar Stacked Omnidirectional',
+        canWrite: dataBarStackedOmniCanEncode,
+        canRead: dataBarStackedOmniCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'gs1databar-limited',
+        label: 'GS1 DataBar Limited',
+        canWrite: dataBarLimitedCanEncode,
+        canRead: dataBarLimitedCanDecode,
+        kind: /** @type {'1D'} */ ('1D'),
+    });
+    formats.push({
+        id: 'maxicode',
+        label: 'MaxiCode',
+        canWrite: maxicodeCanEncode,
+        canRead: maxicodeCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -254,6 +292,12 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {2|3|4|5} [options.mode] MaxiCode mode.
+ * @param {{postalCode:string,countryCode:number,serviceClass:number}} [options.primary] MaxiCode structured primary data for modes 2 and 3.
+ * @param {'latin1'} [options.charset] MaxiCode character set declaration.
+ * @param {boolean} [options.linkage] GS1 DataBar composite linkage flag.
+ * @param {number} [options.moduleScale] Integer module scale for GS1 DataBar physical variants.
+ * @param {number} [options.height] Output height for a GS1 DataBar physical variant.
  * @param {object} [options.canvas] Sythos Canvas QR artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
@@ -300,9 +344,23 @@ export function encode(text, options = {}) {
     if (format === 'gs1databar14' || format === 'gs1-databar14' || format === 'databar') {
         return databar.encodeDataBar14(value, options);
     }
+    if (format === 'gs1databar-stacked' || format === 'gs1-databar-stacked' || format === 'databar-stacked') {
+        return databar.encodeDataBar14Stacked(value, options);
+    }
+    if (format === 'gs1databar-stacked-omnidirectional'
+        || format === 'gs1-databar-stacked-omnidirectional'
+        || format === 'databar-stacked-omni') {
+        return databar.encodeDataBarStackedOmnidirectional(value, options);
+    }
+    if (format === 'gs1databar-limited' || format === 'gs1-databar-limited' || format === 'databar-limited') {
+        return databar.encodeDataBarLimited(value, options);
+    }
+    if (format === 'maxicode' || format === 'maxi-code') {
+        return maxicode.encodeMaxiCode(value, options);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
-        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14'].join(', ');
+        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -369,10 +427,22 @@ export function decode(image, options = {}) {
     const wantMicroQR = !want || want.has('microqr') || want.has('micro-qr');
     const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
     const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
-    const oneDAliases = new Set(['gs1databar14', 'databar', 'gs1-databar14']);
+    const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
+    const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
+    const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
+        || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
+    const wantDataBarLimited = !want || want.has('gs1databar-limited')
+        || want.has('gs1-databar-limited') || want.has('databar-limited');
+    const oneDAliases = new Set([
+        'gs1databar14', 'databar', 'gs1-databar14',
+        'gs1databar-stacked', 'gs1-databar-stacked', 'databar-stacked',
+        'gs1databar-stacked-omnidirectional', 'gs1-databar-stacked-omnidirectional', 'databar-stacked-omni',
+        'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
+    ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
-        || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR;
+        || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
+        || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
     // Light-on-dark symbols are common on screens and packaging, so a second
@@ -521,6 +591,46 @@ export function decode(image, options = {}) {
                     /* no Sythos Canvas QR profile in this pass */
                 }
             }
+            if (wantMaxiCode && maxicodeCanDecode) {
+                try {
+                    const found = maxicode.detectAndDecodeMaxiCode(candidateBits);
+                    if (found)
+                        add(found, 'maxicode');
+                }
+                catch {
+                    /* no MaxiCode in this pass */
+                }
+            }
+            if (wantDataBarStacked && dataBarStackedCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBar14Stacked(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-stacked');
+                }
+                catch {
+                    /* no GS1 DataBar Stacked in this pass */
+                }
+            }
+            if (wantDataBarStackedOmni && dataBarStackedOmniCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBarStackedOmnidirectional(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-stacked-omnidirectional');
+                }
+                catch {
+                    /* no GS1 DataBar Stacked Omnidirectional in this pass */
+                }
+            }
+            if (wantDataBarLimited && dataBarLimitedCanDecode) {
+                try {
+                    const found = databar.detectAndDecodeDataBarLimited(candidateBits);
+                    if (found)
+                        add(found, 'gs1databar-limited');
+                }
+                catch {
+                    /* no GS1 DataBar Limited in this pass */
+                }
+            }
             return results.length > before;
         };
         const twoDFound = readTwoD(bits);
@@ -610,17 +720,19 @@ export function decode(image, options = {}) {
         return true;
     });
     // On large clean rasters, hybrid thresholding can erase otherwise uniform
-    // QR/PDF417 modules. Keep auto/hybrid as the primary strategy, then make one
-    // focused global retry only when the complete primary pass found nothing.
+    // QR, PDF417 and MaxiCode modules. Keep auto/hybrid as the primary strategy,
+    // then make one focused global retry only when the complete primary pass
+    // found nothing.
     // This deliberately leaves an explicit global request single-pass.
     const retryFormats = formats
         ? formats.filter((format) => {
             const id = String(format).toLowerCase();
             return id === 'qr' || id === 'qrcode'
                 || id === 'pdf417' || id === 'pdf-417'
-                || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417';
+                || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417'
+                || id === 'maxicode' || id === 'maxi-code';
         })
-        : ['qr', 'pdf417', 'compactpdf417'];
+        : ['qr', 'pdf417', 'compactpdf417', 'maxicode'];
     const shouldRetryGlobal = unique.length === 0
         && (binarizer === 'auto' || binarizer === 'hybrid')
         && retryFormats.length > 0;

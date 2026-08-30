@@ -1,5 +1,5 @@
-GS1 DataBar Omnidirectional / Truncated — format provenance and usability
-==========================================================================
+GS1 DataBar physical variants — format provenance and usability
+===============================================================
 
 This file records where the GS1 DataBar Omnidirectional / Truncated symbology comes from, what governs
 it, and the basis on which this project implements and redistributes it.
@@ -13,9 +13,9 @@ ORIGIN
 
 GS1 DataBar is a family of seven GS1 linear symbologies defined by ISO/IEC
 24724 and GS1 specifications. This release contains original GTIN and GS1
-element-string data-layer codecs plus physical Omnidirectional and
-Truncated pattern readers and writers; other physical variants remain
-outside the package scope.
+element-string data-layer codecs plus physical Omnidirectional, Truncated,
+Limited, Stacked and Stacked Omnidirectional readers and writers. Expanded
+remains outside the package scope.
 
 
 SPECIFICATION
@@ -55,21 +55,21 @@ branding — how a product names and presents itself.
 IMPLEMENTATION BASIS IN THIS PROJECT
 --------------------------------------------------------------------------
 
-GS1 DataBar Omnidirectional / Truncated is implemented here from published descriptions of the format,
-which are systems and facts rather than works of authorship. No source
-code or constant table from any other barcode implementation is copied or
-shipped. Public technical material and independent implementations may be
-consulted for engineering review or black-box verification; provenance is
-recorded in NOTICE.md.
+The shipped GS1 DataBar physical variants are implemented here from published
+descriptions of the format, which are systems and facts rather than works of
+authorship. No source code or constant table from any other barcode
+implementation is copied or shipped. Public technical material and independent
+implementations may be consulted for engineering review or black-box
+verification; provenance is recorded in NOTICE.md.
 
 
 CONCLUSION
 --------------------------------------------------------------------------
 
 Only original Sythos DataBar code is distributed under the MIT License.
-Omnidirectional and Truncated image support is exposed after
-checksum-validated black-box verification; Limited, Stacked and Expanded
-physical variants remain intentionally outside the completed capability.
+Omnidirectional, Truncated, Limited, Stacked and Stacked Omnidirectional image
+support is exposed after checksum-validated geometry and black-box verification;
+Expanded remains intentionally outside the completed capability.
 [LEGAL REVIEW]
 
 References relied upon:

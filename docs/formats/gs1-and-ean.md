@@ -10,7 +10,7 @@ rules, while keeping their physical barcode grammars separate.
 | UPC-A / UPC-E | `upca`, `upce` | ✅ | ✅ | UPC family validation and expansion rules. |
 | Bookland ISBN | `isbn` | ✅ | ✅ | ISBN-10/13 validation, then EAN-13 output. |
 | GS1-128 | `gs1128` | ✅ | ✅ | Code 128 with FNC1 and GS1 metadata. |
-| DataBar-14 | `gs1databar14` | ✅ | ✅ | Omnidirectional and Truncated physical support. |
+| GS1 DataBar physical variants | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` | ✅ | ✅ | Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional. Expanded remains outside scope. |
 | EAN-2 / EAN-5 | `ean2`, `ean5` | ✅ | ✅* | `*` parent-bound supplements. |
 
 ## EAN, UPC and ISBN
@@ -130,11 +130,11 @@ console.log(decodeGS1ElementString(encoded));
 
 ## GS1 DataBar
 
-The implemented physical layer covers GS1 DataBar Omnidirectional and
-Truncated. The data layer includes GTIN normalization, check digits and the
-shared GS1 Application Identifier helpers. The scanner uses scanline and clean
-matrix paths; it does not imply full support for Limited, Stacked, Stacked
-Omnidirectional or Expanded physical layouts.
+The implemented physical layer covers GS1 DataBar Omnidirectional, Truncated,
+Limited, Stacked and Stacked Omnidirectional. The data layer includes GTIN
+normalization, check digits and the shared GS1 Application Identifier helpers.
+The readers use scanline and strict clean-matrix paths; GS1 DataBar Expanded
+remains outside the current physical implementation.
 
 ```js
 import {
@@ -150,9 +150,22 @@ console.log(decodeDataBar14(matrix).text);
 ```
 
 Use the exact variant accepted by the current type declarations and validate
-the physical deployment with a real scanner. The runtime registry label
-`GS1 DataBar Omnidirectional / Truncated` is intentionally narrower than the
-whole GS1 DataBar family.
+the physical deployment with a real scanner. The four physical helpers are
+explicit about their geometry and reject partial, inconsistent or grayscale
+input; they do not claim arbitrary perspective or multi-symbol photographic
+support.
+
+```js
+import {
+  encodeDataBarLimited,
+  encodeDataBar14Stacked,
+  encodeDataBarStackedOmnidirectional,
+} from '@sythos/js_barcode_universal/databar';
+
+const limited = encodeDataBarLimited('01234567890128', { moduleScale: 2 });
+const stacked = encodeDataBar14Stacked('01234567890128');
+const stackedOmni = encodeDataBarStackedOmnidirectional('01234567890128');
+```
 
 ## Trust and licensing
 

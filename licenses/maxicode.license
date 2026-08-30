@@ -1,0 +1,62 @@
+MaxiCode — format provenance and usability
+==========================================
+
+This file records the engineering provenance and redistribution boundary for
+the MaxiCode implementation shipped by Sythos Barcode Universal.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Patent, copyright and
+trademark conclusions require independent review for the jurisdiction and use
+case involved.
+
+
+ORIGIN AND SPECIFICATION
+------------------------
+
+MaxiCode is a fixed two-dimensional symbology specified by ISO/IEC 16023.
+The standard text is copyrighted by its publisher and is not reproduced or
+redistributed here. The implementation uses the published symbol geometry,
+codeword rules, modes 2–5 and error-correction behavior as engineering input.
+
+
+PATENT AND TRADEMARK STATUS
+---------------------------
+
+Historical MaxiCode patent families, licensing declarations and current
+trademark ownership require a jurisdiction-specific review. This project
+makes no unconditional patent-free, public-domain or endorsement claim.
+“MaxiCode” is used descriptively to identify the symbology and does not imply
+certification by, or affiliation with, its standards body or mark owner.
+[LEGAL REVIEW]
+
+
+IMPLEMENTATION BASIS
+--------------------
+
+The fixed 30×33 module placement, finder/orientation handling, Modes 2–5
+primary and secondary data paths, ISO-8859-1 Code Sets A–E and Reed–Solomon
+correction are original Sythos TypeScript code with generated JavaScript
+runtime files. No source code, lookup table or binary asset from a third-party
+barcode implementation is copied into or shipped by this project.
+
+Independent implementations and public technical material may be consulted
+only for engineering review and black-box interoperability checks. Those tools
+are not runtime dependencies and their source, tables and licenses are not
+part of this distribution. The clean detector intentionally handles one
+prominent 30×33 symbol and does not claim arbitrary perspective, severe
+occlusion or multi-symbol scene support.
+
+
+CONCLUSION
+----------
+
+The original Sythos MaxiCode implementation is distributed under the MIT
+License. This engineering note is not a conformance certificate, patent
+clearance or legal opinion. Any concern about use of the available materials
+or a conflicting rights notice should be reported through a GitHub issue so it
+can be reviewed and recorded.
+
+References relied upon:
+
+- ISO/IEC 16023, MaxiCode bar code symbology specification
+- Public MaxiCode technical descriptions consulted for implementation review
+- Independent black-box validation recorded in NOTICE.md

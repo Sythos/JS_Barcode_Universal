@@ -105,10 +105,11 @@ The current implementation covers these families:
 | --- | --- | --- |
 | Linear 1D | EAN/UPC, ISBN, Code 11, Code 39, Code 93, Code 128, ITF, ITF-14, Codabar, MSI and Pharmacode | Writing and reading are separate capabilities. Pharmacode is intentionally write-only in the generic reader. |
 | QR family | QR Code, Micro QR Code and rMQR Code | Profile and feature support is narrower than the names alone suggest; check the format metadata and the format guide when available. |
-| Matrix 2D | Data Matrix ECC 200 and Aztec Code | The reader returns no result when validation does not establish a trustworthy symbol. |
+| Matrix 2D | Data Matrix ECC 200, Aztec Code, Aztec Rune and MaxiCode | The reader returns no result when validation does not establish a trustworthy symbol. |
 | PDF417 family | PDF417, Compact PDF417 and MicroPDF417 | These formats expose different geometry and metadata; they are not interchangeable aliases. |
 | Project profile | Sythos Canvas QR profile | This is a Sythos profile, not DENSO FrameQR compatibility or certification. |
-| GS1 | GS1 DataBar Omnidirectional/Truncated and GS1-128-related paths | EAN-2 and EAN-5 are parent-bound supplements and need a validated EAN/UPC parent. |
+| GS1 | GS1 DataBar Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional plus GS1-128-related paths | EAN-2 and EAN-5 are parent-bound supplements and need a validated EAN/UPC parent; Expanded DataBar remains outside scope. |
+| MaxiCode | Fixed 30×33 Modes 2–5 | The detector is intentionally limited to one clean, prominent symbol; see the dedicated format guide. |
 
 `canWrite` answers whether the release can create the format. `canRead`
 answers whether its generic image pipeline can identify and decode it. A

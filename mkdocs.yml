@@ -83,6 +83,7 @@ nav:
       - Aztec family: formats/aztec.md
       - PDF417 family: formats/pdf417-family.md
       - GS1, EAN and UPC: formats/gs1-and-ean.md
+      - MaxiCode: formats/maxicode.md
       - Sythos Canvas QR profile: formats/frameqr-profile.md
       - Excluded and out-of-scope formats: formats/excluded-formats.md
   - Platform guides:

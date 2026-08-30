@@ -60,7 +60,7 @@ marked `write-only` is intentionally not treated as a generic image reader.
 - Code 11 — write and scanline/image read
 - MSI Plessey — write and read, with optional check-digit validation
 - Pharmacode — write-only in the generic image pipeline
-- GS1 DataBar Omnidirectional and Truncated — write and read through the verified physical layer
+- GS1 DataBar Omnidirectional, Truncated, Limited, Stacked and Stacked Omnidirectional — write and read through verified physical layers
 - EAN-2 and EAN-5 supplements — write and parent-bound read only; they require a validated EAN/UPC parent
 
 ### 2D matrix and stacked formats
@@ -75,6 +75,7 @@ marked `write-only` is intentionally not treated as a generic image reader.
 - Micro QR Code — write and read for the supported M1–M4 family; M1 is detection-only
 - rMQR Code — write and read for the supported standard rectangular geometries
 - Sythos Canvas QR profile — write and read as the non-certified `sythos-canvas-qr/1` profile
+- MaxiCode — write and read for fixed 30×33 symbols, Modes 2–5 and ISO-8859-1 Code Sets A–E
 
 The Sythos Canvas QR profile is not DENSO FrameQR® compatible and does not
 claim native DENSO interoperability.
@@ -122,9 +123,7 @@ limitations are documented in `README.md` and `PLAN.md`.
 ## Deliberate scope boundaries
 
 - Data Matrix Rectangular Extension (DMRE) is not included.
-- GS1 DataBar Limited, Stacked, Stacked Omnidirectional and Expanded physical
-  layouts remain outside the current release.
-- MaxiCode is not implemented.
+- GS1 DataBar Expanded physical layout remains outside the current release.
 - Micro QR ECI, FNC1/GS1 and Structured Append are outside the current API scope.
 - SQRC and Face Authentication SQRC are DENSO-licensed formats and are not
   included in this MIT SDK. A user must obtain the appropriate DENSO licence
@@ -147,6 +146,8 @@ the files under `licenses/`, including:
 
 - `licenses/pdf417.license`
 - `licenses/micropdf417.license`
+- `licenses/maxicode.license`
+- `licenses/gs1-databar.license`
 
 Those files are engineering inventories, not legal advice. Patent, copyright,
 trademark, standards and jurisdictional questions should receive independent
