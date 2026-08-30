@@ -161,11 +161,12 @@ export function createDetectionCandidate(geometry, options) {
     if (!isRecord(candidateOptions)) {
         throw new TypeError('Detection candidate options must be an object');
     }
-    const quality = candidateOptions.quality;
+    const validatedOptions = candidateOptions;
+    const quality = validatedOptions.quality;
     if (quality !== undefined && !isValidQuality(quality)) {
         throw new TypeError('Detection candidate quality must be an object');
     }
-    if (!isValidScore(candidateOptions.score)) {
+    if (!isValidScore(validatedOptions.score)) {
         throw new RangeError('Detection candidate score must be a finite number');
     }
     const candidate = {
@@ -174,11 +175,11 @@ export function createDetectionCandidate(geometry, options) {
         moduleSize,
         rotation,
     };
-    if (hasOwn(candidateOptions, 'result') && candidateOptions.result !== undefined)
-        candidate.result = candidateOptions.result;
-    if (hasOwn(candidateOptions, 'quality') && quality !== undefined)
+    if (hasOwn(validatedOptions, 'result') && validatedOptions.result !== undefined)
+        candidate.result = validatedOptions.result;
+    if (hasOwn(validatedOptions, 'quality') && quality !== undefined)
         candidate.quality = quality;
-    if (hasOwn(candidateOptions, 'score') && candidateOptions.score !== undefined)
-        candidate.score = candidateOptions.score;
+    if (hasOwn(validatedOptions, 'score') && validatedOptions.score !== undefined)
+        candidate.score = validatedOptions.score;
     return candidate;
 }
