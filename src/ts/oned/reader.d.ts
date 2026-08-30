@@ -92,6 +92,41 @@ export declare function decodeMSI(row: Uint8Array, options?: {
     format: 'msi';
     text: string;
 } | null;
+/** Decode Italian Code 32 from a Code 39-shaped scanline. */
+export declare function decodeCode32(row: Uint8Array): {
+    format: 'code32';
+    text: string;
+    checkDigit: boolean;
+} | null;
+/** Decode PZN-7 or PZN-8 from a Code 39-shaped scanline. */
+export declare function decodePZN(row: Uint8Array): {
+    format: 'pzn';
+    text: string;
+    pznVariant: 'pzn7' | 'pzn8';
+    checkDigit: boolean;
+} | null;
+/** Decode Industrial/Standard 2 of 5. */
+export declare function decodeIndustrial2of5(row: Uint8Array, options?: {
+    checkDigit?: boolean;
+    profile?: 'camera';
+}): {
+    format: 'industrial2of5';
+    text: string;
+    checkDigit: boolean;
+} | null;
+/** Decode IATA 2 of 5. */
+export declare function decodeIATA2of5(row: Uint8Array, options?: {
+    checkDigit?: boolean;
+    profile?: 'camera';
+}): {
+    format: 'iata2of5';
+    text: string;
+    checkDigit: boolean;
+} | null;
+/** Decode the canonical Standard 2 of 5 frame. */
+export declare const decodeStandard2of5: typeof decodeIndustrial2of5;
+/** Decode any supported Code 25 family frame. */
+export declare const decodeCode25: typeof decodeIndustrial2of5;
 /**
  * Read every linear symbol found in a binarized image.
  *

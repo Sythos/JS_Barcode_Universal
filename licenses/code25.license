@@ -1,0 +1,58 @@
+Code 25, Industrial 2 of 5 and IATA 2 of 5 — format provenance and usability
+=============================================================================
+
+This file records the engineering provenance and redistribution boundary for
+the Code 25 family implemented by Sythos Barcode Universal.
+
+It is an engineering inventory, not legal advice. Patent, copyright and
+trademark conclusions still need independent review for the jurisdiction and
+the intended product. Items marked [TO VERIFY] remain open questions.
+
+
+FORMAT AND IMPLEMENTATION BASIS
+-------------------------------
+
+Code 25 (often called Standard 2 of 5) and Industrial 2 of 5 use one numeric
+digit grammar: ten alternating bar/space elements with exactly two wide bars.
+The Industrial 2 of 5 frame is the canonical Code 25 frame in this SDK. IATA 2
+of 5 uses the same digit grammar with its shorter start/stop frame. The API
+keeps all three names explicit and supports an opt-in modulo-10 check digit.
+
+The run-width descriptions are represented as original Sythos data and
+expanded algorithmically for the selected wide-bar ratio. The reader validates
+the full start/data/stop structure, quiet-zone boundary and optional check
+digit before returning a value. No third-party source code, lookup table or
+binary asset is copied into this repository.
+
+The runtime is original Sythos TypeScript with generated JavaScript output and
+is distributed under the MIT License. The format names are descriptive and do
+not imply certification by an industrial, logistics or aviation organisation.
+
+
+PATENT AND TRADEMARK REVIEW
+---------------------------
+
+Historical Code 25 patent families, jurisdiction-specific licensing statements
+and current registrations for the family names have not been independently
+cleared here. [TO VERIFY] This project makes no unconditional patent-free,
+public-domain or trademark-clearance claim.
+
+
+INDEPENDENT VALIDATION BOUNDARY
+-------------------------------
+
+BWIPP/bwip-js was used only as a local, independent black-box oracle to compare
+Code 25, Industrial 2 of 5 and IATA 2 of 5 renderings. It was used solely for
+verification and counter-checking of which published format behaviour could be
+used in comparable conditions. Its source, tables and runtime are not copied
+into or shipped by this SDK, and it is not a runtime dependency. The comparison
+is an engineering check, not a legal opinion or a conformance certificate.
+
+
+CONCLUSION
+----------
+
+The original Sythos Code 25-family implementation is MIT-licensed. If a rights
+holder or user identifies a conflicting notice about the available material,
+please open a GitHub issue with the reference so it can be reviewed and
+recorded.

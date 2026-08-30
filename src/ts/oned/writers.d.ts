@@ -216,3 +216,23 @@ export declare function encodeMSI(value: string, options?: {
  * @returns {BitMatrix}
  */
 export declare function encodePharmacode(value: number | string): BitMatrix;
+/** Italian Code 32 check digit for an eight-digit body. */
+export declare function code32CheckDigit(value: string): number;
+/** Encode an Italian Code 32 pharmaceutical identifier. */
+export declare function encodeCode32(value: string): BitMatrix;
+/** Decode and validate a six-character Code 32 payload. */
+export declare function decodeCode32Payload(text: string): {
+    text: string;
+    checkDigit: number;
+} | null;
+/** Encode a PZN-7 or PZN-8 pharmaceutical identifier through Code 39. */
+export declare function encodePZN(value: string, options?: {
+    pzn8?: boolean;
+    variant?: 'pzn7' | 'pzn8';
+}): BitMatrix;
+/** Decode and validate a PZN Code 39 payload. */
+export declare function decodePZNPayload(text: string): {
+    text: string;
+    variant: 'pzn7' | 'pzn8';
+    checkDigit: number;
+} | null;

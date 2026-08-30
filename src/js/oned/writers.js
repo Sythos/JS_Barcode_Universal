@@ -345,6 +345,148 @@ export function encodeCode39(value, options = {}) {
     return toMatrix(parts.join('0'));
 }
 /* ------------------------------------------------------------------ *
+ * Code 32 / PZN
+ * ------------------------------------------------------------------ */
+/** Code 32's six-character alphabet after its four skipped vowels. */
+const CODE32_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUV';
+/**
+ * Convert a Code 32 base-32 digit to the printed character set. The standard
+ * skips A, E, I and O so the human-readable text cannot be mistaken for a
+ * vowel-heavy word. The successive threshold shifts are intentionally
+ * expressed as rules rather than copied lookup data.
+ */
+function code32PrintCharacter(character) {
+    let code = character.charCodeAt(0);
+    for (const vowel of 'AEIO') {
+        if (code >= vowel.charCodeAt(0))
+            code++;
+    }
+    return String.fromCharCode(code);
+}
+const CODE32_PRINT_ALPHABET = [...CODE32_ALPHABET].map(code32PrintCharacter).join('');
+const CODE32_DECODE = new Map([...CODE32_PRINT_ALPHABET].map((ch, index) => [ch, index]));
+/**
+ * Italian Code 32 (Italian Pharmacode) check digit.
+ *
+ * @param {string} value The eight-digit body, without the check digit.
+ * @returns {number}
+ */
+export function code32CheckDigit(value) {
+    let sum = 0;
+    for (let i = 0; i < 8; i++) {
+        let digit = Number(value[i]);
+        if (i % 2 === 1) {
+            digit *= 2;
+            if (digit > 9)
+                digit -= 9;
+        }
+        sum += digit;
+    }
+    return sum % 10;
+}
+/**
+ * Encode the Italian Code 32 pharmaceutical identifier through Code 39.
+ * Accepts the eight-digit body or the same body followed by its check digit.
+ *
+ * @param {string} value Eight or nine digits.
+ * @returns {BitMatrix}
+ */
+export function encodeCode32(value) {
+    const digits = String(value);
+    if (!/^\d{8,9}$/.test(digits)) {
+        throw new EncodeError('Code 32: payload must contain 8 or 9 digits');
+    }
+    const body = digits.slice(0, 8);
+    const check = code32CheckDigit(body);
+    if (digits.length === 9 && Number(digits[8]) !== check) {
+        throw new EncodeError(`Code 32: invalid check digit ${digits[8]}, expected ${check}`);
+    }
+    const complete = body + String(check);
+    let base32 = BigInt(complete).toString(32).toUpperCase().padStart(6, '0');
+    base32 = [...base32].map(code32PrintCharacter).join('');
+    return encodeCode39(base32);
+}
+/**
+ * Decode the Code 39 payload of an Italian Code 32 symbol.
+ *
+ * This helper is deliberately kept separate from the image reader so it can
+ * validate the numeric/check-digit grammar without introducing a module cycle.
+ *
+ * @param {string} text Code 39 payload, excluding its asterisks.
+ * @returns {{text:string, checkDigit:number}|null}
+ */
+export function decodeCode32Payload(text) {
+    if (text.length !== 6)
+        return null;
+    let value = 0n;
+    for (const ch of text) {
+        const digit = CODE32_DECODE.get(ch);
+        if (digit === undefined)
+            return null;
+        value = value * 32n + BigInt(digit);
+    }
+    const complete = value.toString(10).padStart(9, '0');
+    if (complete.length !== 9)
+        return null;
+    const body = complete.slice(0, 8);
+    const checkDigit = code32CheckDigit(body);
+    if (Number(complete[8]) !== checkDigit)
+        return null;
+    return { text: body, checkDigit };
+}
+function pznCheckDigit(body, pzn8) {
+    let sum = 0;
+    const offset = pzn8 ? 1 : 2;
+    for (let i = 0; i < body.length; i++)
+        sum += Number(body[i]) * (i + offset);
+    const check = sum % 11;
+    return check === 10 ? null : check;
+}
+/**
+ * Encode a Pharmazentralnummer (PZN-7 or PZN-8) through Code 39.
+ *
+ * @param {string} value Six/seven digits for PZN-7, or seven/eight for PZN-8.
+ * @param {object} [options]
+ * @param {boolean} [options.pzn8=false] Select the modern eight-digit body.
+ * @param {'pzn7'|'pzn8'} [options.variant] Alias for `pzn8`.
+ * @returns {BitMatrix}
+ */
+export function encodePZN(value, options = {}) {
+    const pzn8 = options.pzn8 === true || options.variant === 'pzn8';
+    const digits = String(value);
+    const bodyLength = pzn8 ? 7 : 6;
+    if (!new RegExp(`^\\d{${bodyLength},${bodyLength + 1}}$`).test(digits)) {
+        throw new EncodeError(`PZN-${pzn8 ? 8 : 7}: payload must contain ${bodyLength} or ${bodyLength + 1} digits`);
+    }
+    const body = digits.slice(0, bodyLength);
+    const check = pznCheckDigit(body, pzn8);
+    if (check === null)
+        throw new EncodeError('PZN: input sequence produces the reserved check value 10');
+    if (digits.length === bodyLength + 1 && Number(digits[bodyLength]) !== check) {
+        throw new EncodeError(`PZN: invalid check digit ${digits[bodyLength]}, expected ${check}`);
+    }
+    return encodeCode39(`-${body}${check}`);
+}
+/**
+ * Decode the Code 39 payload of a PZN symbol.
+ *
+ * @param {string} text Code 39 payload, excluding its asterisks.
+ * @returns {{text:string, variant:'pzn7'|'pzn8', checkDigit:number}|null}
+ */
+export function decodePZNPayload(text) {
+    if (!/^-\d+$/.test(text))
+        return null;
+    const digits = text.slice(1);
+    const pzn8 = digits.length === 8;
+    if (digits.length !== 7 && !pzn8)
+        return null;
+    const body = digits.slice(0, -1);
+    const checkDigit = pznCheckDigit(body, pzn8);
+    if (checkDigit === null || Number(digits.at(-1)) !== checkDigit)
+        return null;
+    return { text: body, variant: pzn8 ? 'pzn8' : 'pzn7', checkDigit };
+}
+/* ------------------------------------------------------------------ *
  * Code 93
  * ------------------------------------------------------------------ */
 /**

@@ -19,9 +19,14 @@ needs to be printed or displayed at a useful height.
 | Code 93 | `code93` | ✅ | ✅ | Checksum and start/stop grammar are validated. |
 | ITF | `itf` | ✅ | ✅ | Interleaved 2 of 5; the generic reader rejects very short ambiguous reads. |
 | ITF-14 | `itf14` | ✅ | ✅ | Fixed-length ITF-14 writer; the shared reader reports the base `itf` format. |
+| Code 25 / Standard 2 of 5 | `standard2of5` | ✅ | ✅ | Canonical Industrial frame in this SDK; `code2of5` is an alias. |
+| Industrial 2 of 5 | `industrial2of5` | ✅ | ✅ | Two-wide-bar digit grammar with optional modulo-10 check digit. |
+| IATA 2 of 5 | `iata2of5` | ✅ | ✅ | Same digit grammar with the shorter IATA guard frame. |
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
 | MSI Plessey | `msi` | ✅ | ✅ | Optional modulo-10 check digit and scanline reader. |
+| Code 32 (Italian Pharmacode) | `code32` | ✅ | ✅ | Eight-digit pharmaceutical body rendered through a validated Code 39 carrier. |
+| PZN-7 / PZN-8 | `pzn` | ✅ | ✅ | PZN-7 is the default; `pzn8` selects the eight-digit profile. |
 | Telepen (ASCII and Numeric) | `telepen` | ✅ | ✅ | ASCII is the default; Numeric is an explicit pair-compaction mode. |
 | Pharmacode | `pharmacode` | ✅ | — | Writer-only by design; unsafe for unrestricted generic autodetection. |
 
@@ -43,6 +48,10 @@ import {
   encodeEAN13,
   encodeTelepen,
   encodeTelepenNumeric,
+  encodeIndustrial2of5,
+  encodeIATA2of5,
+  encodeCode32,
+  encodePZN,
   encodePharmacode,
 } from '@sythos/js_barcode_universal/oned';
 
@@ -51,8 +60,64 @@ const code39 = encodeCode39('A-123', { checkDigit: true });
 const code128 = encodeCode128('ABC-123');
 const telepen = encodeTelepen('TELEPEN-ASCII');
 const telepenNumeric = encodeTelepenNumeric('00112738999X');
+const industrial = encodeIndustrial2of5('01234567', { checkDigit: true });
+const iata = encodeIATA2of5('31415926');
+const code32 = encodeCode32('01234567');
+const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
 ```
+
+### Code 25 family
+
+`standard2of5` (also `code2of5`) and `industrial2of5` share the canonical
+Industrial 2 of 5 frame in this SDK. `iata2of5` uses its shorter IATA guard.
+The optional modulo-10 check digit is accepted by every writer and can be
+required by `decode(..., { checkDigit: true })` or the strict camera profile.
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('01234567', {
+  format: 'industrial2of5',
+  checkDigit: true,
+});
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 30,
+  barHeight: 64,
+}), {
+  formats: ['industrial2of5'],
+  checkDigit: true,
+});
+console.log(result?.text); // 01234567
+```
+
+The scanline reader validates the complete guard/data/stop structure and
+rejects clipped or ambiguous candidates. Camera reads also need a coherent
+quiet zone and a valid check digit.
+
+### Code 32 and PZN
+
+Code 32 accepts an eight-digit body and validates its pharmaceutical check
+digit after converting the payload to the documented six-character base-32
+carrier. PZN-7 accepts six body digits by default; PZN-8 accepts seven body
+digits when `{ pzn8: true }` is passed. The decoder exposes `pznVariant` so an
+application never has to infer the profile from a partial string.
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('1234567', { format: 'pzn8' });
+const [result] = decode(toImageData(matrix, { scale: 3, margin: 30, barHeight: 64 }), {
+  formats: ['pzn8'],
+});
+console.log(result?.format, result?.pznVariant, result?.text);
+// pzn pzn8 1234567
+```
+
+Both readers return no result when the Code 39 carrier or pharmaceutical check
+digit is invalid. See the matching [format licence notes](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/)
+for the provenance and independent black-box boundary.
 
 ### Telepen modes
 

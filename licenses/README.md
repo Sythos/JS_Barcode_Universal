@@ -28,11 +28,14 @@ appendix carries the consolidated inventory these files expand on.
 | Code 93 | [`code-93.license`](code-93.license) | 2 |
 | ITF (Interleaved 2 of 5) | [`itf.license`](itf.license) | 2 |
 | ITF-14 | [`itf-14.license`](itf-14.license) | 2 |
+| Code 25, Industrial 2 of 5 and IATA 2 of 5 | [`code25.license`](code25.license) | 2 |
 | Codabar | [`codabar.license`](codabar.license) | 2 |
 | Code 11 | [`code-11.license`](code-11.license) | 2 |
 | MSI Plessey | [`msi-plessey.license`](msi-plessey.license) | 2 |
 | Telepen (Alpha and Numeric) | [`telepen.license`](telepen.license) | 2 |
 | Pharmacode | [`pharmacode.license`](pharmacode.license) | 2 |
+| Code 32 (Italian Pharmacode) | [`code32.license`](code32.license) | 2 |
+| PZN-7 and PZN-8 | [`pzn.license`](pzn.license) | 2 |
 | EAN-2 supplement | [`ean-2.license`](ean-2.license) | 2 |
 | EAN-5 supplement | [`ean-5.license`](ean-5.license) | 2 |
 | Micro QR Code | [`micro-qr.license`](micro-qr.license) | 2 |

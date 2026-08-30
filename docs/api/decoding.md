@@ -89,6 +89,7 @@ optional because different symbologies expose different evidence:
 | `layers`, `compact`, `corrections` | Aztec metadata and Reed–Solomon work. |
 | `rows`, `columns`, `eccLevel`, `rowHeight` | PDF417-family geometry and correction metadata. |
 | `variant`, `eccCodewords` | MicroPDF417 variant metadata. |
+| `checkDigit`, `pznVariant` | Validated optional numeric checks and PZN-7/PZN-8 identification. |
 | `profile`, `certified`, `canvas` | Sythos Canvas QR profile metadata. `certified` is `false` for this project profile. |
 | `addon` | An attached EAN-2 or EAN-5 supplement. |
 | `confidence`, `bounds`, `rotation`, `quality` | Camera-profile evidence when the detector exposes it. |

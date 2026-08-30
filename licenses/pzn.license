@@ -1,0 +1,53 @@
+PZN-7 and PZN-8 — format provenance and usability
+=================================================
+
+This file records the engineering provenance and redistribution boundary for
+the PZN (Pharmazentralnummer) implementation shipped by Sythos Barcode
+Universal.
+
+It is an engineering inventory, not legal advice. Patent, copyright and
+trademark conclusions still need independent review for the jurisdiction and
+the intended product. Items marked [TO VERIFY] remain open questions.
+
+
+FORMAT AND IMPLEMENTATION BASIS
+-------------------------------
+
+PZN-7 and PZN-8 are German pharmaceutical identifiers carried here in a
+Code 39-shaped symbol. The writer accepts a six- or seven-digit body, computes
+the corresponding modulo-11 check digit (rejecting the reserved value ten),
+and emits the documented leading hyphen and check character. The reader first
+validates the complete Code 39 carrier and then validates the PZN check digit;
+it reports the detected PZN-7 or PZN-8 variant instead of guessing from a
+partial payload.
+
+The runtime is original Sythos TypeScript with generated JavaScript output and
+is distributed under the MIT License. The names PZN, Pharmazentralnummer and
+Code 39 are used descriptively and do not imply certification, sponsorship or
+endorsement by a registry owner or standards organisation.
+
+
+PATENT AND TRADEMARK REVIEW
+---------------------------
+
+Historical pharmaceutical-label patents, national patent families and current
+registrations for PZN or related marks have not been independently cleared
+here. [TO VERIFY] This project makes no unconditional patent-free,
+public-domain or trademark-clearance claim.
+
+
+INDEPENDENT VALIDATION BOUNDARY
+-------------------------------
+
+BWIPP/bwip-js was used only as a local, independent black-box oracle to compare
+rendered PZN-7 and PZN-8 symbols. Its source, tables and runtime are not copied
+into or shipped by this SDK, and it is not a runtime dependency. The comparison
+is an engineering check, not a legal opinion or a conformance certificate.
+
+
+CONCLUSION
+----------
+
+The original Sythos PZN implementation is MIT-licensed. If a rights holder or
+user identifies a conflicting notice about the available material, please open
+a GitHub issue with the reference so it can be reviewed and recorded.

@@ -99,6 +99,9 @@ export declare function listFormats(): FormatInfo[];
  * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
  * @param {number} [options.version] QR version, 1-40. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
+ * @param {boolean} [options.pzn8] Select the eight-digit PZN profile.
+ * @param {'pzn7'|'pzn8'|'standard'|'industrial'|'iata'} [options.variant] PZN or Code 25 variant.
+ * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
  * @param {number} [options.layers] Aztec layer count; automatic if omitted.
@@ -126,6 +129,9 @@ export declare function encode(text: string | number, options?: {
     ecc?: 'L' | 'M' | 'Q' | 'H';
     version?: number;
     checkDigit?: boolean;
+    pzn8?: boolean;
+    variant?: 'pzn7' | 'pzn8' | 'standard' | 'industrial' | 'iata';
+    wideRatio?: number;
     telepenMode?: 'ascii' | 'numeric';
     numeric?: boolean;
     fullAscii?: boolean;
@@ -288,6 +294,10 @@ export type DecodeResult = {
      * GS1 DataBar linkage flag.
      */
     linkage?: boolean;
+    /** Whether an optional numeric check digit was validated. */
+    checkDigit?: boolean;
+    /** PZN variant identified by the decoder. */
+    pznVariant?: 'pzn7' | 'pzn8';
 };
 /**
  * @typedef {object} DecodeResult
@@ -320,6 +330,8 @@ export type DecodeResult = {
  * @property {string} [gs1ParseError] Semantic GS1 parsing error after a valid physical read.
  * @property {string} [gtin] GS1 DataBar GTIN-14 payload.
  * @property {boolean} [linkage] GS1 DataBar linkage flag.
+ * @property {boolean} [checkDigit] Whether an optional numeric check digit was validated.
+ * @property {'pzn7'|'pzn8'} [pznVariant] PZN variant identified by the decoder.
  */
 /**
  * Find and decode every barcode in an image.

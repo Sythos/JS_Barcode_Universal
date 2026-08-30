@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **34 entries**: all 34 are writable and
-33 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **38 entries**: all 38 are writable and
+37 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -43,7 +43,7 @@ corrected in the same change.
 
 | Family | Runtime IDs | Write | Read | Main boundary |
 | --- | --- | :---: | :---: | --- |
-| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `codabar`, `code11`, `msi`, `telepen`, `pharmacode` | 16 | 15 | Pharmacode is writer-only; Telepen Numeric is an explicit read mode. |
+| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `industrial2of5`, `iata2of5`, `codabar`, `code11`, `msi`, `code32`, `pzn`, `telepen`, `pharmacode` | 20 | 19 | Pharmacode is writer-only; Code 25 aliases, PZN variants and Telepen Numeric are explicit modes. |
 | EAN/UPC supplements | `ean2`, `ean5` | 2 | 2* | `*` means parent-bound, not standalone reading. |
 | QR family | `qr`, `microqr`, `rmqr` | 3 | 3 | These are related families with different geometry and feature sets. |
 | Data Matrix | `datamatrix` | 1 | 1 | Classic ECC 200 square and rectangular symbols; DMRE is outside scope. |
@@ -125,6 +125,8 @@ successful camera decode.
 | Truncated PDF417 geometry | `compactpdf417` | Compact/truncated layout when full PDF417 row structure is unnecessary. |
 | GS1 retail or logistics payload | `gs1128`, a GS1 DataBar variant, or EAN/UPC | Choose by the physical symbology and AI/application rules, not only by payload text. |
 | Full ASCII or compact numeric 1D payload | `telepen` or `telepennumeric` | Use `telepen` for seven-bit ASCII; request `telepennumeric` explicitly for digit pairs and `X` suffix pairs. |
+| Industrial, logistics or aviation numeric 1D payload | `industrial2of5`, `standard2of5` or `iata2of5` | The Code 25 digit grammar is shared; choose the guard profile that matches the physical symbol and require the optional check digit for camera input. |
+| Pharmaceutical numeric identifier | `code32` or `pzn` | Code 32 validates its base-32/check-digit carrier; PZN exposes `pzn7`/`pzn8` variant metadata. |
 | Fixed carrier/logistics matrix | `maxicode` | Use Modes 2–5 with the required primary data for Modes 2 and 3; the detector expects one clean prominent symbol. |
 | Artwork inside a QR-like symbol | `frameqr` | Use only for the Sythos Canvas QR profile; it is not native DENSO FrameQR. |
 

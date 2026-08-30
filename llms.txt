@@ -56,9 +56,14 @@ marked `write-only` is intentionally not treated as a generic image reader.
 - Code 93 — write and read
 - ITF (Interleaved 2 of 5) — write and read
 - ITF-14 — write and read through the ITF family
+- Code 25 / Standard 2 of 5 — write and read as `standard2of5` or `code2of5`
+- Industrial 2 of 5 — write and read with the canonical Industrial frame
+- IATA 2 of 5 — write and read with the shorter IATA guard frame
 - Codabar — write and read
 - Code 11 — write and scanline/image read
 - MSI Plessey — write and read, with optional check-digit validation
+- Code 32 (Italian Pharmacode) — write and read with validated pharmaceutical check digit
+- PZN-7 and PZN-8 — write and read; the decoder exposes `pznVariant`
 - Telepen — write and read in full seven-bit ASCII mode; explicit Telepen Numeric
   mode handles digit pairs and `X` suffix pairs
 - Pharmacode — write-only in the generic image pipeline
@@ -81,6 +86,11 @@ marked `write-only` is intentionally not treated as a generic image reader.
 
 The Sythos Canvas QR profile is not DENSO FrameQR® compatible and does not
 claim native DENSO interoperability.
+
+Code 25-family aliases (`standard2of5`, `code2of5`, `industrial2of5` and
+`iata2of5`) are explicit format selectors. Code 32 and PZN readers validate
+their complete carrier and check digit before returning a result; incomplete
+or ambiguous camera frames return nothing.
 
 ## Main API
 
@@ -150,6 +160,9 @@ the files under `licenses/`, including:
 - `licenses/micropdf417.license`
 - `licenses/maxicode.license`
 - `licenses/gs1-databar.license`
+- `licenses/code25.license`
+- `licenses/code32.license`
+- `licenses/pzn.license`
 
 Those files are engineering inventories, not legal advice. Patent, copyright,
 trademark, standards and jurisdictional questions should receive independent

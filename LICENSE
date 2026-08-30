@@ -106,6 +106,7 @@ excerpt the specification documents.
     ISO/IEC 15417    (Code 128)       ISO/IEC — copyrighted, paywalled
     ISO/IEC 16388    (Code 39)        ISO/IEC — copyrighted, paywalled
     ISO/IEC 16390    (ITF)            ISO/IEC — copyrighted, paywalled
+    AIM USS Code 25 / 2-of-5 family  AIM Inc. — terms vary    [TO VERIFY]
     ISO/IEC 15420    (EAN/UPC)        ISO/IEC — copyrighted, paywalled
     ISO/IEC 23941    (rMQR)           ISO/IEC — copyrighted, paywalled
     ISO/IEC 24724    (GS1 DataBar)    ISO/IEC — copyrighted, paywalled
@@ -156,6 +157,10 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
       93 / Codabar / ITF / MSI /
       Code 11 / Telepen / Pharmacode  originating patents long expired
                                                                    [TO VERIFY]
+    Code 25 / Industrial 2-of-5 /
+      IATA 2-of-5 / Code 32 / PZN     application profiles and
+                                      originating patents require current
+                                      status review                  [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.
@@ -179,6 +184,8 @@ names and presents itself.
       GS1 DataMatrix, GS1-128  GS1 AISBL
     Data Matrix              [status TO VERIFY]
     Telepen                  SB Electronic Systems Ltd   [TO VERIFY]
+    Code 32 / PZN             descriptive pharmaceutical identifiers;
+                              no proprietary mark asserted here       [TO VERIFY]
 
 All marks are the property of their respective owners and are used here in a
 purely descriptive, nominative sense — to identify which symbologies this
@@ -221,4 +228,4 @@ change to the dependency set, the oracle tools, or the implemented format list
 MUST update this file in the same commit. A "[TO VERIFY]" marker may only be
 removed together with a citation recorded in NOTICE.md.
 
-Last reviewed: 2026-08-13
+Last reviewed: 2026-08-31

@@ -38,9 +38,17 @@ export {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
   encodeITF, encodeITF14, encodeCodabar, encodeCode11,
-  encodeMSI, encodePharmacode,
+  encodeMSI, encodePharmacode, encodeCode32, encodePZN,
+  code32CheckDigit, decodeCode32Payload, decodePZNPayload,
   ean13CheckDigit,
 } from './writers.js';
+
+export {
+  CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS,
+  code25CheckDigit, encodeCode25, encodeStandard2of5,
+  encodeIndustrial2of5, encodeIATA2of5,
+} from './code25.js';
+export type { Code25Variant } from './code25.js';
 
 export {
   TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH,
@@ -60,7 +68,8 @@ export {
 } from './addons.js';
 
 export {
-  decodeOneD, decodeOneDStrict,
+  decodeOneD, decodeOneDStrict, decodeCode32, decodePZN,
+  decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5,
   decodeCode11, decodeMSI,
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
@@ -71,10 +80,11 @@ import {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
   encodeITF, encodeITF14, encodeCodabar, encodeCode11,
-  encodeMSI, encodePharmacode,
+  encodeMSI, encodePharmacode, encodeCode32, encodePZN,
 } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
+import { encodeIndustrial2of5, encodeIATA2of5 } from './code25.js';
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -102,9 +112,13 @@ export const ONED_FORMATS = {
   code93: { encode: encodeCode93, readable: true, label: 'Code 93' },
   itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
   itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
+  industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
+  iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
   codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
   code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
   msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
+  code32: { encode: encodeCode32, readable: true, label: 'Code 32 (Italian Pharmacode)' },
+  pzn: { encode: encodePZN, readable: true, label: 'PZN (Pharmazentralnummer)' },
   telepen: { encode: encodeTelepen, readable: true, label: 'Telepen' },
   pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
   // Supplements are reported as readable capabilities, but the image reader

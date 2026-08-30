@@ -59,13 +59,20 @@ import {
   ITF, CODABAR, CODABAR_START_STOP,
   CODE11, CODE11_START_STOP, MSI_START, MSI_STOP, MSI_BIT,
 } from './patterns.js';
-import { ean13CheckDigit, upceToUpcaBody } from './writers.js';
+import {
+  ean13CheckDigit, upceToUpcaBody,
+  decodeCode32Payload, decodePZNPayload,
+} from './writers.js';
 import {
   EAN2_PARITY, EAN5_PARITY, EAN_ADDON_START, EAN_ADDON_SEPARATOR,
   ean5Checksum,
 } from './addons.js';
 import { decodeDataBar14Scanline } from '../databar/decoder.js';
 import { decodeTelepen } from './telepen.js';
+import {
+  CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS,
+  code25CheckDigit,
+} from './code25.js';
 
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -934,6 +941,31 @@ function decodeCode39(row, options = {}) {
   return { format: 'code39', text };
 }
 
+/** Decode Italian Code 32 after validating its Code 39/base-32 payload. */
+export function decodeCode32(row) {
+  const base = decodeCode39(row);
+  if (!base) return null;
+  const parsed = decodeCode32Payload(base.text);
+  return parsed
+    ? { format: 'code32', text: parsed.text, checkDigit: true }
+    : null;
+}
+
+/** Decode PZN-7 or PZN-8 after validating its Code 39 payload/check digit. */
+export function decodePZN(row) {
+  const base = decodeCode39(row);
+  if (!base) return null;
+  const parsed = decodePZNPayload(base.text);
+  return parsed
+    ? {
+      format: 'pzn',
+      text: parsed.text,
+      pznVariant: parsed.variant,
+      checkDigit: true,
+    }
+    : null;
+}
+
 /* ------------------------------------------------------------------ *
  * Code 93
  * ------------------------------------------------------------------ */
@@ -1064,6 +1096,166 @@ function decodeITF(row) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Code 25 family
+ * ------------------------------------------------------------------ */
+
+/** Convert a Code 25 width description into the measured module widths. */
+function code25Widths(pattern, ratio) {
+  return [...pattern].map((width) => Number(width) > 1 ? ratio : 1);
+}
+
+/**
+ * Match a Code 25 guard or digit at an exact offset. The writer permits a
+ * configurable wide-bar ratio, so a small bounded set of ratios is considered
+ * while matching rather than assuming one printer's dimensions.
+ *
+ * @param {Uint8Array} row
+ * @param {number} start
+ * @param {string} pattern
+ * @param {number|undefined} preferredRatio
+ * @returns {{end:number, score:number, ratio:number}|null}
+ */
+function matchCode25(row, start, pattern, preferredRatio) {
+  const counters = new Array(pattern.length).fill(0);
+  if (!recordPattern(row, start, counters)) return null;
+  const candidates = preferredRatio
+    ? [preferredRatio]
+    : [2, 3, 4, 5, 6, 7, 8];
+  let best = null;
+  for (const ratio of candidates) {
+    const score = patternVariance(counters, code25Widths(pattern, ratio), 0.75);
+    if (!Number.isFinite(score)) continue;
+    if (!best || score < best.score) best = { score, ratio };
+  }
+  if (!best || best.score >= 0.38) return null;
+  return {
+    end: start + counters.reduce((sum, width) => sum + width, 0),
+    score: best.score,
+    ratio: best.ratio,
+  };
+}
+
+/** Find the strongest Code 25 start guard in a scanline. */
+function findCode25Start(row, startPattern) {
+  let best = null;
+  for (let offset = 0; offset < row.length; offset++) {
+    if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1)) continue;
+    const found = matchCode25(row, offset, startPattern);
+    if (found && (!best || found.score < best.score)) {
+      best = { start: offset, ...found };
+    }
+  }
+  return best;
+}
+
+/**
+ * Decode a Code 25/Industrial 2 of 5/IATA 2 of 5 scanline.
+ *
+ * Standard 2 of 5 and Industrial 2 of 5 intentionally share the canonical
+ * industrial frame in this SDK; the public variant labels remain explicit so
+ * callers can select the terminology used by their data source.
+ *
+ * @param {Uint8Array} row
+ * @param {'standard'|'industrial'|'iata'} variant
+ * @param {object} options
+ * @returns {{format:'industrial2of5'|'iata2of5',text:string,checkDigit:boolean}|null}
+ */
+function decodeCode25Variant(row, variant, options = {}) {
+  const profile = CODE25_VARIANTS[variant];
+  const start = findCode25Start(row, profile.start);
+  if (!start) return null;
+
+  let offset = start.end;
+  let digits = '';
+  let stop = null;
+  // The IATA start guard is all narrow bars and therefore carries no ratio
+  // information. Infer its ratio from the first data digit instead of
+  // hard-coding the first candidate (which would make a 3:1 symbol look like
+  // a truncated stop pattern).
+  let ratio = variant === 'iata' ? undefined : start.ratio;
+  const counters = new Array(10).fill(0);
+
+  for (let count = 0; count < CODE25_MAX_DIGITS; count++) {
+    const candidateStop = matchCode25(row, offset, profile.stop, ratio);
+    const stopGap = candidateStop
+      ? (() => {
+        let nextDark = candidateStop.end;
+        while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+        return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
+      })()
+      : 0;
+    if (candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))) {
+      stop = candidateStop;
+      break;
+    }
+    if (!recordPattern(row, offset, counters)) return null;
+
+    let bestDigit = null;
+    for (let digit = 0; digit < CODE25_DIGIT_PATTERNS.length; digit++) {
+      const candidates = ratio ? [ratio] : [2, 3, 4, 5, 6, 7, 8];
+      for (const candidateRatio of candidates) {
+        const score = patternVariance(
+          counters,
+          code25Widths(CODE25_DIGIT_PATTERNS[digit], candidateRatio),
+          0.75,
+        );
+        if (!Number.isFinite(score)) continue;
+        if (!bestDigit || score < bestDigit.score) {
+          bestDigit = { digit, score, ratio: candidateRatio };
+        }
+      }
+    }
+    if (!bestDigit || bestDigit.score >= 0.38) return null;
+    ratio ??= bestDigit.ratio;
+    digits += String(bestDigit.digit);
+    offset += counters.reduce((sum, width) => sum + width, 0);
+  }
+
+  if (!stop || digits.length === 0) return null;
+  const stopEnd = stop.end;
+  let nextDark = stopEnd;
+  while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+  if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(start.ratio * 3))) {
+    return null;
+  }
+
+  let checkDigit = false;
+  if (options.checkDigit === true || options.profile === 'camera') {
+    if (digits.length < 2) return null;
+    const body = digits.slice(0, -1);
+    if (code25CheckDigit(body) !== Number(digits.at(-1))) return null;
+    digits = body;
+    checkDigit = true;
+  }
+
+  return {
+    format: profile.id,
+    text: digits,
+    checkDigit,
+  };
+}
+
+/** Decode the canonical Standard/Industrial 2 of 5 frame. */
+export function decodeIndustrial2of5(row, options = {}) {
+  return decodeCode25Variant(row, 'industrial', options);
+}
+
+/** Decode IATA 2 of 5 with its shorter guard frame. */
+export function decodeIATA2of5(row, options = {}) {
+  return decodeCode25Variant(row, 'iata', options);
+}
+
+/** Decode the canonical Standard 2 of 5 frame. */
+export function decodeStandard2of5(row, options = {}) {
+  return decodeCode25Variant(row, 'standard', options);
+}
+
+/** Decode any Code 25 family frame using the canonical Standard profile. */
+export function decodeCode25(row, options = {}) {
+  return decodeCode25Variant(row, 'standard', options);
+}
+
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 
@@ -1138,8 +1330,12 @@ const DECODERS = [
   ['telepen', decodeTelepen],
   ['telepennumeric', (row, options = {}) => decodeTelepen(row, { ...options, numeric: true })],
   ['gs1databar14', decodeDataBar14Scanline],
+  ['code32', decodeCode32],
+  ['pzn', decodePZN],
   ['code39', decodeCode39],
   ['code93', decodeCode93],
+  ['industrial2of5', decodeIndustrial2of5],
+  ['iata2of5', decodeIATA2of5],
   ['itf', decodeITF],
   ['codabar', decodeCodabar],
 ];
@@ -1187,12 +1383,16 @@ function cameraRowGeometry(row) {
 }
 
 /** @param {string} format @param {object} options @returns {boolean|null} */
-function checksumStatus(format, options) {
+function checksumStatus(format, options, result = null) {
   if (format === 'ean13' || format === 'ean8' || format === 'upca' || format === 'upce' ||
       format === 'code93' || format === 'code128' || format === 'gs1128' ||
       format === 'gs1databar14') return true;
   if (format === 'code11' || format === 'msi' || format === 'code39') {
     return options.profile === 'camera' || options.checkDigit === true ? true : null;
+  }
+  if (format === 'code32' || format === 'pzn') return true;
+  if (format === 'industrial2of5' || format === 'iata2of5') {
+    return result?.checkDigit === true ? true : null;
   }
   if (format === 'telepen' || format === 'telepennumeric') return true;
   return null;
@@ -1200,7 +1400,7 @@ function checksumStatus(format, options) {
 
 /** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
 function cameraMetadata(result, geometry, rows, options) {
-  const checksum = checksumStatus(result.format, options);
+  const checksum = checksumStatus(result.format, options, result);
   const consistency = Math.min(1, rows.size / 3);
   const confidence = Math.min(1, 0.4 + (geometry.quietZone ? 0.2 : 0) +
     (checksum === true ? 0.2 : 0) + consistency * 0.2);
@@ -1243,6 +1443,13 @@ export function decodeOneD(image, options = {}) {
     if (enabled.has(id)) return true;
     if (id === 'telepen') return enabled.has('telepen-alpha');
     if (id === 'telepennumeric') return enabled.has('telepen-numeric');
+    if (id === 'code32') return enabled.has('italian-pharmacode');
+    if (id === 'pzn') return enabled.has('pzn7') || enabled.has('pzn8');
+    if (id === 'industrial2of5') {
+      return enabled.has('code2of5') || enabled.has('standard2of5')
+        || enabled.has('standard-2-of-5') || enabled.has('industrial-2-of-5');
+    }
+    if (id === 'iata2of5') return enabled.has('iata-2-of-5');
     if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
       return enabled.has('ean2') || enabled.has('ean5') ||
         (id === 'ean13' && enabled.has('isbn'));
@@ -1280,7 +1487,8 @@ export function decodeOneD(image, options = {}) {
         try {
           // Code 11 and MSI checks are optional in their base standards, but
           // a camera frame cannot safely promote their short unchecked forms.
-          const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi')
+          const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi'
+            || id === 'industrial2of5' || id === 'iata2of5')
             ? { ...options, checkDigit: true }
             : options;
           result = decoder(scan, decoderOptions);
@@ -1312,6 +1520,18 @@ export function decodeOneD(image, options = {}) {
             if (!enabled.has('telepen') && !enabled.has('telepen-alpha')) continue;
           } else if (result.format === 'telepennumeric') {
             if (!enabled.has('telepennumeric') && !enabled.has('telepen-numeric')) continue;
+          } else if (result.format === 'code32') {
+            if (!enabled.has('code32') && !enabled.has('italian-pharmacode')) continue;
+          } else if (result.format === 'pzn') {
+            if (!enabled.has('pzn') && !enabled.has('pzn7') && !enabled.has('pzn8')) continue;
+            if (enabled.has('pzn7') && result.pznVariant !== 'pzn7') continue;
+            if (enabled.has('pzn8') && result.pznVariant !== 'pzn8') continue;
+          } else if (result.format === 'industrial2of5') {
+            if (!enabled.has('industrial2of5') && !enabled.has('industrial-2-of-5')
+              && !enabled.has('code2of5') && !enabled.has('standard2of5')
+              && !enabled.has('standard-2-of-5')) continue;
+          } else if (result.format === 'iata2of5') {
+            if (!enabled.has('iata2of5') && !enabled.has('iata-2-of-5')) continue;
           } else if (!enabled.has(result.format)) {
             continue;
           }

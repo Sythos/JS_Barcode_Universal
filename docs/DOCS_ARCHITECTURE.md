@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 34 entries and 33 generally readable
+The current registry snapshot reports 38 entries and 37 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -89,6 +89,9 @@ turning the count into marketing copy:
   symbol;
 - Telepen exposes full ASCII and an explicit Numeric pair mode; Numeric reads
   must be requested so compact pairs are not guessed as ASCII control data;
+- Code 25/Standard 2 of 5, Industrial 2 of 5 and IATA 2 of 5 share a numeric
+  digit grammar but expose distinct guard profiles; Code 32 and PZN validate
+  pharmaceutical check digits before returning data;
 - the Sythos Canvas QR profile is a project profile and is not DENSO FrameQR
   compatibility or certification;
 - GS1 DataBar Omnidirectional/Truncated, Limited, Stacked, Stacked

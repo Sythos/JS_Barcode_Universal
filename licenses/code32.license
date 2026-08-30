@@ -1,0 +1,51 @@
+Code 32 (Italian Pharmacode) — format provenance and usability
+===============================================================
+
+This file records the engineering provenance and redistribution boundary for
+the Code 32 implementation shipped by Sythos Barcode Universal.
+
+It is an engineering inventory, not legal advice. Patent, copyright and
+trademark conclusions still need independent review for the jurisdiction and
+the intended product. Items marked [TO VERIFY] remain open questions.
+
+
+FORMAT AND IMPLEMENTATION BASIS
+-------------------------------
+
+Code 32 is a decimal pharmaceutical identifier rendered through a six-symbol
+base-32 payload and a Code 39-compatible carrier. The implementation keeps the
+numeric eight-digit body, computes the published modulo-10 check digit, and
+derives the printed alphabet by applying the documented vowel-skipping rule.
+The reader validates the carrier, base-32 conversion and check digit before it
+returns data. No Code 32 source code, lookup table or binary asset from another
+project is copied into this repository.
+
+The runtime is original Sythos TypeScript with generated JavaScript output and
+is distributed under the MIT License. The name is used descriptively and does
+not imply certification by an industry body or a pharmaceutical authority.
+
+
+PATENT AND TRADEMARK REVIEW
+---------------------------
+
+Historical pharmaceutical-identification patents, national patent families
+and any current Code 32 trademark registrations have not been independently
+cleared here. [TO VERIFY] This project makes no unconditional patent-free,
+public-domain or trademark-clearance claim.
+
+
+INDEPENDENT VALIDATION BOUNDARY
+-------------------------------
+
+BWIPP/bwip-js was used only as a local, independent black-box oracle to compare
+rendered Code 32 symbols. Its source, tables and runtime are not copied into or
+shipped by this SDK, and it is not a runtime dependency. The comparison is an
+engineering check, not a legal opinion or a conformance certificate.
+
+
+CONCLUSION
+----------
+
+The original Sythos Code 32 implementation is MIT-licensed. If a rights holder
+or user identifies a conflicting notice about the available material, please
+open a GitHub issue with the reference so it can be reviewed and recorded.

@@ -70,6 +70,7 @@ test/*
 !test/databar-limited.test.js
 !test/databar-expanded.test.js
 !test/telepen.test.js
+!test/code25-code32.test.js
 !tools/
 tools/*
 !tools/compile-typescript.mjs

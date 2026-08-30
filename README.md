@@ -89,7 +89,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal` | The whole surface: `encode`, `decode`, every renderer, every error type |
 | `@sythos/js_barcode_universal/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
 | `@sythos/js_barcode_universal/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
-| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, `encodeTelepen`, …) and `decodeOneD` |
+| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, `encodeCode32`, `encodePZN`, `encodeTelepen`, …), Code 25 variants and `decodeOneD` |
 | `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
 | `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `decodeDataMatrix`, `detectDataMatrix`, `detectAndDecodeDataMatrix` |
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec`, `decodeAztec`, `detectAztec`, `detectAndDecodeAztec` |
@@ -249,10 +249,15 @@ time.
 | Code 93 | `code93` | 1D | ✅ | ✅ |
 | ITF (Interleaved 2 of 5) | `itf` | 1D | ✅ | ✅ |
 | ITF-14 | `itf14` | 1D | ✅ | ✅ [^1] |
+| Code 25 / Standard 2 of 5 | `standard2of5` | 1D | ✅ | ✅ [^4] |
+| Industrial 2 of 5 | `industrial2of5` | 1D | ✅ | ✅ [^4] |
+| IATA 2 of 5 | `iata2of5` | 1D | ✅ | ✅ [^4] |
 | Codabar | `codabar` | 1D | ✅ | ✅ |
 | Code 11 | `code11` | 1D | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | ✅ | ✅ |
 | Telepen (ASCII and Numeric) | `telepen` | 1D | ✅ | ✅ [^3] |
+| Code 32 (Italian Pharmacode) | `code32` | 1D | ✅ | ✅ |
+| PZN-7 / PZN-8 | `pzn` | 1D | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
@@ -273,11 +278,14 @@ time.
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Thirty-four listed formats are writable and thirty-three are readable (EAN-2 and EAN-5 are
+Thirty-eight listed formats are writable and thirty-seven are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
+Code 25 family shares one numeric digit grammar while exposing explicit Standard/Industrial and
+IATA guard profiles; Code 32 and PZN validate their pharmaceutical check digits before a read is
+returned. The
 GS1 DataBar physical variants use
 strict clean-raster readers and variant-specific detectors over the verified GTIN/GS1 element-string
 decoder. Expanded also accepts the common compressed GTIN-14 method on the read path. MaxiCode
@@ -300,6 +308,10 @@ UPC-E parent; they are not independent generic retail-symbol readers.
 [^3]: Telepen Numeric is an explicit mode because its compact digit-pair glyphs share the same
 guards as Telepen Alpha. Use `format: 'telepennumeric'` when encoding or
 `formats: ['telepennumeric']` when reading.
+
+[^4]: Code 25/Standard 2 of 5 and Industrial 2 of 5 use the canonical Industrial frame in this
+SDK; IATA 2 of 5 uses its shorter guard frame. Check digits are optional for ordinary reads and
+are required by the strict camera profile.
 
 ### Code 11 and MSI Plessey image reading
 
@@ -341,6 +353,60 @@ The scanline reader measures the complete symbol at scale-independent run widths
 rejects ambiguous candidates, verifies parity and the modulo-127 check value, and
 returns no partial result. A camera-profile read additionally requires a coherent
 quiet-zone-qualified symbol across repeated scan samples.
+
+### Code 25, Industrial 2 of 5 and IATA 2 of 5
+
+The Code 25 family is available from both the root dispatcher and the `oned`
+subpath. `standard2of5` (also `code2of5`) and `industrial2of5` use the same
+canonical two-wide-bar frame here; `iata2of5` uses the shorter IATA guard. The
+optional modulo-10 check digit is appended by the writer and can be required by
+the reader or by the strict camera profile:
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('01234567', {
+  format: 'industrial2of5',
+  checkDigit: true,
+  wideRatio: 3,
+});
+const [hit] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 30,
+  barHeight: 64,
+}), {
+  formats: ['industrial2of5'],
+  checkDigit: true,
+});
+console.log(hit?.text); // 01234567
+```
+
+Use `format: 'iata2of5'` for IATA framing. The reader validates the complete
+start/data/stop structure and rejects clipped or ambiguous candidates; a camera
+read additionally requires a quiet zone and a valid check digit.
+
+### Code 32 and PZN
+
+Code 32 (the Italian pharmaceutical code) and PZN-7/PZN-8 are explicit,
+check-digit-validated pharmaceutical formats. Code 32 accepts an eight-digit
+body (or the same body with its validated check digit) and renders the compact
+base-32 payload through the Code 39 carrier. PZN accepts six digits for PZN-7 or
+seven digits with `{ pzn8: true }` for PZN-8; the decoder exposes `pznVariant`.
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const code32 = encode('01234567', { format: 'code32' });
+const pzn8 = encode('1234567', { format: 'pzn8' });
+const image = toImageData(pzn8, { scale: 3, margin: 30, barHeight: 64 });
+const [result] = decode(image, { formats: ['pzn8'] });
+console.log(result?.format, result?.pznVariant, result?.text);
+// pzn pzn8 1234567
+```
+
+Both readers return no value when the carrier or pharmaceutical check digit is
+not valid. The format-specific engineering notes and the independent
+black-box validation boundary are recorded in [`licenses/`](licenses/).
 
 ### Data Matrix ECC 200
 

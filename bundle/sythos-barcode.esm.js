@@ -1430,6 +1430,148 @@ function encodeCode39(value, options = {}) {
     return toMatrix(parts.join('0'));
 }
 /* ------------------------------------------------------------------ *
+ * Code 32 / PZN
+ * ------------------------------------------------------------------ */
+/** Code 32's six-character alphabet after its four skipped vowels. */
+const CODE32_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUV';
+/**
+ * Convert a Code 32 base-32 digit to the printed character set. The standard
+ * skips A, E, I and O so the human-readable text cannot be mistaken for a
+ * vowel-heavy word. The successive threshold shifts are intentionally
+ * expressed as rules rather than copied lookup data.
+ */
+function code32PrintCharacter(character) {
+    let code = character.charCodeAt(0);
+    for (const vowel of 'AEIO') {
+        if (code >= vowel.charCodeAt(0))
+            code++;
+    }
+    return String.fromCharCode(code);
+}
+const CODE32_PRINT_ALPHABET = [...CODE32_ALPHABET].map(code32PrintCharacter).join('');
+const CODE32_DECODE = new Map([...CODE32_PRINT_ALPHABET].map((ch, index) => [ch, index]));
+/**
+ * Italian Code 32 (Italian Pharmacode) check digit.
+ *
+ * @param {string} value The eight-digit body, without the check digit.
+ * @returns {number}
+ */
+function code32CheckDigit(value) {
+    let sum = 0;
+    for (let i = 0; i < 8; i++) {
+        let digit = Number(value[i]);
+        if (i % 2 === 1) {
+            digit *= 2;
+            if (digit > 9)
+                digit -= 9;
+        }
+        sum += digit;
+    }
+    return sum % 10;
+}
+/**
+ * Encode the Italian Code 32 pharmaceutical identifier through Code 39.
+ * Accepts the eight-digit body or the same body followed by its check digit.
+ *
+ * @param {string} value Eight or nine digits.
+ * @returns {BitMatrix}
+ */
+function encodeCode32(value) {
+    const digits = String(value);
+    if (!/^\d{8,9}$/.test(digits)) {
+        throw new EncodeError('Code 32: payload must contain 8 or 9 digits');
+    }
+    const body = digits.slice(0, 8);
+    const check = code32CheckDigit(body);
+    if (digits.length === 9 && Number(digits[8]) !== check) {
+        throw new EncodeError(`Code 32: invalid check digit ${digits[8]}, expected ${check}`);
+    }
+    const complete = body + String(check);
+    let base32 = BigInt(complete).toString(32).toUpperCase().padStart(6, '0');
+    base32 = [...base32].map(code32PrintCharacter).join('');
+    return encodeCode39(base32);
+}
+/**
+ * Decode the Code 39 payload of an Italian Code 32 symbol.
+ *
+ * This helper is deliberately kept separate from the image reader so it can
+ * validate the numeric/check-digit grammar without introducing a module cycle.
+ *
+ * @param {string} text Code 39 payload, excluding its asterisks.
+ * @returns {{text:string, checkDigit:number}|null}
+ */
+function decodeCode32Payload(text) {
+    if (text.length !== 6)
+        return null;
+    let value = 0n;
+    for (const ch of text) {
+        const digit = CODE32_DECODE.get(ch);
+        if (digit === undefined)
+            return null;
+        value = value * 32n + BigInt(digit);
+    }
+    const complete = value.toString(10).padStart(9, '0');
+    if (complete.length !== 9)
+        return null;
+    const body = complete.slice(0, 8);
+    const checkDigit = code32CheckDigit(body);
+    if (Number(complete[8]) !== checkDigit)
+        return null;
+    return { text: body, checkDigit };
+}
+function pznCheckDigit(body, pzn8) {
+    let sum = 0;
+    const offset = pzn8 ? 1 : 2;
+    for (let i = 0; i < body.length; i++)
+        sum += Number(body[i]) * (i + offset);
+    const check = sum % 11;
+    return check === 10 ? null : check;
+}
+/**
+ * Encode a Pharmazentralnummer (PZN-7 or PZN-8) through Code 39.
+ *
+ * @param {string} value Six/seven digits for PZN-7, or seven/eight for PZN-8.
+ * @param {object} [options]
+ * @param {boolean} [options.pzn8=false] Select the modern eight-digit body.
+ * @param {'pzn7'|'pzn8'} [options.variant] Alias for `pzn8`.
+ * @returns {BitMatrix}
+ */
+function encodePZN(value, options = {}) {
+    const pzn8 = options.pzn8 === true || options.variant === 'pzn8';
+    const digits = String(value);
+    const bodyLength = pzn8 ? 7 : 6;
+    if (!new RegExp(`^\\d{${bodyLength},${bodyLength + 1}}$`).test(digits)) {
+        throw new EncodeError(`PZN-${pzn8 ? 8 : 7}: payload must contain ${bodyLength} or ${bodyLength + 1} digits`);
+    }
+    const body = digits.slice(0, bodyLength);
+    const check = pznCheckDigit(body, pzn8);
+    if (check === null)
+        throw new EncodeError('PZN: input sequence produces the reserved check value 10');
+    if (digits.length === bodyLength + 1 && Number(digits[bodyLength]) !== check) {
+        throw new EncodeError(`PZN: invalid check digit ${digits[bodyLength]}, expected ${check}`);
+    }
+    return encodeCode39(`-${body}${check}`);
+}
+/**
+ * Decode the Code 39 payload of a PZN symbol.
+ *
+ * @param {string} text Code 39 payload, excluding its asterisks.
+ * @returns {{text:string, variant:'pzn7'|'pzn8', checkDigit:number}|null}
+ */
+function decodePZNPayload(text) {
+    if (!/^-\d+$/.test(text))
+        return null;
+    const digits = text.slice(1);
+    const pzn8 = digits.length === 8;
+    if (digits.length !== 7 && !pzn8)
+        return null;
+    const body = digits.slice(0, -1);
+    const checkDigit = pznCheckDigit(body, pzn8);
+    if (checkDigit === null || Number(digits.at(-1)) !== checkDigit)
+        return null;
+    return { text: body, variant: pzn8 ? 'pzn8' : 'pzn7', checkDigit };
+}
+/* ------------------------------------------------------------------ *
  * Code 93
  * ------------------------------------------------------------------ */
 /**
@@ -1783,6 +1925,11 @@ __exports.encodeUPCA = encodeUPCA;
 __exports.upceToUpcaBody = upceToUpcaBody;
 __exports.encodeUPCE = encodeUPCE;
 __exports.encodeCode39 = encodeCode39;
+__exports.code32CheckDigit = code32CheckDigit;
+__exports.encodeCode32 = encodeCode32;
+__exports.decodeCode32Payload = decodeCode32Payload;
+__exports.encodePZN = encodePZN;
+__exports.decodePZNPayload = decodePZNPayload;
 __exports.encodeCode93 = encodeCode93;
 __exports.encodeCode128 = encodeCode128;
 __exports.encodeITF = encodeITF;
@@ -2531,6 +2678,136 @@ __exports.decodeTelepen = decodeTelepen;
 __exports.decodeTelepenNumeric = decodeTelepenNumeric;
 };
 
+__modules["js/oned/code25.js"] = function (__require, __exports) {
+/**
+ * Code 25 family writers.
+ *
+ * Code 25 (also called Standard or Industrial 2 of 5) represents each digit
+ * with five alternating bar/space elements, exactly two of the bars being wide.
+ * IATA 2 of 5 uses the same digit grammar with a shorter start/stop frame.
+ * The width descriptions below are expressed as module counts rather than
+ * copied implementation tables and are checked by the focused test suite.
+ *
+ * @module oned/code25
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+/** The ten digit patterns, each with five bars and five spaces. */
+const CODE25_DIGIT_PATTERNS = [
+    '1111313111', '3111111131', '1131111131', '3131111111',
+    '1111311131', '3111311111', '1131311111', '1111113131',
+    '3111113111', '1131113111',
+];
+/** Start/stop run widths for the three public names. */
+const CODE25_VARIANTS = {
+    // Code 25 and Industrial 2 of 5 share the discrete two-wide-bar grammar
+    // and canonical industrial frame. `standard` is the friendly API alias.
+    standard: { id: 'industrial2of5', label: 'Standard 2 of 5 (Code 25)', start: '313111', stop: '31113' },
+    industrial: { id: 'industrial2of5', label: 'Industrial 2 of 5', start: '313111', stop: '31113' },
+    iata: { id: 'iata2of5', label: 'IATA 2 of 5', start: '1111', stop: '311' },
+};
+const MAX_CODE25_DIGITS = 500;
+function requireDigits(value, label) {
+    const text = String(value);
+    if (!/^[0-9]+$/u.test(text)) {
+        throw new EncodeError(`${label}: payload must be digits only, got "${value}"`);
+    }
+    if (text.length === 0 || text.length > MAX_CODE25_DIGITS) {
+        throw new EncodeError(`${label}: payload length must be in 1..${MAX_CODE25_DIGITS}`);
+    }
+    return text;
+}
+/** Modulo-10 Code 25 check digit (alternating weights from the right). */
+function code25CheckDigit(value) {
+    let sum = 0;
+    for (let i = 0; i < value.length; i++) {
+        const fromRight = value.length - 1 - i;
+        sum += Number(value[i]) * (fromRight % 2 === 0 ? 3 : 1);
+    }
+    return (10 - (sum % 10)) % 10;
+}
+function expandWidths(widths, wideRatio) {
+    let modules = '';
+    for (let i = 0; i < widths.length; i++) {
+        const width = Number(widths[i]);
+        const count = width > 1 ? wideRatio : 1;
+        modules += (i % 2 === 0 ? '1' : '0').repeat(count);
+    }
+    return modules;
+}
+function toMatrix(modules) {
+    const matrix = new BitMatrix(modules.length, 1);
+    for (let x = 0; x < modules.length; x++) {
+        if (modules[x] === '1')
+            matrix.set(x, 0);
+    }
+    return matrix;
+}
+function resolveVariant(value) {
+    const variant = String(value ?? 'standard').toLowerCase();
+    if (variant === 'industrial' || variant === 'industrial2of5' || variant === 'industrial-2-of-5')
+        return 'industrial';
+    if (variant === 'iata' || variant === 'iata2of5' || variant === 'iata-2-of-5')
+        return 'iata';
+    if (variant === 'standard' || variant === 'code2of5' || variant === 'code-2-of-5' || variant === 'standard2of5' || variant === 'standard-2-of-5')
+        return 'standard';
+    throw new EncodeError(`Code 25: unknown variant "${value}"`);
+}
+/**
+ * Encode one of the Code 25 family profiles.
+ *
+ * `checkDigit` is opt-in because the base symbologies do not require one. A
+ * camera-profile decoder will require and validate it before promoting a read.
+ *
+ * @param {string} value Numeric payload.
+ * @param {object} [options]
+ * @param {Code25Variant|string} [options.variant='standard'] Framing profile.
+ * @param {boolean} [options.checkDigit] Append a modulo-10 check digit.
+ * @param {number} [options.wideRatio=3] Number of modules in a wide bar.
+ * @returns {BitMatrix}
+ */
+function encodeCode25(value, options = {}) {
+    const variant = resolveVariant(options.variant);
+    const profile = CODE25_VARIANTS[variant];
+    const label = profile.label;
+    const ratio = options.wideRatio ?? 3;
+    if (!Number.isInteger(ratio) || ratio < 2 || ratio > 8) {
+        throw new EncodeError(`${label}: wideRatio must be an integer in 2..8`);
+    }
+    let digits = requireDigits(value, label);
+    if (options.checkDigit === true)
+        digits += String(code25CheckDigit(digits));
+    let modules = expandWidths(profile.start, ratio);
+    for (const digit of digits)
+        modules += expandWidths(CODE25_DIGIT_PATTERNS[Number(digit)], ratio);
+    modules += expandWidths(profile.stop, ratio);
+    return toMatrix(modules);
+}
+/** Encode Standard 2 of 5 (the canonical Code 25 frame). */
+function encodeStandard2of5(value, options = {}) {
+    return encodeCode25(value, { ...options, variant: 'standard' });
+}
+/** Encode Industrial 2 of 5. */
+function encodeIndustrial2of5(value, options = {}) {
+    return encodeCode25(value, { ...options, variant: 'industrial' });
+}
+/** Encode IATA 2 of 5. */
+function encodeIATA2of5(value, options = {}) {
+    return encodeCode25(value, { ...options, variant: 'iata' });
+}
+/** Internal limit used by the scanline reader and its safety checks. */
+const CODE25_MAX_DIGITS = MAX_CODE25_DIGITS;
+
+__exports.CODE25_DIGIT_PATTERNS = CODE25_DIGIT_PATTERNS;
+__exports.CODE25_VARIANTS = CODE25_VARIANTS;
+__exports.code25CheckDigit = code25CheckDigit;
+__exports.encodeCode25 = encodeCode25;
+__exports.encodeStandard2of5 = encodeStandard2of5;
+__exports.encodeIndustrial2of5 = encodeIndustrial2of5;
+__exports.encodeIATA2of5 = encodeIATA2of5;
+__exports.CODE25_MAX_DIGITS = CODE25_MAX_DIGITS;
+};
+
 __modules["js/databar/tables.js"] = function (__require, __exports) {
 /**
  * Static GS1 DataBar facts used by the GTIN compaction codec.
@@ -3132,10 +3409,11 @@ __modules["js/oned/reader.js"] = function (__require, __exports) {
  */
 const { NotFoundError } = __require("js/core/errors.js");
 const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET, CODE93, CODE93_VALUES, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP } = __require("js/oned/patterns.js");
-const { ean13CheckDigit, upceToUpcaBody } = __require("js/oned/writers.js");
+const { ean13CheckDigit, upceToUpcaBody, decodeCode32Payload, decodePZNPayload } = __require("js/oned/writers.js");
 const { EAN2_PARITY, EAN5_PARITY, ean5Checksum } = __require("js/oned/addons.js");
 const { decodeDataBar14Scanline } = __require("js/databar/decoder.js");
 const { decodeTelepen } = __require("js/oned/telepen.js");
+const { CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit } = __require("js/oned/code25.js");
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -4021,6 +4299,31 @@ function decodeCode39(row, options = {}) {
     }
     return { format: 'code39', text };
 }
+/** Decode Italian Code 32 after validating its Code 39/base-32 payload. */
+function decodeCode32(row) {
+    const base = decodeCode39(row);
+    if (!base)
+        return null;
+    const parsed = decodeCode32Payload(base.text);
+    return parsed
+        ? { format: 'code32', text: parsed.text, checkDigit: true }
+        : null;
+}
+/** Decode PZN-7 or PZN-8 after validating its Code 39 payload/check digit. */
+function decodePZN(row) {
+    const base = decodeCode39(row);
+    if (!base)
+        return null;
+    const parsed = decodePZNPayload(base.text);
+    return parsed
+        ? {
+            format: 'pzn',
+            text: parsed.text,
+            pznVariant: parsed.variant,
+            checkDigit: true,
+        }
+        : null;
+}
 /* ------------------------------------------------------------------ *
  * Code 93
  * ------------------------------------------------------------------ */
@@ -4154,6 +4457,161 @@ function decodeITF(row) {
     return { format: 'itf', text: digits.join('') };
 }
 /* ------------------------------------------------------------------ *
+ * Code 25 family
+ * ------------------------------------------------------------------ */
+/** Convert a Code 25 width description into the measured module widths. */
+function code25Widths(pattern, ratio) {
+    return [...pattern].map((width) => Number(width) > 1 ? ratio : 1);
+}
+/**
+ * Match a Code 25 guard or digit at an exact offset. The writer permits a
+ * configurable wide-bar ratio, so a small bounded set of ratios is considered
+ * while matching rather than assuming one printer's dimensions.
+ *
+ * @param {Uint8Array} row
+ * @param {number} start
+ * @param {string} pattern
+ * @param {number|undefined} preferredRatio
+ * @returns {{end:number, score:number, ratio:number}|null}
+ */
+function matchCode25(row, start, pattern, preferredRatio) {
+    const counters = new Array(pattern.length).fill(0);
+    if (!recordPattern(row, start, counters))
+        return null;
+    const candidates = preferredRatio
+        ? [preferredRatio]
+        : [2, 3, 4, 5, 6, 7, 8];
+    let best = null;
+    for (const ratio of candidates) {
+        const score = patternVariance(counters, code25Widths(pattern, ratio), 0.75);
+        if (!Number.isFinite(score))
+            continue;
+        if (!best || score < best.score)
+            best = { score, ratio };
+    }
+    if (!best || best.score >= 0.38)
+        return null;
+    return {
+        end: start + counters.reduce((sum, width) => sum + width, 0),
+        score: best.score,
+        ratio: best.ratio,
+    };
+}
+/** Find the strongest Code 25 start guard in a scanline. */
+function findCode25Start(row, startPattern) {
+    let best = null;
+    for (let offset = 0; offset < row.length; offset++) {
+        if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
+            continue;
+        const found = matchCode25(row, offset, startPattern);
+        if (found && (!best || found.score < best.score)) {
+            best = { start: offset, ...found };
+        }
+    }
+    return best;
+}
+/**
+ * Decode a Code 25/Industrial 2 of 5/IATA 2 of 5 scanline.
+ *
+ * Standard 2 of 5 and Industrial 2 of 5 intentionally share the canonical
+ * industrial frame in this SDK; the public variant labels remain explicit so
+ * callers can select the terminology used by their data source.
+ *
+ * @param {Uint8Array} row
+ * @param {'standard'|'industrial'|'iata'} variant
+ * @param {object} options
+ * @returns {{format:'industrial2of5'|'iata2of5',text:string,checkDigit:boolean}|null}
+ */
+function decodeCode25Variant(row, variant, options = {}) {
+    const profile = CODE25_VARIANTS[variant];
+    const start = findCode25Start(row, profile.start);
+    if (!start)
+        return null;
+    let offset = start.end;
+    let digits = '';
+    let stop = null;
+    // The IATA start guard is all narrow bars and therefore carries no ratio
+    // information. Infer its ratio from the first data digit instead of
+    // hard-coding the first candidate (which would make a 3:1 symbol look like
+    // a truncated stop pattern).
+    let ratio = variant === 'iata' ? undefined : start.ratio;
+    const counters = new Array(10).fill(0);
+    for (let count = 0; count < CODE25_MAX_DIGITS; count++) {
+        const candidateStop = matchCode25(row, offset, profile.stop, ratio);
+        const stopGap = candidateStop
+            ? (() => {
+                let nextDark = candidateStop.end;
+                while (nextDark < row.length && row[nextDark] === 0)
+                    nextDark++;
+                return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
+            })()
+            : 0;
+        if (candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))) {
+            stop = candidateStop;
+            break;
+        }
+        if (!recordPattern(row, offset, counters))
+            return null;
+        let bestDigit = null;
+        for (let digit = 0; digit < CODE25_DIGIT_PATTERNS.length; digit++) {
+            const candidates = ratio ? [ratio] : [2, 3, 4, 5, 6, 7, 8];
+            for (const candidateRatio of candidates) {
+                const score = patternVariance(counters, code25Widths(CODE25_DIGIT_PATTERNS[digit], candidateRatio), 0.75);
+                if (!Number.isFinite(score))
+                    continue;
+                if (!bestDigit || score < bestDigit.score) {
+                    bestDigit = { digit, score, ratio: candidateRatio };
+                }
+            }
+        }
+        if (!bestDigit || bestDigit.score >= 0.38)
+            return null;
+        ratio ?? (ratio = bestDigit.ratio);
+        digits += String(bestDigit.digit);
+        offset += counters.reduce((sum, width) => sum + width, 0);
+    }
+    if (!stop || digits.length === 0)
+        return null;
+    const stopEnd = stop.end;
+    let nextDark = stopEnd;
+    while (nextDark < row.length && row[nextDark] === 0)
+        nextDark++;
+    if (nextDark !== row.length && nextDark - stopEnd < Math.max(3, Math.ceil(start.ratio * 3))) {
+        return null;
+    }
+    let checkDigit = false;
+    if (options.checkDigit === true || options.profile === 'camera') {
+        if (digits.length < 2)
+            return null;
+        const body = digits.slice(0, -1);
+        if (code25CheckDigit(body) !== Number(digits.at(-1)))
+            return null;
+        digits = body;
+        checkDigit = true;
+    }
+    return {
+        format: profile.id,
+        text: digits,
+        checkDigit,
+    };
+}
+/** Decode the canonical Standard/Industrial 2 of 5 frame. */
+function decodeIndustrial2of5(row, options = {}) {
+    return decodeCode25Variant(row, 'industrial', options);
+}
+/** Decode IATA 2 of 5 with its shorter guard frame. */
+function decodeIATA2of5(row, options = {}) {
+    return decodeCode25Variant(row, 'iata', options);
+}
+/** Decode the canonical Standard 2 of 5 frame. */
+function decodeStandard2of5(row, options = {}) {
+    return decodeCode25Variant(row, 'standard', options);
+}
+/** Decode any Code 25 family frame using the canonical Standard profile. */
+function decodeCode25(row, options = {}) {
+    return decodeCode25Variant(row, 'standard', options);
+}
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 /**
@@ -4235,8 +4693,12 @@ const DECODERS = [
     ['telepen', decodeTelepen],
     ['telepennumeric', (row, options = {}) => decodeTelepen(row, { ...options, numeric: true })],
     ['gs1databar14', decodeDataBar14Scanline],
+    ['code32', decodeCode32],
+    ['pzn', decodePZN],
     ['code39', decodeCode39],
     ['code93', decodeCode93],
+    ['industrial2of5', decodeIndustrial2of5],
+    ['iata2of5', decodeIATA2of5],
     ['itf', decodeITF],
     ['codabar', decodeCodabar],
 ];
@@ -4282,7 +4744,7 @@ function cameraRowGeometry(row) {
     };
 }
 /** @param {string} format @param {object} options @returns {boolean|null} */
-function checksumStatus(format, options) {
+function checksumStatus(format, options, result = null) {
     if (format === 'ean13' || format === 'ean8' || format === 'upca' || format === 'upce' ||
         format === 'code93' || format === 'code128' || format === 'gs1128' ||
         format === 'gs1databar14')
@@ -4290,13 +4752,18 @@ function checksumStatus(format, options) {
     if (format === 'code11' || format === 'msi' || format === 'code39') {
         return options.profile === 'camera' || options.checkDigit === true ? true : null;
     }
+    if (format === 'code32' || format === 'pzn')
+        return true;
+    if (format === 'industrial2of5' || format === 'iata2of5') {
+        return result?.checkDigit === true ? true : null;
+    }
     if (format === 'telepen' || format === 'telepennumeric')
         return true;
     return null;
 }
 /** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
 function cameraMetadata(result, geometry, rows, options) {
-    const checksum = checksumStatus(result.format, options);
+    const checksum = checksumStatus(result.format, options, result);
     const consistency = Math.min(1, rows.size / 3);
     const confidence = Math.min(1, 0.4 + (geometry.quietZone ? 0.2 : 0) +
         (checksum === true ? 0.2 : 0) + consistency * 0.2);
@@ -4342,6 +4809,16 @@ function decodeOneD(image, options = {}) {
             return enabled.has('telepen-alpha');
         if (id === 'telepennumeric')
             return enabled.has('telepen-numeric');
+        if (id === 'code32')
+            return enabled.has('italian-pharmacode');
+        if (id === 'pzn')
+            return enabled.has('pzn7') || enabled.has('pzn8');
+        if (id === 'industrial2of5') {
+            return enabled.has('code2of5') || enabled.has('standard2of5')
+                || enabled.has('standard-2-of-5') || enabled.has('industrial-2-of-5');
+        }
+        if (id === 'iata2of5')
+            return enabled.has('iata-2-of-5');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -4377,7 +4854,8 @@ function decodeOneD(image, options = {}) {
                 try {
                     // Code 11 and MSI checks are optional in their base standards, but
                     // a camera frame cannot safely promote their short unchecked forms.
-                    const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi')
+                    const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi'
+                        || id === 'industrial2of5' || id === 'iata2of5')
                         ? { ...options, checkDigit: true }
                         : options;
                     result = decoder(scan, decoderOptions);
@@ -4420,6 +4898,28 @@ function decodeOneD(image, options = {}) {
                     }
                     else if (result.format === 'telepennumeric') {
                         if (!enabled.has('telepennumeric') && !enabled.has('telepen-numeric'))
+                            continue;
+                    }
+                    else if (result.format === 'code32') {
+                        if (!enabled.has('code32') && !enabled.has('italian-pharmacode'))
+                            continue;
+                    }
+                    else if (result.format === 'pzn') {
+                        if (!enabled.has('pzn') && !enabled.has('pzn7') && !enabled.has('pzn8'))
+                            continue;
+                        if (enabled.has('pzn7') && result.pznVariant !== 'pzn7')
+                            continue;
+                        if (enabled.has('pzn8') && result.pznVariant !== 'pzn8')
+                            continue;
+                    }
+                    else if (result.format === 'industrial2of5') {
+                        if (!enabled.has('industrial2of5') && !enabled.has('industrial-2-of-5')
+                            && !enabled.has('code2of5') && !enabled.has('standard2of5')
+                            && !enabled.has('standard-2-of-5'))
+                            continue;
+                    }
+                    else if (result.format === 'iata2of5') {
+                        if (!enabled.has('iata2of5') && !enabled.has('iata-2-of-5'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {
@@ -4492,6 +4992,12 @@ __exports.recordPattern = recordPattern;
 __exports.toNarrowWidePattern = toNarrowWidePattern;
 __exports.decodeCode11 = decodeCode11;
 __exports.decodeMSI = decodeMSI;
+__exports.decodeCode32 = decodeCode32;
+__exports.decodePZN = decodePZN;
+__exports.decodeIndustrial2of5 = decodeIndustrial2of5;
+__exports.decodeIATA2of5 = decodeIATA2of5;
+__exports.decodeStandard2of5 = decodeStandard2of5;
+__exports.decodeCode25 = decodeCode25;
 __exports.decodeOneD = decodeOneD;
 __exports.decodeOneDStrict = decodeOneDStrict;
 };
@@ -4502,14 +5008,16 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  *
  * @module oned
  */
-const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
-const __reexport1 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport1.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport1.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport1.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport1.telepenPattern; __exports.encodeTelepen = __reexport1.encodeTelepen; __exports.encodeTelepenNumeric = __reexport1.encodeTelepenNumeric; __exports.decodeTelepen = __reexport1.decodeTelepen; __exports.decodeTelepenNumeric = __reexport1.decodeTelepenNumeric;
-const __reexport2 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport2.EAN2_PARITY; __exports.EAN5_PARITY = __reexport2.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport2.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport2.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport2.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport2.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport2.ean2Parity; __exports.ean5Checksum = __reexport2.ean5Checksum; __exports.ean5CheckDigit = __reexport2.ean5CheckDigit; __exports.ean5Parity = __reexport2.ean5Parity; __exports.encodeEAN2 = __reexport2.encodeEAN2; __exports.encodeEAN5 = __reexport2.encodeEAN5; __exports.encodeEANAddon = __reexport2.encodeEANAddon; __exports.encodeEANAddOn = __reexport2.encodeEANAddOn; __exports.decodeEAN2 = __reexport2.decodeEAN2; __exports.decodeEAN5 = __reexport2.decodeEAN5; __exports.decodeEANAddon = __reexport2.decodeEANAddon; __exports.decodeEANAddOn = __reexport2.decodeEANAddOn; __exports.composeEANAddon = __reexport2.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport2.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport2.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport2.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport2.encodeUPCEWithAddon;
-const __reexport3 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport3.decodeOneD; __exports.decodeOneDStrict = __reexport3.decodeOneDStrict; __exports.decodeCode11 = __reexport3.decodeCode11; __exports.decodeMSI = __reexport3.decodeMSI; __exports.patternVariance = __reexport3.patternVariance; __exports.recordPattern = __reexport3.recordPattern; __exports.toNarrowWidePattern = __reexport3.toNarrowWidePattern;
-const __reexport4 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport4.validateTables;
-const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("js/oned/writers.js");
+const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5;
+const __reexport2 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport2.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport2.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport2.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport2.telepenPattern; __exports.encodeTelepen = __reexport2.encodeTelepen; __exports.encodeTelepenNumeric = __reexport2.encodeTelepenNumeric; __exports.decodeTelepen = __reexport2.decodeTelepen; __exports.decodeTelepenNumeric = __reexport2.decodeTelepenNumeric;
+const __reexport3 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport3.EAN2_PARITY; __exports.EAN5_PARITY = __reexport3.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport3.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport3.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport3.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport3.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport3.ean2Parity; __exports.ean5Checksum = __reexport3.ean5Checksum; __exports.ean5CheckDigit = __reexport3.ean5CheckDigit; __exports.ean5Parity = __reexport3.ean5Parity; __exports.encodeEAN2 = __reexport3.encodeEAN2; __exports.encodeEAN5 = __reexport3.encodeEAN5; __exports.encodeEANAddon = __reexport3.encodeEANAddon; __exports.encodeEANAddOn = __reexport3.encodeEANAddOn; __exports.decodeEAN2 = __reexport3.decodeEAN2; __exports.decodeEAN5 = __reexport3.decodeEAN5; __exports.decodeEANAddon = __reexport3.decodeEANAddon; __exports.decodeEANAddOn = __reexport3.decodeEANAddOn; __exports.composeEANAddon = __reexport3.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport3.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport3.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport3.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport3.encodeUPCEWithAddon;
+const __reexport4 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport4.decodeOneD; __exports.decodeOneDStrict = __reexport4.decodeOneDStrict; __exports.decodeCode32 = __reexport4.decodeCode32; __exports.decodePZN = __reexport4.decodePZN; __exports.decodeCode25 = __reexport4.decodeCode25; __exports.decodeStandard2of5 = __reexport4.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport4.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport4.decodeIATA2of5; __exports.decodeCode11 = __reexport4.decodeCode11; __exports.decodeMSI = __reexport4.decodeMSI; __exports.patternVariance = __reexport4.patternVariance; __exports.recordPattern = __reexport4.recordPattern; __exports.toNarrowWidePattern = __reexport4.toNarrowWidePattern;
+const __reexport5 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport5.validateTables;
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
+const { encodeIndustrial2of5, encodeIATA2of5 } = __require("js/oned/code25.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
  *
@@ -4536,9 +5044,13 @@ const ONED_FORMATS = {
     code93: { encode: encodeCode93, readable: true, label: 'Code 93' },
     itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
     itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
+    industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
+    iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
+    code32: { encode: encodeCode32, readable: true, label: 'Code 32 (Italian Pharmacode)' },
+    pzn: { encode: encodePZN, readable: true, label: 'PZN (Pharmazentralnummer)' },
     telepen: { encode: encodeTelepen, readable: true, label: 'Telepen' },
     pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
     // Supplements are reported as readable capabilities, but the image reader
@@ -20858,7 +21370,7 @@ const { BitMatrix } = __require("js/core/bit-matrix.js");
 const { EncodeError, NotFoundError } = __require("js/core/errors.js");
 const { LuminanceSource } = __require("js/image/luminance.js");
 const { binarize } = __require("js/image/binarizer.js");
-const { ONED_FORMATS } = __require("js/oned/index.js");
+const { ONED_FORMATS, encodeCode32, encodePZN, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5 } = __require("js/oned/index.js");
 const { decodeOneD } = __require("js/oned/reader.js");
 const { encodeTelepen, encodeTelepenNumeric } = __require("js/oned/telepen.js");
 const datamatrix = __require("js/datamatrix/index.js");
@@ -21114,6 +21626,9 @@ function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {boolean} [options.pzn8] Select the eight-digit PZN profile.
+ * @param {'pzn7'|'pzn8'|'standard'|'industrial'|'iata'} [options.variant] PZN or Code 25 variant.
+ * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
  * @param {2|3|4|5} [options.mode] MaxiCode mode.
  * @param {{postalCode:string,countryCode:number,serviceClass:number}} [options.primary] MaxiCode structured primary data for modes 2 and 3.
  * @param {'latin1'} [options.charset] MaxiCode character set declaration.
@@ -21189,9 +21704,30 @@ function encode(text, options = {}) {
     if (format === 'telepen' || format === 'telepen-alpha') {
         return encodeTelepen(value, options);
     }
+    if (format === 'code32' || format === 'italian-pharmacode') {
+        return encodeCode32(value);
+    }
+    if (format === 'pzn' || format === 'pzn7' || format === 'pzn8') {
+        return encodePZN(value, {
+            ...options,
+            pzn8: format === 'pzn8' || options.pzn8 === true || options.variant === 'pzn8',
+        });
+    }
+    if (format === 'code2of5' || format === 'standard2of5' || format === 'standard-2-of-5') {
+        return encodeStandard2of5(value, options);
+    }
+    if (format === 'industrial2of5' || format === 'industrial-2-of-5') {
+        return encodeIndustrial2of5(value, options);
+    }
+    if (format === 'iata2of5' || format === 'iata-2-of-5') {
+        return encodeIATA2of5(value, options);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
-        const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric', 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+        const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric',
+            'code32', 'italian-pharmacode', 'pzn', 'pzn7', 'pzn8',
+            'code2of5', 'standard2of5', 'standard-2-of-5', 'industrial-2-of-5', 'iata-2-of-5',
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -21227,6 +21763,8 @@ function encode(text, options = {}) {
  * @property {string} [gs1ParseError] Semantic GS1 parsing error after a valid physical read.
  * @property {string} [gtin] GS1 DataBar GTIN-14 payload.
  * @property {boolean} [linkage] GS1 DataBar linkage flag.
+ * @property {boolean} [checkDigit] Whether an optional numeric check digit was validated.
+ * @property {'pzn7'|'pzn8'} [pznVariant] PZN variant identified by the decoder.
  */
 /**
  * Find and decode every barcode in an image.
@@ -21273,6 +21811,9 @@ function decode(image, options = {}) {
         'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
         'gs1databar-expanded', 'gs1-databar-expanded', 'databar-expanded',
         'telepen-alpha', 'telepennumeric', 'telepen-numeric',
+        'code32', 'italian-pharmacode', 'pzn7', 'pzn8',
+        'code2of5', 'standard2of5', 'standard-2-of-5',
+        'industrial-2-of-5', 'iata-2-of-5',
     ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
@@ -21758,6 +22299,9 @@ export const {
   AZTEC_RUNE_WORD_SIZE,
   BarcodeError,
   BitMatrix,
+  CODE25_DIGIT_PATTERNS,
+  CODE25_MAX_DIGITS,
+  CODE25_VARIANTS,
   COMPACT_PDF417_LIMITS,
   COMPACT_PDF417_START,
   COMPACT_PDF417_START_BITS,
@@ -21789,6 +22333,8 @@ export const {
   binarizeGlobal,
   binarizeHybrid,
   buildAztecRuneStructure,
+  code25CheckDigit,
+  code32CheckDigit,
   compactPdf417Dimensions,
   compactPdf417Geometry,
   compactPdf417Indicators,
@@ -21804,6 +22350,9 @@ export const {
   decodeAztec,
   decodeAztecRune,
   decodeCode11,
+  decodeCode25,
+  decodeCode32,
+  decodeCode32Payload,
   decodeCompactPDF417,
   decodeDataBar14,
   decodeDataBar14GTIN,
@@ -21828,6 +22377,8 @@ export const {
   decodeGS1DataBarExpanded,
   decodeGS1DataBarStacked,
   decodeGS1ElementString,
+  decodeIATA2of5,
+  decodeIndustrial2of5,
   decodeMSI,
   decodeMaxiCode,
   decodeMicroPDF417,
@@ -21835,8 +22386,11 @@ export const {
   decodeOneD,
   decodeOneDStrict,
   decodePDF417,
+  decodePZN,
+  decodePZNPayload,
   decodeQR,
   decodeRMQR,
+  decodeStandard2of5,
   decodeStrict,
   decodeTelepen,
   decodeTelepenNumeric,
@@ -21891,6 +22445,8 @@ export const {
   encodeCodabar,
   encodeCode11,
   encodeCode128,
+  encodeCode25,
+  encodeCode32,
   encodeCode39,
   encodeCode93,
   encodeCompactPDF417,
@@ -21918,17 +22474,21 @@ export const {
   encodeGS1DataBarExpanded,
   encodeGS1DataBarStacked,
   encodeGS1ElementString,
+  encodeIATA2of5,
   encodeISBN,
   encodeITF,
   encodeITF14,
+  encodeIndustrial2of5,
   encodeMSI,
   encodeMaxiCode,
   encodeMicroPDF417,
   encodeMicroQR,
   encodePDF417,
+  encodePZN,
   encodePharmacode,
   encodeQR,
   encodeRMQR,
+  encodeStandard2of5,
   encodeTelepen,
   encodeTelepenNumeric,
   encodeUPCA,

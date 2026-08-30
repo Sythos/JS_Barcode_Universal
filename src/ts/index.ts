@@ -50,7 +50,14 @@ import { BitMatrix } from './core/bit-matrix.js';
 import { EncodeError, NotFoundError } from './core/errors.js';
 import { LuminanceSource } from './image/luminance.js';
 import { binarize } from './image/binarizer.js';
-import { ONED_FORMATS } from './oned/index.js';
+import {
+  ONED_FORMATS,
+  encodeCode32,
+  encodePZN,
+  encodeStandard2of5,
+  encodeIndustrial2of5,
+  encodeIATA2of5,
+} from './oned/index.js';
 import { decodeOneD } from './oned/reader.js';
 import { encodeTelepen, encodeTelepenNumeric } from './oned/telepen.js';
 import * as datamatrix from './datamatrix/index.js';
@@ -326,6 +333,9 @@ export function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {boolean} [options.pzn8] Select the eight-digit PZN profile.
+ * @param {'pzn7'|'pzn8'|'standard'|'industrial'|'iata'} [options.variant] PZN or Code 25 variant.
+ * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
  * @param {2|3|4|5} [options.mode] MaxiCode mode.
  * @param {{postalCode:string,countryCode:number,serviceClass:number}} [options.primary] MaxiCode structured primary data for modes 2 and 3.
  * @param {'latin1'} [options.charset] MaxiCode character set declaration.
@@ -403,9 +413,31 @@ export function encode(text, options = {}) {
     return encodeTelepen(value, options);
   }
 
+  if (format === 'code32' || format === 'italian-pharmacode') {
+    return encodeCode32(value);
+  }
+  if (format === 'pzn' || format === 'pzn7' || format === 'pzn8') {
+    return encodePZN(value, {
+      ...options,
+      pzn8: format === 'pzn8' || options.pzn8 === true || options.variant === 'pzn8',
+    });
+  }
+  if (format === 'code2of5' || format === 'standard2of5' || format === 'standard-2-of-5') {
+    return encodeStandard2of5(value, options);
+  }
+  if (format === 'industrial2of5' || format === 'industrial-2-of-5') {
+    return encodeIndustrial2of5(value, options);
+  }
+  if (format === 'iata2of5' || format === 'iata-2-of-5') {
+    return encodeIATA2of5(value, options);
+  }
+
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric', 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric',
+      'code32', 'italian-pharmacode', 'pzn', 'pzn7', 'pzn8',
+      'code2of5', 'standard2of5', 'standard-2-of-5', 'industrial-2-of-5', 'iata-2-of-5',
+      'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -442,6 +474,8 @@ export function encode(text, options = {}) {
  * @property {string} [gs1ParseError] Semantic GS1 parsing error after a valid physical read.
  * @property {string} [gtin] GS1 DataBar GTIN-14 payload.
  * @property {boolean} [linkage] GS1 DataBar linkage flag.
+ * @property {boolean} [checkDigit] Whether an optional numeric check digit was validated.
+ * @property {'pzn7'|'pzn8'} [pznVariant] PZN variant identified by the decoder.
  */
 
 /**
@@ -489,6 +523,9 @@ export function decode(image, options = {}) {
     'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
     'gs1databar-expanded', 'gs1-databar-expanded', 'databar-expanded',
     'telepen-alpha', 'telepennumeric', 'telepen-numeric',
+    'code32', 'italian-pharmacode', 'pzn7', 'pzn8',
+    'code2of5', 'standard2of5', 'standard-2-of-5',
+    'industrial-2-of-5', 'iata-2-of-5',
   ]);
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
   const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417

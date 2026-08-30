@@ -111,6 +111,13 @@ supported and unsupported variants; Telepen Numeric must be selected explicitly
 with `formats: ['telepennumeric']`. Use the [format catalogue](formats/overview.md)
 and the [linear-format guide](formats/oned.md) for the exact boundaries.
 
+For Code 25-family reads, select the physical guard profile (`industrial2of5`,
+`standard2of5`/`code2of5` or `iata2of5`) instead of relying on a similar-looking
+name. If a camera frame contains a partial symbol or a wrong optional check
+digit, the strict profile correctly returns an empty array. Code 32 and PZN
+also reject any carrier/check-digit mismatch; PZN-7 and PZN-8 are reported via
+`pznVariant`, not inferred from a clipped payload.
+
 ## Rendering throws a dimension or allocation error
 
 Treat `scale`, `margin` and `barHeight` as untrusted numeric input. Require safe

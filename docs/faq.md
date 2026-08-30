@@ -69,6 +69,18 @@ const [result] = decode(image, { formats: ['telepennumeric'] });
 The default `telepen` path is full seven-bit ASCII. The reader does not guess
 Numeric glyphs as ASCII control characters during unrestricted auto-detection.
 
+## Which 2 of 5 and pharmaceutical formats are available?
+
+The linear reader supports `standard2of5`/`code2of5`, `industrial2of5` and
+`iata2of5`. Standard and Industrial use the canonical Industrial guard frame
+in this SDK, while IATA uses its shorter guard. Optional modulo-10 checks can
+be required with `checkDigit: true`, and the strict camera profile requires
+them automatically.
+
+`code32` reads the eight-digit Italian pharmaceutical identifier. `pzn` reads
+PZN-7 by default and PZN-8 through `format: 'pzn8'`; successful PZN results
+include `pznVariant`. Invalid carriers or check digits return no result.
+
 ## Does “FrameQR” mean native DENSO FrameQR compatibility?
 
 No. The SDK's `frameqr` entry is the non-certified Sythos Canvas QR profile. It
