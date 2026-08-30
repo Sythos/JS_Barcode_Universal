@@ -14,8 +14,9 @@ ORIGIN
 GS1 DataBar is a family of seven GS1 linear symbologies defined by ISO/IEC
 24724 and GS1 specifications. This release contains original GTIN and GS1
 element-string data-layer codecs plus physical Omnidirectional, Truncated,
-Limited, Stacked and Stacked Omnidirectional readers and writers. Expanded
-remains outside the package scope.
+Limited, Stacked, Stacked Omnidirectional and Expanded readers and writers.
+Expanded is the linear variant; Expanded Stacked remains outside the package
+scope.
 
 
 SPECIFICATION
@@ -60,16 +61,20 @@ descriptions of the format, which are systems and facts rather than works of
 authorship. No source code or constant table from any other barcode
 implementation is copied or shipped. Public technical material and independent
 implementations may be consulted for engineering review or black-box
-verification; provenance is recorded in NOTICE.md.
+verification; provenance is recorded in NOTICE.md. Expanded uses the normative
+finder sequence, constrained 17-module characters and checksum weights; the
+reader additionally accepts the common compressed GTIN-14 method while keeping
+the detector conservative and single-symbol.
 
 
 CONCLUSION
 --------------------------------------------------------------------------
 
 Only original Sythos DataBar code is distributed under the MIT License.
-Omnidirectional, Truncated, Limited, Stacked and Stacked Omnidirectional image
-support is exposed after checksum-validated geometry and black-box verification;
-Expanded remains intentionally outside the completed capability.
+Omnidirectional, Truncated, Limited, Stacked, Stacked Omnidirectional and
+Expanded image support is exposed after checksum-validated geometry and
+black-box verification. Expanded Stacked and composite components remain
+outside this capability.
 [LEGAL REVIEW]
 
 References relied upon:

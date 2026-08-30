@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **32 entries**: all 32 are writable and
-31 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **33 entries**: all 33 are writable and
+32 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -50,7 +50,7 @@ corrected in the same change.
 | Aztec family | `aztec`, `aztecrune` | 2 | 2 | Aztec Code and Aztec Rune are separate grammars. |
 | PDF417 family | `pdf417`, `compactpdf417`, `micropdf417` | 3 | 3 | Full, truncated and Micro geometry are not aliases. |
 | Project profile | `frameqr` | 1 | 1 | Sythos Canvas QR is not DENSO FrameQR compatibility. |
-| GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` | 4 | 4 | Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional physical variants; Expanded remains outside scope. |
+| GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional`, `gs1databar-expanded` | 5 | 5 | Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and linear Expanded physical variants. |
 | MaxiCode | `maxicode` | 1 | 1 | Fixed 30×33 geometry, Modes 2–5 and ISO-8859-1 Code Sets A–E. |
 
 Use the family pages for payload modes, options, image-reading limits and
@@ -62,6 +62,7 @@ examples:
 - [Aztec family](aztec.md)
 - [PDF417 family](pdf417-family.md)
 - [GS1, EAN and UPC](gs1-and-ean.md)
+- [GS1 DataBar Expanded](databar-expanded.md)
 - [MaxiCode](maxicode.md)
 - [Sythos Canvas QR profile](frameqr-profile.md)
 - [Excluded and intentionally out-of-scope formats](excluded-formats.md)

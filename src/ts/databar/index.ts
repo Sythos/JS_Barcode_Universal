@@ -67,6 +67,17 @@ export {
   decodeDataBarLimitedScanline,
 } from './limited.js';
 export {
+  encodeDataBarExpanded,
+  decodeDataBarExpanded,
+  detectDataBarExpanded,
+  detectAndDecodeDataBarExpanded,
+  decodeDataBarExpandedScanline,
+  encodeGS1DataBarExpanded,
+  decodeGS1DataBarExpanded,
+  detectGS1DataBarExpanded,
+  detectAndDecodeGS1DataBarExpanded,
+} from './expanded.js';
+export {
   encodeDataBar14Stacked,
   decodeDataBar14Stacked,
   detectDataBar14Stacked,

@@ -108,7 +108,7 @@ The current implementation covers these families:
 | Matrix 2D | Data Matrix ECC 200, Aztec Code, Aztec Rune and MaxiCode | The reader returns no result when validation does not establish a trustworthy symbol. |
 | PDF417 family | PDF417, Compact PDF417 and MicroPDF417 | These formats expose different geometry and metadata; they are not interchangeable aliases. |
 | Project profile | Sythos Canvas QR profile | This is a Sythos profile, not DENSO FrameQR compatibility or certification. |
-| GS1 | GS1 DataBar Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional plus GS1-128-related paths | EAN-2 and EAN-5 are parent-bound supplements and need a validated EAN/UPC parent; Expanded DataBar remains outside scope. |
+| GS1 | GS1 DataBar Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded plus GS1-128-related paths | EAN-2 and EAN-5 are parent-bound supplements and need a validated EAN/UPC parent; Expanded Stacked remains outside scope. |
 | MaxiCode | Fixed 30×33 Modes 2–5 | The detector is intentionally limited to one clean, prominent symbol; see the dedicated format guide. |
 
 `canWrite` answers whether the release can create the format. `canRead`

@@ -10,7 +10,7 @@ rules, while keeping their physical barcode grammars separate.
 | UPC-A / UPC-E | `upca`, `upce` | ✅ | ✅ | UPC family validation and expansion rules. |
 | Bookland ISBN | `isbn` | ✅ | ✅ | ISBN-10/13 validation, then EAN-13 output. |
 | GS1-128 | `gs1128` | ✅ | ✅ | Code 128 with FNC1 and GS1 metadata. |
-| GS1 DataBar physical variants | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` | ✅ | ✅ | Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional. Expanded remains outside scope. |
+| GS1 DataBar physical variants | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional`, `gs1databar-expanded` | ✅ | ✅ | Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and linear Expanded. |
 | EAN-2 / EAN-5 | `ean2`, `ean5` | ✅ | ✅* | `*` parent-bound supplements. |
 
 ## EAN, UPC and ISBN
@@ -131,10 +131,9 @@ console.log(decodeGS1ElementString(encoded));
 ## GS1 DataBar
 
 The implemented physical layer covers GS1 DataBar Omnidirectional, Truncated,
-Limited, Stacked and Stacked Omnidirectional. The data layer includes GTIN
-normalization, check digits and the shared GS1 Application Identifier helpers.
-The readers use scanline and strict clean-matrix paths; GS1 DataBar Expanded
-remains outside the current physical implementation.
+Limited, Stacked, Stacked Omnidirectional and linear Expanded. The data layer
+includes GTIN normalization, check digits and the shared GS1 Application
+Identifier helpers. The readers use scanline and strict clean-matrix paths.
 
 ```js
 import {
@@ -150,7 +149,7 @@ console.log(decodeDataBar14(matrix).text);
 ```
 
 Use the exact variant accepted by the current type declarations and validate
-the physical deployment with a real scanner. The four physical helpers are
+the physical deployment with a real scanner. The five physical helpers are
 explicit about their geometry and reject partial, inconsistent or grayscale
 input; they do not claim arbitrary perspective or multi-symbol photographic
 support.
@@ -166,6 +165,32 @@ const limited = encodeDataBarLimited('01234567890128', { moduleScale: 2 });
 const stacked = encodeDataBar14Stacked('01234567890128');
 const stackedOmni = encodeDataBarStackedOmnidirectional('01234567890128');
 ```
+
+### GS1 DataBar Expanded
+
+Expanded carries a longer GS1 element string in a sequence of constrained
+17-module data characters. The dedicated helper validates the finder sequence,
+data-character widths, check character and GS1 semantics before returning a
+result:
+
+```js
+import {
+  decodeDataBarExpanded,
+  encodeDataBarExpanded,
+} from '@sythos/js_barcode_universal/databar';
+
+const expanded = encodeDataBarExpanded('(01)09506000134352(10)ABC-123');
+const decoded = decodeDataBarExpanded(expanded);
+console.log(decoded.elements);
+```
+
+The writer emits the general-purpose information method. The reader also
+accepts the common compressed method 1 used by external GS1 DataBar Expanded
+implementations for a GTIN-14 `(01)` primary field, followed by the general-
+purpose field. Other compressed primary-field methods remain deliberately
+rejected until their independent fixtures are available. See the dedicated
+[GS1 DataBar Expanded guide](databar-expanded.md) for geometry and camera
+boundaries.
 
 ## Trust and licensing
 

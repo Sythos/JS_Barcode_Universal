@@ -96,7 +96,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/aztecrune` | `encodeAztecRune`, `decodeAztecRune`, `detectAztecRune`, `detectAndDecodeAztecRune` |
 | `@sythos/js_barcode_universal/pdf417` | `encodePDF417`, `decodePDF417`, `detectPDF417`, `detectAndDecodePDF417` |
 | `@sythos/js_barcode_universal/compactpdf417` | `encodeCompactPDF417`, `decodeCompactPDF417`, `detectCompactPDF417`, `detectAndDecodeCompactPDF417` |
-| `@sythos/js_barcode_universal/databar` | GS1 DataBar GTIN/AI codecs plus Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional physical helpers |
+| `@sythos/js_barcode_universal/databar` | GS1 DataBar GTIN/AI codecs plus Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded physical helpers |
 | `@sythos/js_barcode_universal/micropdf417` | `encodeMicroPDF417`, `decodeMicroPDF417`, `detectMicroPDF417`, `detectAndDecodeMicroPDF417` |
 | `@sythos/js_barcode_universal/microqr` | `encodeMicroQR`, `decodeMicroQR`, `detectMicroQR`, `detectAndDecodeMicroQR` |
 | `@sythos/js_barcode_universal/rmqr` | `encodeRMQR`, `decodeRMQR`, `detectRMQR`, `detectAndDecodeRMQR` |
@@ -267,14 +267,16 @@ time.
 | GS1 DataBar Stacked | `gs1databar-stacked` | 1D | ✅ | ✅ |
 | GS1 DataBar Stacked Omnidirectional | `gs1databar-stacked-omnidirectional` | 1D | ✅ | ✅ |
 | GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
+| GS1 DataBar Expanded | `gs1databar-expanded` | 1D | ✅ | ✅ |
 | MaxiCode | `maxicode` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Thirty-two listed formats are writable and thirty-one are readable (EAN-2 and EAN-5 are
+Thirty-three listed formats are writable and thirty-two are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader; the GS1 DataBar physical variants use
-strict clean-raster readers and variant-specific detectors over the verified GTIN decoder. MaxiCode
+strict clean-raster readers and variant-specific detectors over the verified GTIN/GS1 element-string
+decoder. Expanded also accepts the common compressed GTIN-14 method on the read path. MaxiCode
 uses a fixed 30×33 matrix and a clean binary-raster detector for one prominent symbol. PDF417 exposes direct matrix decoding, automatic
 camera localization and an assisted quadrilateral sampler through its subpath. Its detector is
 validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 17/Safari camera
@@ -453,10 +455,11 @@ the returned `format`; an absent, malformed or unrequested supplement never reje
 
 ### GS1 DataBar
 
-The `databar` subpath exposes original GS1 GTIN/AI codecs and four physical
+The `databar` subpath exposes original GS1 GTIN/AI codecs and five physical
 variants: Omnidirectional and Truncated through `encodeDataBar14`, Limited through
-`encodeDataBarLimited`, Stacked through `encodeDataBar14Stacked`, and Stacked
-Omnidirectional through `encodeDataBarStackedOmnidirectional`. The physical paths
+`encodeDataBarLimited`, Stacked through `encodeDataBar14Stacked`, Stacked
+Omnidirectional through `encodeDataBarStackedOmnidirectional`, and linear Expanded
+through `encodeDataBarExpanded`. The physical paths
 encode the fixed GS1 `(01)` GTIN element and can carry the standard composite
 linkage flag; the companion composite component is not part of these helpers.
 
@@ -471,8 +474,11 @@ The Stacked variant uses a 50-module row with a five-module top row, one-module
 separator and seven-module bottom row. Stacked Omnidirectional uses two 50-module
 rows, a three-module separator and a minimum 33-module row height. Limited uses
 a 79-module row and a minimum 10-module output height; its accepted GTIN
-indicator is 0 or 1. These geometry constraints are part of the format API,
-not an interoperability claim for arbitrary photographs.
+indicator is 0 or 1. Expanded uses the linear finder sequence and constrained
+17-module data characters defined by GS1 DataBar; its writer emits the general-
+purpose method and its reader also accepts the common compressed GTIN-14 method.
+These geometry constraints are part of the format API, not an interoperability
+claim for arbitrary photographs.
 
 ```js
 import {
@@ -485,6 +491,26 @@ const limited = encodeDataBarLimited('01234567890128', { moduleScale: 2 });
 const stacked = encodeDataBar14Stacked('01234567890128');
 const stackedOmni = encodeDataBarStackedOmnidirectional('01234567890128');
 ```
+
+For a GS1 element string, use the Expanded helper. It returns a clean linear
+symbol without a quiet zone, just like the other DataBar writers:
+
+```js
+import {
+  decodeDataBarExpanded,
+  encodeDataBarExpanded,
+} from '@sythos/js_barcode_universal/databar';
+
+const expanded = encodeDataBarExpanded('(01)09506000134352(10)ABC-123');
+const decoded = decodeDataBarExpanded(expanded);
+console.log(decoded.elements, decoded.linkage);
+```
+
+Expanded reading accepts a complete dark-on-light or inverted binary raster,
+integer module scaling and a valid finder/checksum structure. The detector is
+deliberately conservative: it handles a single clean linear symbol (including
+quarter turns) and rejects partial, ambiguous, grayscale or arbitrary-perspective
+input instead of returning a guessed GS1 payload.
 
 ### MaxiCode
 
@@ -511,8 +537,7 @@ multi-symbol scene handling.
 
 ### Remaining out of scope
 
-GS1 DataBar Expanded physical support remains outside the current release. Data
-Matrix ECC 200 is implemented for its classic square and rectangular symbols;
+Data Matrix ECC 200 is implemented for its classic square and rectangular symbols;
 DMRE remains outside the current scope. See [`PLAN.md`](PLAN.md) for the remaining
 symbologies.
 

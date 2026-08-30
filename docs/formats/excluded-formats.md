@@ -32,7 +32,7 @@ These names do not appear as supported IDs in the current registry:
 | --- | --- |
 | QR Code Model 1 | Deliberately unimplemented; the current evidence set lacks the complete placement figures and fixtures needed for a trustworthy writer and reader. |
 | Data Matrix Rectangular Extension (DMRE) | Not included; the implementation covers classic ECC 200 square and rectangular symbols. |
-| GS1 DataBar Expanded | Physical writer/reader not shipped. |
+| GS1 DataBar Expanded Stacked | Not included; its multi-row layout is a separate physical grammar. |
 | Micro QR ECI | Outside the current Micro QR API scope. |
 | Micro QR FNC1 / GS1 | Outside the current Micro QR API scope. |
 | Micro QR Structured Append | Outside the current Micro QR API scope. |
@@ -71,9 +71,9 @@ same evidence and documentation update as adding it to the runtime.
 A format family can be present while a variant remains out of scope. Examples:
 
 - `datamatrix` does not mean DMRE;
-- `gs1databar14` does not mean every GS1 DataBar layout; Limited, Stacked and
-  Stacked Omnidirectional are separate explicit IDs, while Expanded remains
-  outside scope;
+- `gs1databar14` does not mean every GS1 DataBar layout; Limited, Stacked,
+  Stacked Omnidirectional and Expanded are separate explicit IDs, while
+  Expanded Stacked remains outside scope;
 - `microqr` does not mean every Micro QR optional feature;
 - `pdf417` does not mean Compact PDF417 or MicroPDF417;
 - `frameqr` does not mean DENSO FrameQR;

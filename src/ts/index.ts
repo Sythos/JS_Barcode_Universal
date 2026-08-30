@@ -156,6 +156,8 @@ const dataBarStackedOmniCanEncode = typeof databar.encodeDataBarStackedOmnidirec
 const dataBarStackedOmniCanDecode = typeof databar.detectAndDecodeDataBarStackedOmnidirectional === 'function';
 const dataBarLimitedCanEncode = typeof databar.encodeDataBarLimited === 'function';
 const dataBarLimitedCanDecode = typeof databar.detectAndDecodeDataBarLimited === 'function';
+const dataBarExpandedCanEncode = typeof databar.encodeDataBarExpanded === 'function';
+const dataBarExpandedCanDecode = typeof databar.detectAndDecodeDataBarExpanded === 'function';
 const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
 const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
 
@@ -278,6 +280,13 @@ export function listFormats() {
     kind: /** @type {'1D'} */ ('1D'),
   });
   formats.push({
+    id: 'gs1databar-expanded',
+    label: 'GS1 DataBar Expanded',
+    canWrite: dataBarExpandedCanEncode,
+    canRead: dataBarExpandedCanDecode,
+    kind: /** @type {'1D'} */ ('1D'),
+  });
+  formats.push({
     id: 'maxicode',
     label: 'MaxiCode',
     canWrite: maxicodeCanEncode,
@@ -378,13 +387,16 @@ export function encode(text, options = {}) {
   if (format === 'gs1databar-limited' || format === 'gs1-databar-limited' || format === 'databar-limited') {
     return databar.encodeDataBarLimited(value, options);
   }
+  if (format === 'gs1databar-expanded' || format === 'gs1-databar-expanded' || format === 'databar-expanded') {
+    return databar.encodeDataBarExpanded(value, options);
+  }
   if (format === 'maxicode' || format === 'maxi-code') {
     return maxicode.encodeMaxiCode(value, options);
   }
 
   const entry = ONED_FORMATS[format];
   if (!entry) {
-    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'maxicode'].join(', ');
+    const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -459,16 +471,19 @@ export function decode(image, options = {}) {
     || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
   const wantDataBarLimited = !want || want.has('gs1databar-limited')
     || want.has('gs1-databar-limited') || want.has('databar-limited');
+  const wantDataBarExpanded = !want || want.has('gs1databar-expanded')
+    || want.has('gs1-databar-expanded') || want.has('databar-expanded');
   const oneDAliases = new Set([
     'gs1databar14', 'databar', 'gs1-databar14',
     'gs1databar-stacked', 'gs1-databar-stacked', 'databar-stacked',
     'gs1databar-stacked-omnidirectional', 'gs1-databar-stacked-omnidirectional', 'databar-stacked-omni',
     'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
+    'gs1databar-expanded', 'gs1-databar-expanded', 'databar-expanded',
   ]);
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
   const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
     || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-    || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited;
+    || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
 
   const source = LuminanceSource.fromImageData(image);
   const results = [];
@@ -637,6 +652,15 @@ export function decode(image, options = {}) {
           if (found) add(found, 'gs1databar-limited');
         } catch {
           /* no GS1 DataBar Limited in this pass */
+        }
+      }
+
+      if (wantDataBarExpanded && dataBarExpandedCanDecode) {
+        try {
+          const found = databar.detectAndDecodeDataBarExpanded(candidateBits);
+          if (found) add(found, 'gs1databar-expanded');
+        } catch {
+          /* no GS1 DataBar Expanded in this pass */
         }
       }
 
