@@ -107,7 +107,9 @@ console.table(listFormats().map(({ id, canWrite, canRead }) => ({
 
 Pharmacode is intentionally write-only in the generic reader. EAN-2 and EAN-5
 are parent-bound supplements. GS1 DataBar and the QR/PDF417 families also have
-supported and unsupported variants; use the [format catalogue](formats/overview.md).
+supported and unsupported variants; Telepen Numeric must be selected explicitly
+with `formats: ['telepennumeric']`. Use the [format catalogue](formats/overview.md)
+and the [linear-format guide](formats/oned.md) for the exact boundaries.
 
 ## Rendering throws a dimension or allocation error
 

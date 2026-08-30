@@ -89,7 +89,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal` | The whole surface: `encode`, `decode`, every renderer, every error type |
 | `@sythos/js_barcode_universal/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
 | `@sythos/js_barcode_universal/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
-| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, …) and `decodeOneD` |
+| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, `encodeTelepen`, …) and `decodeOneD` |
 | `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
 | `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `decodeDataMatrix`, `detectDataMatrix`, `detectAndDecodeDataMatrix` |
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec`, `decodeAztec`, `detectAztec`, `detectAndDecodeAztec` |
@@ -252,6 +252,7 @@ time.
 | Codabar | `codabar` | 1D | ✅ | ✅ |
 | Code 11 | `code11` | 1D | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | ✅ | ✅ |
+| Telepen (ASCII and Numeric) | `telepen` | 1D | ✅ | ✅ [^3] |
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
@@ -272,9 +273,12 @@ time.
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Thirty-three listed formats are writable and thirty-two are readable (EAN-2 and EAN-5 are
+Thirty-four listed formats are writable and thirty-three are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
-pipeline.** Code 11 and MSI Plessey use the scanline reader; the GS1 DataBar physical variants use
+pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
+seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
+`formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
+GS1 DataBar physical variants use
 strict clean-raster readers and variant-specific detectors over the verified GTIN/GS1 element-string
 decoder. Expanded also accepts the common compressed GTIN-14 method on the read path. MaxiCode
 uses a fixed 30×33 matrix and a clean binary-raster detector for one prominent symbol. PDF417 exposes direct matrix decoding, automatic
@@ -293,6 +297,10 @@ with a 978/979 prefix.
 [^2]: EAN-2 and EAN-5 are recognized only when attached to a validated EAN-13, EAN-8, UPC-A or
 UPC-E parent; they are not independent generic retail-symbol readers.
 
+[^3]: Telepen Numeric is an explicit mode because its compact digit-pair glyphs share the same
+guards as Telepen Alpha. Use `format: 'telepennumeric'` when encoding or
+`formats: ['telepennumeric']` when reading.
+
 ### Code 11 and MSI Plessey image reading
 
 The generic image pipeline now recognizes Code 11 and MSI Plessey through the existing
@@ -301,6 +309,38 @@ without that option the physical grammar is still required, while the literal ch
 preserved for MSI and reliably stripped for Code 11 when its C/K grammar is unambiguous. The
 reader keeps Pharmacode write-only because its unframed narrow/wide grammar is not safe for
 unrestricted image autodetection.
+
+### Telepen
+
+Telepen is available from the `oned` subpath and the root dispatcher. The default
+`telepen` format carries full seven-bit ASCII with an even parity bit and a modulo-127
+check value. The explicit `telepennumeric` format compacts digit pairs and allows `X`
+only as the second character of a pair. Both writers enforce the format grammar, a
+500-character input limit and complete start/check/stop structure.
+
+```js
+import { encodeTelepen, encodeTelepenNumeric } from '@sythos/js_barcode_universal/oned';
+import { decode, toImageData } from '@sythos/js_barcode_universal';
+
+const alpha = encodeTelepen('TELEPEN-ASCII');
+const numeric = encodeTelepenNumeric('00112738999X');
+const image = toImageData(alpha, { scale: 3, margin: 30, barHeight: 64 });
+const [hit] = decode(image, { formats: ['telepen'] });
+console.log(hit?.text); // TELEPEN-ASCII
+```
+
+For Numeric symbols, select the numeric identifier explicitly:
+
+```js
+const numericImage = toImageData(numeric, { scale: 3, margin: 30, barHeight: 64 });
+const [numericHit] = decode(numericImage, { formats: ['telepennumeric'] });
+console.log(numericHit?.text); // 00112738999X
+```
+
+The scanline reader measures the complete symbol at scale-independent run widths,
+rejects ambiguous candidates, verifies parity and the modulo-127 check value, and
+returns no partial result. A camera-profile read additionally requires a coherent
+quiet-zone-qualified symbol across repeated scan samples.
 
 ### Data Matrix ECC 200
 

@@ -15,7 +15,7 @@ Only these public subpaths are compatibility promises; arbitrary paths under
 | `@sythos/js_barcode_universal` | Full root facade: registry, general encode/decode, core, image, formats and renderers. |
 | `@sythos/js_barcode_universal/core` | `BitMatrix`, bit readers/writers, finite fields, Reed–Solomon helpers and SDK errors. |
 | `@sythos/js_barcode_universal/image` | `LuminanceSource`, binarizers, perspective transforms and grid samplers. |
-| `@sythos/js_barcode_universal/oned` | EAN/UPC, ISBN, Code 11/39/93/128, ITF, Codabar, MSI, Pharmacode and EAN add-ons. |
+| `@sythos/js_barcode_universal/oned` | EAN/UPC, ISBN, Code 11/39/93/128, ITF, Codabar, MSI, Telepen, Pharmacode and EAN add-ons. |
 | `@sythos/js_barcode_universal/qr` | QR Code encoder, decoder and detector. |
 | `@sythos/js_barcode_universal/datamatrix` | Data Matrix ECC 200 encoder, decoder and detector. |
 | `@sythos/js_barcode_universal/databar` | GS1 DataBar, GTIN helpers and GS1 element-string helpers. |

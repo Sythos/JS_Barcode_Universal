@@ -31,6 +31,7 @@ appendix carries the consolidated inventory these files expand on.
 | Codabar | [`codabar.license`](codabar.license) | 2 |
 | Code 11 | [`code-11.license`](code-11.license) | 2 |
 | MSI Plessey | [`msi-plessey.license`](msi-plessey.license) | 2 |
+| Telepen (Alpha and Numeric) | [`telepen.license`](telepen.license) | 2 |
 | Pharmacode | [`pharmacode.license`](pharmacode.license) | 2 |
 | EAN-2 supplement | [`ean-2.license`](ean-2.license) | 2 |
 | EAN-5 supplement | [`ean-5.license`](ean-5.license) | 2 |

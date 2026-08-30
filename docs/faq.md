@@ -56,6 +56,19 @@ the generic image pipeline. Do not present it as a complete read/write format.
 They are parent-bound supplements. They are printed next to a validated EAN/UPC
 symbol and should not be treated as independent generic retail barcodes.
 
+## How do I read Telepen Numeric?
+
+Select the explicit `telepennumeric` format for both the writer and reader:
+
+```js
+const symbol = encode('00112738999X', { format: 'telepennumeric' });
+const image = toImageData(symbol, { scale: 3, margin: 30, barHeight: 64 });
+const [result] = decode(image, { formats: ['telepennumeric'] });
+```
+
+The default `telepen` path is full seven-bit ASCII. The reader does not guess
+Numeric glyphs as ASCII control characters during unrestricted auto-detection.
+
 ## Does “FrameQR” mean native DENSO FrameQR compatibility?
 
 No. The SDK's `frameqr` entry is the non-certified Sythos Canvas QR profile. It

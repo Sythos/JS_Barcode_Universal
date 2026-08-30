@@ -1,0 +1,73 @@
+Telepen — format provenance and usability
+==========================================
+
+This file records the engineering provenance and redistribution boundary for
+the Telepen Alpha and Telepen Numeric implementation shipped by Sythos Barcode
+Universal.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Patent, copyright and
+trademark conclusions require independent review for the jurisdiction and use
+case involved. Items marked [TO VERIFY] have not been independently confirmed.
+
+
+ORIGIN AND SPECIFICATION
+------------------------
+
+Telepen is a linear symbology associated with SB Electronic Systems Ltd. The
+publicly described Alpha form carries seven-bit ASCII with an even parity bit;
+the Numeric form compacts digit pairs and uses the same start, check and stop
+grammar. No ISO/IEC standard text is reproduced or redistributed here.
+[LEGAL REVIEW]
+
+
+PATENT STATUS
+-------------
+
+Historical Telepen patent families and any jurisdiction-specific licensing
+declarations require a current patent search. This project makes no unconditional
+patent-free or public-domain claim. [TO VERIFY]
+
+
+TRADEMARK STATUS
+----------------
+
+The current ownership and registration status of the Telepen name have not
+been independently searched. The name is used descriptively to identify the
+symbology and does not imply certification, sponsorship or endorsement by SB
+Electronic Systems Ltd or any standards or mark owner. [TO VERIFY]
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+------------------------------------
+
+Telepen is implemented as original Sythos TypeScript with generated JavaScript
+runtime files. The glyph mapping is generated algorithmically from the
+published seven-bit/parity and narrow/wide rules rather than copied as a
+third-party table. The writer enforces ASCII bounds, Numeric pair grammar,
+payload length, modulo-127 check value and complete start/stop structure. The
+reader uses scale-independent run matching, checksum validation and ambiguity
+rejection; Numeric decoding is explicit so digit-pair glyphs are never guessed
+as arbitrary ASCII control characters.
+
+Independent implementations and public technical material were used only for
+engineering review and black-box interoperability checks. In particular,
+ZXing-C++ and BWIPP/bwip-js were invoked as external tools; no third-party
+source code, lookup table or binary asset is copied into or shipped by this
+project, and neither tool is a runtime dependency.
+
+
+CONCLUSION
+----------
+
+The original Sythos Telepen implementation is distributed under the MIT
+License. This engineering note is not a conformance certificate, patent
+clearance or legal opinion. If a rights holder or user identifies a conflicting
+notice about the available materials, please open a GitHub issue with the
+relevant reference so it can be reviewed and recorded.
+
+References consulted:
+
+- [Telepen overview](https://barcode.ro/tutorials/barcodes/telepen.html)
+- [Telepen symbology notes](https://barcodeguide.seagullscientific.com/Content/Symbologies/Telepen.htm)
+- [BWIPP Telepen implementation](https://github.com/bwipp/postscriptbarcode)
+- Independent black-box validation recorded in `NOTICE.md`

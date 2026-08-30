@@ -132,6 +132,8 @@ export declare function encode(text: string | number, options?: {
     ecc?: 'L' | 'M' | 'Q' | 'H';
     version?: number;
     checkDigit?: boolean;
+    telepenMode?: 'ascii' | 'numeric';
+    numeric?: boolean;
     fullAscii?: boolean;
     gs1?: boolean;
     layers?: number;

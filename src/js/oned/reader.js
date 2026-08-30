@@ -51,6 +51,7 @@ import { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SE
 import { ean13CheckDigit, upceToUpcaBody } from './writers.js';
 import { EAN2_PARITY, EAN5_PARITY, ean5Checksum, } from './addons.js';
 import { decodeDataBar14Scanline } from '../databar/decoder.js';
+import { decodeTelepen } from './telepen.js';
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -1147,6 +1148,8 @@ const DECODERS = [
     ['code128', decodeCode128],
     ['code11', decodeCode11],
     ['msi', decodeMSI],
+    ['telepen', decodeTelepen],
+    ['telepennumeric', (row, options = {}) => decodeTelepen(row, { ...options, numeric: true })],
     ['gs1databar14', decodeDataBar14Scanline],
     ['code39', decodeCode39],
     ['code93', decodeCode93],
@@ -1203,6 +1206,8 @@ function checksumStatus(format, options) {
     if (format === 'code11' || format === 'msi' || format === 'code39') {
         return options.profile === 'camera' || options.checkDigit === true ? true : null;
     }
+    if (format === 'telepen' || format === 'telepennumeric')
+        return true;
     return null;
 }
 /** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
@@ -1241,10 +1246,18 @@ export function decodeOneD(image, options = {}) {
     const cameraProfile = profile === 'camera';
     const enabled = formats ? new Set(formats) : null;
     const active = DECODERS.filter(([id]) => {
+        // Telepen Numeric uses the same guards as Telepen Alpha and is therefore
+        // only attempted when the caller explicitly requests the numeric mode.
+        // Auto-detecting it as ASCII would turn valid digit pairs into plausible
+        // but incorrect control characters.
         if (!enabled)
-            return true;
+            return id !== 'telepennumeric';
         if (enabled.has(id))
             return true;
+        if (id === 'telepen')
+            return enabled.has('telepen-alpha');
+        if (id === 'telepennumeric')
+            return enabled.has('telepen-numeric');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -1315,6 +1328,14 @@ export function decodeOneD(image, options = {}) {
                     }
                     else if (result.format === 'gs1databar14') {
                         if (!enabled.has('gs1databar14') && !enabled.has('databar') && !enabled.has('gs1-databar14'))
+                            continue;
+                    }
+                    else if (result.format === 'telepen') {
+                        if (!enabled.has('telepen') && !enabled.has('telepen-alpha'))
+                            continue;
+                    }
+                    else if (result.format === 'telepennumeric') {
+                        if (!enabled.has('telepennumeric') && !enabled.has('telepen-numeric'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {

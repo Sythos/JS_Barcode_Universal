@@ -2188,6 +2188,350 @@ __exports.encodeUPCAWithAddon = encodeUPCAWithAddon;
 __exports.encodeUPCEWithAddon = encodeUPCEWithAddon;
 };
 
+__modules["js/oned/telepen.js"] = function (__require, __exports) {
+/**
+ * Telepen Alpha and Telepen Numeric.
+ *
+ * Telepen does not assign an arbitrary glyph table to each character. It emits
+ * the seven-bit ASCII value with an even parity bit, least-significant bit
+ * first, and maps the resulting bit stream to narrow/wide bar-space pairs.
+ * Keeping that mapping algorithmic makes the implementation auditable and
+ * avoids shipping a copied third-party pattern table.
+ *
+ * @module oned/telepen
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const TELEPEN_START_VALUE = 0x5f;
+const TELEPEN_STOP_VALUE = 0x7a;
+const TELEPEN_MAX_LENGTH = 500;
+/** @param {number} value @returns {string} Run widths for one 16-module glyph. */
+function telepenPattern(value) {
+    if (!Number.isInteger(value) || value < 0 || value > 127) {
+        throw new RangeError(`Telepen character value must be in 0..127, got ${value}`);
+    }
+    // Telepen carries seven-bit ASCII plus an even parity bit in the eighth
+    // position. The stream is transmitted least-significant bit first.
+    const bits = new Array(8).fill(0);
+    let ones = 0;
+    for (let bit = 0; bit < 7; bit++) {
+        bits[bit] = (value >>> bit) & 1;
+        ones += bits[bit];
+    }
+    bits[7] = ones & 1;
+    // The four legal bar/space pairs encode the bit stream without changing the
+    // fixed 16-module character width:
+    //   1    -> narrow bar, narrow space (11)
+    //   00   -> wide bar, narrow space   (31)
+    //   010  -> wide bar, wide space     (33)
+    //   01/10 edges -> narrow bar, wide space (13)
+    let widths = '';
+    let index = 0;
+    while (index < bits.length) {
+        if (bits[index] === 1) {
+            widths += '11';
+            index++;
+            continue;
+        }
+        let end = index + 1;
+        while (end < bits.length && bits[end] === 1)
+            end++;
+        if (end === index + 1) {
+            widths += '31';
+            index += 2;
+        }
+        else if (end === index + 2) {
+            widths += '33';
+            index += 3;
+        }
+        else if (end < bits.length) {
+            // A block 0 1* 0 longer than 010 has 01 and 10 edges. Any
+            // one-bits between those edges remain single-bit pairs.
+            widths += '13';
+            widths += '11'.repeat(Math.max(0, end - index - 3));
+            widths += '13';
+            index = end + 1;
+        }
+        else {
+            // A final 0 1* block has no trailing zero. The final light element is
+            // implied by the following character or quiet zone.
+            widths += '13';
+            widths += '11'.repeat(Math.max(0, end - index - 2));
+            index = end;
+        }
+    }
+    return widths;
+}
+/** @param {string} widths @returns {number} */
+function widthTotal(widths) {
+    let total = 0;
+    for (const width of widths)
+        total += Number(width);
+    return total;
+}
+/** @param {string} widths @returns {BitMatrix} */
+function widthsToMatrix(widths) {
+    const matrix = new BitMatrix(widthTotal(widths), 1);
+    let dark = true;
+    let x = 0;
+    for (const width of widths) {
+        const count = Number(width);
+        if (dark)
+            matrix.setRegion(x, 0, count, 1);
+        x += count;
+        dark = !dark;
+    }
+    return matrix;
+}
+/** @param {string} value @returns {number} */
+function telepenChecksum(value) {
+    let sum = 0;
+    for (const character of value)
+        sum = (sum + character.charCodeAt(0)) % 127;
+    return (127 - sum) % 127;
+}
+/** @param {string} value @returns {number[]} */
+function numericGlyphs(value) {
+    if (value.length % 2 !== 0) {
+        throw new EncodeError('Telepen Numeric: payload must contain an even number of characters');
+    }
+    const glyphs = [];
+    for (let index = 0; index < value.length; index += 2) {
+        const first = value[index];
+        const second = value[index + 1];
+        if (!/[0-9]/.test(first) || !/[0-9X]/.test(second)) {
+            throw new EncodeError('Telepen Numeric: pairs must contain digits, with X allowed only in the second position');
+        }
+        const firstDigit = Number(first);
+        glyphs.push(second === 'X'
+            ? firstDigit + 17
+            : firstDigit * 10 + Number(second) + 27);
+    }
+    return glyphs;
+}
+/**
+ * Encode Telepen Alpha (full seven-bit ASCII) or Telepen Numeric.
+ *
+ * @param {string} value
+ * @param {object} [options]
+ * @param {boolean} [options.numeric] Use two-digit numeric compaction.
+ * @returns {BitMatrix}
+ */
+function encodeTelepen(value, options = {}) {
+    const text = String(value);
+    const numeric = options.numeric === true || options.mode === 'numeric' || options.telepenMode === 'numeric';
+    if (text.length > TELEPEN_MAX_LENGTH) {
+        throw new EncodeError(`Telepen: payload is limited to ${TELEPEN_MAX_LENGTH} characters`);
+    }
+    const glyphs = [TELEPEN_START_VALUE];
+    if (numeric) {
+        const compacted = numericGlyphs(text);
+        glyphs.push(...compacted);
+        const checksumValue = compacted.reduce((sum, glyph) => (sum + glyph) % 127, 0);
+        glyphs.push((127 - checksumValue) % 127);
+    }
+    else {
+        for (const character of text) {
+            const code = character.charCodeAt(0);
+            if (code > 127) {
+                throw new EncodeError(`Telepen: character U+${code.toString(16).toUpperCase()} is outside ASCII`);
+            }
+            glyphs.push(code);
+        }
+        glyphs.push(telepenChecksum(text));
+    }
+    glyphs.push(TELEPEN_STOP_VALUE);
+    return widthsToMatrix(glyphs.map(telepenPattern).join(''));
+}
+/** Encode Telepen Numeric explicitly. @param {string} value @returns {BitMatrix} */
+function encodeTelepenNumeric(value) {
+    return encodeTelepen(value, { numeric: true });
+}
+const TELEPEN_RUNS = Array.from({ length: 128 }, (_, value) => telepenPattern(value).split('').map(Number));
+const START_RUNS = TELEPEN_RUNS[TELEPEN_START_VALUE];
+const STOP_RUNS = TELEPEN_RUNS[TELEPEN_STOP_VALUE];
+/** @param {Uint8Array} row @param {number} start @param {number} count */
+function measureRuns(row, start, count) {
+    if (start < 0 || start >= row.length || row[start] !== 1)
+        return null;
+    const counters = new Array(count).fill(0);
+    let run = 0;
+    let dark = true;
+    let index = start;
+    while (index < row.length) {
+        const pixelDark = row[index] === 1;
+        if (pixelDark === dark) {
+            counters[run]++;
+            index++;
+            continue;
+        }
+        run++;
+        if (run === count)
+            break;
+        dark = !dark;
+        counters[run] = 1;
+        index++;
+    }
+    if (run < count - 1 || counters[count - 1] === 0)
+        return null;
+    return { counters, end: index };
+}
+/** @param {number[]} counters @param {number[]} expected @param {number} [ignoredTail] */
+function runVariance(counters, expected, ignoredTail = 0) {
+    const total = counters.reduce((sum, width) => sum + width, 0);
+    const expectedTotal = expected.reduce((sum, width) => sum + width, 0);
+    const compared = expected.length - ignoredTail;
+    const comparedTotal = expected
+        .slice(0, compared)
+        .reduce((sum, width) => sum + width, 0);
+    const measuredCompared = counters
+        .slice(0, compared)
+        .reduce((sum, width) => sum + width, 0);
+    if (total <= 0 || expectedTotal <= 0 || measuredCompared <= 0)
+        return Infinity;
+    // For normal glyphs all sixteen modules participate. Stop's final light
+    // run includes the quiet zone, so its first eleven runs establish scale.
+    const unit = ignoredTail > 0 ? measuredCompared / comparedTotal : total / expectedTotal;
+    const limit = unit * 0.85;
+    let variance = 0;
+    for (let index = 0; index < compared; index++) {
+        const delta = Math.abs(counters[index] - expected[index] * unit);
+        if (delta > limit)
+            return Infinity;
+        variance += delta;
+    }
+    return variance / Math.max(1, measuredCompared);
+}
+/** @param {Uint8Array} row @param {number} start @param {number[]} expected */
+function matchGlyph(row, start, expected) {
+    const measured = measureRuns(row, start, expected.length);
+    if (!measured)
+        return null;
+    const score = runVariance(measured.counters, expected);
+    if (!Number.isFinite(score) || measured.end >= row.length)
+        return null;
+    return { score, end: measured.end };
+}
+/** @param {Uint8Array} row @param {number} start */
+function matchStop(row, start) {
+    const measured = measureRuns(row, start, STOP_RUNS.length);
+    if (!measured)
+        return null;
+    const score = runVariance(measured.counters, STOP_RUNS, 1);
+    if (!Number.isFinite(score))
+        return null;
+    for (let index = measured.end; index < row.length; index++) {
+        if (row[index] === 1)
+            return { score, end: measured.end, terminal: false };
+    }
+    return { score, end: measured.end, terminal: true };
+}
+/** @param {Uint8Array} row @param {number} start @param {number[]} expected */
+function findStart(row, start, expected) {
+    for (let index = Math.max(0, start); index < row.length; index++) {
+        if (row[index] !== 1 || (index > 0 && row[index - 1] === 1))
+            continue;
+        const measured = measureRuns(row, index, expected.length);
+        if (!measured)
+            continue;
+        const score = runVariance(measured.counters, expected);
+        if (Number.isFinite(score) && measured.end < row.length) {
+            return { end: measured.end, score };
+        }
+    }
+    return null;
+}
+/** @param {number[]} glyphs @returns {boolean} */
+function validChecksum(glyphs) {
+    if (glyphs.length < 1)
+        return false;
+    const checksum = glyphs[glyphs.length - 1];
+    const payload = glyphs.slice(0, -1);
+    const sum = payload.reduce((total, value) => (total + value) % 127, 0);
+    return checksum === (127 - sum) % 127;
+}
+/** @param {number[]} glyphs @returns {string|null} */
+function decodeNumericGlyphs(glyphs) {
+    let text = '';
+    for (const glyph of glyphs) {
+        if (glyph >= 17 && glyph <= 26) {
+            text += `${glyph - 17}X`;
+        }
+        else if (glyph >= 27 && glyph <= 126) {
+            text += String(glyph - 27).padStart(2, '0');
+        }
+        else {
+            return null;
+        }
+    }
+    return text;
+}
+/**
+ * Decode a Telepen scanline. The row must be binarized (1 = dark).
+ *
+ * @param {Uint8Array} row
+ * @param {object} [options]
+ * @param {boolean} [options.numeric] Decode two-digit numeric glyphs.
+ * @returns {{format:'telepen'|'telepennumeric', text:string, mode:'ascii'|'numeric'}|null}
+ */
+function decodeTelepen(row, options = {}) {
+    const numeric = options.numeric === true || options.mode === 'numeric' || options.telepenMode === 'numeric';
+    const start = findStart(row, 0, START_RUNS);
+    if (!start)
+        return null;
+    const glyphs = [];
+    let offset = start.end;
+    for (let count = 0; count <= TELEPEN_MAX_LENGTH + 1; count++) {
+        const stop = matchStop(row, offset);
+        if (stop?.terminal) {
+            if (!validChecksum(glyphs))
+                return null;
+            glyphs.pop();
+            if (numeric) {
+                const text = decodeNumericGlyphs(glyphs);
+                return text === null ? null : { format: 'telepennumeric', text, mode: 'numeric' };
+            }
+            return {
+                format: 'telepen',
+                text: glyphs.map((value) => String.fromCharCode(value)).join(''),
+                mode: 'ascii',
+            };
+        }
+        const candidates = [];
+        for (let value = 0; value < TELEPEN_RUNS.length; value++) {
+            const match = matchGlyph(row, offset, TELEPEN_RUNS[value]);
+            if (match)
+                candidates.push({ value, ...match });
+        }
+        if (candidates.length === 0)
+            return null;
+        candidates.sort((a, b) => a.score - b.score);
+        const best = candidates[0];
+        const second = candidates[1];
+        // A close tie is an ambiguous optical measurement. Returning nothing is
+        // safer than guessing a character that merely has a similar run profile.
+        if (second && second.score - best.score < 0.035)
+            return null;
+        glyphs.push(best.value);
+        offset = best.end;
+    }
+    return null;
+}
+/** Decode Telepen Numeric explicitly. @param {Uint8Array} row */
+function decodeTelepenNumeric(row) {
+    return decodeTelepen(row, { numeric: true });
+}
+
+__exports.TELEPEN_START_VALUE = TELEPEN_START_VALUE;
+__exports.TELEPEN_STOP_VALUE = TELEPEN_STOP_VALUE;
+__exports.TELEPEN_MAX_LENGTH = TELEPEN_MAX_LENGTH;
+__exports.telepenPattern = telepenPattern;
+__exports.encodeTelepen = encodeTelepen;
+__exports.encodeTelepenNumeric = encodeTelepenNumeric;
+__exports.decodeTelepen = decodeTelepen;
+__exports.decodeTelepenNumeric = decodeTelepenNumeric;
+};
+
 __modules["js/databar/tables.js"] = function (__require, __exports) {
 /**
  * Static GS1 DataBar facts used by the GTIN compaction codec.
@@ -2792,6 +3136,7 @@ const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, CODE39, CODE39_CHECK_SET
 const { ean13CheckDigit, upceToUpcaBody } = __require("js/oned/writers.js");
 const { EAN2_PARITY, EAN5_PARITY, ean5Checksum } = __require("js/oned/addons.js");
 const { decodeDataBar14Scanline } = __require("js/databar/decoder.js");
+const { decodeTelepen } = __require("js/oned/telepen.js");
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -3888,6 +4233,8 @@ const DECODERS = [
     ['code128', decodeCode128],
     ['code11', decodeCode11],
     ['msi', decodeMSI],
+    ['telepen', decodeTelepen],
+    ['telepennumeric', (row, options = {}) => decodeTelepen(row, { ...options, numeric: true })],
     ['gs1databar14', decodeDataBar14Scanline],
     ['code39', decodeCode39],
     ['code93', decodeCode93],
@@ -3944,6 +4291,8 @@ function checksumStatus(format, options) {
     if (format === 'code11' || format === 'msi' || format === 'code39') {
         return options.profile === 'camera' || options.checkDigit === true ? true : null;
     }
+    if (format === 'telepen' || format === 'telepennumeric')
+        return true;
     return null;
 }
 /** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
@@ -3982,10 +4331,18 @@ function decodeOneD(image, options = {}) {
     const cameraProfile = profile === 'camera';
     const enabled = formats ? new Set(formats) : null;
     const active = DECODERS.filter(([id]) => {
+        // Telepen Numeric uses the same guards as Telepen Alpha and is therefore
+        // only attempted when the caller explicitly requests the numeric mode.
+        // Auto-detecting it as ASCII would turn valid digit pairs into plausible
+        // but incorrect control characters.
         if (!enabled)
-            return true;
+            return id !== 'telepennumeric';
         if (enabled.has(id))
             return true;
+        if (id === 'telepen')
+            return enabled.has('telepen-alpha');
+        if (id === 'telepennumeric')
+            return enabled.has('telepen-numeric');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -4056,6 +4413,14 @@ function decodeOneD(image, options = {}) {
                     }
                     else if (result.format === 'gs1databar14') {
                         if (!enabled.has('gs1databar14') && !enabled.has('databar') && !enabled.has('gs1-databar14'))
+                            continue;
+                    }
+                    else if (result.format === 'telepen') {
+                        if (!enabled.has('telepen') && !enabled.has('telepen-alpha'))
+                            continue;
+                    }
+                    else if (result.format === 'telepennumeric') {
+                        if (!enabled.has('telepennumeric') && !enabled.has('telepen-numeric'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {
@@ -4139,11 +4504,13 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  * @module oned
  */
 const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
-const __reexport1 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport1.EAN2_PARITY; __exports.EAN5_PARITY = __reexport1.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport1.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport1.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport1.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport1.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport1.ean2Parity; __exports.ean5Checksum = __reexport1.ean5Checksum; __exports.ean5CheckDigit = __reexport1.ean5CheckDigit; __exports.ean5Parity = __reexport1.ean5Parity; __exports.encodeEAN2 = __reexport1.encodeEAN2; __exports.encodeEAN5 = __reexport1.encodeEAN5; __exports.encodeEANAddon = __reexport1.encodeEANAddon; __exports.encodeEANAddOn = __reexport1.encodeEANAddOn; __exports.decodeEAN2 = __reexport1.decodeEAN2; __exports.decodeEAN5 = __reexport1.decodeEAN5; __exports.decodeEANAddon = __reexport1.decodeEANAddon; __exports.decodeEANAddOn = __reexport1.decodeEANAddOn; __exports.composeEANAddon = __reexport1.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport1.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport1.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport1.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport1.encodeUPCEWithAddon;
-const __reexport2 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport2.decodeOneD; __exports.decodeOneDStrict = __reexport2.decodeOneDStrict; __exports.decodeCode11 = __reexport2.decodeCode11; __exports.decodeMSI = __reexport2.decodeMSI; __exports.patternVariance = __reexport2.patternVariance; __exports.recordPattern = __reexport2.recordPattern; __exports.toNarrowWidePattern = __reexport2.toNarrowWidePattern;
-const __reexport3 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport3.validateTables;
+const __reexport1 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport1.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport1.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport1.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport1.telepenPattern; __exports.encodeTelepen = __reexport1.encodeTelepen; __exports.encodeTelepenNumeric = __reexport1.encodeTelepenNumeric; __exports.decodeTelepen = __reexport1.decodeTelepen; __exports.decodeTelepenNumeric = __reexport1.decodeTelepenNumeric;
+const __reexport2 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport2.EAN2_PARITY; __exports.EAN5_PARITY = __reexport2.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport2.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport2.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport2.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport2.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport2.ean2Parity; __exports.ean5Checksum = __reexport2.ean5Checksum; __exports.ean5CheckDigit = __reexport2.ean5CheckDigit; __exports.ean5Parity = __reexport2.ean5Parity; __exports.encodeEAN2 = __reexport2.encodeEAN2; __exports.encodeEAN5 = __reexport2.encodeEAN5; __exports.encodeEANAddon = __reexport2.encodeEANAddon; __exports.encodeEANAddOn = __reexport2.encodeEANAddOn; __exports.decodeEAN2 = __reexport2.decodeEAN2; __exports.decodeEAN5 = __reexport2.decodeEAN5; __exports.decodeEANAddon = __reexport2.decodeEANAddon; __exports.decodeEANAddOn = __reexport2.decodeEANAddOn; __exports.composeEANAddon = __reexport2.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport2.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport2.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport2.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport2.encodeUPCEWithAddon;
+const __reexport3 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport3.decodeOneD; __exports.decodeOneDStrict = __reexport3.decodeOneDStrict; __exports.decodeCode11 = __reexport3.decodeCode11; __exports.decodeMSI = __reexport3.decodeMSI; __exports.patternVariance = __reexport3.patternVariance; __exports.recordPattern = __reexport3.recordPattern; __exports.toNarrowWidePattern = __reexport3.toNarrowWidePattern;
+const __reexport4 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport4.validateTables;
 const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
+const { encodeTelepen } = __require("js/oned/telepen.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
  *
@@ -4173,6 +4540,7 @@ const ONED_FORMATS = {
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
+    telepen: { encode: encodeTelepen, readable: true, label: 'Telepen' },
     pharmacode: { encode: encodePharmacode, readable: false, label: 'Pharmacode' },
     // Supplements are reported as readable capabilities, but the image reader
     // only accepts them when attached to a validated EAN/UPC parent symbol.
@@ -20493,6 +20861,7 @@ const { LuminanceSource } = __require("js/image/luminance.js");
 const { binarize } = __require("js/image/binarizer.js");
 const { ONED_FORMATS } = __require("js/oned/index.js");
 const { decodeOneD } = __require("js/oned/reader.js");
+const { encodeTelepen, encodeTelepenNumeric } = __require("js/oned/telepen.js");
 const datamatrix = __require("js/datamatrix/index.js");
 const qr = __require("js/qr/index.js");
 const aztec = __require("js/aztec/index.js");
@@ -20732,6 +21101,8 @@ function listFormats() {
  * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
  * @param {number} [options.version] QR version, 1-40. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
+ * @param {'ascii'|'numeric'} [options.telepenMode] Telepen encoding mode.
+ * @param {boolean} [options.numeric] Alias for Telepen Numeric mode.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
  * @param {number} [options.layers] Aztec layer count; automatic if omitted.
@@ -20813,9 +21184,15 @@ function encode(text, options = {}) {
     if (format === 'maxicode' || format === 'maxi-code') {
         return maxicode.encodeMaxiCode(value, options);
     }
+    if (format === 'telepennumeric' || format === 'telepen-numeric') {
+        return encodeTelepenNumeric(value);
+    }
+    if (format === 'telepen' || format === 'telepen-alpha') {
+        return encodeTelepen(value, options);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
-        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+        const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric', 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -20896,6 +21273,7 @@ function decode(image, options = {}) {
         'gs1databar-stacked-omnidirectional', 'gs1-databar-stacked-omnidirectional', 'databar-stacked-omni',
         'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
         'gs1databar-expanded', 'gs1-databar-expanded', 'databar-expanded',
+        'telepen-alpha', 'telepennumeric', 'telepen-numeric',
     ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417

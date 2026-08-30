@@ -36,6 +36,7 @@
 export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, ean13CheckDigit, } from './writers.js';
 export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean2Parity, ean5Checksum, ean5CheckDigit, ean5Parity, encodeEAN2, encodeEAN5, encodeEANAddon, encodeEANAddOn, decodeEAN2, decodeEAN5, decodeEANAddon, decodeEANAddOn, composeEANAddon, encodeEAN13WithAddon, encodeEAN8WithAddon, encodeUPCAWithAddon, encodeUPCEWithAddon, } from './addons.js';
 export { decodeOneD, decodeOneDStrict, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
+export { TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH, telepenPattern, encodeTelepen, encodeTelepenNumeric, decodeTelepen, decodeTelepenNumeric, } from './telepen.js';
 export { validateTables } from './patterns.js';
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.

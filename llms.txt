@@ -59,6 +59,8 @@ marked `write-only` is intentionally not treated as a generic image reader.
 - Codabar — write and read
 - Code 11 — write and scanline/image read
 - MSI Plessey — write and read, with optional check-digit validation
+- Telepen — write and read in full seven-bit ASCII mode; explicit Telepen Numeric
+  mode handles digit pairs and `X` suffix pairs
 - Pharmacode — write-only in the generic image pipeline
 - GS1 DataBar Omnidirectional, Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded — write and read through verified physical layers
 - EAN-2 and EAN-5 supplements — write and parent-bound read only; they require a validated EAN/UPC parent

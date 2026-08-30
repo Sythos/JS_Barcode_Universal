@@ -22,6 +22,7 @@ needs to be printed or displayed at a useful height.
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
 | MSI Plessey | `msi` | ✅ | ✅ | Optional modulo-10 check digit and scanline reader. |
+| Telepen (ASCII and Numeric) | `telepen` | ✅ | ✅ | ASCII is the default; Numeric is an explicit pair-compaction mode. |
 | Pharmacode | `pharmacode` | ✅ | — | Writer-only by design; unsafe for unrestricted generic autodetection. |
 
 The runtime registry is the source of truth for these flags. `ITF-14` and
@@ -40,14 +41,43 @@ import {
   encodeCode39,
   encodeCode128,
   encodeEAN13,
+  encodeTelepen,
+  encodeTelepenNumeric,
   encodePharmacode,
 } from '@sythos/js_barcode_universal/oned';
 
 const retail = encodeEAN13('590123412345'); // check digit is appended
 const code39 = encodeCode39('A-123', { checkDigit: true });
 const code128 = encodeCode128('ABC-123');
+const telepen = encodeTelepen('TELEPEN-ASCII');
+const telepenNumeric = encodeTelepenNumeric('00112738999X');
 const pharmacode = encodePharmacode(12345);
 ```
+
+### Telepen modes
+
+`encodeTelepen()` emits full seven-bit ASCII by default. It adds even parity to
+each character and a modulo-127 check value between the start and stop glyphs.
+The writer accepts the same mode through `encode(value, { format: 'telepen',
+telepenMode: 'numeric' })`, but `encodeTelepenNumeric()` or
+`format: 'telepennumeric'` is clearer when the compact mode is intentional.
+
+Telepen Numeric consumes an even number of characters as pairs of digits. `X`
+is legal only in the second position of a pair, for example `12`, `90` and
+`9X`. The reader keeps this mode explicit:
+
+```js
+import { decode, toImageData } from '@sythos/js_barcode_universal';
+
+const image = toImageData(telepenNumeric, { scale: 3, margin: 30, barHeight: 64 });
+const [result] = decode(image, { formats: ['telepennumeric'] });
+console.log(result?.format, result?.text); // telepennumeric 00112738999X
+```
+
+Unrestricted auto-detection enables Telepen Alpha but does not try the Numeric
+decoder. The two modes share start and stop guards, so treating a Numeric glyph
+sequence as arbitrary ASCII could produce plausible control characters. An
+explicit format keeps that boundary honest.
 
 The generic dispatcher is useful when the format is selected at runtime:
 
@@ -93,6 +123,10 @@ expects a coherent, quiet-zone-qualified read and never turns a partial run or
 an uncertain character into application data. An empty array is the expected
 answer for a blank, noisy or structurally inconsistent frame.
 
+For Telepen, a complete symbol also means valid parity, a modulo-127 check value,
+all start/stop runs and a non-ambiguous run-width match. The reader returns an
+empty result for a clipped symbol, a close optical tie or a failed check value.
+
 The current camera rotation policy tries the fixed eight in-plane angles in
 45-degree steps where the format detector path supports them. It does not
 claim arbitrary projective distortion, curved labels, multiple overlapping
@@ -129,3 +163,4 @@ descriptive; they are not a certification or endorsement. The engineering
 inventory and review labels live in [`LICENSE`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/LICENSE),
 [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md), and the matching files in
 [`licenses/`](https://github.com/Sythos/JS_Barcode_Universal/tree/main/licenses/).
+The Telepen-specific engineering inventory is [`telepen.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/telepen.license).

@@ -80,13 +80,15 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 33 entries and 32 generally readable
+The current registry snapshot reports 34 entries and 33 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
 - Pharmacode is write-only in the generic image pipeline;
 - EAN-2 and EAN-5 are parent-bound supplements and require a validated EAN/UPC
   symbol;
+- Telepen exposes full ASCII and an explicit Numeric pair mode; Numeric reads
+  must be requested so compact pairs are not guessed as ASCII control data;
 - the Sythos Canvas QR profile is a project profile and is not DENSO FrameQR
   compatibility or certification;
 - GS1 DataBar Omnidirectional/Truncated, Limited, Stacked, Stacked

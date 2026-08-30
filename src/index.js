@@ -50,6 +50,7 @@ import { LuminanceSource } from './js/image/luminance.js';
 import { binarize } from './js/image/binarizer.js';
 import { ONED_FORMATS } from './js/oned/index.js';
 import { decodeOneD } from './js/oned/reader.js';
+import { encodeTelepen, encodeTelepenNumeric } from './js/oned/telepen.js';
 import * as datamatrix from './js/datamatrix/index.js';
 import * as qr from './js/qr/index.js';
 import * as aztec from './js/aztec/index.js';
@@ -289,6 +290,8 @@ export function listFormats() {
  * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
  * @param {number} [options.version] QR version, 1-40. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
+ * @param {'ascii'|'numeric'} [options.telepenMode] Telepen encoding mode.
+ * @param {boolean} [options.numeric] Alias for Telepen Numeric mode.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
  * @param {number} [options.layers] Aztec layer count; automatic if omitted.
@@ -370,9 +373,15 @@ export function encode(text, options = {}) {
     if (format === 'maxicode' || format === 'maxi-code') {
         return maxicode.encodeMaxiCode(value, options);
     }
+    if (format === 'telepennumeric' || format === 'telepen-numeric') {
+        return encodeTelepenNumeric(value);
+    }
+    if (format === 'telepen' || format === 'telepen-alpha') {
+        return encodeTelepen(value, options);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
-        const known = [...Object.keys(ONED_FORMATS), 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+        const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric', 'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -453,6 +462,7 @@ export function decode(image, options = {}) {
         'gs1databar-stacked-omnidirectional', 'gs1-databar-stacked-omnidirectional', 'databar-stacked-omni',
         'gs1databar-limited', 'gs1-databar-limited', 'databar-limited',
         'gs1databar-expanded', 'gs1-databar-expanded', 'databar-expanded',
+        'telepen-alpha', 'telepennumeric', 'telepen-numeric',
     ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417

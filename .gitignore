@@ -69,6 +69,7 @@ test/*
 !test/databar-stacked-omnidirectional.test.js
 !test/databar-limited.test.js
 !test/databar-expanded.test.js
+!test/telepen.test.js
 !tools/
 tools/*
 !tools/compile-typescript.mjs
