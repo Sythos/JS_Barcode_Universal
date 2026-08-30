@@ -33,6 +33,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run foundation module tests
+        run: npm run test:foundations
+
       - name: Run bounded property-based barcode checks
         run: npm run test:fuzz
 

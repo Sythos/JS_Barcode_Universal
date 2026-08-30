@@ -61,6 +61,9 @@ dev-*.mjs
 
 # CI validation entrypoints required by the repository workflows. These files
 # are development-only and are not included in the published package.
+!test/
+test/*
+!test/foundation.test.js
 !tools/
 tools/*
 !tools/compile-typescript.mjs

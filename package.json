@@ -203,6 +203,7 @@
     "build:ts": "node tools/compile-typescript.mjs",
     "lint": "eslint --max-warnings=0 src/index.js src/js tools .github/ci",
     "test:docs": "node --test tools/exact-url.test.mjs",
+    "test:foundations": "node --test test/foundation.test.js",
     "test:fuzz": "node --test test/fuzz/property.test.js",
     "types": "tsc -p tsconfig.json",
     "types:api": "node tools/check-public-types.mjs"
