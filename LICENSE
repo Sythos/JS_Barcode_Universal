@@ -104,6 +104,8 @@ excerpt the specification documents.
     ISO/IEC 24778    (Aztec)          ISO/IEC — copyrighted, paywalled
     ISO/IEC 16023    (MaxiCode)       ISO/IEC — copyrighted, paywalled
     ISO/IEC 15417    (Code 128)       ISO/IEC — copyrighted, paywalled
+    Codablock-F / Code 16K            AIM / public descriptions; terms vary
+                                                                  [TO VERIFY]
     ISO/IEC 16388    (Code 39)        ISO/IEC — copyrighted, paywalled
     ISO/IEC 16390    (ITF)            ISO/IEC — copyrighted, paywalled
     AIM USS Code 25 / 2-of-5 family  AIM Inc. — terms vary    [TO VERIFY]
@@ -167,6 +169,9 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
     Postal 4-state family             operator-specific rights and
                                       indicia/certification terms require
                                       jurisdictional review           [TO VERIFY]
+    Codablock-F / Code 16K             originating patents and current
+                                      trademark positions require review
+                                                                  [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.

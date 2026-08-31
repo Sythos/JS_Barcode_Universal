@@ -44,6 +44,7 @@ appendix carries the consolidated inventory these files expand on.
 | GS1 DataBar Omnidirectional / Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded | [`gs1-databar.license`](gs1-databar.license) | 2 |
 | MaxiCode | [`maxicode.license`](maxicode.license) | 2 |
 | Postal 4-state family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post and IMb) | [`postal.license`](postal.license) | 2 |
+| Codablock-F | [`codablockf.license`](codablockf.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

@@ -54,6 +54,10 @@
       "import": "./src/js/maxicode/index.js",
       "types": "./src/ts/maxicode/index.d.ts"
     },
+    "./codablockf": {
+      "import": "./src/js/codablockf/index.js",
+      "types": "./src/ts/codablockf/index.d.ts"
+    },
     "./aztec": {
       "import": "./src/js/aztec/index.js",
       "types": "./src/ts/aztec/index.d.ts"
@@ -220,7 +224,7 @@
     "lint": "eslint --max-warnings=0 src/index.js src/js tools .github/ci",
     "test:docs": "node --test tools/exact-url.test.mjs",
     "test:foundations": "node --test test/foundation.test.js",
-    "test:formats": "node --test test/maxicode.test.js test/databar-stacked.test.js test/databar-stacked-omnidirectional.test.js test/databar-limited.test.js test/databar-expanded.test.js test/telepen.test.js test/code25-code32.test.js test/postal.test.js",
+    "test:formats": "node --test test/maxicode.test.js test/databar-stacked.test.js test/databar-stacked-omnidirectional.test.js test/databar-limited.test.js test/databar-expanded.test.js test/telepen.test.js test/code25-code32.test.js test/postal.test.js test/codablockf.test.js",
     "test:fuzz": "node --test test/fuzz/property.test.js",
     "types": "node node_modules/typescript/bin/tsc -p tsconfig.json",
     "types:api": "node tools/check-public-types.mjs"

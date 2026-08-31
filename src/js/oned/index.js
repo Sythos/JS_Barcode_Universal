@@ -32,7 +32,7 @@
  *
  * @module oned
  */
-export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, code32CheckDigit, decodeCode32Payload, decodePZNPayload, ean13CheckDigit, } from './writers.js';
+export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, code32CheckDigit, decodeCode32Payload, decodePZNPayload, ean13CheckDigit, } from './writers.js';
 export { CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, encodeCode25, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, } from './code25.js';
 export { TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH, telepenPattern, encodeTelepen, encodeTelepenNumeric, decodeTelepen, decodeTelepenNumeric, } from './telepen.js';
 export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean2Parity, ean5Checksum, ean5CheckDigit, ean5Parity, encodeEAN2, encodeEAN5, encodeEANAddon, encodeEANAddOn, decodeEAN2, decodeEAN5, decodeEANAddon, decodeEANAddOn, composeEANAddon, encodeEAN13WithAddon, encodeEAN8WithAddon, encodeUPCAWithAddon, encodeUPCEWithAddon, } from './addons.js';

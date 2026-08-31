@@ -37,6 +37,7 @@
 export {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
+  code128DataCodewords,
   encodeITF, encodeITF14, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, encodeCode32, encodePZN,
   code32CheckDigit, decodeCode32Payload, decodePZNPayload,

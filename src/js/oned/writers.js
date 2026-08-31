@@ -39,7 +39,7 @@
  */
 import { BitMatrix } from '../core/bit-matrix.js';
 import { EncodeError } from '../core/errors.js';
-import { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP, } from './patterns.js';
+import { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP, } from './patterns.js';
 /* ------------------------------------------------------------------ *
  * Shared helpers
  * ------------------------------------------------------------------ */
@@ -528,20 +528,19 @@ export function encodeCode93(value) {
 /** Set B maps printable ASCII starting at space to symbol value 0. */
 const CODE128_B_OFFSET = 32;
 /**
- * Code 128, with automatic code-set selection.
+ * Build the Code 128 data stream without the checksum and stop symbol.
  *
- * The heuristic: switch into set C when enough consecutive digits are present
- * to repay the switch symbol — four at the start or end of the payload, six in
- * the middle, since C packs two digits per symbol. An encoder that never
- * switches produces a valid but needlessly wide symbol.
+ * Stacked Code 128 symbologies use the same A/B/C data alphabet but provide
+ * their own row framing and checks. Keeping the tokeniser here makes those
+ * writers use the exact same ASCII and numeric rules as the ordinary Code 128
+ * writer. `startSet` is an optional explicit starting set for a stacked row.
  *
  * @param {string} value
- * @param {object} [options]
- * @param {boolean} [options.gs1] Emit a leading FNC1, making this GS1-128.
- * @returns {BitMatrix}
+ * @param {{gs1?: boolean, startSet?: 'A'|'B'|'C'}} [options]
+ * @returns {{start: number, values: number[], mode: 'A'|'B'|'C'}}
  */
-export function encodeCode128(value, options = {}) {
-    const { gs1 = false } = options;
+export function code128DataCodewords(value, options = {}) {
+    const { gs1 = false, startSet = null } = options;
     for (const ch of value) {
         if (ch.charCodeAt(0) > 127) {
             throw new EncodeError(`Code 128: '${ch}' is outside ASCII`);
@@ -558,7 +557,22 @@ export function encodeCode128(value, options = {}) {
     let mode;
     let i = 0;
     const startRun = digitRun(0);
-    if (startRun >= 4 && startRun % 2 === 0) {
+    if (startSet === 'A') {
+        codes.push(CODE128_START_A);
+        mode = 'A';
+    }
+    else if (startSet === 'C') {
+        if (startRun < 2 || startRun % 2 !== 0) {
+            throw new EncodeError('Code 128: set C requires an even leading digit run');
+        }
+        codes.push(CODE128_START_C);
+        mode = 'C';
+    }
+    else if (startSet === 'B') {
+        codes.push(CODE128_START_B);
+        mode = 'B';
+    }
+    else if (startRun >= 4 && startRun % 2 === 0) {
         codes.push(CODE128_START_C);
         mode = 'C';
     }
@@ -612,6 +626,24 @@ export function encodeCode128(value, options = {}) {
         }
         i++;
     }
+    return { start: codes[0], values: codes.slice(1), mode };
+}
+/**
+ * Code 128, with automatic code-set selection.
+ *
+ * The heuristic: switch into set C when enough consecutive digits are present
+ * to repay the switch symbol — four at the start or end of the payload, six in
+ * the middle, since C packs two digits per symbol. An encoder that never
+ * switches produces a valid but needlessly wide symbol.
+ *
+ * @param {string} value
+ * @param {object} [options]
+ * @param {boolean} [options.gs1] Emit a leading FNC1, making this GS1-128.
+ * @returns {BitMatrix}
+ */
+export function encodeCode128(value, options = {}) {
+    const data = code128DataCodewords(value, options);
+    const codes = [data.start, ...data.values];
     // Checksum: the start value plus each symbol weighted by its position.
     let sum = codes[0];
     for (let k = 1; k < codes.length; k++)

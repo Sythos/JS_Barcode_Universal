@@ -68,6 +68,12 @@ export {
     detectMaxiCode,
     detectAndDecodeMaxiCode,
 } from './ts/maxicode/index.js';
+export {
+    encodeCodablockF,
+    decodeCodablockF,
+    detectCodablockF,
+    detectAndDecodeCodablockF,
+} from './ts/codablockf/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './ts/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './ts/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './ts/rmqr/index.js';
@@ -232,6 +238,10 @@ export type DecodeResult = {
      * PDF417 row height in modules.
      */
     rowHeight?: number;
+    /** Detected integer module scale for stacked formats. */
+    moduleSize?: number;
+    /** Whether stacked-format row and overall checks passed. */
+    checksum?: boolean;
     /**
      * MicroPDF417 predefined variant number.
      */

@@ -63,6 +63,7 @@ import * as aztecRune from './js/aztecrune/index.js';
 import * as compactPdf417 from './js/compactpdf417/index.js';
 import * as databar from './js/databar/index.js';
 import * as maxicode from './js/maxicode/index.js';
+import * as codablockf from './js/codablockf/index.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './js/core/errors.js';
 export { LuminanceSource } from './js/image/luminance.js';
@@ -83,6 +84,7 @@ export * from './js/compactpdf417/index.js';
 // Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional paths.
 export * from './js/databar/index.js';
 export { encodeMaxiCode, decodeMaxiCode, detectMaxiCode, detectAndDecodeMaxiCode, } from './js/maxicode/index.js';
+export { encodeCodablockF, decodeCodablockF, detectCodablockF, detectAndDecodeCodablockF, } from './js/codablockf/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './js/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './js/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './js/rmqr/index.js';
@@ -143,6 +145,8 @@ const dataBarExpandedCanEncode = typeof databar.encodeDataBarExpanded === 'funct
 const dataBarExpandedCanDecode = typeof databar.detectAndDecodeDataBarExpanded === 'function';
 const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
 const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
+const codablockfCanEncode = typeof codablockf.encodeCodablockF === 'function';
+const codablockfCanDecode = typeof codablockf.detectAndDecodeCodablockF === 'function';
 /**
  * Every format this build supports.
  *
@@ -274,6 +278,13 @@ export function listFormats() {
         canRead: maxicodeCanDecode,
         kind: /** @type {'2D'} */ ('2D'),
     });
+    formats.push({
+        id: 'codablockf',
+        label: 'Codablock-F',
+        canWrite: codablockfCanEncode,
+        canRead: codablockfCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -376,6 +387,9 @@ export function encode(text, options = {}) {
     if (format === 'maxicode' || format === 'maxi-code') {
         return maxicode.encodeMaxiCode(value, options);
     }
+    if (format === 'codablockf' || format === 'codablock-f' || format === 'codablock') {
+        return codablockf.encodeCodablockF(value, options);
+    }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
     }
@@ -429,7 +443,7 @@ export function encode(text, options = {}) {
             'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
             'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
             'imb', 'onecode', 'usps-onecode',
-            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -449,6 +463,8 @@ export function encode(text, options = {}) {
  * @property {number} [columns] PDF417 column count.
  * @property {number} [eccLevel] PDF417 error-correction level.
  * @property {number} [rowHeight] PDF417 row height in modules.
+ * @property {number} [moduleSize] Detected module scale for stacked formats.
+ * @property {boolean} [checksum] Whether the stacked format checks passed.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
  * @property {string} [profile] Sythos Canvas QR profile identifier.
@@ -499,6 +515,7 @@ export function decode(image, options = {}) {
     const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
     const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
     const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
+    const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
     const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
     const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
         || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -522,6 +539,7 @@ export function decode(image, options = {}) {
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
         || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
+        || wantCodablockF
         || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
@@ -679,6 +697,23 @@ export function decode(image, options = {}) {
                 }
                 catch {
                     /* no MaxiCode in this pass */
+                }
+            }
+            if (wantCodablockF && codablockfCanDecode) {
+                const codablockBits = binarizer === 'auto'
+                    ? [candidateBits, binarize(candidateSource, 'global')]
+                    : [candidateBits];
+                for (const thresholdBits of codablockBits) {
+                    try {
+                        const found = codablockf.detectAndDecodeCodablockF(thresholdBits);
+                        if (found) {
+                            add(found, 'codablockf');
+                            break;
+                        }
+                    }
+                    catch {
+                        /* no Codablock-F in this pass */
+                    }
                 }
             }
             if (wantDataBarStacked && dataBarStackedCanDecode) {

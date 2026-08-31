@@ -282,10 +282,11 @@ time.
 | GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
 | GS1 DataBar Expanded | `gs1databar-expanded` | 1D | ✅ | ✅ |
 | MaxiCode | `maxicode` | 2D | ✅ | ✅ |
+| Codablock-F | `codablockf` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Forty-five listed formats are writable and forty-four are readable (EAN-2 and EAN-5 are
+Forty-six listed formats are writable and forty-five are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -305,6 +306,24 @@ validated on degraded synthetic photographs and real Pixel 10/Chrome and iPhone 
 tests; external black-box vectors from ZXing 3.5.3 and bwip-js also pass in both directions.
 Text and Numeric vectors are covered bidirectionally; binary byte-for-byte interop remains
 explicitly unclaimed until a dedicated external byte corpus is added.
+
+Codablock-F uses stacked Code 128 rows with per-row modulo-103 checks and two
+overall modulo-86 checks. The writer chooses a compact 2–44 row layout (or
+accepts explicit `rows` and `columns`), while the detector returns a result only
+when every expected row and check agrees:
+
+```js
+import { encodeCodablockF, detectAndDecodeCodablockF } from '@sythos/js_barcode_universal/codablockf';
+
+const matrix = encodeCodablockF('STACKED ORDER 12345', { rows: 3, columns: 12 });
+const hit = detectAndDecodeCodablockF(matrix);
+console.log(hit?.text, hit?.rows, hit?.columns);
+```
+
+The clean integer-scale detector is designed to reject incomplete or damaged
+rows. It does not promise arbitrary perspective, severe occlusion or
+multi-symbol camera scenes. See [`docs/formats/codablockf.md`](docs/formats/codablockf.md)
+and [`licenses/codablockf.license`](licenses/codablockf.license).
 
 [^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
 and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is

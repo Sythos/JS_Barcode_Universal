@@ -1,0 +1,51 @@
+Codablock-F — format provenance and usability
+================================================
+
+This file records the public engineering basis for the Codablock-F support in
+Sythos Barcode Universal. It is not legal advice and does not grant a patent,
+trademark or standards licence.
+
+Format background
+-----------------
+
+Codablock-F is a stacked 2D barcode built from Code 128 symbols. Public format
+descriptions identify a row count of 2–44, a row-level Code 128 check and two
+overall modulo-86 checks. The implementation uses those structural properties
+with original Sythos TypeScript and generated JavaScript.
+
+Patent and trademark status
+---------------------------
+
+[REGISTRY CHECK REQUIRED] The project has not established a definitive current
+patent-family, term or trademark position for every Codablock-F jurisdiction.
+The format name is used descriptively. Users with a regulated or commercial
+deployment must obtain their own legal and standards review.
+
+Implementation boundary
+----------------------
+
+The writer and reader are original MIT-licensed Sythos work. They share the
+project's Code 128 alphabet and enforce row framing, row checks, overall checks
+and complete-row reconstruction. The implementation is intentionally
+conservative: clean integer-scale symbols are supported, while arbitrary
+perspective, severe damage and multi-symbol scenes are not promised.
+
+Third-party software such as ZXing or BWIPP, when used by maintainers, is used
+only as an independent black-box validation tool. No third-party source code,
+tables or runtime dependency is copied or shipped in this SDK. Please open a
+GitHub issue with any contrary note, patent concern or format correction so it
+can be reviewed and recorded.
+
+License of this implementation
+-------------------------------
+
+The original implementation is distributed under the MIT License in the
+repository root. The format's external names and rights remain separate from
+the SDK licence.
+
+References
+----------
+
+- Public Codablock-F symbology descriptions, including row and check layout.
+- Code 128 public descriptions for the underlying symbol alphabet.
+- `NOTICE.md` attribution and verification log in this repository.
