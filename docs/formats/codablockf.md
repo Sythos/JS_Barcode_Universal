@@ -78,5 +78,5 @@ checked before the two overall checks are evaluated, and the payload is
 returned only after all rows are present and Code 128 interpretation succeeds.
 
 Codablock-F is a format name, not a certification claim. See the project
-licence inventory and [`NOTICE.md`](../../NOTICE.md) for provenance and the
-black-box validation boundary.
+licence inventory and [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md)
+for provenance and the black-box validation boundary.
