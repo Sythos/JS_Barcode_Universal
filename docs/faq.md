@@ -81,6 +81,17 @@ them automatically.
 PZN-7 by default and PZN-8 through `format: 'pzn8'`; successful PZN results
 include `pznVariant`. Invalid carriers or check digits return no result.
 
+## Which postal barcode formats are supported?
+
+The SDK supports USPS POSTNET and PLANET, Royal Mail RM4SCC, Dutch KIX,
+Australia Post 4-State, Japan Post 4-State and USPS Intelligent Mail (IMb /
+OneCode). They are separate operator-specific formats, not aliases of one
+another. POSTNET, PLANET, RM4SCC, Japan Post and IMb validate their checks;
+KIX has no check character. Australia Post supports explicit character or
+numeric customer-data groups through `customerEncoding`. See the [postal
+format guide](formats/postal.md) for payload lengths, aliases and camera
+boundaries.
+
 ## Does “FrameQR” mean native DENSO FrameQR compatibility?
 
 No. The SDK's `frameqr` entry is the non-certified Sythos Canvas QR profile. It

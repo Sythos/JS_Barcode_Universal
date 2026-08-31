@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 38 entries and 37 generally readable
+The current registry snapshot reports 45 entries and 44 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -99,6 +99,8 @@ turning the count into marketing copy:
   Stacked remains out of scope;
 - MaxiCode is a fixed 30×33 path with Modes 2–5 and a clean single-symbol
   detector;
+- the postal family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post
+  and IMb) uses strict operator-specific height-coded alphabets and checks;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
   licensing boundary is documented in `PLAN.md`;
 - any future unsupported variant must be labelled as unsupported, not silently

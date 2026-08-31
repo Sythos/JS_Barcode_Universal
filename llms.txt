@@ -44,6 +44,9 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
+At the current checkout it reports 45 writable entries and 44 readable entries;
+Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
+remain parent-bound supplements.
 
 ### 1D linear formats
 
@@ -68,6 +71,12 @@ marked `write-only` is intentionally not treated as a generic image reader.
   mode handles digit pairs and `X` suffix pairs
 - Pharmacode — write-only in the generic image pipeline
 - GS1 DataBar Omnidirectional, Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded — write and read through verified physical layers
+- USPS POSTNET and PLANET — write and read with operator-specific Mod-10 checks
+- Royal Mail 4-State Customer Code (RM4SCC) — write and read with a generated and verified check character
+- KIX — write and read with the Dutch four-state alphabet and no check character
+- Australia Post 4-State — write and read with FCC/DPID, GF(64) parity and explicit character or numeric customer data
+- Japan Post 4-State — write and read with grouped public payloads, padding and Mod-19 validation
+- USPS Intelligent Mail Barcode (IMb / OneCode) — write and read for 20-, 25-, 29- and 31-digit payloads with frame-check validation
 - EAN-2 and EAN-5 supplements — write and parent-bound read only; they require a validated EAN/UPC parent
 
 ### 2D matrix and stacked formats
@@ -91,6 +100,13 @@ Code 25-family aliases (`standard2of5`, `code2of5`, `industrial2of5` and
 `iata2of5`) are explicit format selectors. Code 32 and PZN readers validate
 their complete carrier and check digit before returning a result; incomplete
 or ambiguous camera frames return nothing.
+
+Postal aliases (`usps-postnet`, `usps-planet`, `royalmail`, `royal-mail`,
+`australia-post`, `australiapost`, `japan-post`, `onecode` and `usps-onecode`)
+resolve to the canonical ids `postnet`, `planet`, `rm4scc`, `auspost`,
+`japanpost` and `imb`. Australia Post accepts `customerEncoding: 'character'`
+or `'numeric'` (and the compatibility alias `custinfoenc`). Postal camera
+reads require a measurable quiet zone and a complete validated symbol.
 
 ## Main API
 
@@ -163,6 +179,7 @@ the files under `licenses/`, including:
 - `licenses/code25.license`
 - `licenses/code32.license`
 - `licenses/pzn.license`
+- `licenses/postal.license`
 
 Those files are engineering inventories, not legal advice. Patent, copyright,
 trademark, standards and jurisdictional questions should receive independent

@@ -118,6 +118,13 @@ digit, the strict profile correctly returns an empty array. Code 32 and PZN
 also reject any carrier/check-digit mismatch; PZN-7 and PZN-8 are reported via
 `pznVariant`, not inferred from a clipped payload.
 
+For postal symbols, select the operator-specific id (`postnet`, `planet`,
+`rm4scc`, `kix`, `auspost`, `japanpost` or `imb`) and verify the expected
+payload envelope. Australia Post may need `customerEncoding: 'character'` or
+`'numeric'`; IMb accepts only 20, 25, 29 or 31 digits. The postal reader rejects
+missing bars, wrong checks and clipped quiet zones instead of returning a
+partial address. See the [postal format guide](formats/postal.md).
+
 ## Rendering throws a dimension or allocation error
 
 Treat `scale`, `margin` and `barHeight` as untrusted numeric input. Require safe

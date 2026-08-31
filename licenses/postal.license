@@ -1,0 +1,61 @@
+Postal 4-state family — format provenance and usability notes
+====================================================================
+
+This file records the engineering and provenance boundary for the postal
+formats implemented by Sythos Barcode Universal: USPS POSTNET, USPS PLANET,
+Royal Mail 4-State Customer Code (RM4SCC), KIX, Australia Post 4-State, Japan
+Post 4-State and USPS Intelligent Mail Barcode (IMb / OneCode).
+
+Implementation
+--------------
+
+The TypeScript implementation and generated JavaScript in this repository are
+original Sythos work and are distributed under the MIT License. The shared
+height-coded classifier, state profiles, checks, Reed–Solomon arithmetic,
+combinatorial IMb mapping and API dispatch are not copied from another barcode
+implementation. The npm package has no runtime dependencies.
+
+Public technical descriptions of the postal alphabets, bar heights, framing,
+checks and payload envelopes were used as engineering input. The implementation
+represents those public format rules in original Sythos data structures. This
+file does not reproduce a standards document or grant certification.
+
+Independent validation boundary
+-------------------------------
+
+BWIPP and bwip-js were invoked locally as independent black-box oracles. Their
+rendered output was compared with Sythos encode/decode results for all seven
+formats. They were used exclusively for verification and counter-checking; no
+source code, lookup table, generated asset or runtime dependency from those
+projects is copied into or shipped by this SDK. Agreement is engineering
+evidence, not an endorsement or a licence grant.
+
+Ownership and naming
+--------------------
+
+POSTNET, PLANET and IMb/OneCode are associated with the United States Postal
+Service. RM4SCC is associated with Royal Mail. KIX is associated with the Dutch
+postal system. Australia Post and Japan Post own or administer their respective
+postal specifications and marks. Names are used descriptively to identify the
+public symbology; this project is not endorsed, certified or operated by any of
+those organisations.
+
+Patent, copyright and trademark review
+--------------------------------------
+
+The code in this repository is MIT-licensed original Sythos work. Whether a
+particular jurisdiction, implementation, service mark, specification edition or
+postal-indicia programme imposes additional conditions is a separate legal
+question. Users shipping a commercial postal workflow should obtain their own
+professional review and any operator approval required for production mail.
+
+[TO VERIFY] Current patent-family status and any jurisdiction-specific claims
+for each postal symbology have not been independently searched in this project.
+
+[TO VERIFY] Current trademark, certification-mark and operator-indicia rules
+were not independently cleared here. Report a concrete notice, licence term or
+conflicting source through a GitHub issue so it can be reviewed and recorded.
+
+This engineering note intentionally keeps those questions visible instead of
+making a broad “patent-free” or “certified” claim. See `LICENSE`, `NOTICE.md`
+and `licenses/README.md` for the project-wide boundary.

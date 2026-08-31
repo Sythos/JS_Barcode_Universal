@@ -78,6 +78,7 @@ nav:
   - Formats:
       - Overview: formats/overview.md
       - Linear 1D: formats/oned.md
+      - Postal 4-state: formats/postal.md
       - QR family: formats/qr-family.md
       - Data Matrix ECC 200: formats/datamatrix.md
       - Aztec family: formats/aztec.md

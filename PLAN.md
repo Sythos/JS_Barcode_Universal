@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-38 listed formats write, 37 read; PDF417 image reading is now enabled after synthetic, black-box and
+45 listed formats write, 44 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -70,8 +70,8 @@ remain outside the validated robustness envelope.
 |---|---|
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
-| **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode | ✅ 1D suite |
-| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
+| **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode and the seven postal 4-state formats | ✅ 1D suite |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post, IMb, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
@@ -100,7 +100,7 @@ GS1-128 classification plus Application Identifier parsing, and the GS1 DataBar
 Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded physical
 readers are integrated without replacing the existing reader. MaxiCode modes 2–5 are likewise integrated as a
 separate fixed-grid 2D path.
-The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M8 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
+The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M9 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
 the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
 no dispatch rewrite was necessary. This finite 45°-step retry policy does not claim arbitrary
 perspective, curved-media, severe-occlusion or multi-symbol robustness. Pharmacode remains deliberately `readable: false` because its
@@ -117,7 +117,7 @@ advertises `canRead: true`; extreme glare, severe occlusion, curved media and
 multi-symbol scenes remain outside the validated robustness envelope. Black-box
 Text/Numeric interop is recorded; byte-for-byte interop remains explicitly unclaimed.
 
-### M2–M8 format group
+### M2–M9 format group
 
 The format group that followed the PDF417 work is complete locally and is kept
 as one reviewable gate because the DataBar paths share strict raster and GTIN
@@ -132,6 +132,7 @@ validation boundaries, while Telepen adds a self-contained scanline grammar:
 | M6 | GS1 DataBar Expanded | Linear Expanded writer/reader, constrained data characters, finder/checksum validation, GS1 element strings, linkage and clean-raster detection | Focused round trips, rotated/scaled detector checks, malformed-input rejection, full format suite and independent BWIPP black-box vectors |
 | M7 | Telepen Alpha and Numeric | Algorithmic seven-bit/parity glyph mapping, explicit Numeric pair compaction, modulo-127 checksum, strict scanline reader and root/`oned` API dispatch | Full ASCII range, Numeric digit/X pairs, scaled image path, corruption rejection, package type checks and ZXing-C++/BWIPP black-box vectors |
 | M8 | Code 25 family, Code 32 and PZN | Standard/Industrial/IATA 2 of 5 guard profiles, optional modulo-10 checks, Code 32 base-32 pharmaceutical encoding and PZN-7/PZN-8 Code 39 carrier with validated modulo-11 checks | Focused round trips, camera-profile rejection, variable wide ratios, public aliases, package/type checks and independent BWIPP black-box vectors |
+| M9 | Postal 4-state family | USPS POSTNET and PLANET, Royal Mail RM4SCC, KIX, Australia Post, Japan Post and USPS Intelligent Mail (IMb); shared height-coded classifier, operator-specific framing, checks and aliases | Seven-format round trips, quiet-zone and damaged-symbol rejection, Australia character/numeric modes, IMb 20/25/29/31 lengths, package/type checks and independent BWIPP black-box vectors |
 
 The JavaScript runtime and TypeScript declarations are generated and checked
 together. The grouped CI gate runs `test:formats`, TypeScript checks, lint,
@@ -145,7 +146,6 @@ scenes remain outside this group.
 
 **Long tail, tiered by shared machinery** — this is what makes scope cuttable intelligently:
 
-- *Nearly free given what exists:* the **postal family** (POSTNET, PLANET, IMb, RM4SCC, KIX, Australia Post, Japan Post) — all 4-state height-modulated, sharing **one** engine.
 - *Moderate, reuses existing 2D machinery:* Codablock-F and Code 16K (stacked Code 128).
 - *Each effectively its own project:* DotCode, Han Xin and GS1 Composite. The five
 GS1 DataBar physical variants currently shipped remain bounded to their documented

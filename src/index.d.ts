@@ -105,6 +105,8 @@ export declare function listFormats(): FormatInfo[];
  * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
  * @param {number} [options.version] QR version, 1-40. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
+ * @param {'character'|'numeric'} [options.customerEncoding] Australia Post customer-data encoding.
+ * @param {'character'|'numeric'} [options.custinfoenc] Australia Post compatibility alias.
  * @param {boolean} [options.pzn8] Select the eight-digit PZN profile.
  * @param {'pzn7'|'pzn8'|'standard'|'industrial'|'iata'} [options.variant] PZN or Code 25 variant.
  * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
@@ -135,6 +137,8 @@ export declare function encode(text: string | number, options?: {
     ecc?: 'L' | 'M' | 'Q' | 'H';
     version?: number;
     checkDigit?: boolean;
+    customerEncoding?: 'character' | 'numeric';
+    custinfoenc?: 'character' | 'numeric';
     pzn8?: boolean;
     variant?: 'pzn7' | 'pzn8' | 'standard' | 'industrial' | 'iata';
     wideRatio?: number;
@@ -373,6 +377,8 @@ export type DecodeResult = {
  * @param {'camera'} [options.profile] Opt-in strict camera profile for validated 1D reads.
  * @param {object} [options.frameqr] FrameQR Code detector options when
  *   the profile marker is not preserved through image rendering.
+ * @param {'character'|'numeric'} [options.customerEncoding] Australia Post customer-data encoding.
+ * @param {'character'|'numeric'} [options.custinfoenc] Australia Post compatibility alias.
  * @returns {DecodeResult[]}
  */
 export declare function decode(image: {
@@ -385,6 +391,8 @@ export declare function decode(image: {
     binarizer?: 'global' | 'hybrid' | 'auto';
     profile?: 'camera';
     frameqr?: object;
+    customerEncoding?: 'character' | 'numeric';
+    custinfoenc?: 'character' | 'numeric';
 }): DecodeResult[];
 /**
  * Decode, or throw if nothing is found.

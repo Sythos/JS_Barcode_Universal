@@ -43,6 +43,7 @@ appendix carries the consolidated inventory these files expand on.
 | Frame QR / Sythos Canvas QR profile | [`frameqr.license`](frameqr.license) | 2 |
 | GS1 DataBar Omnidirectional / Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded | [`gs1-databar.license`](gs1-databar.license) | 2 |
 | MaxiCode | [`maxicode.license`](maxicode.license) | 2 |
+| Postal 4-state family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post and IMb) | [`postal.license`](postal.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

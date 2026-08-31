@@ -104,6 +104,7 @@ The current implementation covers these families:
 | Family | Examples | Important note |
 | --- | --- | --- |
 | Linear 1D | EAN/UPC, ISBN, Code 11, Code 39, Code 93, Code 128, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, MSI, Code 32, PZN, Telepen and Pharmacode | Writing and reading are separate capabilities. Pharmacode is intentionally write-only; Code 25 aliases, pharmaceutical variants and Telepen Numeric remain explicit modes. |
+| Postal 4-state | POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post and USPS IMb | Each operator-specific alphabet is validated independently; IMb is also exposed as OneCode. See the [postal format guide](formats/postal.md). |
 | QR family | QR Code, Micro QR Code and rMQR Code | Profile and feature support is narrower than the names alone suggest; check the format metadata and the format guide when available. |
 | Matrix 2D | Data Matrix ECC 200, Aztec Code, Aztec Rune and MaxiCode | The reader returns no result when validation does not establish a trustworthy symbol. |
 | PDF417 family | PDF417, Compact PDF417 and MicroPDF417 | These formats expose different geometry and metadata; they are not interchangeable aliases. |

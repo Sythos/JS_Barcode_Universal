@@ -40,6 +40,8 @@ transparent quiet zone from turning into artificial black ink.
 | `binarizer` | Selects `'global'`, `'hybrid'` or `'auto'` thresholding. |
 | `profile` | Set to `'camera'` for stricter camera-oriented validation. |
 | `frameqr` | Passes profile-specific options to the Sythos Canvas QR detector. |
+| `customerEncoding` | For Australia Post, select `'character'` or `'numeric'` customer-data groups. |
+| `custinfoenc` | Compatibility alias for `customerEncoding`. |
 
 Narrow the `formats` list when the application knows what it is looking for.
 That reduces work and avoids interpreting a specialised symbol through an

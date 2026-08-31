@@ -53,6 +53,7 @@ import { EAN2_PARITY, EAN5_PARITY, ean5Checksum, } from './addons.js';
 import { decodeDataBar14Scanline } from '../databar/decoder.js';
 import { decodeTelepen } from './telepen.js';
 import { CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
+import { decodePostal } from './postal.js';
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -1398,6 +1399,9 @@ function checksumStatus(format, options, result = null) {
     }
     if (format === 'telepen' || format === 'telepennumeric')
         return true;
+    if (format === 'postnet' || format === 'planet' || format === 'rm4scc'
+        || format === 'auspost' || format === 'japanpost' || format === 'imb')
+        return true;
     return null;
 }
 /** @param {object} result @param {object} geometry @param {Set<number>} rows @param {object} options @returns {object} */
@@ -1468,10 +1472,27 @@ export function decodeOneD(image, options = {}) {
             return enabled.has('databar') || enabled.has('gs1-databar14');
         return false;
     });
-    if (active.length === 0)
-        return [];
     const results = [];
     const seen = new Set();
+    // Postal symbols carry information in the vertical bar state rather than
+    // in a horizontal run-width alphabet. Decode that shared path once before
+    // the ordinary scanline readers; an explicit non-postal filter yields no
+    // postal attempt and therefore cannot broaden a caller's format request.
+    const postalResults = decodePostal(image, {
+        ...options,
+        profile: cameraProfile ? 'camera' : undefined,
+        formats: formats ? formats : undefined,
+    });
+    const postalRow = image.height >> 1;
+    for (const result of postalResults) {
+        const key = `${result.format}:${result.text}`;
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        results.push({ ...result, row: postalRow });
+    }
+    if (active.length === 0)
+        return results;
     const height = image.height;
     const buffer = new Uint8Array(image.width);
     const cameraCandidates = new Map();

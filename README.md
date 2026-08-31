@@ -89,7 +89,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal` | The whole surface: `encode`, `decode`, every renderer, every error type |
 | `@sythos/js_barcode_universal/core` | `BitMatrix`, `GaloisField`, Reed–Solomon, the error classes |
 | `@sythos/js_barcode_universal/image` | `LuminanceSource`, the binarizers, grid sampling, `PerspectiveTransform` |
-| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, `encodeCode32`, `encodePZN`, `encodeTelepen`, …), Code 25 variants and `decodeOneD` |
+| `@sythos/js_barcode_universal/oned` | The per-format 1D writers (`encodeEAN13`, `encodeCode128`, `encodeCode32`, `encodePZN`, `encodeTelepen`, `encodePostnet`, `encodePlanet`, `encodeRM4SCC`, `encodeKIX`, `encodeAustraliaPost`, `encodeJapanPost`, `encodeIMB`, …), Code 25 variants and `decodeOneD` |
 | `@sythos/js_barcode_universal/qr` | `encodeQR`, `decodeQR`, `detectQR`, `detectAndDecodeQR` |
 | `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `decodeDataMatrix`, `detectDataMatrix`, `detectAndDecodeDataMatrix` |
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec`, `decodeAztec`, `detectAztec`, `detectAndDecodeAztec` |
@@ -259,6 +259,13 @@ time.
 | Code 32 (Italian Pharmacode) | `code32` | 1D | ✅ | ✅ |
 | PZN-7 / PZN-8 | `pzn` | 1D | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | ✅ | — |
+| USPS POSTNET | `postnet` | 1D | ✅ | ✅ |
+| USPS PLANET | `planet` | 1D | ✅ | ✅ |
+| Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | ✅ | ✅ |
+| KIX postal code | `kix` | 1D | ✅ | ✅ |
+| Australia Post 4-State | `auspost` | 1D | ✅ | ✅ |
+| Japan Post 4-State | `japanpost` | 1D | ✅ | ✅ |
+| USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | ✅ | ✅ |
 | QR Code | `qr` | 2D | ✅ | ✅ |
 | Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
 | Aztec Code | `aztec` | 2D | ✅ | ✅ |
@@ -278,14 +285,17 @@ time.
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Thirty-eight listed formats are writable and thirty-seven are readable (EAN-2 and EAN-5 are
+Forty-five listed formats are writable and forty-four are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
 Code 25 family shares one numeric digit grammar while exposing explicit Standard/Industrial and
 IATA guard profiles; Code 32 and PZN validate their pharmaceutical check digits before a read is
-returned. The
+returned. Postal formats use operator-specific four-state alphabets with strict framing and
+checksum validation; KIX deliberately has no check character, while Australia Post supports
+explicit character or numeric customer-data groups and IMb accepts its four legal payload lengths.
+The
 GS1 DataBar physical variants use
 strict clean-raster readers and variant-specific detectors over the verified GTIN/GS1 element-string
 decoder. Expanded also accepts the common compressed GTIN-14 method on the read path. MaxiCode
@@ -407,6 +417,46 @@ console.log(result?.format, result?.pznVariant, result?.text);
 Both readers return no value when the carrier or pharmaceutical check digit is
 not valid. The format-specific engineering notes and the independent
 black-box validation boundary are recorded in [`licenses/`](licenses/).
+
+### Postal 4-state formats
+
+The postal family shares a strict height-coded raster classifier while keeping
+each operator's alphabet and checksum separate. The root dispatcher and the
+`oned` subpath expose USPS POSTNET and PLANET, Royal Mail RM4SCC, Dutch KIX,
+Australia Post, Japan Post and USPS Intelligent Mail (IMb/OneCode):
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('5956439111ABC', {
+  format: 'auspost',
+  customerEncoding: 'character',
+});
+const image = toImageData(matrix, { scale: 3, margin: 24, barHeight: 72 });
+const [result] = decode(image, {
+  formats: ['auspost'],
+  customerEncoding: 'character',
+});
+console.log(result?.format, result?.text, result?.checkDigit);
+// auspost 5956439111ABC true
+```
+
+POSTNET accepts 5/9/11 body digits and PLANET 11/13; both append and verify a
+Mod-10 check digit. RM4SCC generates and verifies its row/column check
+character, while KIX has no check character. Japan Post expands its public
+alphabet into fixed groups and verifies a Mod-19 check. Australia Post starts
+with an FCC and eight-digit DPID, supports `customerEncoding: 'character'` or
+`'numeric'` (also `custinfoenc`) and verifies GF(64) parity. IMb accepts exactly
+20, 25, 29 or 31 digits and verifies its frame check sequence. Convenience
+aliases such as `onecode`, `usps-postnet` and `royal-mail` resolve to the
+canonical ids shown in the format table.
+
+The generic image reader returns an empty array for a clipped, ambiguous or
+checksum-invalid symbol. `profile: 'camera'` additionally requires a measurable
+quiet zone on both sides of the bars; it is intentionally conservative for
+blurred, curved, heavily occluded or multi-symbol photographs. See the
+[postal format guide](https://sythos.github.io/JS_Barcode_Universal/formats/postal/)
+for payload limits, direct subpath functions and the complete provenance note.
 
 ### Data Matrix ECC 200
 

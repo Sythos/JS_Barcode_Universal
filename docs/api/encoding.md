@@ -111,7 +111,7 @@ Useful direct families include:
 
 | Import | Representative functions |
 | --- | --- |
-| `@sythos/js_barcode_universal/oned` | `encodeEAN13`, `encodeCode128`, `encodeCode39`, `encodeITF14`, Code 25 variants, `encodeCode32`, `encodePZN`, `encodeMSI`, `encodeTelepen`, `encodeTelepenNumeric`, `encodePharmacode`, add-on and GS1 helpers |
+| `@sythos/js_barcode_universal/oned` | `encodeEAN13`, `encodeCode128`, `encodeCode39`, `encodeITF14`, Code 25 variants, `encodeCode32`, `encodePZN`, `encodeMSI`, `encodeTelepen`, `encodeTelepenNumeric`, `encodePharmacode`, `encodePostnet`, `encodePlanet`, `encodeRM4SCC`, `encodeKIX`, `encodeAustraliaPost`, `encodeJapanPost`, `encodeIMB`, add-on and GS1 helpers |
 | `@sythos/js_barcode_universal/qr` | `encodeQR` |
 | `@sythos/js_barcode_universal/datamatrix` | `encodeDataMatrix`, `encodeDataMatrixCodewords` |
 | `@sythos/js_barcode_universal/aztec` | `encodeAztec` |

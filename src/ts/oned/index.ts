@@ -74,6 +74,14 @@ export {
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
 
+export {
+  POSTAL_FORMATS, POSTAL_ALIASES, STATE_PROFILES,
+  encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX,
+  encodeAustraliaPost, encodeJapanPost, encodeIMB,
+  decodePostal,
+} from './postal.js';
+export type { PostalFormat, PostalOptions, PostalDecodeResult } from './postal.js';
+
 export { validateTables } from './patterns.js';
 
 import {
@@ -85,6 +93,10 @@ import {
 import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
 import { encodeIndustrial2of5, encodeIATA2of5 } from './code25.js';
+import {
+  encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX,
+  encodeAustraliaPost, encodeJapanPost, encodeIMB,
+} from './postal.js';
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -125,4 +137,11 @@ export const ONED_FORMATS = {
   // only accepts them when attached to a validated EAN/UPC parent symbol.
   ean2: { encode: encodeEAN2, readable: true, role: 'supplement', label: 'EAN-2 supplement' },
   ean5: { encode: encodeEAN5, readable: true, role: 'supplement', label: 'EAN-5 supplement' },
+  postnet: { encode: encodePostnet, readable: true, label: 'USPS POSTNET' },
+  planet: { encode: encodePlanet, readable: true, label: 'USPS PLANET' },
+  rm4scc: { encode: encodeRM4SCC, readable: true, label: 'Royal Mail 4-State (RM4SCC)' },
+  kix: { encode: encodeKIX, readable: true, label: 'KIX postal code' },
+  auspost: { encode: encodeAustraliaPost, readable: true, label: 'Australia Post 4-State' },
+  japanpost: { encode: encodeJapanPost, readable: true, label: 'Japan Post 4-State' },
+  imb: { encode: encodeIMB, readable: true, label: 'USPS Intelligent Mail (IMb)' },
 };

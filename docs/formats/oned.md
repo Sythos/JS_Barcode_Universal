@@ -30,6 +30,12 @@ needs to be printed or displayed at a useful height.
 | Telepen (ASCII and Numeric) | `telepen` | ✅ | ✅ | ASCII is the default; Numeric is an explicit pair-compaction mode. |
 | Pharmacode | `pharmacode` | ✅ | — | Writer-only by design; unsafe for unrestricted generic autodetection. |
 
+Postal 4-state formats use a dedicated height-coded reader and are documented
+separately in the [postal family guide](postal.md): POSTNET, PLANET, RM4SCC,
+KIX, Australia Post, Japan Post and USPS IMb. They are exported from this
+subpath as `encodePostnet`, `encodePlanet`, `encodeRM4SCC`, `encodeKIX`,
+`encodeAustraliaPost`, `encodeJapanPost` and `encodeIMB`.
+
 The runtime registry is the source of truth for these flags. `ITF-14` and
 Bookland ISBN are meaningful application profiles over their base symbol
 grammar, so a shared decoder can return `itf` or `ean13` while preserving the
@@ -53,6 +59,13 @@ import {
   encodeCode32,
   encodePZN,
   encodePharmacode,
+  encodePostnet,
+  encodePlanet,
+  encodeRM4SCC,
+  encodeKIX,
+  encodeAustraliaPost,
+  encodeJapanPost,
+  encodeIMB,
 } from '@sythos/js_barcode_universal/oned';
 
 const retail = encodeEAN13('590123412345'); // check digit is appended
@@ -65,6 +78,13 @@ const iata = encodeIATA2of5('31415926');
 const code32 = encodeCode32('01234567');
 const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
+const postnet = encodePostnet('12345');
+const planet = encodePlanet('12345678901');
+const rm4scc = encodeRM4SCC('HELLO1');
+const kix = encodeKIX('123ABC');
+const auspost = encodeAustraliaPost('5956439111ABC');
+const japanpost = encodeJapanPost('12ABC-9');
+const imb = encodeIMB('01234567094987654321');
 ```
 
 ### Code 25 family

@@ -48,7 +48,7 @@ import { BitMatrix } from './js/core/bit-matrix.js';
 import { EncodeError, NotFoundError } from './js/core/errors.js';
 import { LuminanceSource } from './js/image/luminance.js';
 import { binarize } from './js/image/binarizer.js';
-import { ONED_FORMATS, encodeCode32, encodePZN, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, } from './js/oned/index.js';
+import { ONED_FORMATS, encodeCode32, encodePZN, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, } from './js/oned/index.js';
 import { decodeOneD } from './js/oned/reader.js';
 import { encodeTelepen, encodeTelepenNumeric } from './js/oned/telepen.js';
 import * as datamatrix from './js/datamatrix/index.js';
@@ -400,11 +400,35 @@ export function encode(text, options = {}) {
     if (format === 'iata2of5' || format === 'iata-2-of-5') {
         return encodeIATA2of5(value, options);
     }
+    if (format === 'postnet' || format === 'usps-postnet') {
+        return encodePostnet(value, options);
+    }
+    if (format === 'planet' || format === 'usps-planet') {
+        return encodePlanet(value, options);
+    }
+    if (format === 'rm4scc' || format === 'royalmail' || format === 'royal-mail') {
+        return encodeRM4SCC(value, options);
+    }
+    if (format === 'kix') {
+        return encodeKIX(value);
+    }
+    if (format === 'auspost' || format === 'australia-post' || format === 'australiapost') {
+        return encodeAustraliaPost(value, options);
+    }
+    if (format === 'japanpost' || format === 'japan-post') {
+        return encodeJapanPost(value);
+    }
+    if (format === 'imb' || format === 'onecode' || format === 'usps-onecode') {
+        return encodeIMB(value);
+    }
     const entry = ONED_FORMATS[format];
     if (!entry) {
         const known = [...Object.keys(ONED_FORMATS), 'telepennumeric', 'telepen-numeric',
             'code32', 'italian-pharmacode', 'pzn', 'pzn7', 'pzn8',
             'code2of5', 'standard2of5', 'standard-2-of-5', 'industrial-2-of-5', 'iata-2-of-5',
+            'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
+            'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
+            'imb', 'onecode', 'usps-onecode',
             'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
@@ -492,6 +516,8 @@ export function decode(image, options = {}) {
         'code32', 'italian-pharmacode', 'pzn7', 'pzn8',
         'code2of5', 'standard2of5', 'standard-2-of-5',
         'industrial-2-of-5', 'iata-2-of-5',
+        'usps-postnet', 'usps-planet', 'royalmail', 'royal-mail',
+        'australia-post', 'australiapost', 'japan-post', 'onecode', 'usps-onecode',
     ]);
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
