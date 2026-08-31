@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "recordedOn": "2026-08-13",
+  "runtime": {
+    "engine": "ZXing-C++ Python binding",
+    "version": "3.1.1",
+    "location": "external-temporary-environment"
+  },
+  "directions": {
+    "aztecRune": [
+      { "direction": "sythos-to-zxing-cpp", "payload": 42, "externalText": "042", "symbologyIdentifier": "]zC", "result": "pass" },
+      { "direction": "zxing-cpp-to-sythos", "payload": 42, "sythosText": "042", "corrections": 0, "result": "pass" }
+    ],
+    "compactPdf417": [
+      { "direction": "sythos-to-zxing-cpp", "payload": "M11 COMPACT PDF417", "symbologyIdentifier": "]L2", "result": "pass" },
+      { "direction": "zxing-cpp-to-sythos", "payload": "ZXING TO SYTHOS COMPACT", "rows": 7, "columns": 3, "result": "pass" }
+    ],
+    "ean2": [
+      { "direction": "sythos-to-zxing-cpp", "base": "978020137962", "addOn": "12", "result": "pass" },
+      { "direction": "zxing-cpp-to-sythos", "base": "978020137962", "addOn": "12", "result": "pass" }
+    ],
+    "ean5": [
+      { "direction": "sythos-to-zxing-cpp", "base": "978020137962", "addOn": "51234", "result": "pass" },
+      { "direction": "zxing-cpp-to-sythos", "base": "978020137962", "addOn": "51234", "result": "pass" }
+    ],
+    "qrModel1": [
+      { "direction": "not-run", "result": "skip", "reason": "Sythos module unavailable at harness run; ZXing-C++ 3.1.1 is reader-only for QR Code Model 1" }
+    ],
+    "gs1DataBar": [
+      { "direction": "sythos-to-zxing-cpp", "variant": "omnidirectional", "gtin": "00012345678905", "symbologyIdentifier": "]e0", "result": "pass" },
+      { "direction": "zxing-cpp-to-sythos", "variant": "omnidirectional", "gtin": "00012345678905", "symbologyIdentifier": "]e0", "result": "pass" }
+    ]
+  },
+  "qualification": {
+    "blackBoxOnly": true,
+    "runtimeDependencyAdded": false,
+    "sourceOrTablesCopied": false,
+    "externalArtifactsShipped": false,
+    "eanAddOnsQualifiedAs": "EAN/UPC supplements with add-on required, not standalone barcodes"
+  }
+}

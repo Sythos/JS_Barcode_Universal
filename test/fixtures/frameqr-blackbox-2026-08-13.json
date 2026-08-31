@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T09:49:32.977Z",
+  "engine": "ZXing Java",
+  "classpathEntries": [
+    "core-3.5.3.jar",
+    "javase-3.5.3.jar",
+    "jcommander-1.82.jar"
+  ],
+  "results": [
+    {
+      "vector": "qr-model-2-positive-control",
+      "status": "pass",
+      "processStatus": 0
+    },
+    {
+      "vector": "frameqr-native-format-capability",
+      "status": "blocked",
+      "reason": "ZXing does not expose FRAME_QR as a supported barcode format.",
+      "processStatus": 1
+    },
+    {
+      "vector": "sythos-canvas-qr-profile-observation",
+      "status": "observation",
+      "decodedAsQrCode": true,
+      "processStatus": 0,
+      "note": "This observation neither proves nor disproves native FrameQR interoperability."
+    }
+  ],
+  "qualification": {
+    "blackBoxOnly": true,
+    "runtimeDependenciesAdded": false,
+    "zxingSourceCodeOrTablesUsed": false,
+    "zxingRole": "independent runtime validation tool only",
+    "profileUnderTest": "sythos-canvas-qr/1",
+    "profileClaimsDensoFrameQrCompatibility": false,
+    "frameQrInterop": "blocked-zxing-has-no-native-frameqr-format",
+    "profileObservationIsInteropProof": false
+  }
+}

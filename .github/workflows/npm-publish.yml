@@ -52,6 +52,9 @@ jobs:
       - name: Run focused format tests
         run: npm run test:formats
 
+      - name: Run core format tests
+        run: npm run test:core
+
       - name: Run foundation module tests
         run: npm run test:foundations
 

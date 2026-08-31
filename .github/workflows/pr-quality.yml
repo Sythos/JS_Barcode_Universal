@@ -70,6 +70,9 @@ jobs:
       - name: Run focused format tests
         run: npm run test:formats
 
+      - name: Run core format tests
+        run: npm run test:core
+
       - name: Run public TypeScript declaration checks
         run: >-
           npm run types:api

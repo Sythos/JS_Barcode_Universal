@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "id": "text-v1",
+      "value": "MICRO",
+      "options": { "variant": 1, "compaction": "text" },
+      "width": 38,
+      "rows": 11,
+      "codewords": [900, 368, 77, 449, 131, 456, 97, 834, 727, 803, 134],
+      "sha256": "c02e0da37f4855b21f335b0689e37633ec6752471468c1998e84956af59c26b2"
+    },
+    {
+      "id": "bytes-v7",
+      "value": [0, 1, 2],
+      "options": { "variant": 7, "compaction": "byte" },
+      "width": 55,
+      "rows": 8,
+      "codewords": [901, 0, 1, 2, 900, 900, 900, 900, 631, 391, 340, 787, 895, 850, 735, 748],
+      "sha256": "70813af97663f932d122c60058d977c84ad9793c89ad9a3259cd56250f053ba8"
+    },
+    {
+      "id": "numeric-v14",
+      "value": "1234567890123",
+      "options": { "variant": 14, "compaction": "numeric" },
+      "width": 82,
+      "rows": 6,
+      "codewords": [902, 17, 110, 836, 811, 223, 805, 475, 637, 10, 518, 546, 918, 94, 555, 557, 907, 48],
+      "sha256": "198ccb2814e0ba883f3a66ce3e1e0d471ddd30debbb488af65311377d5a0035e"
+    },
+    {
+      "id": "utf8-v24",
+      "value": "Caf\u00e9",
+      "options": { "variant": 24, "compaction": "byte", "eci": 26 },
+      "width": 99,
+      "rows": 4,
+      "codewords": [927, 26, 901, 67, 97, 102, 195, 169, 602, 350, 776, 664, 751, 442, 69, 698],
+      "sha256": "9729265f1b98d5d883c0c4e2164d6d936772ac2bfed7d3fc1f0be0b4a721fce1"
+    }
+  ]
+}

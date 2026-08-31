@@ -1,0 +1,44 @@
+{
+  "format": "compact-pdf417",
+  "text": "BLACKBOX COMPACT",
+  "options": {
+    "compaction": "text",
+    "columns": 3,
+    "rows": 8,
+    "rowHeight": 3,
+    "eccLevel": 2
+  },
+  "width": 86,
+  "height": 24,
+  "codewords": [
+    16,
+    41,
+    2,
+    301,
+    443,
+    782,
+    432,
+    450,
+    79,
+    900,
+    900,
+    900,
+    900,
+    900,
+    900,
+    900,
+    644,
+    278,
+    235,
+    921,
+    220,
+    109,
+    177,
+    234
+  ],
+  "validation": {
+    "externalOracle": "ZXing PDF417 reader when configured",
+    "sourceCodeCopied": false,
+    "notes": "ZXing is an independent black-box validation tool only; no ZXing source code, tables or generated code are included."
+  }
+}

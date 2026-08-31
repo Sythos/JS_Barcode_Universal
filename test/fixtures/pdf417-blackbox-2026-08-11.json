@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "recordedOn": "2026-08-11",
+  "runtime": {
+    "zxingJava": "3.5.3",
+    "bwipJs": "4.5.1",
+    "zint": "2.16.0",
+    "node": "26.x",
+    "java": "21.x"
+  },
+  "directions": {
+    "sythosToZxing": [
+      { "mode": "text", "payload": "ZXING TEXT", "result": "pass" },
+      { "mode": "numeric", "payload": "123456789012345678901234567890", "result": "pass" },
+      { "mode": "byte", "payload": "Caffè PDF417", "eci": 26, "result": "pass" }
+    ],
+    "zxingToSythos": [
+      { "mode": "text", "payload": "ZXING TO SYTHOS PDF417 2026", "result": "pass" }
+    ],
+    "bwipToSythos": [
+      { "mode": "text", "payload": "BWIP EXTERNAL TEXT", "result": "pass" },
+      { "mode": "numeric", "payload": "12345678901234567890", "result": "pass" }
+    ],
+    "zintToSythos": [
+      { "mode": "text", "payload": "ZINT TO SYTHOS PDF417", "result": "pass" },
+      { "mode": "byte", "payloadEncoding": "hex", "payload": "00017f80feff1020304050", "codewords": 901, "result": "pass" },
+      { "mode": "byte", "payloadEncoding": "hex", "payload": "00017f80feff102030405060", "codewords": 924, "result": "pass" }
+    ]
+  },
+  "qualification": {
+    "blackBoxOnly": true,
+    "runtimeDependenciesAdded": false,
+    "sourceOrTablesShipped": false,
+    "externalReverseInterop": "pass-for-tested-text-numeric-utf8-and-binary-vectors",
+    "zintVectors": "pass",
+    "binaryByteForByteInterop": "pass-for-recorded-zint-901-and-924-vectors"
+  }
+}
