@@ -1,0 +1,95 @@
+Han Xin Code — format provenance and usability
+================================================
+
+This file records the engineering basis and redistribution boundary for the
+Han Xin Code implementation shipped by Sythos Barcode Universal.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Patent, copyright and
+trademark conclusions require independent review for the jurisdiction and use
+case involved.
+
+
+FORMAT AND SPECIFICATION
+------------------------
+
+Han Xin Code is a two-dimensional barcode symbology documented by public
+technical descriptions and the ISO/IEC 20830 family of specifications. The
+standard text is copyrighted by its publisher and is not reproduced or
+redistributed here. This milestone implements only the compact, alignment-free
+versions 1–3 and the explicitly documented numeric, text and byte profile.
+
+The implementation does not assert that this bounded profile is a complete
+implementation of every Han Xin version or character-set mode.
+
+
+PATENT AND TRADEMARK STATUS
+---------------------------
+
+The current ownership, registration and patent status associated with Han Xin
+Code require jurisdiction-specific legal review. No patent clearance,
+public-domain conclusion or endorsement is asserted here. “Han Xin Code” is
+used descriptively to identify the format and does not imply certification by,
+or affiliation with, a standards body or mark owner. [LEGAL REVIEW]
+
+
+IMPLEMENTATION BASIS
+--------------------
+
+The original implementation is Sythos TypeScript with generated JavaScript
+runtime modules. It uses format facts such as the compact finder geometry,
+function information, masks, codeword ordering and Reed–Solomon rules. No
+third-party source code, lookup table or binary asset is copied into or shipped
+by this project, and the SDK has no runtime dependency for Han Xin.
+
+Public technical descriptions and independent implementations may be used only
+for engineering review or black-box interoperability checks. They are not
+runtime dependencies, and their source code and licenses are not part of this
+distribution.
+
+
+MIT LICENCE FOR ORIGINAL WORK
+-----------------------------
+
+The original Sythos implementation in `src/ts/hanxin/` and its generated
+runtime in `src/js/hanxin/` are distributed under the MIT License:
+
+Copyright (c) 2026 Sythos (https://www.sythos.net)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+CONCLUSION
+----------
+
+The MIT License covers the original code in this repository. It does not grant
+rights in any external standard, mark or patent. Users remain responsible for
+their own compliance review, especially when a deployment relies on a Han Xin
+variant outside the supported profile or is commercially sensitive.
+
+Any concern about the available material, a conflicting rights notice or a
+possible format limitation should be reported through a GitHub issue so it can
+be reviewed and recorded.
+
+References relied upon:
+
+- ISO/IEC 20830 family, Han Xin Code bar code symbology specification
+- Public Han Xin Code technical descriptions consulted for implementation
+  review
+- Independent black-box interoperability checks, when used, are recorded in
+  the project provenance notice and do not contribute source code

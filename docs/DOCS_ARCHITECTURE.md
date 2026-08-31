@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 48 entries and 47 generally readable
+The current registry snapshot reports 49 entries and 48 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -103,6 +103,8 @@ turning the count into marketing copy:
 - Code 16K is a compact stacked Code 128 A/B/C path with dual modulo-107 checks;
 - DotCode is an alternating-dot path whose strict detector relies on bounded
   geometry, legal patterns and GF(113) checks;
+- Han Xin is a compact alignment-free path covering versions 1–3, with strict
+  structural validation and GF(256) checks;
 - the postal family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post
   and IMb) uses strict operator-specific height-coded alphabets and checks;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
@@ -148,6 +150,7 @@ docs/
 │   ├── codablockf.md
 │   ├── code16k.md
 │   ├── dotcode.md
+│   ├── hanxin.md
 │   ├── frameqr-profile.md
 │   └── excluded-formats.md
 ├── guides/
@@ -299,6 +302,8 @@ crawler has indexed it.
 M11 is complete: the Code 16K format page, navigation entry and registry counts
 are in sync with the shipped runtime and its declaration surface.
 M12 is complete: the DotCode format page, navigation entry and registry counts
+are in sync with the shipped runtime and its declaration surface.
+M13 is complete: the Han Xin format page, navigation entry and registry counts
 are in sync with the shipped runtime and its declaration surface.
 
 ## M0 exit criteria

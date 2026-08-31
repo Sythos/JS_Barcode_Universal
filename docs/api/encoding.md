@@ -21,8 +21,8 @@ currently accepted by the root facade:
 | Option | Values | Used by |
 | --- | --- | --- |
 | `format` | A registry id such as `qr`, `datamatrix`, `code128` or `pdf417` | Selects the symbology. Default: `qr`. |
-| `ecc` | `L`, `M`, `Q`, `H` | QR Code error correction. |
-| `version` | QR version `1`–`40` | QR Code, when a fixed version is needed. |
+| `ecc` | QR `L`/`M`/`Q`/`H` or Han Xin `L1`/`L2`/`L3`/`L4` (or `1`–`4`) | QR Code or Han Xin error correction. |
+| `version` | QR version `1`–`40` or Han Xin version `1`–`3` | The selected 2D format, when a fixed version is needed. |
 | `checkDigit` | `boolean` | Optional check digits for supported linear writers. |
 | `fullAscii` | `boolean` | Code 39 extended character mapping. |
 | `gs1` | `boolean` | Emits a leading FNC1 for GS1-128-compatible Code 128 output. |
@@ -34,7 +34,8 @@ currently accepted by the root facade:
 | `rows` | `3`–`90` for PDF417, `2`–`16` for Code 16K | Stacked symbol row count. |
 | `rowHeight` | `number` | PDF417 or Code 16K row height in modules. |
 | `separatorHeight` | positive integer | Code 16K separator height in modules. |
-| `mode` | `A`, `B`, `C` or Code 16K mode number | Code 16K Code 128 data set and optional GS1 mode. |
+| `mode` | `A`, `B`, `C`, Code 16K mode number or Han Xin `auto`/`numeric`/`text`/`byte` | Code 16K data set or Han Xin payload mode. |
+| `mask` | `0`–`3` | Han Xin data mask. |
 | `compaction` | `auto`, `text`, `byte`, `numeric` | PDF417 compaction preference. |
 | `eci` | `number` | MicroPDF417 byte-compaction ECI assignment; the public facade documents `3` and `26`. |
 | `aspectRatio` | `number` | Preferred MicroPDF417 aspect ratio. |
@@ -53,7 +54,7 @@ final authority if a future release changes a capability flag:
 | --- | --- |
 | 1D | `ean13`, `ean8`, `upca`, `isbn`, `upce`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `codabar`, `code11`, `msi`, `pharmacode` |
 | Supplements | `ean2`, `ean5` |
-| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode`, `codablockf`, `code16k`, `dotcode` |
+| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode`, `codablockf`, `code16k`, `dotcode`, `hanxin` |
 | GS1 | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` |
 
 The name alone does not mean “readable in every image”. Check
@@ -126,6 +127,7 @@ Useful direct families include:
 | `@sythos/js_barcode_universal/frameqr` | `encodeFrameQR` |
 | `@sythos/js_barcode_universal/codablockf` | `encodeCodablockF` |
 | `@sythos/js_barcode_universal/code16k` | `encodeCode16K` |
+| `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes` |
 
 These direct functions expose format-specific signatures. Their declarations
 are the best reference for special payload types and options; the subpath map

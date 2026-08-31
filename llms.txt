@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 48 writable entries and 47 readable entries;
+At the current checkout it reports 49 writable entries and 48 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
@@ -95,6 +95,7 @@ remain parent-bound supplements.
 - Codablock-F — write and read for stacked Code 128 rows with row and overall checks; clean integer-scale detection
 - Code 16K — write and read for compact stacked Code 128 A/B/C rows, optional GS1 modes, dual modulo-107 checks and clean integer-scale detection
 - DotCode — write and read for the bounded alternating-dot profile, four masks, GF(113) correction and clean integer-scale detection
+- Han Xin Code — write and read for compact alignment-free versions 1–3, numeric/text/byte modes, four masks, GF(256) correction and clean integer-scale detection
 
 The Sythos Canvas QR profile is not DENSO FrameQR® compatible and does not
 claim native DENSO interoperability.
@@ -110,6 +111,8 @@ resolve to the canonical ids `postnet`, `planet`, `rm4scc`, `auspost`,
 `japanpost` and `imb`. Australia Post accepts `customerEncoding: 'character'`
 or `'numeric'` (and the compatibility alias `custinfoenc`). Postal camera
 reads require a measurable quiet zone and a complete validated symbol.
+Han Xin root dispatch accepts both `hanxin` and `han-xin`; its focused
+subpath is `@sythos/js_barcode_universal/hanxin`.
 
 ## Main API
 
@@ -129,6 +132,7 @@ subpaths are available for smaller imports, including:
 - `@sythos/js_barcode_universal/rmqr`
 - `@sythos/js_barcode_universal/frameqr`
 - `@sythos/js_barcode_universal/databar`
+- `@sythos/js_barcode_universal/hanxin`
 - `@sythos/js_barcode_universal/render`
 
 Typical usage:
@@ -184,6 +188,7 @@ the files under `licenses/`, including:
 - `licenses/pzn.license`
 - `licenses/postal.license`
 - `licenses/dotcode.license`
+- `licenses/hanxin.license`
 
 Those files are engineering inventories, not legal advice. Patent, copyright,
 trademark, standards and jurisdictional questions should receive independent

@@ -23760,6 +23760,1015 @@ const __reexport3 = __require("js/dotcode/tables.js"); __exports.DOTCODE_CODEWOR
 
 };
 
+__modules["js/hanxin/tables.js"] = function (__require, __exports) {
+/**
+ * Han Xin Code structural tables and geometry.
+ *
+ * This module deliberately starts with the compact, alignment-free part of
+ * ISO/IEC 20830: versions 1 through 3.  Keeping the function pattern mask in
+ * one place makes the encoder, decoder and detector agree about every payload
+ * cell and prevents accidental data placement over structural information.
+ *
+ * @module hanxin/tables
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { GF16, GaloisField } = __require("js/core/galois-field.js");
+const { rsDecode, rsEncode } = __require("js/core/reed-solomon.js");
+const { FormatError } = __require("js/core/errors.js");
+const HANXIN_MIN_VERSION = 1;
+const HANXIN_MAX_VERSION = 3;
+const HANXIN_VERSIONS = [1, 2, 3];
+const HANXIN_ECC_LEVELS = ['L1', 'L2', 'L3', 'L4'];
+/** Han Xin's data field is GF(2^8) with x^8+x^6+x^5+x+1. */
+const GF256_HANXIN = new GaloisField({
+    size: 256,
+    primitive: 0x163,
+    name: 'GF(256)/HanXin',
+});
+/** Total codewords, including error correction, for versions 1 through 3. */
+const HANXIN_TOTAL_CODEWORDS = [25, 37, 50];
+/** Data modules, including the five zero remainder modules in each compact version. */
+const HANXIN_DATA_MODULES = [205, 301, 405];
+/** Unused tail modules after the complete codeword stream. */
+const HANXIN_REMAINDER_BITS = [5, 5, 5];
+/**
+ * One Reed--Solomon batch is `(blockCount, dataCodewords, eccCodewords)`.
+ * The compact versions use one block at every error-correction level.
+ */
+const EC_BATCHES = [
+    [[1, 21, 4], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 17, 8], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 13, 12], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 9, 16], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 31, 6], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 25, 12], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 19, 18], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 15, 22], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 42, 8], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 34, 16], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 26, 24], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    [[1, 20, 30], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+];
+/** @returns {number} Side length in modules. */
+function hanXinSize(version) {
+    if (!Number.isInteger(version) || version < HANXIN_MIN_VERSION || version > HANXIN_MAX_VERSION) {
+        throw new FormatError(`Han Xin: supported versions are 1-3, got ${version}`);
+    }
+    return 21 + version * 2;
+}
+/** @returns {HanXinVersion} */
+function normalizeHanXinVersion(value) {
+    const version = typeof value === 'string' ? Number(value.replace(/^V/i, '')) : Number(value);
+    if (!Number.isInteger(version) || version < HANXIN_MIN_VERSION || version > HANXIN_MAX_VERSION) {
+        throw new FormatError(`Han Xin: supported versions are 1-3, got ${String(value)}`);
+    }
+    return version;
+}
+/** @returns {HanXinEccLevel} */
+function normalizeHanXinEcc(value) {
+    if (value == null)
+        return 'L1';
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 4) {
+        return HANXIN_ECC_LEVELS[value - 1];
+    }
+    const text = String(value).toUpperCase();
+    if (HANXIN_ECC_LEVELS.includes(text))
+        return text;
+    throw new FormatError(`Han Xin: error correction must be L1, L2, L3 or L4, got ${String(value)}`);
+}
+/** @returns {number} Index of an error-correction level. */
+function hanXinEccIndex(level) {
+    return HANXIN_ECC_LEVELS.indexOf(level);
+}
+/** @returns {{blockCount:number,dataCodewords:number,eccCodewords:number}} */
+function hanXinEcLayout(version, level) {
+    const entry = EC_BATCHES[(version - 1) * 4 + hanXinEccIndex(level)][0];
+    return { blockCount: entry[0], dataCodewords: entry[1], eccCodewords: entry[2] };
+}
+/** @returns {number} Data codewords for a version and EC level. */
+function hanXinDataCodewords(version, level) {
+    return hanXinEcLayout(version, level).dataCodewords;
+}
+/** Four orientation-specific 7x7 finder patterns, packed MSB first. */
+const HANXIN_FINDER_TOP_LEFT = [0x7f, 0x40, 0x5f, 0x50, 0x57, 0x57, 0x57];
+const HANXIN_FINDER_SIDE = [0x7f, 0x01, 0x7d, 0x05, 0x75, 0x75, 0x75];
+const HANXIN_FINDER_BOTTOM_RIGHT = [0x75, 0x75, 0x75, 0x05, 0x7d, 0x01, 0x7f];
+function index(size, x, y) {
+    return y * size + x;
+}
+function reserve(mask, matrix, x, y, dark) {
+    if (x < 0 || y < 0 || x >= matrix.width || y >= matrix.height)
+        return;
+    mask[index(matrix.width, x, y)] = 1;
+    matrix.setValue(x, y, dark);
+}
+function placeFinder(mask, matrix, offsetX, offsetY, rows) {
+    for (let y = 0; y < 7; y++)
+        for (let x = 0; x < 7; x++) {
+            reserve(mask, matrix, offsetX + x, offsetY + y, (rows[y] & (0x40 >> x)) !== 0);
+        }
+}
+/** Return the function modules and their fixed darkness for a version. */
+function createHanXinFunctionGrid(version) {
+    const size = hanXinSize(version);
+    const matrix = new BitMatrix(size, size);
+    const reserved = new Uint8Array(size * size);
+    placeFinder(reserved, matrix, 0, 0, HANXIN_FINDER_TOP_LEFT);
+    placeFinder(reserved, matrix, size - 7, 0, HANXIN_FINDER_SIDE);
+    placeFinder(reserved, matrix, 0, size - 7, HANXIN_FINDER_SIDE);
+    placeFinder(reserved, matrix, size - 7, size - 7, HANXIN_FINDER_BOTTOM_RIGHT);
+    // The one-module light separators belong to the function region.
+    for (let i = 0; i < 8; i++) {
+        reserve(reserved, matrix, i, 7, false);
+        reserve(reserved, matrix, 7, i, false);
+        reserve(reserved, matrix, size - i - 1, 7, false);
+        reserve(reserved, matrix, 7, size - i - 1, false);
+        reserve(reserved, matrix, size - 8, i, false);
+        reserve(reserved, matrix, i, size - 8, false);
+        reserve(reserved, matrix, size - 8, size - i - 1, false);
+        reserve(reserved, matrix, size - i - 1, size - 8, false);
+    }
+    // Two redundant copies of the 34-bit structural information are carried
+    // around the finder patterns. The four 9-module strips below reserve all
+    // positions; shared corners make the wire order 9+8+9+8 modules per copy.
+    for (let i = 0; i < 9; i++) {
+        reserve(reserved, matrix, i, 8, false);
+        reserve(reserved, matrix, 8, i, false);
+        reserve(reserved, matrix, size - i - 1, 8, false);
+        reserve(reserved, matrix, 8, size - i - 1, false);
+        reserve(reserved, matrix, size - 9, i, false);
+        reserve(reserved, matrix, i, size - 9, false);
+        reserve(reserved, matrix, size - 9, size - i - 1, false);
+        reserve(reserved, matrix, size - i - 1, size - 9, false);
+    }
+    return { matrix, reserved };
+}
+/** Return payload positions in the normative row-major order. */
+function hanXinDataCoordinates(version) {
+    const { reserved } = createHanXinFunctionGrid(version);
+    const size = hanXinSize(version);
+    const result = [];
+    for (let y = 0; y < size; y++)
+        for (let x = 0; x < size; x++) {
+            if (reserved[index(size, x, y)] === 0)
+                result.push([x, y]);
+        }
+    return result;
+}
+/** Whether a data module is inverted by one of Han Xin's four masks. */
+function hanXinMaskFlip(mask, x, y) {
+    if (!Number.isInteger(mask) || mask < 0 || mask > 3)
+        return false;
+    const i = y + 1;
+    const j = x + 1;
+    // The first public mask is the constant-zero (no inversion) mask.  The
+    // remaining three masks are the parity expressions from the format
+    // definition, represented here with zero-based API values 1-3.
+    if (mask === 0)
+        return false;
+    if (mask === 1)
+        return ((i + j) & 1) === 0;
+    if (mask === 2)
+        return ((((i + j) % 3) + (j % 3)) & 1) === 0;
+    if (j === 0 || i === 0)
+        return false;
+    return (((i % j) + (j % i) + (i % 3) + (j % 3)) & 1) === 0;
+}
+/** Build the 34 structural bits protected by the GF(16) short RS block. */
+function hanXinFunctionInfoBits(version, level, mask) {
+    if (!Number.isInteger(mask) || mask < 0 || mask > 3)
+        throw new FormatError('Han Xin: mask must be an integer from 0 to 3');
+    const value = ((version + 20) << 4) | (hanXinEccIndex(level) << 2) | mask;
+    const data = [(value >>> 8) & 0x0f, (value >>> 4) & 0x0f, value & 0x0f];
+    const ecc = rsEncode(data, 4, GF16, 1);
+    const bits = [];
+    for (const symbol of data.concat(ecc))
+        for (let bit = 3; bit >= 0; bit--)
+            bits.push(((symbol >>> bit) & 1) !== 0);
+    // The six non-codeword bits are part of the fixed Han Xin function
+    // information pattern, not arbitrary padding.
+    for (const bit of [false, true, false, true, false, true])
+        bits.push(bit);
+    if (bits.length !== 34)
+        throw new FormatError('Han Xin: invalid function information length');
+    return bits;
+}
+/** Place both redundant structural-information copies in the fixed strips. */
+function placeHanXinFunctionInfo(matrix, version, level, mask) {
+    const size = hanXinSize(version);
+    const bits = hanXinFunctionInfoBits(version, level, mask);
+    // The four strips contain 9 + 8 + 9 + 8 modules.  The corner cells where
+    // two strips meet are shared; they must not consume the preceding bit a
+    // second time.
+    for (let i = 0; i < 9; i++) {
+        matrix.setValue(i, 8, bits[i]);
+        matrix.setValue(size - 1 - i, size - 9, bits[i]);
+    }
+    for (let i = 0; i < 8; i++) {
+        matrix.setValue(8, 7 - i, bits[9 + i]);
+        matrix.setValue(size - 9, size - 8 + i, bits[9 + i]);
+    }
+    for (let i = 0; i < 9; i++) {
+        matrix.setValue(size - 9, i, bits[i + 17]);
+        matrix.setValue(8, size - 1 - i, bits[i + 17]);
+    }
+    for (let i = 0; i < 8; i++) {
+        matrix.setValue(size - 8 + i, 8, bits[26 + i]);
+        matrix.setValue(7 - i, size - 9, bits[26 + i]);
+    }
+}
+function readInfoCopy(matrix, version) {
+    const size = hanXinSize(version);
+    const bits = [];
+    for (let i = 0; i < 9; i++)
+        bits.push(matrix.get(i, 8));
+    for (let i = 0; i < 8; i++)
+        bits.push(matrix.get(8, 7 - i));
+    for (let i = 0; i < 9; i++)
+        bits.push(matrix.get(size - 9, i));
+    for (let i = 0; i < 8; i++)
+        bits.push(matrix.get(size - 8 + i, 8));
+    return bits;
+}
+/** Decode a structural information copy, correcting up to two nibble errors. */
+function decodeHanXinFunctionInfo(matrix, version) {
+    const copies = [readInfoCopy(matrix, version)];
+    const size = hanXinSize(version);
+    const second = new BitMatrix(size, size);
+    // The second copy is read directly in its wire order.  Keeping this helper
+    // local avoids exposing an orientation-specific representation publicly.
+    for (let i = 0; i < 9; i++) {
+        second.setValue(i, 8, matrix.get(size - 1 - i, size - 9));
+    }
+    for (let i = 0; i < 8; i++) {
+        second.setValue(8, 7 - i, matrix.get(size - 9, size - 8 + i));
+    }
+    for (let i = 0; i < 9; i++) {
+        second.setValue(size - 9, i, matrix.get(8, size - 1 - i));
+    }
+    for (let i = 0; i < 8; i++) {
+        second.setValue(size - 8 + i, 8, matrix.get(7 - i, size - 9));
+    }
+    copies.push(readInfoCopy(second, version));
+    let best = null;
+    for (const bits of copies) {
+        const fixedTail = [false, true, false, true, false, true];
+        if (bits.length !== 34 || fixedTail.some((bit, index) => bits[28 + index] !== bit))
+            continue;
+        const symbols = [];
+        for (let i = 0; i < 7; i++) {
+            let symbol = 0;
+            for (let bit = 0; bit < 4; bit++)
+                symbol = (symbol << 1) | (bits[i * 4 + bit] ? 1 : 0);
+            symbols.push(symbol);
+        }
+        try {
+            const corrections = rsDecode(symbols, 4, GF16, 1);
+            if (!best || corrections < best.corrections)
+                best = { value: symbols, corrections };
+        }
+        catch {
+            // Try the redundant copy before rejecting the symbol.
+        }
+    }
+    if (!best)
+        throw new FormatError('Han Xin: structural information is unreadable');
+    const value = (best.value[0] << 8) | (best.value[1] << 4) | best.value[2];
+    const encodedVersion = (value >>> 4) - 20;
+    const levelIndex = (value >>> 2) & 3;
+    const mask = value & 3;
+    if (encodedVersion !== version)
+        throw new FormatError('Han Xin: structural version disagrees with matrix dimensions');
+    return {
+        version,
+        level: HANXIN_ECC_LEVELS[levelIndex],
+        mask,
+        corrections: best.corrections,
+    };
+}
+/** Verify all fixed modules and count the payload cells. */
+function validateHanXinTables() {
+    const errors = [];
+    for (const version of HANXIN_VERSIONS) {
+        const size = hanXinSize(version);
+        const cells = hanXinDataCoordinates(version).length;
+        if (cells !== HANXIN_DATA_MODULES[version - 1]) {
+            errors.push(`Version ${version}: ${cells} data modules, expected ${HANXIN_DATA_MODULES[version - 1]}`);
+        }
+        for (const level of HANXIN_ECC_LEVELS) {
+            const layout = hanXinEcLayout(version, level);
+            if (layout.dataCodewords + layout.eccCodewords !== HANXIN_TOTAL_CODEWORDS[version - 1]) {
+                errors.push(`Version ${version} ${level}: invalid RS block total`);
+            }
+        }
+        if (size !== 21 + version * 2)
+            errors.push(`Version ${version}: invalid dimension`);
+    }
+    return errors;
+}
+
+__exports.HANXIN_MIN_VERSION = HANXIN_MIN_VERSION;
+__exports.HANXIN_MAX_VERSION = HANXIN_MAX_VERSION;
+__exports.HANXIN_VERSIONS = HANXIN_VERSIONS;
+__exports.HANXIN_ECC_LEVELS = HANXIN_ECC_LEVELS;
+__exports.GF256_HANXIN = GF256_HANXIN;
+__exports.HANXIN_TOTAL_CODEWORDS = HANXIN_TOTAL_CODEWORDS;
+__exports.HANXIN_DATA_MODULES = HANXIN_DATA_MODULES;
+__exports.HANXIN_REMAINDER_BITS = HANXIN_REMAINDER_BITS;
+__exports.hanXinSize = hanXinSize;
+__exports.normalizeHanXinVersion = normalizeHanXinVersion;
+__exports.normalizeHanXinEcc = normalizeHanXinEcc;
+__exports.hanXinEccIndex = hanXinEccIndex;
+__exports.hanXinEcLayout = hanXinEcLayout;
+__exports.hanXinDataCodewords = hanXinDataCodewords;
+__exports.HANXIN_FINDER_TOP_LEFT = HANXIN_FINDER_TOP_LEFT;
+__exports.HANXIN_FINDER_SIDE = HANXIN_FINDER_SIDE;
+__exports.HANXIN_FINDER_BOTTOM_RIGHT = HANXIN_FINDER_BOTTOM_RIGHT;
+__exports.createHanXinFunctionGrid = createHanXinFunctionGrid;
+__exports.hanXinDataCoordinates = hanXinDataCoordinates;
+__exports.hanXinMaskFlip = hanXinMaskFlip;
+__exports.hanXinFunctionInfoBits = hanXinFunctionInfoBits;
+__exports.placeHanXinFunctionInfo = placeHanXinFunctionInfo;
+__exports.decodeHanXinFunctionInfo = decodeHanXinFunctionInfo;
+__exports.validateHanXinTables = validateHanXinTables;
+};
+
+__modules["js/hanxin/encoder.js"] = function (__require, __exports) {
+const { BitWriter } = __require("js/core/bit-buffer.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { GF256_HANXIN, HANXIN_VERSIONS, createHanXinFunctionGrid, hanXinDataCoordinates, hanXinDataCodewords, hanXinEcLayout, hanXinMaskFlip, hanXinSize, normalizeHanXinEcc, normalizeHanXinVersion, placeHanXinFunctionInfo } = __require("js/hanxin/tables.js");
+function inputBytes(value) {
+    if (value instanceof Uint8Array) {
+        if (value.length === 0)
+            throw new EncodeError('Han Xin: payload must not be empty');
+        return { bytes: new Uint8Array(value), text: null };
+    }
+    if (Array.isArray(value)) {
+        if (value.length === 0 || value.length > 8191 || value.some((item) => !Number.isInteger(item) || item < 0 || item > 255)) {
+            throw new EncodeError('Han Xin: byte arrays must contain at most 8191 values from 0 to 255');
+        }
+        return { bytes: Uint8Array.from(value), text: null };
+    }
+    if (typeof value !== 'string')
+        throw new EncodeError('Han Xin: value must be text or bytes');
+    if (!value.length)
+        throw new EncodeError('Han Xin: payload must not be empty');
+    return { bytes: new TextEncoder().encode(value), text: value };
+}
+function text1Value(codePoint) {
+    if (codePoint >= 0x30 && codePoint <= 0x39)
+        return codePoint - 0x30;
+    if (codePoint >= 0x41 && codePoint <= 0x5a)
+        return codePoint - 0x41 + 10;
+    if (codePoint >= 0x61 && codePoint <= 0x7a)
+        return codePoint - 0x61 + 36;
+    return null;
+}
+function text2Value(codePoint) {
+    if (codePoint >= 0 && codePoint <= 0x1b)
+        return codePoint;
+    if (codePoint >= 0x20 && codePoint <= 0x2f)
+        return codePoint - 0x20 + 28;
+    if (codePoint >= 0x3a && codePoint <= 0x40)
+        return codePoint - 0x3a + 44;
+    if (codePoint >= 0x5b && codePoint <= 0x60)
+        return codePoint - 0x5b + 51;
+    if (codePoint >= 0x7b && codePoint <= 0x7f)
+        return codePoint - 0x7b + 57;
+    return null;
+}
+function textValue(codePoint, mode) {
+    return mode === 1 ? text1Value(codePoint) : text2Value(codePoint);
+}
+function selectMode(text, requested) {
+    const mode = requested == null ? 'auto' : String(requested).toLowerCase();
+    if (!['auto', 'numeric', 'text', 'byte'].includes(mode)) {
+        throw new EncodeError(`Han Xin: unsupported payload mode ${String(requested)}`);
+    }
+    if (text == null) {
+        if (mode === 'numeric' || mode === 'text')
+            throw new EncodeError('Han Xin: numeric and text modes require a string input');
+        return 'byte';
+    }
+    const points = Array.from(text);
+    const numeric = /^\d+$/.test(text);
+    const textCompatible = points.every((point) => {
+        const cp = point.codePointAt(0);
+        return cp <= 0x7f && (text1Value(cp) !== null || text2Value(cp) !== null);
+    });
+    if (mode === 'numeric' && !numeric)
+        throw new EncodeError('Han Xin: numeric mode accepts digits only');
+    if (mode === 'text' && !textCompatible)
+        throw new EncodeError('Han Xin: text mode accepts supported ASCII characters only');
+    if (mode === 'auto')
+        return numeric ? 'numeric' : textCompatible ? 'text' : 'byte';
+    return mode;
+}
+function encodeNumeric(text, writer) {
+    let finalCount = 0;
+    for (let offset = 0; offset < text.length; offset += 3) {
+        finalCount = Math.min(3, text.length - offset);
+        writer.put(Number(text.slice(offset, offset + finalCount)), 10);
+    }
+    writer.put(1020 + finalCount, 10);
+}
+function encodeText(text, writer) {
+    let submode = 1;
+    for (const point of Array.from(text)) {
+        const cp = point.codePointAt(0);
+        let value = textValue(cp, submode);
+        if (value === null) {
+            submode = submode === 1 ? 2 : 1;
+            writer.put(62, 6);
+            value = textValue(cp, submode);
+        }
+        if (value === null)
+            throw new EncodeError(`Han Xin: character U+${cp.toString(16).padStart(4, '0')} is not encodable in text mode`);
+        writer.put(value, 6);
+    }
+    writer.put(63, 6);
+}
+function encodeByte(bytes, writer) {
+    if (bytes.length > 8191)
+        throw new EncodeError('Han Xin: byte mode supports at most 8191 bytes');
+    writer.put(3, 4);
+    writer.put(bytes.length, 13);
+    writer.putBytes(bytes);
+}
+function payloadBits(value, mode) {
+    const source = inputBytes(value);
+    const writer = new BitWriter();
+    if (mode === 'numeric') {
+        writer.put(1, 4);
+        encodeNumeric(source.text, writer);
+    }
+    else if (mode === 'text') {
+        writer.put(2, 4);
+        encodeText(source.text, writer);
+    }
+    else {
+        encodeByte(source.bytes, writer);
+    }
+    return writer;
+}
+function picketFence(codewords) {
+    const output = [];
+    for (let column = 0; column < 13; column++) {
+        for (let i = column; i < codewords.length; i += 13)
+            output.push(codewords[i]);
+    }
+    return output;
+}
+function placePayload(matrix, version, codewords, mask) {
+    const coordinates = hanXinDataCoordinates(version);
+    const bits = picketFence(codewords);
+    const totalBits = bits.length * 8;
+    for (let i = 0; i < coordinates.length; i++) {
+        const [x, y] = coordinates[i];
+        // Compact versions have five remainder modules after the final complete
+        // codeword.  They carry zero before masking and are checked by the reader.
+        let dark = i < totalBits && ((bits[i >>> 3] >>> (7 - (i & 7))) & 1) !== 0;
+        if (hanXinMaskFlip(mask, x, y))
+            dark = !dark;
+        matrix.setValue(x, y, dark);
+    }
+}
+function maskPenalty(matrix, version, level, mask) {
+    const candidate = matrix.clone();
+    for (const [x, y] of hanXinDataCoordinates(version)) {
+        if (hanXinMaskFlip(mask, x, y))
+            candidate.flip(x, y);
+    }
+    placeHanXinFunctionInfo(candidate, version, level, mask);
+    let penalty = 0;
+    const runPenalty = (values) => {
+        let current = values[0];
+        let run = 1;
+        for (let i = 1; i <= values.length; i++) {
+            if (i < values.length && values[i] === current)
+                run++;
+            else {
+                if (run >= 3)
+                    penalty += run * 4;
+                current = values[i];
+                run = 1;
+            }
+        }
+    };
+    for (let y = 0; y < candidate.height; y++) {
+        const row = [];
+        for (let x = 0; x < candidate.width; x++)
+            row.push(candidate.get(x, y));
+        runPenalty(row);
+    }
+    for (let x = 0; x < candidate.width; x++) {
+        const column = [];
+        for (let y = 0; y < candidate.height; y++)
+            column.push(candidate.get(x, y));
+        runPenalty(column);
+    }
+    return penalty;
+}
+function chooseMask(base, version, level, requested) {
+    if (requested !== undefined) {
+        if (!Number.isInteger(requested) || requested < 0 || requested > 3)
+            throw new EncodeError('Han Xin: mask must be an integer from 0 to 3');
+        return requested;
+    }
+    let best = 0;
+    let score = Number.POSITIVE_INFINITY;
+    for (let mask = 0; mask < 4; mask++) {
+        const candidate = base.clone();
+        // The score is intentionally simple and stable.  Every candidate is still
+        // validated by the strict reader, so no mask choice can affect integrity.
+        const value = maskPenalty(candidate, version, level, mask);
+        if (value < score) {
+            score = value;
+            best = mask;
+        }
+    }
+    return best;
+}
+function encodeVersion(writer, version, level, requestedMask) {
+    const dataCodewords = hanXinDataCodewords(version, level);
+    const layout = hanXinEcLayout(version, level);
+    const capacity = dataCodewords * 8;
+    if (writer.length > capacity)
+        throw new EncodeError(`Han Xin: payload needs ${writer.length} bits but ${capacity} are available`);
+    const data = new Uint8Array(dataCodewords);
+    const encoded = writer.toBytes();
+    data.set(encoded.subarray(0, data.length));
+    const parity = rsEncode(Array.from(data), layout.eccCodewords, GF256_HANXIN, 1);
+    const full = Array.from(data).concat(parity);
+    const { matrix } = createHanXinFunctionGrid(version);
+    placePayload(matrix, version, full, 0);
+    const mask = chooseMask(matrix, version, level, requestedMask);
+    placePayload(matrix, version, full, mask);
+    placeHanXinFunctionInfo(matrix, version, level, mask);
+    return matrix;
+}
+/** Encode a string or byte array as a Han Xin Code module matrix. */
+function encodeHanXin(value, options = {}) {
+    const source = inputBytes(value);
+    const mode = selectMode(source.text, options.mode);
+    const writer = payloadBits(value, mode);
+    const level = normalizeHanXinEcc(options.ecc);
+    const wantedVersion = options.version == null ? null : normalizeHanXinVersion(options.version);
+    const requestedMask = options.mask == null ? undefined : Number(options.mask);
+    if (requestedMask !== undefined &&
+        (!Number.isInteger(requestedMask) || requestedMask < 0 || requestedMask > 3)) {
+        throw new EncodeError('Han Xin: mask must be an integer from 0 to 3');
+    }
+    for (const version of HANXIN_VERSIONS) {
+        if (wantedVersion !== null && version !== wantedVersion)
+            continue;
+        try {
+            return encodeVersion(writer, version, level, requestedMask);
+        }
+        catch (error) {
+            if (!(error instanceof EncodeError))
+                throw error;
+        }
+    }
+    const target = wantedVersion == null ? 'versions 1-3' : `version ${wantedVersion}`;
+    throw new EncodeError(`Han Xin: payload does not fit ${target} at error correction ${level}`);
+}
+/** Encode explicitly in byte mode; useful when the input contains arbitrary data. */
+function encodeHanXinBytes(bytes, options = {}) {
+    return encodeHanXin(bytes, { ...options, mode: 'byte' });
+}
+/** Expose the implemented geometric side length for callers building rasters. */
+function hanXinDimension(version) {
+    return hanXinSize(Number(version));
+}
+
+__exports.encodeHanXin = encodeHanXin;
+__exports.encodeHanXinBytes = encodeHanXinBytes;
+__exports.hanXinDimension = hanXinDimension;
+};
+
+__modules["js/hanxin/decoder.js"] = function (__require, __exports) {
+/**
+ * Strict Han Xin Code decoder for the alignment-free versions 1-3.
+ *
+ * The reader treats the matrix as untrusted input.  It first validates the
+ * fixed corner patterns and both structural-information copies, then checks
+ * Reed--Solomon parity and finally parses a complete payload.  A partially
+ * readable stream is never returned as a successful result.
+ *
+ * @module hanxin/decoder
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { BitReader } = __require("js/core/bit-buffer.js");
+const { FormatError } = __require("js/core/errors.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { GF256_HANXIN } = __require("js/hanxin/tables.js");
+const { HANXIN_ECC_LEVELS, HANXIN_DATA_MODULES, HANXIN_TOTAL_CODEWORDS, createHanXinFunctionGrid, decodeHanXinFunctionInfo, hanXinDataCoordinates, hanXinEcLayout, hanXinMaskFlip, hanXinSize } = __require("js/hanxin/tables.js");
+function rotateMatrix(source, rotation) {
+    if (rotation === 0)
+        return source;
+    const output = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++)
+        for (let x = 0; x < source.width; x++) {
+            if (!source.get(x, y))
+                continue;
+            if (rotation === 90)
+                output.set(source.height - 1 - y, x);
+            else if (rotation === 180)
+                output.set(source.width - 1 - x, source.height - 1 - y);
+            else
+                output.set(y, source.width - 1 - x);
+        }
+    return output;
+}
+function invertMatrix(source) {
+    const output = source.clone();
+    for (let y = 0; y < output.height; y++)
+        for (let x = 0; x < output.width; x++)
+            output.flip(x, y);
+    return output;
+}
+function functionInfoCells(version) {
+    const size = hanXinSize(version);
+    const cells = new Set();
+    for (let i = 0; i < 9; i++) {
+        cells.add(`${i},8`);
+        cells.add(`${size - 1 - i},${size - 9}`);
+        cells.add(`8,${8 - i}`);
+        cells.add(`${size - 9},${size - 9 + i}`);
+        cells.add(`${size - 9},${i}`);
+        cells.add(`8,${size - 1 - i}`);
+        cells.add(`${size - 9 + i},8`);
+        cells.add(`${8 - i},${size - 9}`);
+    }
+    return cells;
+}
+/** Verify finder patterns, separators and all non-information function cells. */
+function hanXinStructureMatches(matrix, version) {
+    const size = hanXinSize(version);
+    if (matrix.width !== size || matrix.height !== size)
+        return false;
+    const template = createHanXinFunctionGrid(version);
+    const info = functionInfoCells(version);
+    for (let y = 0; y < size; y++)
+        for (let x = 0; x < size; x++) {
+            if (template.reserved[y * size + x] === 0 || info.has(`${x},${y}`))
+                continue;
+            if (matrix.get(x, y) !== template.matrix.get(x, y))
+                return false;
+        }
+    return true;
+}
+function inversePicketFence(wire) {
+    const codewords = new Array(wire.length).fill(0);
+    let cursor = 0;
+    for (let column = 0; column < 13; column++) {
+        for (let i = column; i < codewords.length; i += 13)
+            codewords[i] = wire[cursor++];
+    }
+    if (cursor !== wire.length)
+        throw new FormatError('Han Xin: codeword reordering is inconsistent');
+    return codewords;
+}
+function readCodewords(matrix, version, mask) {
+    const coordinates = hanXinDataCoordinates(version);
+    const total = HANXIN_DATA_MODULES[version - 1];
+    const codewordBits = HANXIN_TOTAL_CODEWORDS[version - 1] * 8;
+    const wire = new Array(HANXIN_TOTAL_CODEWORDS[version - 1]).fill(0);
+    for (let i = 0; i < total; i++) {
+        const [x, y] = coordinates[i];
+        let dark = matrix.get(x, y);
+        if (hanXinMaskFlip(mask, x, y))
+            dark = !dark;
+        if (i < codewordBits) {
+            if (dark)
+                wire[i >>> 3] |= 1 << (7 - (i & 7));
+        }
+        else if (dark) {
+            throw new FormatError('Han Xin: non-zero remainder modules');
+        }
+    }
+    return inversePicketFence(wire);
+}
+function ensureZeroPadding(reader) {
+    while (reader.available() > 0) {
+        if (reader.readBit())
+            throw new FormatError('Han Xin: non-zero data follows the payload terminator');
+    }
+}
+function utf8Bytes(text) {
+    return new TextEncoder().encode(text);
+}
+function decodeByteText(bytes) {
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    }
+    catch {
+        // A byte-mode symbol is allowed to carry arbitrary octets.  Preserve
+        // every octet losslessly when it is not valid UTF-8.
+        return Array.from(bytes, (value) => String.fromCharCode(value)).join('');
+    }
+}
+function decodeNumeric(reader) {
+    const groups = [];
+    while (reader.available() >= 10) {
+        const value = reader.read(10);
+        if (value >= 1021 && value <= 1023) {
+            const count = value - 1020;
+            if (groups.length === 0)
+                throw new FormatError('Han Xin: numeric payload has no data group');
+            const last = groups.pop();
+            if (last >= 10 ** count)
+                throw new FormatError('Han Xin: numeric final group has an invalid width');
+            return groups.map((group) => String(group).padStart(3, '0')).join('') +
+                String(last).padStart(count, '0');
+        }
+        if (value > 999)
+            throw new FormatError('Han Xin: numeric group is outside the 000-999 range');
+        groups.push(value);
+        if (groups.length > 2730)
+            throw new FormatError('Han Xin: numeric payload exceeds the supported stream limit');
+    }
+    throw new FormatError('Han Xin: numeric payload has no complete terminator');
+}
+function text1Character(value) {
+    if (value >= 0 && value <= 9)
+        return String.fromCharCode(0x30 + value);
+    if (value >= 10 && value <= 35)
+        return String.fromCharCode(0x41 + value - 10);
+    if (value >= 36 && value <= 61)
+        return String.fromCharCode(0x61 + value - 36);
+    return null;
+}
+function text2Character(value) {
+    if (value >= 0 && value <= 27)
+        return String.fromCharCode(value);
+    if (value >= 28 && value <= 43)
+        return String.fromCharCode(0x20 + value - 28);
+    if (value >= 44 && value <= 50)
+        return String.fromCharCode(0x3a + value - 44);
+    if (value >= 51 && value <= 56)
+        return String.fromCharCode(0x5b + value - 51);
+    if (value >= 57 && value <= 61)
+        return String.fromCharCode(0x7b + value - 57);
+    return null;
+}
+function decodeText(reader) {
+    let submode = 1;
+    const characters = [];
+    while (reader.available() >= 6) {
+        const value = reader.read(6);
+        if (value === 63) {
+            if (characters.length === 0)
+                throw new FormatError('Han Xin: text payload is empty');
+            return characters.join('');
+        }
+        if (value === 62) {
+            submode = submode === 1 ? 2 : 1;
+            continue;
+        }
+        const character = submode === 1 ? text1Character(value) : text2Character(value);
+        if (character === null)
+            throw new FormatError(`Han Xin: text value ${value} is not assigned in submode ${submode}`);
+        characters.push(character);
+        if (characters.length > 8191)
+            throw new FormatError('Han Xin: text payload exceeds the supported stream limit');
+    }
+    throw new FormatError('Han Xin: text payload has no complete terminator');
+}
+function decodeByte(reader) {
+    if (reader.available() < 13)
+        throw new FormatError('Han Xin: byte payload has no complete length field');
+    const count = reader.read(13);
+    if (count < 1 || count > 8191)
+        throw new FormatError(`Han Xin: byte count ${count} is outside the supported range`);
+    if (count * 8 > reader.available())
+        throw new FormatError('Han Xin: byte payload is truncated');
+    const bytes = new Uint8Array(count);
+    for (let i = 0; i < count; i++)
+        bytes[i] = reader.read(8);
+    return bytes;
+}
+function parsePayload(data) {
+    const reader = new BitReader(data);
+    if (reader.available() < 4)
+        throw new FormatError('Han Xin: payload has no mode indicator');
+    const mode = reader.read(4);
+    if (mode === 1) {
+        const text = decodeNumeric(reader);
+        ensureZeroPadding(reader);
+        return { text, bytes: utf8Bytes(text), mode: 'numeric' };
+    }
+    if (mode === 2) {
+        const text = decodeText(reader);
+        ensureZeroPadding(reader);
+        return { text, bytes: utf8Bytes(text), mode: 'text' };
+    }
+    if (mode === 3) {
+        const bytes = decodeByte(reader);
+        ensureZeroPadding(reader);
+        return { text: decodeByteText(bytes), bytes, mode: 'byte' };
+    }
+    throw new FormatError(`Han Xin: unsupported mode indicator ${mode}`);
+}
+function candidateRotations(option) {
+    if (option === 'auto' || option == null)
+        return [0, 90, 180, 270];
+    if (option === 0 || option === 90 || option === 180 || option === 270)
+        return [option];
+    throw new FormatError('Han Xin: rotation must be 0, 90, 180, 270 or auto');
+}
+function candidatePolarities(option) {
+    if (option === 'auto' || option == null)
+        return [false, true];
+    if (option === false || option === true)
+        return [option];
+    throw new FormatError('Han Xin: inverted must be true, false or auto');
+}
+/** Decode a verified Han Xin module matrix. */
+function decodeHanXin(matrix, options = {}) {
+    if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height)) {
+        throw new FormatError('Han Xin: a BitMatrix is required');
+    }
+    const rotations = candidateRotations(options.rotation);
+    const polarities = candidatePolarities(options.inverted);
+    let lastError = null;
+    for (const rotation of rotations) {
+        const rotated = rotateMatrix(matrix, rotation);
+        for (const inverted of polarities) {
+            const candidate = inverted ? invertMatrix(rotated) : rotated;
+            for (const version of [1, 2, 3]) {
+                if (candidate.width !== hanXinSize(version) || candidate.height !== hanXinSize(version))
+                    continue;
+                if (!hanXinStructureMatches(candidate, version))
+                    continue;
+                try {
+                    const info = decodeHanXinFunctionInfo(candidate, version);
+                    if (!HANXIN_ECC_LEVELS.includes(info.level))
+                        throw new FormatError('Han Xin: invalid error-correction level');
+                    const codewords = readCodewords(candidate, version, info.mask);
+                    const layout = hanXinEcLayout(version, info.level);
+                    const corrections = rsDecode(codewords, layout.eccCodewords, GF256_HANXIN, 1);
+                    const data = Uint8Array.from(codewords.slice(0, layout.dataCodewords));
+                    const payload = parsePayload(data);
+                    return {
+                        format: 'hanxin',
+                        text: payload.text,
+                        bytes: payload.bytes,
+                        version,
+                        ecc: info.level,
+                        mask: info.mask,
+                        mode: payload.mode,
+                        corrections: info.corrections + corrections,
+                        rows: candidate.height,
+                        columns: candidate.width,
+                        inverted,
+                        rotation,
+                    };
+                }
+                catch (error) {
+                    lastError = error;
+                }
+            }
+        }
+    }
+    if (lastError instanceof FormatError)
+        throw lastError;
+    throw new FormatError('Han Xin: no valid symbol found in the supplied matrix');
+}
+
+__exports.hanXinStructureMatches = hanXinStructureMatches;
+__exports.decodeHanXin = decodeHanXin;
+};
+
+__modules["js/hanxin/detector.js"] = function (__require, __exports) {
+/**
+ * Integer-scale Han Xin detector.
+ *
+ * Detection deliberately accepts one prominent, axis-aligned symbol from a
+ * binarized image.  It does not guess a perspective quadrilateral or return a
+ * low-confidence payload: the strict module decoder remains the final gate.
+ *
+ * @module hanxin/detector
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { NotFoundError } = __require("js/core/errors.js");
+const { decodeHanXin } = __require("js/hanxin/decoder.js");
+const { hanXinSize } = __require("js/hanxin/tables.js");
+function boundsForPolarity(image, inverted) {
+    let left = image.width;
+    let top = image.height;
+    let right = -1;
+    let bottom = -1;
+    for (let y = 0; y < image.height; y++)
+        for (let x = 0; x < image.width; x++) {
+            const dark = image.get(x, y) !== inverted;
+            if (!dark)
+                continue;
+            if (x < left)
+                left = x;
+            if (x > right)
+                right = x;
+            if (y < top)
+                top = y;
+            if (y > bottom)
+                bottom = y;
+        }
+    return right < left || bottom < top ? null : {
+        x: left,
+        y: top,
+        width: right - left + 1,
+        height: bottom - top + 1,
+    };
+}
+function sampleBounds(source, bounds, version, inverted) {
+    const size = hanXinSize(version);
+    const matrix = new BitMatrix(size, size);
+    for (let y = 0; y < size; y++)
+        for (let x = 0; x < size; x++) {
+            const px = Math.min(source.width - 1, Math.max(0, Math.floor(bounds.x + ((x + 0.5) * bounds.width) / size)));
+            const py = Math.min(source.height - 1, Math.max(0, Math.floor(bounds.y + ((y + 0.5) * bounds.height) / size)));
+            if (source.get(px, py) !== inverted)
+                matrix.set(x, y);
+        }
+    return matrix;
+}
+/** Detect one strict, integer-scale Han Xin symbol in a binarized image. */
+function detectHanXin(binaryImage) {
+    if (!binaryImage || !Number.isInteger(binaryImage.width) || !Number.isInteger(binaryImage.height) ||
+        binaryImage.width < 1 || binaryImage.height < 1) {
+        throw new NotFoundError('detectHanXin: no image supplied');
+    }
+    const candidates = [];
+    for (const inverted of [false, true]) {
+        const bounds = boundsForPolarity(binaryImage, inverted);
+        if (!bounds)
+            continue;
+        for (const version of [1, 2, 3]) {
+            const size = hanXinSize(version);
+            if (bounds.width !== bounds.height || bounds.width % size !== 0)
+                continue;
+            const moduleSize = bounds.width / size;
+            if (!Number.isInteger(moduleSize) || moduleSize < 1)
+                continue;
+            const matrix = sampleBounds(binaryImage, bounds, version, inverted);
+            let result;
+            try {
+                result = decodeHanXin(matrix, { rotation: 'auto', inverted: false });
+            }
+            catch {
+                continue;
+            }
+            candidates.push({
+                corners: [
+                    { x: bounds.x, y: bounds.y },
+                    { x: bounds.x + bounds.width, y: bounds.y },
+                    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+                    { x: bounds.x, y: bounds.y + bounds.height },
+                ],
+                dimension: { width: size, height: size },
+                moduleSize,
+                matrix,
+                result: { ...result, inverted: result.inverted || inverted },
+            });
+        }
+    }
+    candidates.sort((left, right) => right.moduleSize - left.moduleSize);
+    return candidates[0] ?? null;
+}
+/** Detect and decode one verified Han Xin symbol, or return null. */
+function detectAndDecodeHanXin(binaryImage) {
+    let detection;
+    try {
+        detection = detectHanXin(binaryImage);
+    }
+    catch {
+        return null;
+    }
+    if (!detection)
+        return null;
+    return {
+        ...detection.result,
+        corners: detection.corners,
+        moduleSize: detection.moduleSize,
+    };
+}
+
+__exports.detectHanXin = detectHanXin;
+__exports.detectAndDecodeHanXin = detectAndDecodeHanXin;
+};
+
+__modules["js/hanxin/index.js"] = function (__require, __exports) {
+/** Public Han Xin Code API. @module hanxin */
+Object.assign(__exports, __require("js/hanxin/tables.js"));
+Object.assign(__exports, __require("js/hanxin/encoder.js"));
+Object.assign(__exports, __require("js/hanxin/decoder.js"));
+Object.assign(__exports, __require("js/hanxin/detector.js"));
+
+
+};
+
 __modules["js/render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -25025,6 +26034,7 @@ const maxicode = __require("js/maxicode/index.js");
 const codablockf = __require("js/codablockf/index.js");
 const code16k = __require("js/code16k/index.js");
 const dotcode = __require("js/dotcode/index.js");
+const hanxin = __require("js/hanxin/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("js/core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("js/image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -25048,6 +26058,7 @@ const __reexport12 = __require("js/maxicode/index.js"); __exports.encodeMaxiCode
 const __reexport13 = __require("js/codablockf/index.js"); __exports.encodeCodablockF = __reexport13.encodeCodablockF; __exports.decodeCodablockF = __reexport13.decodeCodablockF; __exports.detectCodablockF = __reexport13.detectCodablockF; __exports.detectAndDecodeCodablockF = __reexport13.detectAndDecodeCodablockF;
 const __reexport14 = __require("js/code16k/index.js"); __exports.encodeCode16K = __reexport14.encodeCode16K; __exports.decodeCode16K = __reexport14.decodeCode16K; __exports.detectCode16K = __reexport14.detectCode16K; __exports.detectAndDecodeCode16K = __reexport14.detectAndDecodeCode16K;
 Object.assign(__exports, __require("js/dotcode/index.js"));
+Object.assign(__exports, __require("js/hanxin/index.js"));
 const __reexport15 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport15.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport15.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport15.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport15.detectAndDecodeMicroPDF417;
 const __reexport16 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport16.encodeMicroQR; __exports.decodeMicroQR = __reexport16.decodeMicroQR; __exports.detectMicroQR = __reexport16.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport16.detectAndDecodeMicroQR;
 const __reexport17 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport17.encodeRMQR; __exports.decodeRMQR = __reexport17.decodeRMQR; __exports.detectRMQR = __reexport17.detectRMQR; __exports.detectAndDecodeRMQR = __reexport17.detectAndDecodeRMQR;
@@ -25114,6 +26125,8 @@ const code16kCanEncode = typeof code16k.encodeCode16K === 'function';
 const code16kCanDecode = typeof code16k.detectAndDecodeCode16K === 'function';
 const dotCodeCanEncode = typeof dotcode.encodeDotCode === 'function';
 const dotCodeCanDecode = typeof dotcode.detectAndDecodeDotCode === 'function';
+const hanXinCanEncode = typeof hanxin.encodeHanXin === 'function';
+const hanXinCanDecode = typeof hanxin.detectAndDecodeHanXin === 'function';
 /**
  * Every format this build supports.
  *
@@ -25266,6 +26279,13 @@ function listFormats() {
         canRead: dotCodeCanDecode,
         kind: /** @type {'2D'} */ ('2D'),
     });
+    formats.push({
+        id: 'hanxin',
+        label: 'Han Xin Code',
+        canWrite: hanXinCanEncode,
+        canRead: hanXinCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -25279,8 +26299,8 @@ function listFormats() {
  * @param {string | number} text
  * @param {object} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
- * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
- * @param {number} [options.version] QR version, 1-40. Auto if omitted.
+ * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
+ * @param {number} [options.version] QR version 1-40 or Han Xin version 1-3. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
  * @param {'ascii'|'numeric'} [options.telepenMode] Telepen encoding mode.
  * @param {boolean} [options.numeric] Alias for Telepen Numeric mode.
@@ -25296,10 +26316,11 @@ function listFormats() {
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {0|1|2|3} [options.mask] Han Xin data mask.
  * @param {boolean} [options.pzn8] Select the eight-digit PZN profile.
  * @param {'pzn7'|'pzn8'|'standard'|'industrial'|'iata'} [options.variant] PZN or Code 25 variant.
  * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
- * @param {2|3|4|5} [options.mode] MaxiCode mode.
+ * @param {2|3|4|5|'auto'|'numeric'|'text'|'byte'} [options.mode] MaxiCode mode or Han Xin payload mode.
  * @param {{postalCode:string,countryCode:number,serviceClass:number}} [options.primary] MaxiCode structured primary data for modes 2 and 3.
  * @param {'latin1'} [options.charset] MaxiCode character set declaration.
  * @param {boolean} [options.linkage] GS1 DataBar composite linkage flag.
@@ -25377,6 +26398,9 @@ function encode(text, options = {}) {
     if (format === 'dotcode' || format === 'dot-code') {
         return dotcode.encodeDotCode(value, options);
     }
+    if (format === 'hanxin' || format === 'han-xin') {
+        return hanxin.encodeHanXin(value, options);
+    }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
     }
@@ -25430,7 +26454,7 @@ function encode(text, options = {}) {
             'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
             'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
             'imb', 'onecode', 'usps-onecode',
-            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode'].join(', ');
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode', 'hanxin'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -25470,6 +26494,8 @@ function encode(text, options = {}) {
  * @property {boolean} [linkage] GS1 DataBar linkage flag.
  * @property {boolean} [checkDigit] Whether an optional numeric check digit was validated.
  * @property {'pzn7'|'pzn8'} [pznVariant] PZN variant identified by the decoder.
+ * @property {0|1|2|3} [mask] Han Xin data mask.
+ * @property {boolean} [inverted] Han Xin module polarity.
  */
 /**
  * Find and decode every barcode in an image.
@@ -25505,6 +26531,7 @@ function decode(image, options = {}) {
     const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
     const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
     const wantDotCode = !want || want.has('dotcode') || want.has('dot-code');
+    const wantHanXin = !want || want.has('hanxin') || want.has('han-xin');
     const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
     const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
         || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -25528,7 +26555,7 @@ function decode(image, options = {}) {
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
         || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-        || wantCodablockF || wantCode16K || wantDotCode
+        || wantCodablockF || wantCode16K || wantDotCode || wantHanXin
         || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
@@ -25732,6 +26759,16 @@ function decode(image, options = {}) {
                     /* no DotCode in this pass */
                 }
             }
+            if (wantHanXin && hanXinCanDecode) {
+                try {
+                    const found = hanxin.detectAndDecodeHanXin(candidateBits);
+                    if (found)
+                        add(found, 'hanxin');
+                }
+                catch {
+                    /* no Han Xin code in this pass */
+                }
+            }
             if (wantDataBarStacked && dataBarStackedCanDecode) {
                 try {
                     const found = databar.detectAndDecodeDataBar14Stacked(candidateBits);
@@ -25871,9 +26908,10 @@ function decode(image, options = {}) {
             return id === 'qr' || id === 'qrcode'
                 || id === 'pdf417' || id === 'pdf-417'
                 || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417'
-                || id === 'maxicode' || id === 'maxi-code';
+                || id === 'maxicode' || id === 'maxi-code'
+                || id === 'hanxin' || id === 'han-xin';
         })
-        : ['qr', 'pdf417', 'compactpdf417', 'maxicode'];
+        : ['qr', 'pdf417', 'compactpdf417', 'maxicode', 'hanxin'];
     const shouldRetryGlobal = unique.length === 0
         && (binarizer === 'auto' || binarizer === 'hybrid')
         && retryFormats.length > 0;

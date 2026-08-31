@@ -75,6 +75,7 @@ test/*
 !test/codablockf.test.js
 !test/code16k.test.js
 !test/dotcode.test.js
+!test/hanxin.test.js
 !tools/
 tools/*
 !tools/compile-typescript.mjs

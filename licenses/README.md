@@ -47,6 +47,7 @@ appendix carries the consolidated inventory these files expand on.
 | Codablock-F | [`codablockf.license`](codablockf.license) | 2 |
 | Code 16K | [`code16k.license`](code16k.license) | 2 |
 | DotCode | [`dotcode.license`](dotcode.license) | 2 |
+| Han Xin Code | [`hanxin.license`](hanxin.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

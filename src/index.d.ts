@@ -81,6 +81,7 @@ export {
     detectAndDecodeCode16K,
 } from './ts/code16k/index.js';
 export * from './ts/dotcode/index.js';
+export * from './ts/hanxin/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './ts/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './ts/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './ts/rmqr/index.js';
@@ -115,8 +116,8 @@ export declare function listFormats(): FormatInfo[];
  * @param {string | number} text
  * @param {object} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
- * @param {'L'|'M'|'Q'|'H'} [options.ecc] QR error-correction level.
- * @param {number} [options.version] QR version, 1-40. Auto if omitted.
+ * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
+ * @param {number} [options.version] QR version 1-40 or Han Xin version 1-3. Auto if omitted.
  * @param {boolean} [options.checkDigit] Append a check digit, where optional.
  * @param {'character'|'numeric'} [options.customerEncoding] Australia Post customer-data encoding.
  * @param {'character'|'numeric'} [options.custinfoenc] Australia Post compatibility alias.
@@ -135,6 +136,8 @@ export declare function listFormats(): FormatInfo[];
  * @param {'auto'|'text'|'byte'|'numeric'} [options.compaction] PDF417 compaction mode.
  * @param {number} [options.eci] MicroPDF417 byte-compaction ECI assignment (3 or 26).
  * @param {number} [options.aspectRatio] Preferred MicroPDF417 symbol aspect ratio.
+ * @param {0|1|2|3} [options.mask] Han Xin data mask.
+ * @param {2|3|4|5|'auto'|'numeric'|'text'|'byte'} [options.mode] MaxiCode mode or Han Xin payload mode.
  * @param {object} [options.canvas] FrameQR Code artwork reservation.
  * @param {'square'|'circle'|'diamond'} [options.canvas.shape] Canvas shape.
  * @param {number} [options.canvas.size] Odd canvas size in QR modules.
@@ -147,7 +150,7 @@ export declare function listFormats(): FormatInfo[];
  */
 export declare function encode(text: string | number, options?: {
     format?: string;
-    ecc?: 'L' | 'M' | 'Q' | 'H';
+    ecc?: 'L' | 'M' | 'Q' | 'H' | 'L1' | 'L2' | 'L3' | 'L4' | 1 | 2 | 3 | 4;
     version?: number;
     checkDigit?: boolean;
     customerEncoding?: 'character' | 'numeric';
@@ -169,7 +172,8 @@ export declare function encode(text: string | number, options?: {
     compaction?: 'auto' | 'text' | 'byte' | 'numeric';
     eci?: number;
     aspectRatio?: number;
-    mode?: 2 | 3 | 4 | 5;
+    mode?: 2 | 3 | 4 | 5 | 'auto' | 'numeric' | 'text' | 'byte';
+    mask?: 0 | 1 | 2 | 3;
     primary?: {
         postalCode: string;
         countryCode: number;
@@ -336,8 +340,12 @@ export type DecodeResult = {
     checkDigit?: boolean;
     /** PZN variant identified by the decoder. */
     pznVariant?: 'pzn7' | 'pzn8';
-    /** MaxiCode mode (2, 3, 4 or 5). */
-    mode?: 2 | 3 | 4 | 5;
+    /** MaxiCode mode or Han Xin payload mode. */
+    mode?: 2 | 3 | 4 | 5 | 'numeric' | 'text' | 'byte';
+    /** Han Xin data mask. */
+    mask?: 0 | 1 | 2 | 3;
+    /** Han Xin module polarity. */
+    inverted?: boolean;
     /** MaxiCode structured primary message for modes 2 and 3. */
     primary?: {
         postalCode: string;
@@ -378,6 +386,8 @@ export type DecodeResult = {
  * @property {boolean} [linkage] GS1 DataBar linkage flag.
  * @property {boolean} [checkDigit] Whether an optional numeric check digit was validated.
  * @property {'pzn7'|'pzn8'} [pznVariant] PZN variant identified by the decoder.
+ * @property {0|1|2|3} [mask] Han Xin data mask.
+ * @property {boolean} [inverted] Han Xin module polarity.
  */
 /**
  * Find and decode every barcode in an image.

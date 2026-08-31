@@ -103,6 +103,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/frameqr` | `encodeFrameQR`, `decodeFrameQR`, `detectFrameQR`, `detectAndDecodeFrameQR` |
 | `@sythos/js_barcode_universal/maxicode` | `encodeMaxiCode`, `decodeMaxiCode`, `detectMaxiCode`, `detectAndDecodeMaxiCode` |
 | `@sythos/js_barcode_universal/dotcode` | `encodeDotCode`, `decodeDotCode`, `detectDotCode`, `detectAndDecodeDotCode` |
+| `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes`, `decodeHanXin`, `detectHanXin`, `detectAndDecodeHanXin` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -286,10 +287,11 @@ time.
 | Codablock-F | `codablockf` | 2D | ✅ | ✅ |
 | Code 16K | `code16k` | 2D | ✅ | ✅ |
 | DotCode | `dotcode` | 2D | ✅ | ✅ |
+| Han Xin Code | `hanxin` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Forty-eight listed formats are writable and forty-seven are readable (EAN-2 and EAN-5 are
+Forty-nine listed formats are writable and forty-eight are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -366,6 +368,29 @@ only a checksum-validated symbol. Perspective, curved media, severe blur and
 multi-symbol scenes remain outside the supported profile. See
 [`docs/formats/dotcode.md`](docs/formats/dotcode.md) and
 [`licenses/dotcode.license`](licenses/dotcode.license).
+
+Han Xin Code is available as a bounded compact profile covering versions 1–3,
+the four `L1`–`L4` error-correction levels, numeric/text/byte modes, four masks
+and strict Reed–Solomon validation. The root dispatcher accepts both
+`format: 'hanxin'` and the compatibility alias `format: 'han-xin'`; the focused
+subpath is useful when byte payloads or format metadata are needed:
+
+```js
+import {
+  encodeHanXin,
+  detectAndDecodeHanXin,
+} from '@sythos/js_barcode_universal/hanxin';
+
+const matrix = encodeHanXin('HAN XIN 2026', { mode: 'text', ecc: 'L2' });
+const hit = detectAndDecodeHanXin(matrix.withMargin(3).scale(2));
+console.log(hit?.text, hit?.version, hit?.moduleSize);
+```
+
+The Han Xin detector accepts one complete, axis-aligned symbol at an integer
+module scale and either polarity. Versions 4–84, Chinese/GB18030 compaction,
+ECI, perspective correction and multi-symbol camera scenes remain outside this
+profile. See [`docs/formats/hanxin.md`](docs/formats/hanxin.md) and
+[`licenses/hanxin.license`](licenses/hanxin.license).
 
 [^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
 and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is
