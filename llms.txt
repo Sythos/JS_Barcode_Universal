@@ -8,7 +8,7 @@
 - Project: Sythos Barcode Universal
 - Publisher and original author: Sythos — https://www.sythos.net
 - npm package: `@sythos/js_barcode_universal`
-- Current repository release: `1.5.14`
+- Current repository release: `1.5.15`
 - License: MIT; copyright and attribution: Sythos
 - Runtime dependencies: none
 - Development tooling: TypeScript is a development-only dependency

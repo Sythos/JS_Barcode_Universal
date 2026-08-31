@@ -1,6 +1,6 @@
 {
   "name": "@sythos/js_barcode_universal",
-  "version": "1.5.14",
+  "version": "1.5.15",
   "description": "Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK with zero runtime dependencies for 1D and 2D barcodes in browsers, Web Workers and Node.js: QR, Data Matrix, Aztec, PDF417, GS1, EAN and more.",
   "author": {
     "name": "Sythos",
