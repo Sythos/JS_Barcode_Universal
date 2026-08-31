@@ -5944,7 +5944,7 @@ const __reexport6 = __require("js/oned/patterns.js"); __exports.validateTables =
 const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
-const { encodeIndustrial2of5, encodeIATA2of5 } = __require("js/oned/code25.js");
+const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5 } = __require("js/oned/code25.js");
 const { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB } = __require("js/oned/postal.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -5972,6 +5972,7 @@ const ONED_FORMATS = {
     code93: { encode: encodeCode93, readable: true, label: 'Code 93' },
     itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
     itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
+    standard2of5: { encode: encodeStandard2of5, readable: true, label: 'Code 25 / Standard 2 of 5' },
     industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
     iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },

@@ -293,7 +293,7 @@ time.
 | rMQR Code | `rmqr` | 2D | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | ✅ | ✅ |
 
-Fifty listed formats are writable and forty-nine are readable (EAN-2 and EAN-5 are
+Fifty-one listed formats are writable and fifty are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -432,8 +432,10 @@ guards as Telepen Alpha. Use `format: 'telepennumeric'` when encoding or
 `formats: ['telepennumeric']` when reading.
 
 [^4]: Code 25/Standard 2 of 5 and Industrial 2 of 5 use the canonical Industrial frame in this
-SDK; IATA 2 of 5 uses its shorter guard frame. Check digits are optional for ordinary reads and
-are required by the strict camera profile.
+SDK, so — as with footnote 1 — a Standard 2 of 5 read comes back reported as `industrial2of5`;
+the payload is intact, only the reported id differs. IATA 2 of 5 uses its shorter guard frame and
+is reported under its own `iata2of5` id. Check digits are optional for ordinary reads and are
+required by the strict camera profile.
 
 ### Code 11 and MSI Plessey image reading
 

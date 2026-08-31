@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 50 writable entries and 49 readable entries;
+At the current checkout it reports 51 writable entries and 50 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
