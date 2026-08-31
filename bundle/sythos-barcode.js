@@ -1125,7 +1125,7 @@ __modules["js/oned/writers.js"] = function (__require, __exports) {
  */
 const { BitMatrix } = __require("js/core/bit-matrix.js");
 const { EncodeError } = __require("js/core/errors.js");
-const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP } = __require("js/oned/patterns.js");
+const { EAN_L, EAN_G, EAN_R, EAN13_PARITY, UPCE_PARITY, EAN_START_END, EAN_MIDDLE, UPCE_END, CODE39, CODE39_CHECK_SET, CODE39_EXTENDED, CODE93, CODE93_VALUES, CODE93_START_STOP, CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_STOP, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, ITF, CODABAR, CODABAR_START_STOP, CODE11, CODE11_START_STOP, MSI_BIT, MSI_START, MSI_STOP } = __require("js/oned/patterns.js");
 /* ------------------------------------------------------------------ *
  * Shared helpers
  * ------------------------------------------------------------------ */
@@ -1614,20 +1614,19 @@ function encodeCode93(value) {
 /** Set B maps printable ASCII starting at space to symbol value 0. */
 const CODE128_B_OFFSET = 32;
 /**
- * Code 128, with automatic code-set selection.
+ * Build the Code 128 data stream without the checksum and stop symbol.
  *
- * The heuristic: switch into set C when enough consecutive digits are present
- * to repay the switch symbol — four at the start or end of the payload, six in
- * the middle, since C packs two digits per symbol. An encoder that never
- * switches produces a valid but needlessly wide symbol.
+ * Stacked Code 128 symbologies use the same A/B/C data alphabet but provide
+ * their own row framing and checks. Keeping the tokeniser here makes those
+ * writers use the exact same ASCII and numeric rules as the ordinary Code 128
+ * writer. `startSet` is an optional explicit starting set for a stacked row.
  *
  * @param {string} value
- * @param {object} [options]
- * @param {boolean} [options.gs1] Emit a leading FNC1, making this GS1-128.
- * @returns {BitMatrix}
+ * @param {{gs1?: boolean, startSet?: 'A'|'B'|'C'}} [options]
+ * @returns {{start: number, values: number[], mode: 'A'|'B'|'C'}}
  */
-function encodeCode128(value, options = {}) {
-    const { gs1 = false } = options;
+function code128DataCodewords(value, options = {}) {
+    const { gs1 = false, startSet = null } = options;
     for (const ch of value) {
         if (ch.charCodeAt(0) > 127) {
             throw new EncodeError(`Code 128: '${ch}' is outside ASCII`);
@@ -1644,7 +1643,22 @@ function encodeCode128(value, options = {}) {
     let mode;
     let i = 0;
     const startRun = digitRun(0);
-    if (startRun >= 4 && startRun % 2 === 0) {
+    if (startSet === 'A') {
+        codes.push(CODE128_START_A);
+        mode = 'A';
+    }
+    else if (startSet === 'C') {
+        if (startRun < 2 || startRun % 2 !== 0) {
+            throw new EncodeError('Code 128: set C requires an even leading digit run');
+        }
+        codes.push(CODE128_START_C);
+        mode = 'C';
+    }
+    else if (startSet === 'B') {
+        codes.push(CODE128_START_B);
+        mode = 'B';
+    }
+    else if (startRun >= 4 && startRun % 2 === 0) {
         codes.push(CODE128_START_C);
         mode = 'C';
     }
@@ -1698,6 +1712,24 @@ function encodeCode128(value, options = {}) {
         }
         i++;
     }
+    return { start: codes[0], values: codes.slice(1), mode };
+}
+/**
+ * Code 128, with automatic code-set selection.
+ *
+ * The heuristic: switch into set C when enough consecutive digits are present
+ * to repay the switch symbol — four at the start or end of the payload, six in
+ * the middle, since C packs two digits per symbol. An encoder that never
+ * switches produces a valid but needlessly wide symbol.
+ *
+ * @param {string} value
+ * @param {object} [options]
+ * @param {boolean} [options.gs1] Emit a leading FNC1, making this GS1-128.
+ * @returns {BitMatrix}
+ */
+function encodeCode128(value, options = {}) {
+    const data = code128DataCodewords(value, options);
+    const codes = [data.start, ...data.values];
     // Checksum: the start value plus each symbol weighted by its position.
     let sum = codes[0];
     for (let k = 1; k < codes.length; k++)
@@ -1932,6 +1964,7 @@ __exports.decodeCode32Payload = decodeCode32Payload;
 __exports.encodePZN = encodePZN;
 __exports.decodePZNPayload = decodePZNPayload;
 __exports.encodeCode93 = encodeCode93;
+__exports.code128DataCodewords = code128DataCodewords;
 __exports.encodeCode128 = encodeCode128;
 __exports.encodeITF = encodeITF;
 __exports.encodeITF14 = encodeITF14;
@@ -5902,7 +5935,7 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  *
  * @module oned
  */
-const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5;
 const __reexport2 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport2.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport2.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport2.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport2.telepenPattern; __exports.encodeTelepen = __reexport2.encodeTelepen; __exports.encodeTelepenNumeric = __reexport2.encodeTelepenNumeric; __exports.decodeTelepen = __reexport2.decodeTelepen; __exports.decodeTelepenNumeric = __reexport2.decodeTelepenNumeric;
 const __reexport3 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport3.EAN2_PARITY; __exports.EAN5_PARITY = __reexport3.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport3.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport3.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport3.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport3.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport3.ean2Parity; __exports.ean5Checksum = __reexport3.ean5Checksum; __exports.ean5CheckDigit = __reexport3.ean5CheckDigit; __exports.ean5Parity = __reexport3.ean5Parity; __exports.encodeEAN2 = __reexport3.encodeEAN2; __exports.encodeEAN5 = __reexport3.encodeEAN5; __exports.encodeEANAddon = __reexport3.encodeEANAddon; __exports.encodeEANAddOn = __reexport3.encodeEANAddOn; __exports.decodeEAN2 = __reexport3.decodeEAN2; __exports.decodeEAN5 = __reexport3.decodeEAN5; __exports.decodeEANAddon = __reexport3.decodeEANAddon; __exports.decodeEANAddOn = __reexport3.decodeEANAddOn; __exports.composeEANAddon = __reexport3.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport3.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport3.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport3.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport3.encodeUPCEWithAddon;
@@ -21026,6 +21059,1355 @@ const __reexport3 = __require("js/maxicode/tables.js"); __exports.MAXICODE_CODEW
 
 };
 
+__modules["js/stacked128/common.js"] = function (__require, __exports) {
+/*
+ * Sythos Barcode Suite — shared stacked Code 128 helpers
+ *
+ * MIT License
+ * Copyright (c) 2026 Sythos
+ * SPDX-License-Identifier: MIT
+ *
+ * Original work. No code from any other barcode implementation.
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { CODE128, CODE128_START_A, CODE128_START_B, CODE128_START_C, CODE128_FNC1, CODE128_CODE_A, CODE128_CODE_B, CODE128_CODE_C, CODE128_SHIFT } = __require("js/oned/patterns.js");
+/** Expand a Code 128 width string into dark/light modules. */
+function code128PatternModules(value) {
+    if (!Number.isInteger(value) || value < 0 || value >= CODE128.length) {
+        throw new EncodeError(`Code 128: invalid symbol value ${value}`);
+    }
+    const pattern = CODE128[value];
+    let modules = '';
+    let dark = true;
+    for (const digit of pattern) {
+        const width = Number(digit);
+        modules += (dark ? '1' : '0').repeat(width);
+        dark = !dark;
+    }
+    return modules;
+}
+/** Render complete Code 128 codewords, including their 13-module stop. */
+function code128CodewordsModules(values) {
+    return values.map((value) => code128PatternModules(value)).join('');
+}
+/** Code 128 checksum for a sequence that includes the start symbol. */
+function code128Checksum(values) {
+    if (values.length === 0)
+        throw new EncodeError('Code 128: checksum needs a start symbol');
+    let sum = values[0];
+    for (let i = 1; i < values.length; i++)
+        sum += values[i] * i;
+    return sum % 103;
+}
+const CODE128_BITS = new Map();
+for (let value = 0; value < CODE128.length; value++) {
+    CODE128_BITS.set(code128PatternModules(value), value);
+}
+/** Decode a single 11-module Code 128 symbol from a sampled module string. */
+function code128ValueFromModules(modules, offset) {
+    const slice = modules.slice(offset, offset + 11);
+    if (slice.length !== 11)
+        return null;
+    return CODE128_BITS.get(slice) ?? null;
+}
+/**
+ * Interpret Code 128 data values after the start symbol and checksum.
+ *
+ * This deliberately mirrors the public Code 128 reader but keeps stacked
+ * decoders independent from scanline state. The result is null for an empty
+ * or structurally impossible stream.
+ */
+function decodeCode128Values(startCode, dataValues) {
+    if (![CODE128_START_A, CODE128_START_B, CODE128_START_C].includes(startCode))
+        return null;
+    if (dataValues.length === 0)
+        return null;
+    let mode = startCode === CODE128_START_A
+        ? 'A' : startCode === CODE128_START_B ? 'B' : 'C';
+    let shifted = null;
+    let text = '';
+    const fnc1AtStart = dataValues[0] === CODE128_FNC1;
+    const fnc1Positions = [];
+    for (let index = 0; index < dataValues.length; index++) {
+        const value = dataValues[index];
+        const active = shifted ?? mode;
+        shifted = null;
+        if (value === CODE128_CODE_A && mode !== 'A') {
+            mode = 'A';
+            continue;
+        }
+        if (value === CODE128_CODE_B && mode !== 'B') {
+            mode = 'B';
+            continue;
+        }
+        if (value === CODE128_CODE_C) {
+            mode = 'C';
+            continue;
+        }
+        if (value === CODE128_SHIFT) {
+            shifted = mode === 'A' ? 'B' : 'A';
+            continue;
+        }
+        if (value === CODE128_FNC1) {
+            if (index > 0) {
+                fnc1Positions.push(text.length);
+                text += '\x1d';
+            }
+            continue;
+        }
+        // FNC2, FNC3 and FNC4 are control values. They are not part of the
+        // textual payload exposed by this SDK, but remain valid Code 128 symbols.
+        if (value >= 96 && value <= 102)
+            continue;
+        if (active === 'C') {
+            if (value > 99)
+                return null;
+            text += String(value).padStart(2, '0');
+        }
+        else if (active === 'A') {
+            if (value > 95)
+                return null;
+            text += value < 64 ? String.fromCharCode(value + 32) : String.fromCharCode(value - 64);
+        }
+        else {
+            if (value > 95)
+                return null;
+            text += String.fromCharCode(value + 32);
+        }
+        if (text.length > 100000)
+            return null;
+    }
+    if (text.length === 0)
+        return null;
+    return fnc1AtStart
+        ? { text, fnc1AtStart: true, fnc1Positions }
+        : { text };
+}
+/** Sample one module at the centre of every integer-sized module. */
+function sampleModules(row, start, moduleSize, count) {
+    if (!Number.isInteger(moduleSize) || moduleSize < 1 || start < 0)
+        return null;
+    const end = start + moduleSize * count;
+    if (end > row.length)
+        return null;
+    let modules = '';
+    const centre = Math.floor((moduleSize - 1) / 2);
+    for (let index = 0; index < count; index++) {
+        modules += row[start + index * moduleSize + centre] ? '1' : '0';
+    }
+    return modules;
+}
+/**
+ * Scan a binarized image for stacked symbols with integer module scaling.
+ * The parser receives every plausible dark-run origin and can try one or more
+ * geometry variants. A bounded scale keeps camera frames predictable.
+ */
+function scanStackedRows(image, minimumModules, parser, maximumModules = 900) {
+    const candidates = [];
+    const rowBuffer = new Uint8Array(image.width);
+    const maximumScale = Math.min(32, Math.max(1, Math.floor(maximumModules / Math.max(1, minimumModules))));
+    for (let y = 0; y < image.height; y++) {
+        const row = image.getRow(y, rowBuffer);
+        for (let start = 0; start < row.length; start++) {
+            if (!row[start] || (start > 0 && row[start - 1]))
+                continue;
+            for (let moduleSize = 1; moduleSize <= maximumScale; moduleSize++) {
+                if (start + minimumModules * moduleSize > row.length)
+                    break;
+                const parsed = parser(row, start, moduleSize);
+                if (parsed !== null)
+                    candidates.push({ x: start, y, moduleSize, parsed });
+            }
+        }
+    }
+    return candidates;
+}
+/** Paint a set of row module strings with separator bars and quiet rows. */
+function renderStackedRows(rowModules, rowHeight, separatorHeight) {
+    if (!Number.isInteger(rowHeight) || rowHeight < 1 || rowHeight > 128) {
+        throw new EncodeError('Stacked Code 128: rowHeight must be an integer in 1..128');
+    }
+    if (!Number.isInteger(separatorHeight) || separatorHeight < 1 || separatorHeight > 16) {
+        throw new EncodeError('Stacked Code 128: separatorHeight must be an integer in 1..16');
+    }
+    if (rowModules.length < 1)
+        throw new EncodeError('Stacked Code 128: at least one row is required');
+    const width = rowModules[0].length;
+    if (width < 1 || rowModules.some((modules) => modules.length !== width)) {
+        throw new EncodeError('Stacked Code 128: rows must have equal module widths');
+    }
+    const height = 2 + rowModules.length * rowHeight + (rowModules.length - 1) * separatorHeight;
+    const matrix = new BitMatrix(width, height);
+    matrix.setRegion(0, 0, width, 1);
+    matrix.setRegion(0, height - 1, width, 1);
+    let y = 1;
+    for (let row = 0; row < rowModules.length; row++) {
+        const modules = rowModules[row];
+        for (let x = 0; x < width; x++) {
+            if (modules[x] === '1')
+                matrix.setRegion(x, y, 1, rowHeight);
+        }
+        y += rowHeight;
+        if (row < rowModules.length - 1) {
+            matrix.setRegion(0, y, width, separatorHeight);
+            y += separatorHeight;
+        }
+    }
+    return matrix;
+}
+/** Build an alternating-width pattern, starting with dark or light. */
+function alternatingWidths(widths, startsDark) {
+    let modules = '';
+    let dark = startsDark;
+    for (const width of widths) {
+        if (!Number.isInteger(width) || width < 1)
+            throw new EncodeError('Stacked barcode: invalid guard width');
+        modules += (dark ? '1' : '0').repeat(width);
+        dark = !dark;
+    }
+    return modules;
+}
+
+__exports.code128PatternModules = code128PatternModules;
+__exports.code128CodewordsModules = code128CodewordsModules;
+__exports.code128Checksum = code128Checksum;
+__exports.code128ValueFromModules = code128ValueFromModules;
+__exports.decodeCode128Values = decodeCode128Values;
+__exports.sampleModules = sampleModules;
+__exports.scanStackedRows = scanStackedRows;
+__exports.renderStackedRows = renderStackedRows;
+__exports.alternatingWidths = alternatingWidths;
+};
+
+__modules["js/codablockf/encoder.js"] = function (__require, __exports) {
+/*
+ * Sythos Barcode Suite — Codablock-F writer
+ *
+ * MIT License
+ * Copyright (c) 2026 Sythos
+ * SPDX-License-Identifier: MIT
+ *
+ * Original work. No code from any other barcode implementation.
+ */
+const { EncodeError } = __require("js/core/errors.js");
+const { code128DataCodewords } = __require("js/oned/writers.js");
+const { code128Checksum, code128CodewordsModules, renderStackedRows } = __require("js/stacked128/common.js");
+const START_A = 103;
+const CODE_B = 100;
+const PAD = 103;
+const MIN_ROWS = 2;
+const MAX_ROWS = 44;
+const MIN_COLUMNS = 4;
+const MAX_COLUMNS = 62;
+/** Weighted modulo-86 K1/K2 checks used by the complete Codablock stream. */
+function codablockFChecks(values) {
+    let k1 = 0;
+    let k2 = 0;
+    for (let i = 0; i < values.length; i++) {
+        k1 = (k1 + (i + 1) * values[i]) % 86;
+        k2 = (k2 + (i + 2) * values[i]) % 86;
+    }
+    k2 = (k2 + k1) % 86;
+    return [k1, k2];
+}
+function validateDimensions(rows, columns) {
+    if (rows !== undefined && (!Number.isInteger(rows) || rows < MIN_ROWS || rows > MAX_ROWS)) {
+        throw new EncodeError(`Codablock-F: rows must be an integer in ${MIN_ROWS}..${MAX_ROWS}`);
+    }
+    if (columns !== undefined && (!Number.isInteger(columns) || columns < MIN_COLUMNS || columns > MAX_COLUMNS)) {
+        throw new EncodeError(`Codablock-F: columns must be an integer in ${MIN_COLUMNS}..${MAX_COLUMNS}`);
+    }
+}
+function chooseDimensions(length, rowsOption, columnsOption) {
+    validateDimensions(rowsOption, columnsOption);
+    const candidates = [];
+    for (let rows = rowsOption ?? MIN_ROWS; rows <= (rowsOption ?? MAX_ROWS); rows++) {
+        for (let columns = columnsOption ?? MIN_COLUMNS; columns <= (columnsOption ?? MAX_COLUMNS); columns++) {
+            if (rows * columns - 2 < length)
+                continue;
+            // Keep the default reasonably compact while favouring a readable width.
+            const ratio = (columns + 4) / rows;
+            const score = (rows * columns - 2 - length) * 10 + Math.abs(ratio - 2.5);
+            candidates.push({ rows, columns, score });
+        }
+    }
+    if (candidates.length === 0) {
+        throw new EncodeError('Codablock-F: payload does not fit the requested rows and columns');
+    }
+    candidates.sort((a, b) => a.score - b.score || a.rows - b.rows || a.columns - b.columns);
+    return candidates[0];
+}
+/** Encode an ASCII payload as a conservative, standards-shaped Codablock-F symbol. */
+function encodeCodablockF(value, options = {}) {
+    if (typeof value !== 'string' || value.length === 0) {
+        throw new EncodeError('Codablock-F: payload must be a non-empty ASCII string');
+    }
+    const dataStream = code128DataCodewords(value, { startSet: 'B' });
+    const { rows, columns } = chooseDimensions(dataStream.values.length, options.rows, options.columns);
+    const rowHeight = options.rowHeight ?? 3;
+    const separatorHeight = options.separatorHeight ?? 1;
+    if (!Number.isInteger(rowHeight) || rowHeight < 1 || rowHeight > 128) {
+        throw new EncodeError('Codablock-F: rowHeight must be an integer in 1..128');
+    }
+    if (!Number.isInteger(separatorHeight) || separatorHeight < 1 || separatorHeight > 16) {
+        throw new EncodeError('Codablock-F: separatorHeight must be an integer in 1..16');
+    }
+    const slotCount = rows * columns;
+    const body = dataStream.values.slice();
+    while (body.length < slotCount - 2)
+        body.push(PAD);
+    const checks = codablockFChecks(body);
+    body.push(checks[0], checks[1]);
+    const rowModules = [];
+    for (let row = 0; row < rows; row++) {
+        const indicator = row === 0 ? rows : row;
+        const data = body.slice(row * columns, (row + 1) * columns);
+        const withoutRowCheck = [START_A, CODE_B, indicator, ...data];
+        const rowCheck = code128Checksum(withoutRowCheck);
+        const codewords = [...withoutRowCheck, rowCheck, 106];
+        rowModules.push(code128CodewordsModules(codewords));
+    }
+    const matrix = renderStackedRows(rowModules, rowHeight, separatorHeight);
+    matrix.codablockf = {
+        rows,
+        columns,
+        rowHeight,
+        separatorHeight,
+        checks,
+    };
+    return matrix;
+}
+
+__exports.codablockFChecks = codablockFChecks;
+__exports.encodeCodablockF = encodeCodablockF;
+};
+
+__modules["js/codablockf/decoder.js"] = function (__require, __exports) {
+/*
+ * Sythos Barcode Suite — Codablock-F reader
+ *
+ * MIT License
+ * Copyright (c) 2026 Sythos
+ * SPDX-License-Identifier: MIT
+ *
+ * Original work. No code from any other barcode implementation.
+ */
+const { FormatError } = __require("js/core/errors.js");
+const { code128Checksum, code128CodewordsModules, code128ValueFromModules, decodeCode128Values, sampleModules, scanStackedRows } = __require("js/stacked128/common.js");
+const { codablockFChecks } = __require("js/codablockf/encoder.js");
+const START_A = 103;
+const CODE_B = 100;
+const STOP = 106;
+const PAD = 103;
+const MIN_COLUMNS = 4;
+const MAX_COLUMNS = 62;
+function parseRow(row, start, moduleSize, columns) {
+    const count = columns + 4;
+    const moduleCount = 11 * count + 13;
+    const modules = sampleModules(row, start, moduleSize, moduleCount);
+    if (!modules)
+        return null;
+    let offset = 0;
+    const startValue = code128ValueFromModules(modules, offset);
+    if (startValue !== START_A)
+        return null;
+    offset += 11;
+    const selector = code128ValueFromModules(modules, offset);
+    if (selector !== CODE_B)
+        return null;
+    offset += 11;
+    const indicator = code128ValueFromModules(modules, offset);
+    if (indicator === null || indicator < 1 || indicator > 44)
+        return null;
+    offset += 11;
+    const data = [];
+    for (let i = 0; i < columns; i++) {
+        const value = code128ValueFromModules(modules, offset);
+        if (value === null || value === STOP)
+            return null;
+        data.push(value);
+        offset += 11;
+    }
+    const rowCheck = code128ValueFromModules(modules, offset);
+    if (rowCheck === null || rowCheck >= 103)
+        return null;
+    const withoutRowCheck = [START_A, CODE_B, indicator, ...data];
+    if (code128Checksum(withoutRowCheck) !== rowCheck)
+        return null;
+    offset += 11;
+    const stop = modules.slice(offset, offset + 13);
+    if (stop !== code128CodewordsModules([STOP]))
+        return null;
+    return { indicator, data };
+}
+function rowBits(matrix, y) {
+    let bits = '';
+    for (let x = 0; x < matrix.width; x++)
+        bits += matrix.get(x, y) ? '1' : '0';
+    return bits;
+}
+function allDark(matrix, y) {
+    if (y < 0 || y >= matrix.height)
+        return false;
+    for (let x = 0; x < matrix.width; x++)
+        if (!matrix.get(x, y))
+            return false;
+    return true;
+}
+function decodeRows(rowsByNumber, rows, columns, moduleSize) {
+    if (rowsByNumber.length !== rows || rows < 2 || rows > 44)
+        return null;
+    const stream = rowsByNumber.flatMap((entry) => entry.data);
+    if (stream.length < 2)
+        return null;
+    const checks = codablockFChecks(stream.slice(0, -2));
+    if (stream[stream.length - 2] !== checks[0] || stream[stream.length - 1] !== checks[1])
+        return null;
+    const body = stream.slice(0, -2);
+    while (body.length > 0 && body[body.length - 1] === PAD)
+        body.pop();
+    const decoded = decodeCode128Values(104, body);
+    if (!decoded)
+        return null;
+    return {
+        format: 'codablockf',
+        text: decoded.text,
+        rows,
+        columns,
+        moduleSize,
+        checksum: true,
+    };
+}
+/** Validate an encoder-shaped matrix row by row, including every row-height pixel. */
+function decodeCanonical(matrix, metadata) {
+    const { rows, columns, rowHeight, separatorHeight } = metadata;
+    if (!Number.isInteger(rows) || rows < 2 || rows > 44 ||
+        !Number.isInteger(columns) || columns < MIN_COLUMNS || columns > MAX_COLUMNS)
+        return null;
+    const expectedWidth = 11 * (columns + 4) + 13;
+    const expectedHeight = 2 + rows * rowHeight + (rows - 1) * separatorHeight;
+    if (matrix.width !== expectedWidth || matrix.height !== expectedHeight)
+        return null;
+    if (!allDark(matrix, 0) || !allDark(matrix, matrix.height - 1))
+        return null;
+    const parsedRows = [];
+    for (let row = 0; row < rows; row++) {
+        const y = 1 + row * (rowHeight + separatorHeight);
+        const source = rowBits(matrix, y);
+        const parsed = parseRow(Uint8Array.from(source, (bit) => bit === '1' ? 1 : 0), 0, 1, columns);
+        if (!parsed || parsed.indicator !== (row === 0 ? rows : row))
+            return null;
+        for (let offset = 1; offset < rowHeight; offset++) {
+            if (rowBits(matrix, y + offset) !== source)
+                return null;
+        }
+        parsedRows.push(parsed);
+        if (row < rows - 1) {
+            for (let offset = 0; offset < separatorHeight; offset++) {
+                if (!allDark(matrix, y + rowHeight + offset))
+                    return null;
+            }
+        }
+    }
+    return decodeRows(parsedRows, rows, columns, 1);
+}
+function assemble(image) {
+    const minimumModules = 11 * (MIN_COLUMNS + 4) + 13;
+    const candidates = scanStackedRows(image, minimumModules, (row, start, moduleSize) => {
+        for (let columns = MIN_COLUMNS; columns <= MAX_COLUMNS; columns++) {
+            const parsed = parseRow(row, start, moduleSize, columns);
+            if (parsed)
+                return { columns, ...parsed };
+        }
+        return null;
+    }, 2200);
+    const groups = new Map();
+    for (const candidate of candidates) {
+        const signature = `${candidate.x}:${candidate.moduleSize}`;
+        const group = groups.get(signature) ?? new Map();
+        const current = group.get(candidate.parsed.indicator);
+        // Rows are repeated vertically; keeping one exact candidate per indicator
+        // prevents rowHeight from multiplying the work without losing a symbol.
+        if (!current)
+            group.set(candidate.parsed.indicator, {
+                columns: candidate.parsed.columns,
+                parsed: candidate.parsed,
+                moduleSize: candidate.moduleSize,
+            });
+        groups.set(signature, group);
+    }
+    for (const group of groups.values()) {
+        for (const [rows, first] of group) {
+            if (rows < 2 || rows > 44)
+                continue;
+            const columns = first.parsed.columns;
+            const rowsByNumber = [];
+            let complete = true;
+            for (let row = 1; row < rows; row++) {
+                const found = group.get(row);
+                if (!found || found.columns !== columns) {
+                    complete = false;
+                    break;
+                }
+                rowsByNumber.push(found.parsed);
+            }
+            if (!complete)
+                continue;
+            rowsByNumber.unshift(first.parsed);
+            const decoded = decodeRows(rowsByNumber, rows, columns, first.moduleSize);
+            if (decoded)
+                return decoded;
+        }
+    }
+    return null;
+}
+/** Decode a Codablock-F matrix or throw when its structure is invalid. */
+function decodeCodablockF(matrix) {
+    const metadata = matrix.codablockf;
+    if (metadata) {
+        const canonical = decodeCanonical(matrix, metadata);
+        if (canonical)
+            return canonical;
+        throw new FormatError('Codablock-F: invalid rows, checks or Code 128 framing');
+    }
+    const result = assemble(matrix);
+    if (!result)
+        throw new FormatError('Codablock-F: invalid rows, checks or Code 128 framing');
+    return result;
+}
+/** Locate and decode one Codablock-F symbol in a binarized raster. */
+function detectCodablockF(image) {
+    return assemble(image);
+}
+/** Alias used by the generic image decoder. */
+const detectAndDecodeCodablockF = detectCodablockF;
+
+__exports.decodeCodablockF = decodeCodablockF;
+__exports.detectCodablockF = detectCodablockF;
+__exports.detectAndDecodeCodablockF = detectAndDecodeCodablockF;
+};
+
+__modules["js/codablockf/index.js"] = function (__require, __exports) {
+/* Codablock-F public entry points. */
+const __reexport0 = __require("js/codablockf/encoder.js"); __exports.encodeCodablockF = __reexport0.encodeCodablockF; __exports.codablockFChecks = __reexport0.codablockFChecks;
+const __reexport1 = __require("js/codablockf/decoder.js"); __exports.decodeCodablockF = __reexport1.decodeCodablockF; __exports.detectCodablockF = __reexport1.detectCodablockF; __exports.detectAndDecodeCodablockF = __reexport1.detectAndDecodeCodablockF;
+
+
+};
+
+__modules["js/code16k/tables.js"] = function (__require, __exports) {
+/**
+ * Structural facts and option validation for Code 16K.
+ *
+ * A Code 16K row is 70 modules wide: a seven-module start pattern, a one
+ * module guard bar, five eleven-module Code 128 symbols and a seven-module
+ * stop pattern. The row start and stop pair identifies its one-based row
+ * number. This module contains only the public table facts; packing and
+ * decoding live in encoder.ts and decoder.ts.
+ *
+ * @module code16k/tables
+ */
+const { EncodeError } = __require("js/core/errors.js");
+const { alternatingWidths } = __require("js/stacked128/common.js");
+const CODE16K_MIN_ROWS = 2;
+const CODE16K_MAX_ROWS = 16;
+const CODE16K_SYMBOLS_PER_ROW = 5;
+const CODE16K_MODULE_WIDTH = 70;
+const CODE16K_START_WIDTH = 7;
+const CODE16K_GUARD_WIDTH = 1;
+const CODE16K_CODEWORD_WIDTH = 11;
+const CODE16K_STOP_WIDTH = 7;
+const CODE16K_DEFAULT_ROW_HEIGHT = 8;
+const CODE16K_DEFAULT_SEPARATOR_HEIGHT = 1;
+const CODE16K_PAD = 103;
+/** Start/stop values used to identify rows, in top-to-bottom order. */
+const CODE16K_ROW_PAIRS = Object.freeze([
+    Object.freeze([0, 0]), Object.freeze([1, 1]),
+    Object.freeze([2, 2]), Object.freeze([3, 3]),
+    Object.freeze([4, 4]), Object.freeze([5, 5]),
+    Object.freeze([6, 6]), Object.freeze([7, 7]),
+    Object.freeze([0, 4]), Object.freeze([1, 5]),
+    Object.freeze([2, 6]), Object.freeze([3, 7]),
+    Object.freeze([4, 0]), Object.freeze([5, 1]),
+    Object.freeze([6, 2]), Object.freeze([7, 3]),
+]);
+/** Widths for the eight edge-decodable start patterns. */
+const CODE16K_START_WIDTHS = Object.freeze([
+    Object.freeze([3, 2, 1, 1]), Object.freeze([2, 2, 2, 1]),
+    Object.freeze([2, 1, 2, 2]), Object.freeze([1, 4, 1, 1]),
+    Object.freeze([1, 1, 3, 2]), Object.freeze([1, 2, 3, 1]),
+    Object.freeze([1, 1, 1, 4]), Object.freeze([3, 1, 1, 2]),
+]);
+/** Return the canonical mode number used by the first symbol character. */
+function code16kModeNumber(mode, gs1 = false) {
+    if (mode === undefined)
+        return gs1 ? 3 : 1;
+    if (typeof mode === 'string') {
+        if (mode === 'A')
+            return 0;
+        if (mode === 'B')
+            return gs1 ? 3 : 1;
+        return gs1 ? 4 : 2;
+    }
+    if (!Number.isInteger(mode) || mode < 0 || mode > 6) {
+        throw new EncodeError('Code 16K: mode must be A, B, C or an integer in 0..6');
+    }
+    return mode;
+}
+/** Resolve the initial Code 128 set and whether the first data value is FNC1. */
+function code16kModeInfo(mode, gs1 = false) {
+    const resolved = code16kModeNumber(mode, gs1);
+    if (resolved === 5 || resolved === 6) {
+        throw new EncodeError('Code 16K: modes 5 and 6 require a dedicated shift encoder');
+    }
+    const startSet = resolved === 0 ? 'A' :
+        resolved === 1 || resolved === 3 ? 'B' : 'C';
+    return {
+        mode: resolved,
+        startSet,
+        gs1: resolved === 3 || resolved === 4,
+    };
+}
+/** Return the seven-module start pattern for a zero-based row index. */
+function code16kStartModules(row) {
+    if (!Number.isInteger(row) || row < 0 || row >= CODE16K_MAX_ROWS) {
+        throw new RangeError('Code 16K: row index must be an integer in 0..15');
+    }
+    return alternatingWidths(CODE16K_START_WIDTHS[CODE16K_ROW_PAIRS[row][0]], true);
+}
+/** Return the seven-module stop pattern for a zero-based row index. */
+function code16kStopModules(row) {
+    if (!Number.isInteger(row) || row < 0 || row >= CODE16K_MAX_ROWS) {
+        throw new RangeError('Code 16K: row index must be an integer in 0..15');
+    }
+    return alternatingWidths(CODE16K_START_WIDTHS[CODE16K_ROW_PAIRS[row][1]], false);
+}
+/** Return a complete row's bare module width. */
+function code16kWidth() {
+    return CODE16K_MODULE_WIDTH;
+}
+/** Validate a matrix geometry and return its row count and separator height. */
+function code16kGeometry(width, height, rows, rowHeight, separatorHeight, outerSeparators = true) {
+    if (width !== CODE16K_MODULE_WIDTH) {
+        throw new RangeError(`Code 16K: width must be ${CODE16K_MODULE_WIDTH} modules`);
+    }
+    if (!Number.isInteger(rows) || rows < CODE16K_MIN_ROWS || rows > CODE16K_MAX_ROWS) {
+        throw new RangeError('Code 16K: rows must be an integer in 2..16');
+    }
+    if (!Number.isInteger(rowHeight) || rowHeight < 1 || rowHeight > 128) {
+        throw new RangeError('Code 16K: rowHeight must be an integer in 1..128');
+    }
+    if (!Number.isInteger(separatorHeight) || separatorHeight < 1 || separatorHeight > 16) {
+        throw new RangeError('Code 16K: separatorHeight must be an integer in 1..16');
+    }
+    const outer = outerSeparators ? 2 : 0;
+    const expected = outer + rows * rowHeight + (rows - 1) * separatorHeight;
+    if (height !== expected) {
+        throw new RangeError(`Code 16K: height ${height} does not match the row geometry`);
+    }
+    return { width, height, rows, rowHeight, separatorHeight };
+}
+/** Validate public encoder options before any large matrix allocation. */
+function validateCode16KOptions(options = {}) {
+    const rowHeight = options.rowHeight ?? CODE16K_DEFAULT_ROW_HEIGHT;
+    const separatorHeight = options.separatorHeight ?? CODE16K_DEFAULT_SEPARATOR_HEIGHT;
+    if (!Number.isInteger(rowHeight) || rowHeight < 1 || rowHeight > 128) {
+        throw new EncodeError('Code 16K: rowHeight must be an integer in 1..128');
+    }
+    if (!Number.isInteger(separatorHeight) || separatorHeight < 1 || separatorHeight > 16) {
+        throw new EncodeError('Code 16K: separatorHeight must be an integer in 1..16');
+    }
+    if (options.rows !== undefined &&
+        (!Number.isInteger(options.rows) || options.rows < CODE16K_MIN_ROWS || options.rows > CODE16K_MAX_ROWS)) {
+        throw new EncodeError('Code 16K: rows must be an integer in 2..16');
+    }
+    const info = code16kModeInfo(options.mode, options.gs1 === true);
+    return { rows: options.rows, rowHeight, separatorHeight, ...info };
+}
+/** Check table invariants used by tests and CI. */
+function validateCode16KTables() {
+    const problems = [];
+    if (CODE16K_ROW_PAIRS.length !== CODE16K_MAX_ROWS)
+        problems.push('row pair count mismatch');
+    if (CODE16K_START_WIDTHS.length !== 8)
+        problems.push('start pattern count mismatch');
+    for (let row = 0; row < CODE16K_MAX_ROWS; row++) {
+        if (code16kStartModules(row).length !== CODE16K_START_WIDTH)
+            problems.push(`row ${row + 1} start width mismatch`);
+        if (code16kStopModules(row).length !== CODE16K_STOP_WIDTH)
+            problems.push(`row ${row + 1} stop width mismatch`);
+    }
+    return problems;
+}
+
+__exports.CODE16K_MIN_ROWS = CODE16K_MIN_ROWS;
+__exports.CODE16K_MAX_ROWS = CODE16K_MAX_ROWS;
+__exports.CODE16K_SYMBOLS_PER_ROW = CODE16K_SYMBOLS_PER_ROW;
+__exports.CODE16K_MODULE_WIDTH = CODE16K_MODULE_WIDTH;
+__exports.CODE16K_START_WIDTH = CODE16K_START_WIDTH;
+__exports.CODE16K_GUARD_WIDTH = CODE16K_GUARD_WIDTH;
+__exports.CODE16K_CODEWORD_WIDTH = CODE16K_CODEWORD_WIDTH;
+__exports.CODE16K_STOP_WIDTH = CODE16K_STOP_WIDTH;
+__exports.CODE16K_DEFAULT_ROW_HEIGHT = CODE16K_DEFAULT_ROW_HEIGHT;
+__exports.CODE16K_DEFAULT_SEPARATOR_HEIGHT = CODE16K_DEFAULT_SEPARATOR_HEIGHT;
+__exports.CODE16K_PAD = CODE16K_PAD;
+__exports.CODE16K_ROW_PAIRS = CODE16K_ROW_PAIRS;
+__exports.CODE16K_START_WIDTHS = CODE16K_START_WIDTHS;
+__exports.code16kModeNumber = code16kModeNumber;
+__exports.code16kModeInfo = code16kModeInfo;
+__exports.code16kStartModules = code16kStartModules;
+__exports.code16kStopModules = code16kStopModules;
+__exports.code16kWidth = code16kWidth;
+__exports.code16kGeometry = code16kGeometry;
+__exports.validateCode16KOptions = validateCode16KOptions;
+__exports.validateCode16KTables = validateCode16KTables;
+};
+
+__modules["js/code16k/encoder.js"] = function (__require, __exports) {
+const { EncodeError } = __require("js/core/errors.js");
+const { code128DataCodewords } = __require("js/oned/writers.js");
+const { renderStackedRows } = __require("js/stacked128/common.js");
+const { CODE16K_CODEWORD_WIDTH, CODE16K_PAD, CODE16K_SYMBOLS_PER_ROW, code16kModeInfo, code16kStartModules, code16kStopModules, validateCode16KOptions } = __require("js/code16k/tables.js");
+const { code128PatternModules } = __require("js/stacked128/common.js");
+function asciiText(value) {
+    if (typeof value === 'string') {
+        if (value.length > 4096)
+            throw new EncodeError('Code 16K: value is too long for the 16-row symbol limit');
+        for (const character of value) {
+            if (character.codePointAt(0) > 127) {
+                throw new EncodeError('Code 16K: value must contain seven-bit ASCII characters');
+            }
+        }
+        return value;
+    }
+    const bytes = value instanceof Uint8Array ? Array.from(value) :
+        Array.isArray(value) ? value : null;
+    if (!bytes)
+        throw new EncodeError('Code 16K: value must be text or seven-bit bytes');
+    if (bytes.length > 4096)
+        throw new EncodeError('Code 16K: value is too long for the 16-row symbol limit');
+    if (bytes.some((byte) => !Number.isInteger(byte) || byte < 0 || byte > 127)) {
+        throw new EncodeError('Code 16K: byte input must contain values from 0 to 127');
+    }
+    return bytes.map((byte) => String.fromCharCode(byte)).join('');
+}
+function checksumOne(values) {
+    let sum = 0;
+    for (let index = 0; index < values.length; index++)
+        sum += (index + 2) * values[index];
+    return sum % 107;
+}
+function checksumTwo(valuesThroughC1) {
+    let sum = 0;
+    for (let index = 0; index < valuesThroughC1.length; index++) {
+        sum += (index + 1) * valuesThroughC1[index];
+    }
+    return sum % 107;
+}
+function rowModules(row, values) {
+    if (values.length !== CODE16K_SYMBOLS_PER_ROW) {
+        throw new EncodeError('Code 16K: every row must contain exactly five symbol characters');
+    }
+    let modules = code16kStartModules(row) + '1';
+    for (const value of values) {
+        if (!Number.isInteger(value) || value < 0 || value > 106) {
+            throw new EncodeError(`Code 16K: invalid Code 128 symbol value ${value}`);
+        }
+        const symbol = code128PatternModules(value);
+        if (symbol.length !== CODE16K_CODEWORD_WIDTH) {
+            throw new EncodeError('Code 16K: Code 128 symbol width invariant failed');
+        }
+        modules += symbol;
+    }
+    modules += code16kStopModules(row);
+    if (modules.length !== 70)
+        throw new EncodeError('Code 16K: internal row width mismatch');
+    return modules;
+}
+/**
+ * Encode a Code 16K symbol.
+ *
+ * The implementation accepts seven-bit ASCII and the standard Code 128 A/B/C
+ * data sets. It chooses the smallest legal row count unless `rows` is given.
+ * The first symbol character carries the row count and mode; C1 and C2 are
+ * calculated over every preceding symbol character exactly as specified.
+ *
+ * @param {string|Uint8Array|number[]} value
+ * @param {Code16KEncodeOptions} [options]
+ * @returns {Code16KMatrix}
+ */
+function encodeCode16K(value, options = {}) {
+    const text = asciiText(value);
+    if (text.length === 0)
+        throw new EncodeError('Code 16K: value must not be empty');
+    const validated = validateCode16KOptions(options);
+    const info = code16kModeInfo(options.mode, options.gs1 === true);
+    const tokenized = code128DataCodewords(text, {
+        gs1: info.gs1,
+        startSet: info.startSet,
+    });
+    const data = tokenized.values.slice();
+    const minimumRows = Math.max(2, Math.ceil((data.length + 3) / CODE16K_SYMBOLS_PER_ROW));
+    const rows = validated.rows ?? minimumRows;
+    if (rows < 2 || rows > 16) {
+        throw new EncodeError('Code 16K: payload needs between 2 and 16 rows');
+    }
+    const capacity = rows * CODE16K_SYMBOLS_PER_ROW - 3;
+    if (data.length > capacity) {
+        throw new EncodeError(`Code 16K: payload needs ${data.length} data symbols but ${capacity} fit in ${rows} rows`);
+    }
+    const first = 7 * (rows - 2) + info.mode;
+    if (first > 104)
+        throw new EncodeError('Code 16K: row count and mode do not fit the S symbol');
+    while (data.length < capacity)
+        data.push(CODE16K_PAD);
+    const beforeChecks = [first, ...data];
+    const c1 = checksumOne(beforeChecks);
+    const c2 = checksumTwo([...beforeChecks, c1]);
+    const codewords = [...beforeChecks, c1, c2];
+    if (codewords.length !== rows * CODE16K_SYMBOLS_PER_ROW) {
+        throw new EncodeError('Code 16K: internal codeword packing mismatch');
+    }
+    const rowsModules = [];
+    for (let row = 0; row < rows; row++) {
+        rowsModules.push(rowModules(row, codewords.slice(row * CODE16K_SYMBOLS_PER_ROW, (row + 1) * CODE16K_SYMBOLS_PER_ROW)));
+    }
+    const matrix = renderStackedRows(rowsModules, validated.rowHeight, validated.separatorHeight);
+    matrix.code16k = {
+        format: 'code16k',
+        rows,
+        columns: CODE16K_SYMBOLS_PER_ROW,
+        rowHeight: validated.rowHeight,
+        separatorHeight: validated.separatorHeight,
+        mode: info.mode,
+        codewords,
+        checksum: true,
+    };
+    return matrix;
+}
+/** Return the dimensions selected for a Code 16K payload without rendering it. */
+function code16kDimensions(value, options = {}) {
+    const text = asciiText(value);
+    if (text.length === 0)
+        throw new EncodeError('Code 16K: value must not be empty');
+    const validated = validateCode16KOptions(options);
+    const info = code16kModeInfo(options.mode, options.gs1 === true);
+    const tokenized = code128DataCodewords(text, { gs1: info.gs1, startSet: info.startSet });
+    const dataLength = tokenized.values.length;
+    const rows = validated.rows ?? Math.max(2, Math.ceil((dataLength + 3) / CODE16K_SYMBOLS_PER_ROW));
+    const capacity = rows * CODE16K_SYMBOLS_PER_ROW - 3;
+    if (rows > 16 || dataLength > capacity) {
+        throw new EncodeError('Code 16K: payload does not fit the requested row count');
+    }
+    return {
+        rows,
+        columns: CODE16K_SYMBOLS_PER_ROW,
+        width: 70,
+        height: 2 + rows * validated.rowHeight + (rows - 1) * validated.separatorHeight,
+        rowHeight: validated.rowHeight,
+        separatorHeight: validated.separatorHeight,
+    };
+}
+
+__exports.encodeCode16K = encodeCode16K;
+__exports.code16kDimensions = code16kDimensions;
+};
+
+__modules["js/code16k/decoder.js"] = function (__require, __exports) {
+/** Code 16K decoder for sampled, axis-aligned module matrices. @module code16k/decoder */
+const { FormatError } = __require("js/core/errors.js");
+const { CODE16K_CODEWORD_WIDTH, CODE16K_MAX_ROWS, CODE16K_MIN_ROWS, CODE16K_PAD, CODE16K_SYMBOLS_PER_ROW, code16kModeInfo, code16kStartModules, code16kStopModules } = __require("js/code16k/tables.js");
+const { code128ValueFromModules } = __require("js/stacked128/common.js");
+function equalAt(source, offset, expected) {
+    return source.slice(offset, offset + expected.length) === expected;
+}
+/** Decode one complete 70-module Code 16K row. */
+function decodeCode16KRow(modules, expectedRow = undefined) {
+    if (typeof modules !== 'string' || modules.length !== 70)
+        return null;
+    const candidates = expectedRow === undefined
+        ? Array.from({ length: CODE16K_MAX_ROWS }, (_, index) => index)
+        : [expectedRow];
+    for (const row of candidates) {
+        if (!Number.isInteger(row) || row < 0 || row >= CODE16K_MAX_ROWS)
+            continue;
+        if (!equalAt(modules, 0, code16kStartModules(row)))
+            continue;
+        if (modules[7] !== '1')
+            continue;
+        if (!equalAt(modules, 63, code16kStopModules(row)))
+            continue;
+        const values = [];
+        let valid = true;
+        for (let column = 0; column < CODE16K_SYMBOLS_PER_ROW; column++) {
+            const value = code128ValueFromModules(modules, 8 + column * CODE16K_CODEWORD_WIDTH);
+            if (value === null) {
+                valid = false;
+                break;
+            }
+            values.push(value);
+        }
+        if (valid)
+            return { row, values };
+    }
+    return null;
+}
+function separatorIsDark(matrix, y) {
+    if (y < 0 || y >= matrix.height)
+        return false;
+    for (let x = 0; x < matrix.width; x++)
+        if (!matrix.get(x, y))
+            return false;
+    return true;
+}
+function readRow(matrix, y) {
+    if (y < 0 || y >= matrix.height)
+        return null;
+    let modules = '';
+    for (let x = 0; x < matrix.width; x++)
+        modules += matrix.get(x, y) ? '1' : '0';
+    return decodeCode16KRow(modules);
+}
+function rowIsConsistent(matrix, y, rowHeight, expected) {
+    for (let offset = 0; offset < rowHeight; offset++) {
+        const parsed = readRow(matrix, y + offset);
+        if (!parsed || parsed.row !== expected.row ||
+            parsed.values.some((value, index) => value !== expected.values[index]))
+            return false;
+    }
+    return true;
+}
+function code128StartForMode(mode) {
+    if (mode === 0)
+        return 103;
+    if (mode === 1 || mode === 3)
+        return 104;
+    if (mode === 2 || mode === 4)
+        return 105;
+    return -1;
+}
+function checksumOne(values) {
+    let sum = 0;
+    for (let index = 0; index < values.length; index++)
+        sum += (index + 2) * values[index];
+    return sum % 107;
+}
+function checksumTwo(valuesThroughC1) {
+    let sum = 0;
+    for (let index = 0; index < valuesThroughC1.length; index++) {
+        sum += (index + 1) * valuesThroughC1[index];
+    }
+    return sum % 107;
+}
+function decodeRows(rows, rowHeight, separatorHeight) {
+    if (rows.length < CODE16K_MIN_ROWS || rows.length > CODE16K_MAX_ROWS) {
+        throw new FormatError('Code 16K: row count must be in 2..16');
+    }
+    const first = rows[0];
+    if (first.row !== 0 || first.values.length !== CODE16K_SYMBOLS_PER_ROW) {
+        throw new FormatError('Code 16K: first row is missing or malformed');
+    }
+    const symbol = first.values[0];
+    if (!Number.isInteger(symbol) || symbol < 0 || symbol > 104) {
+        throw new FormatError('Code 16K: invalid S symbol');
+    }
+    const rowCount = Math.floor(symbol / 7) + 2;
+    const mode = symbol % 7;
+    if (rowCount !== rows.length || rowCount < CODE16K_MIN_ROWS || rowCount > CODE16K_MAX_ROWS) {
+        throw new FormatError('Code 16K: S symbol does not agree with the row count');
+    }
+    if (mode === 5 || mode === 6) {
+        throw new FormatError('Code 16K: shift modes 5 and 6 are not supported by this decoder');
+    }
+    const expectedRows = Array.from({ length: rowCount }, (_, index) => index);
+    for (let index = 0; index < rowCount; index++) {
+        if (rows[index].row !== expectedRows[index] || rows[index].values.length !== CODE16K_SYMBOLS_PER_ROW) {
+            throw new FormatError('Code 16K: rows are missing or out of order');
+        }
+    }
+    const codewords = rows.flatMap((entry) => entry.values);
+    if (codewords.length !== rowCount * CODE16K_SYMBOLS_PER_ROW) {
+        throw new FormatError('Code 16K: invalid codeword count');
+    }
+    const c1 = codewords[codewords.length - 2];
+    const c2 = codewords[codewords.length - 1];
+    const beforeChecks = codewords.slice(0, -2);
+    if (checksumOne(beforeChecks) !== c1 || checksumTwo([...beforeChecks, c1]) !== c2) {
+        throw new FormatError('Code 16K: check character mismatch');
+    }
+    const data = codewords.slice(1, -2);
+    while (data.length && data[data.length - 1] === CODE16K_PAD)
+        data.pop();
+    if (!data.length)
+        throw new FormatError('Code 16K: data region is empty');
+    const expectedStart = code128StartForMode(mode);
+    if (expectedStart < 0)
+        throw new FormatError('Code 16K: unsupported mode');
+    const info = code16kModeInfo(mode, mode === 3 || mode === 4);
+    const firstIsFnc1 = data[0] === 102;
+    if (info.gs1 !== firstIsFnc1) {
+        throw new FormatError('Code 16K: mode and leading FNC1 do not agree');
+    }
+    // Keep Code 16K aligned with ordinary Code 128 A/B/C decoding while the row
+    // framing and checks remain format-specific.
+    const decoded = decodeCode128ValuesLocal(expectedStart, data);
+    if (!decoded)
+        throw new FormatError('Code 16K: invalid Code 128 data stream');
+    return {
+        format: 'code16k',
+        text: decoded.text,
+        rows: rowCount,
+        columns: CODE16K_SYMBOLS_PER_ROW,
+        rowHeight,
+        separatorHeight,
+        mode,
+        codewords,
+        checksum: true,
+        symbologyIdentifier: info.gs1 ? ']K1' : ']K0',
+        ...(info.gs1 ? { gs1: true } : {}),
+        ...(decoded.fnc1AtStart ? { fnc1AtStart: true } : {}),
+        ...(decoded.fnc1Positions?.length ? { fnc1Positions: decoded.fnc1Positions } : {}),
+    };
+}
+/* Keep the decoder self-contained if this module is consumed without the full common declaration graph. */
+function decodeCode128ValuesLocal(startCode, dataValues) {
+    if (![103, 104, 105].includes(startCode) || !dataValues.length)
+        return null;
+    let mode = startCode === 103 ? 'A' : startCode === 104 ? 'B' : 'C';
+    let shifted = null;
+    let text = '';
+    const fnc1AtStart = dataValues[0] === 102;
+    const fnc1Positions = [];
+    for (let index = 0; index < dataValues.length; index++) {
+        const value = dataValues[index];
+        const active = shifted ?? mode;
+        shifted = null;
+        if (value === 101 && mode !== 'A') {
+            mode = 'A';
+            continue;
+        }
+        if (value === 100 && mode !== 'B') {
+            mode = 'B';
+            continue;
+        }
+        if (value === 99) {
+            mode = 'C';
+            continue;
+        }
+        if (value === 98) {
+            shifted = mode === 'A' ? 'B' : 'A';
+            continue;
+        }
+        if (value === 102) {
+            if (index > 0) {
+                fnc1Positions.push(text.length);
+                text += '\x1d';
+            }
+            continue;
+        }
+        if (value >= 96 && value <= 102)
+            continue;
+        if (active === 'C') {
+            if (value > 99)
+                return null;
+            text += String(value).padStart(2, '0');
+        }
+        else if (active === 'A') {
+            if (value > 95)
+                return null;
+            text += value < 64 ? String.fromCharCode(value + 32) : String.fromCharCode(value - 64);
+        }
+        else {
+            if (value > 95)
+                return null;
+            text += String.fromCharCode(value + 32);
+        }
+        if (text.length > 100000)
+            return null;
+    }
+    return text.length ? { text, ...(fnc1AtStart ? { fnc1AtStart: true } : {}), fnc1Positions } : null;
+}
+function candidateGeometry(matrix, options) {
+    const metadata = matrix.code16k;
+    const requestedRows = options.rows ?? metadata?.rows;
+    const requestedRowHeight = options.rowHeight ?? metadata?.rowHeight;
+    const requestedSeparatorHeight = options.separatorHeight ?? metadata?.separatorHeight;
+    const candidates = [];
+    for (const outer of [true, false]) {
+        const innerHeight = matrix.height - (outer ? 2 : 0);
+        for (let rows = CODE16K_MIN_ROWS; rows <= CODE16K_MAX_ROWS; rows++) {
+            if (requestedRows !== undefined && rows !== requestedRows)
+                continue;
+            for (let separatorHeight = requestedSeparatorHeight ?? 1; separatorHeight <= (requestedSeparatorHeight ?? 16); separatorHeight++) {
+                if (!Number.isInteger(separatorHeight) || separatorHeight < 1 || separatorHeight > 16)
+                    continue;
+                const numerator = innerHeight - (rows - 1) * separatorHeight;
+                if (numerator < rows || numerator % rows !== 0)
+                    continue;
+                const rowHeight = numerator / rows;
+                if (rowHeight < 1 || rowHeight > 128)
+                    continue;
+                if (requestedRowHeight !== undefined && rowHeight !== requestedRowHeight)
+                    continue;
+                candidates.push({ rows, rowHeight, separatorHeight, outer });
+            }
+        }
+    }
+    return candidates;
+}
+/**
+ * Decode a complete, axis-aligned Code 16K module matrix.
+ *
+ * The decoder re-checks row geometry, row identifiers, both modulo-107 check
+ * characters and the Code 128 data stream. Metadata attached by the encoder
+ * is used only as a geometry hint and never substitutes for validation.
+ */
+function decodeCode16K(matrix, options = {}) {
+    if (!matrix?.width || !matrix?.height || typeof matrix.get !== 'function') {
+        throw new FormatError('Code 16K: matrix with width, height and get() is required');
+    }
+    if (matrix.width !== 70)
+        throw new FormatError('Code 16K: matrix width must be 70 modules');
+    for (const geometry of candidateGeometry(matrix, options)) {
+        const first = readRow(matrix, geometry.outer ? 1 : 0);
+        if (!first || first.row !== 0)
+            continue;
+        const encodedRows = Math.floor(first.values[0] / 7) + 2;
+        if (encodedRows !== geometry.rows)
+            continue;
+        const rows = [];
+        let valid = true;
+        for (let row = 0; row < geometry.rows; row++) {
+            const y = (geometry.outer ? 1 : 0) + row * (geometry.rowHeight + geometry.separatorHeight);
+            const parsed = readRow(matrix, y);
+            if (!parsed || parsed.row !== row) {
+                valid = false;
+                break;
+            }
+            if (!rowIsConsistent(matrix, y, geometry.rowHeight, parsed)) {
+                valid = false;
+                break;
+            }
+            rows.push(parsed);
+            if (row < geometry.rows - 1 && !separatorIsDark(matrix, y + geometry.rowHeight)) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid)
+            continue;
+        if (geometry.outer && (!separatorIsDark(matrix, 0) ||
+            !separatorIsDark(matrix, matrix.height - 1)))
+            continue;
+        try {
+            return decodeRows(rows, geometry.rowHeight, geometry.separatorHeight);
+        }
+        catch {
+            // Try another legal geometry before rejecting the matrix.
+        }
+    }
+    throw new FormatError('Code 16K: no valid row geometry or checksum found');
+}
+
+__exports.decodeCode16KRow = decodeCode16KRow;
+__exports.decodeCode16K = decodeCode16K;
+};
+
+__modules["js/code16k/detector.js"] = function (__require, __exports) {
+/** Conservative integer-module Code 16K detector. @module code16k/detector */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { code128PatternModules, renderStackedRows, sampleModules, scanStackedRows } = __require("js/stacked128/common.js");
+const { code16kStartModules, code16kStopModules } = __require("js/code16k/tables.js");
+const { decodeCode16K, decodeCode16KRow } = __require("js/code16k/decoder.js");
+function rowModules(row, values) {
+    return code16kStartModules(row) + '1' + values.map((value) => code128PatternModules(value)).join('') +
+        code16kStopModules(row);
+}
+function rotateClockwise(source) {
+    const rotated = new BitMatrix(source.height, source.width);
+    for (let y = 0; y < source.height; y++) {
+        for (let x = 0; x < source.width; x++) {
+            if (source.get(x, y))
+                rotated.set(source.height - 1 - y, x);
+        }
+    }
+    return rotated;
+}
+function cornersFor(x, y, width, height) {
+    return [
+        { x, y }, { x: x + width, y },
+        { x: x + width, y: y + height }, { x, y: y + height },
+    ];
+}
+function rowHasDarkPixels(image, y, x, width) {
+    if (y < 0 || y >= image.height)
+        return false;
+    for (let offset = 0; offset < width; offset++)
+        if (!image.get(x + offset, y))
+            return false;
+    return true;
+}
+function contiguousSpan(values) {
+    if (!values.length)
+        return 0;
+    const sorted = [...new Set(values)].sort((a, b) => a - b);
+    let best = 1;
+    let current = 1;
+    for (let index = 1; index < sorted.length; index++) {
+        if (sorted[index] === sorted[index - 1] + 1)
+            current++;
+        else {
+            best = Math.max(best, current);
+            current = 1;
+        }
+    }
+    return Math.max(best, current);
+}
+function parseSample(row, start, moduleSize) {
+    const modules = sampleModules(row, start, moduleSize, 70);
+    if (!modules)
+        return null;
+    const parsed = decodeCode16KRow(modules);
+    return parsed ? { ...parsed, modules } : null;
+}
+function detectOriented(image, options) {
+    const requestedScale = options.moduleSize;
+    if (requestedScale !== undefined &&
+        (!Number.isInteger(requestedScale) || requestedScale < 1 || requestedScale > 32))
+        return null;
+    const maxModules = 70 * (requestedScale ?? 32);
+    const found = scanStackedRows(image, 70, parseSample, maxModules)
+        .filter((candidate) => requestedScale === undefined || candidate.moduleSize === requestedScale);
+    const groups = new Map();
+    for (const candidate of found) {
+        const key = `${candidate.x}:${candidate.moduleSize}`;
+        let group = groups.get(key);
+        if (!group) {
+            group = { x: candidate.x, moduleSize: candidate.moduleSize, rows: new Map() };
+            groups.set(key, group);
+        }
+        let values = group.rows.get(candidate.parsed.row);
+        if (!values) {
+            values = [];
+            group.rows.set(candidate.parsed.row, values);
+        }
+        values.push({ y: candidate.y, parsed: candidate.parsed });
+    }
+    for (const group of groups.values()) {
+        const firstCandidates = group.rows.get(0);
+        if (!firstCandidates?.length)
+            continue;
+        for (const first of firstCandidates) {
+            const encodedRows = Math.floor(first.parsed.values[0] / 7) + 2;
+            if (encodedRows < 2 || encodedRows > 16 || group.rows.size !== encodedRows)
+                continue;
+            const chosen = [];
+            let complete = true;
+            for (let row = 0; row < encodedRows; row++) {
+                const entries = group.rows.get(row);
+                if (!entries?.length) {
+                    complete = false;
+                    break;
+                }
+                const sorted = entries.slice().sort((a, b) => a.y - b.y);
+                chosen.push({ y: sorted[0].y, parsed: sorted[0].parsed });
+            }
+            if (!complete)
+                continue;
+            const scale = group.moduleSize;
+            const spans = chosen.map((entry) => {
+                const entries = group.rows.get(entry.parsed.row) ?? [];
+                return contiguousSpan(entries.map((candidate) => candidate.y));
+            });
+            if (!spans.every((span) => span === spans[0]) || spans[0] < scale || spans[0] % scale !== 0)
+                continue;
+            const rowHeight = spans[0] / scale;
+            const firstY = chosen[0].y;
+            const steps = chosen.slice(1).map((entry, index) => entry.y - chosen[index].y);
+            if (!steps.length || !steps.every((step) => step === steps[0]) || steps[0] % scale !== 0)
+                continue;
+            const separatorHeight = steps[0] / scale - rowHeight;
+            if (separatorHeight < 1 || separatorHeight > 16)
+                continue;
+            if (options.rowHeight !== undefined && rowHeight !== options.rowHeight)
+                continue;
+            if (options.separatorHeight !== undefined && separatorHeight !== options.separatorHeight)
+                continue;
+            const modules = chosen.map((entry) => rowModules(entry.parsed.row, entry.parsed.values));
+            let matrix;
+            try {
+                matrix = renderStackedRows(modules, rowHeight, separatorHeight);
+                const result = decodeCode16K(matrix, { rowHeight, separatorHeight, rows: encodedRows });
+                const topSeparator = rowHasDarkPixels(image, firstY - scale, group.x, 70 * scale) ? scale : 0;
+                const last = chosen[chosen.length - 1];
+                const bottomY = last.y + spans[spans.length - 1];
+                const bottomSeparator = rowHasDarkPixels(image, bottomY, group.x, 70 * scale) ? scale : 0;
+                const boundsY = firstY - topSeparator;
+                const boundsHeight = (bottomY + bottomSeparator) - boundsY;
+                return {
+                    ...result,
+                    matrix,
+                    corners: cornersFor(group.x, boundsY, 70 * scale, boundsHeight),
+                    rotation: 0,
+                    moduleSize: scale,
+                };
+            }
+            catch {
+                // A candidate is accepted only after all rows and checks decode.
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Detect and decode one Code 16K symbol from a binarized image.
+ *
+ * The detector is intentionally conservative and enumerates integer module
+ * scales and the four orthogonal orientations. Non-integer perspective and
+ * photographic threshold recovery remain the responsibility of the generic
+ * image pipeline.
+ */
+function detectCode16K(binaryImage, options = {}) {
+    if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function')
+        return null;
+    let oriented = binaryImage;
+    let toOriginal = (point) => ({ x: point.x, y: point.y });
+    for (let rotation = 0; rotation < 4; rotation++) {
+        const found = detectOriented(oriented, options);
+        if (found) {
+            return {
+                ...found,
+                corners: found.corners.map(toOriginal),
+                rotation: rotation * 90,
+            };
+        }
+        const previous = oriented;
+        const previousToOriginal = toOriginal;
+        oriented = rotateClockwise(previous);
+        toOriginal = (point) => previousToOriginal({ x: point.y, y: previous.height - point.x });
+    }
+    return null;
+}
+/** Alias matching the detector naming used by the other format modules. */
+function detectAndDecodeCode16K(binaryImage, options = {}) {
+    return detectCode16K(binaryImage, options);
+}
+
+__exports.detectCode16K = detectCode16K;
+__exports.detectAndDecodeCode16K = detectAndDecodeCode16K;
+};
+
+__modules["js/code16k/index.js"] = function (__require, __exports) {
+/** Code 16K public module exports. @module code16k */
+const __reexport0 = __require("js/code16k/tables.js"); __exports.CODE16K_MIN_ROWS = __reexport0.CODE16K_MIN_ROWS; __exports.CODE16K_MAX_ROWS = __reexport0.CODE16K_MAX_ROWS; __exports.CODE16K_SYMBOLS_PER_ROW = __reexport0.CODE16K_SYMBOLS_PER_ROW; __exports.CODE16K_MODULE_WIDTH = __reexport0.CODE16K_MODULE_WIDTH; __exports.CODE16K_START_WIDTH = __reexport0.CODE16K_START_WIDTH; __exports.CODE16K_GUARD_WIDTH = __reexport0.CODE16K_GUARD_WIDTH; __exports.CODE16K_CODEWORD_WIDTH = __reexport0.CODE16K_CODEWORD_WIDTH; __exports.CODE16K_STOP_WIDTH = __reexport0.CODE16K_STOP_WIDTH; __exports.CODE16K_DEFAULT_ROW_HEIGHT = __reexport0.CODE16K_DEFAULT_ROW_HEIGHT; __exports.CODE16K_DEFAULT_SEPARATOR_HEIGHT = __reexport0.CODE16K_DEFAULT_SEPARATOR_HEIGHT; __exports.CODE16K_PAD = __reexport0.CODE16K_PAD; __exports.CODE16K_ROW_PAIRS = __reexport0.CODE16K_ROW_PAIRS; __exports.CODE16K_START_WIDTHS = __reexport0.CODE16K_START_WIDTHS; __exports.code16kModeNumber = __reexport0.code16kModeNumber; __exports.code16kModeInfo = __reexport0.code16kModeInfo; __exports.code16kStartModules = __reexport0.code16kStartModules; __exports.code16kStopModules = __reexport0.code16kStopModules; __exports.code16kWidth = __reexport0.code16kWidth; __exports.code16kGeometry = __reexport0.code16kGeometry; __exports.validateCode16KOptions = __reexport0.validateCode16KOptions; __exports.validateCode16KTables = __reexport0.validateCode16KTables;
+const __reexport1 = __require("js/code16k/encoder.js"); __exports.encodeCode16K = __reexport1.encodeCode16K; __exports.code16kDimensions = __reexport1.code16kDimensions;
+const __reexport2 = __require("js/code16k/decoder.js"); __exports.decodeCode16K = __reexport2.decodeCode16K; __exports.decodeCode16KRow = __reexport2.decodeCode16KRow;
+const __reexport3 = __require("js/code16k/detector.js"); __exports.detectCode16K = __reexport3.detectCode16K; __exports.detectAndDecodeCode16K = __reexport3.detectAndDecodeCode16K;
+
+
+};
+
 __modules["js/render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -22288,6 +23670,8 @@ const aztecRune = __require("js/aztecrune/index.js");
 const compactPdf417 = __require("js/compactpdf417/index.js");
 const databar = __require("js/databar/index.js");
 const maxicode = __require("js/maxicode/index.js");
+const codablockf = __require("js/codablockf/index.js");
+const code16k = __require("js/code16k/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("js/core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("js/image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -22308,10 +23692,12 @@ Object.assign(__exports, __require("js/compactpdf417/index.js"));
 // Omnidirectional/Truncated, Limited, Stacked and Stacked Omnidirectional paths.
 Object.assign(__exports, __require("js/databar/index.js"));
 const __reexport12 = __require("js/maxicode/index.js"); __exports.encodeMaxiCode = __reexport12.encodeMaxiCode; __exports.decodeMaxiCode = __reexport12.decodeMaxiCode; __exports.detectMaxiCode = __reexport12.detectMaxiCode; __exports.detectAndDecodeMaxiCode = __reexport12.detectAndDecodeMaxiCode;
-const __reexport13 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport13.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport13.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport13.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport13.detectAndDecodeMicroPDF417;
-const __reexport14 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport14.encodeMicroQR; __exports.decodeMicroQR = __reexport14.decodeMicroQR; __exports.detectMicroQR = __reexport14.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport14.detectAndDecodeMicroQR;
-const __reexport15 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport15.encodeRMQR; __exports.decodeRMQR = __reexport15.decodeRMQR; __exports.detectRMQR = __reexport15.detectRMQR; __exports.detectAndDecodeRMQR = __reexport15.detectAndDecodeRMQR;
-const __reexport16 = __require("js/frameqr/index.js"); __exports.encodeFrameQR = __reexport16.encodeFrameQR; __exports.decodeFrameQR = __reexport16.decodeFrameQR; __exports.detectFrameQR = __reexport16.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport16.detectAndDecodeFrameQR;
+const __reexport13 = __require("js/codablockf/index.js"); __exports.encodeCodablockF = __reexport13.encodeCodablockF; __exports.decodeCodablockF = __reexport13.decodeCodablockF; __exports.detectCodablockF = __reexport13.detectCodablockF; __exports.detectAndDecodeCodablockF = __reexport13.detectAndDecodeCodablockF;
+const __reexport14 = __require("js/code16k/index.js"); __exports.encodeCode16K = __reexport14.encodeCode16K; __exports.decodeCode16K = __reexport14.decodeCode16K; __exports.detectCode16K = __reexport14.detectCode16K; __exports.detectAndDecodeCode16K = __reexport14.detectAndDecodeCode16K;
+const __reexport15 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport15.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport15.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport15.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport15.detectAndDecodeMicroPDF417;
+const __reexport16 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport16.encodeMicroQR; __exports.decodeMicroQR = __reexport16.decodeMicroQR; __exports.detectMicroQR = __reexport16.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport16.detectAndDecodeMicroQR;
+const __reexport17 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport17.encodeRMQR; __exports.decodeRMQR = __reexport17.decodeRMQR; __exports.detectRMQR = __reexport17.detectRMQR; __exports.detectAndDecodeRMQR = __reexport17.detectAndDecodeRMQR;
+const __reexport18 = __require("js/frameqr/index.js"); __exports.encodeFrameQR = __reexport18.encodeFrameQR; __exports.decodeFrameQR = __reexport18.decodeFrameQR; __exports.detectFrameQR = __reexport18.detectFrameQR; __exports.detectAndDecodeFrameQR = __reexport18.detectAndDecodeFrameQR;
 /**
  * @typedef {object} FormatInfo
  * @property {string} id
@@ -22368,6 +23754,10 @@ const dataBarExpandedCanEncode = typeof databar.encodeDataBarExpanded === 'funct
 const dataBarExpandedCanDecode = typeof databar.detectAndDecodeDataBarExpanded === 'function';
 const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
 const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
+const codablockfCanEncode = typeof codablockf.encodeCodablockF === 'function';
+const codablockfCanDecode = typeof codablockf.detectAndDecodeCodablockF === 'function';
+const code16kCanEncode = typeof code16k.encodeCode16K === 'function';
+const code16kCanDecode = typeof code16k.detectAndDecodeCode16K === 'function';
 /**
  * Every format this build supports.
  *
@@ -22499,6 +23889,20 @@ function listFormats() {
         canRead: maxicodeCanDecode,
         kind: /** @type {'2D'} */ ('2D'),
     });
+    formats.push({
+        id: 'codablockf',
+        label: 'Codablock-F',
+        canWrite: codablockfCanEncode,
+        canRead: codablockfCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
+    formats.push({
+        id: 'code16k',
+        label: 'Code 16K',
+        canWrite: code16kCanEncode,
+        canRead: code16kCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -22601,6 +24005,12 @@ function encode(text, options = {}) {
     if (format === 'maxicode' || format === 'maxi-code') {
         return maxicode.encodeMaxiCode(value, options);
     }
+    if (format === 'codablockf' || format === 'codablock-f' || format === 'codablock') {
+        return codablockf.encodeCodablockF(value, options);
+    }
+    if (format === 'code16k' || format === 'code-16k') {
+        return code16k.encodeCode16K(value, options);
+    }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
     }
@@ -22654,7 +24064,7 @@ function encode(text, options = {}) {
             'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
             'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
             'imb', 'onecode', 'usps-onecode',
-            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode'].join(', ');
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -22674,6 +24084,8 @@ function encode(text, options = {}) {
  * @property {number} [columns] PDF417 column count.
  * @property {number} [eccLevel] PDF417 error-correction level.
  * @property {number} [rowHeight] PDF417 row height in modules.
+ * @property {number} [moduleSize] Detected module scale for stacked formats.
+ * @property {boolean} [checksum] Whether the stacked format checks passed.
  * @property {number} [variant] MicroPDF417 predefined variant number.
  * @property {number} [eccCodewords] MicroPDF417 fixed error-correction codewords.
  * @property {string} [profile] Sythos Canvas QR profile identifier.
@@ -22724,6 +24136,8 @@ function decode(image, options = {}) {
     const wantRMQR = !want || want.has('rmqr') || want.has('r-mqr') || want.has('rectangular-micro-qr');
     const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
     const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
+    const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
+    const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
     const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
     const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
         || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -22747,6 +24161,7 @@ function decode(image, options = {}) {
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
         || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
+        || wantCodablockF || wantCode16K
         || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
@@ -22904,6 +24319,40 @@ function decode(image, options = {}) {
                 }
                 catch {
                     /* no MaxiCode in this pass */
+                }
+            }
+            if (wantCodablockF && codablockfCanDecode) {
+                const codablockBits = binarizer === 'auto'
+                    ? [candidateBits, binarize(candidateSource, 'global')]
+                    : [candidateBits];
+                for (const thresholdBits of codablockBits) {
+                    try {
+                        const found = codablockf.detectAndDecodeCodablockF(thresholdBits);
+                        if (found) {
+                            add(found, 'codablockf');
+                            break;
+                        }
+                    }
+                    catch {
+                        /* no Codablock-F in this pass */
+                    }
+                }
+            }
+            if (wantCode16K && code16kCanDecode) {
+                const code16KBits = binarizer === 'auto'
+                    ? [candidateBits, binarize(candidateSource, 'global')]
+                    : [candidateBits];
+                for (const thresholdBits of code16KBits) {
+                    try {
+                        const found = code16k.detectAndDecodeCode16K(thresholdBits);
+                        if (found) {
+                            add(found, 'code16k');
+                            break;
+                        }
+                    }
+                    catch {
+                        /* no Code 16K in this pass */
+                    }
                 }
             }
             if (wantDataBarStacked && dataBarStackedCanDecode) {

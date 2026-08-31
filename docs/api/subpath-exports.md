@@ -28,6 +28,8 @@ Only these public subpaths are compatibility promises; arbitrary paths under
 | `@sythos/js_barcode_universal/rmqr` | rMQR encoder, decoder, detector and size/table helpers. |
 | `@sythos/js_barcode_universal/frameqr` | Sythos Canvas QR profile encoder, decoder, detector and profile helpers. |
 | `@sythos/js_barcode_universal/maxicode` | MaxiCode Modes 2–5 encoder, decoder, detector and fixed-grid helpers. |
+| `@sythos/js_barcode_universal/codablockf` | Codablock-F stacked Code 128 encoder, decoder and clean-raster detector. |
+| `@sythos/js_barcode_universal/code16k` | Code 16K stacked Code 128 A/B/C encoder, decoder and clean-raster detector. |
 | `@sythos/js_barcode_universal/render` | All renderers, canvas backends, option normalisation and colour parsing. |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI`. |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI`, `deflateStored`. |

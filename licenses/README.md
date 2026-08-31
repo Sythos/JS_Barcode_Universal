@@ -45,6 +45,7 @@ appendix carries the consolidated inventory these files expand on.
 | MaxiCode | [`maxicode.license`](maxicode.license) | 2 |
 | Postal 4-state family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post and IMb) | [`postal.license`](postal.license) | 2 |
 | Codablock-F | [`codablockf.license`](codablockf.license) | 2 |
+| Code 16K | [`code16k.license`](code16k.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

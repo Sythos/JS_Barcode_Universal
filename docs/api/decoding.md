@@ -89,7 +89,8 @@ optional because different symbologies expose different evidence:
 | `segments` | PDF417-family compaction segments, in source order. |
 | `version`, `ecc` | QR-family metadata. |
 | `layers`, `compact`, `corrections` | Aztec metadata and Reed–Solomon work. |
-| `rows`, `columns`, `eccLevel`, `rowHeight` | PDF417-family geometry and correction metadata. |
+| `rows`, `columns`, `eccLevel`, `rowHeight` | PDF417-family geometry and correction metadata; `rows` and `rowHeight` also describe stacked Code 16K symbols. |
+| `moduleSize`, `checksum` | Integer-scale stacked detection and validated row or overall checks for Codablock-F and Code 16K. |
 | `variant`, `eccCodewords` | MicroPDF417 variant metadata. |
 | `checkDigit`, `pznVariant` | Validated optional numeric checks and PZN-7/PZN-8 identification. |
 | `profile`, `certified`, `canvas` | Sythos Canvas QR profile metadata. `certified` is `false` for this project profile. |

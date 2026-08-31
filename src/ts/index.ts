@@ -80,6 +80,7 @@ import * as compactPdf417 from './compactpdf417/index.js';
 import * as databar from './databar/index.js';
 import * as maxicode from './maxicode/index.js';
 import * as codablockf from './codablockf/index.js';
+import * as code16k from './code16k/index.js';
 
 export { BitMatrix };
 export {
@@ -113,6 +114,9 @@ export {
 export {
   encodeCodablockF, decodeCodablockF, detectCodablockF, detectAndDecodeCodablockF,
 } from './codablockf/index.js';
+export {
+  encodeCode16K, decodeCode16K, detectCode16K, detectAndDecodeCode16K,
+} from './code16k/index.js';
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
 } from './micropdf417/index.js';
@@ -181,6 +185,8 @@ const maxicodeCanEncode = typeof maxicode.encodeMaxiCode === 'function';
 const maxicodeCanDecode = typeof maxicode.detectAndDecodeMaxiCode === 'function';
 const codablockfCanEncode = typeof codablockf.encodeCodablockF === 'function';
 const codablockfCanDecode = typeof codablockf.detectAndDecodeCodablockF === 'function';
+const code16kCanEncode = typeof code16k.encodeCode16K === 'function';
+const code16kCanDecode = typeof code16k.detectAndDecodeCode16K === 'function';
 
 /**
  * Every format this build supports.
@@ -321,6 +327,13 @@ export function listFormats() {
     canRead: codablockfCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'code16k',
+    label: 'Code 16K',
+    canWrite: code16kCanEncode,
+    canRead: code16kCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -429,6 +442,9 @@ export function encode(text, options = {}) {
   if (format === 'codablockf' || format === 'codablock-f' || format === 'codablock') {
     return codablockf.encodeCodablockF(value, options);
   }
+  if (format === 'code16k' || format === 'code-16k') {
+    return code16k.encodeCode16K(value, options);
+  }
   if (format === 'telepennumeric' || format === 'telepen-numeric') {
     return encodeTelepenNumeric(value);
   }
@@ -484,7 +500,7 @@ export function encode(text, options = {}) {
       'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
       'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
       'imb', 'onecode', 'usps-onecode',
-      'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf'].join(', ');
+      'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -559,6 +575,7 @@ export function decode(image, options = {}) {
   const wantFrameQR = !want || want.has('frameqr') || want.has('frame-qr') || want.has('canvas-qr');
   const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
   const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
+  const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
   const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
   const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
     || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -582,7 +599,7 @@ export function decode(image, options = {}) {
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
   const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
     || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-    || wantCodablockF
+    || wantCodablockF || wantCode16K
     || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
 
   const source = LuminanceSource.fromImageData(image);
@@ -738,6 +755,20 @@ export function decode(image, options = {}) {
             if (found) { add(found, 'codablockf'); break; }
           } catch {
             /* no Codablock-F in this pass */
+          }
+        }
+      }
+
+      if (wantCode16K && code16kCanDecode) {
+        const code16KBits = binarizer === 'auto'
+          ? [candidateBits, binarize(candidateSource, 'global')]
+          : [candidateBits];
+        for (const thresholdBits of code16KBits) {
+          try {
+            const found = code16k.detectAndDecodeCode16K(thresholdBits);
+            if (found) { add(found, 'code16k'); break; }
+          } catch {
+            /* no Code 16K in this pass */
           }
         }
       }

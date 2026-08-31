@@ -108,7 +108,7 @@ The current implementation covers these families:
 | QR family | QR Code, Micro QR Code and rMQR Code | Profile and feature support is narrower than the names alone suggest; check the format metadata and the format guide when available. |
 | Matrix 2D | Data Matrix ECC 200, Aztec Code, Aztec Rune and MaxiCode | The reader returns no result when validation does not establish a trustworthy symbol. |
 | PDF417 family | PDF417, Compact PDF417 and MicroPDF417 | These formats expose different geometry and metadata; they are not interchangeable aliases. |
-| Stacked Code 128 | Codablock-F | Row framing and checks are validated together; incomplete rows are rejected. |
+| Stacked Code 128 | Codablock-F and Code 16K | Row framing and format-specific checks are validated together; incomplete rows are rejected. |
 | Project profile | Sythos Canvas QR profile | This is a Sythos profile, not DENSO FrameQR compatibility or certification. |
 | GS1 | GS1 DataBar Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expanded plus GS1-128-related paths | EAN-2 and EAN-5 are parent-bound supplements and need a validated EAN/UPC parent; Expanded Stacked remains outside scope. |
 | MaxiCode | Fixed 30×33 Modes 2–5 | The detector is intentionally limited to one clean, prominent symbol; see the dedicated format guide. |
@@ -257,6 +257,8 @@ already exist:
 - **M10:** first public Pages deployment, custom-domain/SEO checks and
   consumer-side verification — complete; the site is live at
   [sythos.github.io/JS_Barcode_Universal](https://sythos.github.io/JS_Barcode_Universal/).
+- **M11:** Code 16K stacked Code 128 support, strict row and checksum validation,
+  public subpath exports and documentation — complete.
 
 Until the remaining pages land, this file links only to checked-in repository files.
 That little rule prevents the documentation menu from becoming a collection of

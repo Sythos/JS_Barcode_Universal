@@ -31,8 +31,10 @@ currently accepted by the root facade:
 | `eccPercent` | `number` | Requested Aztec error-correction percentage. |
 | `eccLevel` | `0`–`8` | PDF417 error-correction level. |
 | `columns` | `1`–`30` | PDF417 column count. |
-| `rows` | `3`–`90` | PDF417 row count. |
-| `rowHeight` | `number` | PDF417 row height in modules. |
+| `rows` | `3`–`90` for PDF417, `2`–`16` for Code 16K | Stacked symbol row count. |
+| `rowHeight` | `number` | PDF417 or Code 16K row height in modules. |
+| `separatorHeight` | positive integer | Code 16K separator height in modules. |
+| `mode` | `A`, `B`, `C` or Code 16K mode number | Code 16K Code 128 data set and optional GS1 mode. |
 | `compaction` | `auto`, `text`, `byte`, `numeric` | PDF417 compaction preference. |
 | `eci` | `number` | MicroPDF417 byte-compaction ECI assignment; the public facade documents `3` and `26`. |
 | `aspectRatio` | `number` | Preferred MicroPDF417 aspect ratio. |
@@ -51,7 +53,7 @@ final authority if a future release changes a capability flag:
 | --- | --- |
 | 1D | `ean13`, `ean8`, `upca`, `isbn`, `upce`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `codabar`, `code11`, `msi`, `pharmacode` |
 | Supplements | `ean2`, `ean5` |
-| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode` |
+| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode`, `codablockf`, `code16k` |
 | GS1 | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` |
 
 The name alone does not mean “readable in every image”. Check
@@ -122,6 +124,8 @@ Useful direct families include:
 | `@sythos/js_barcode_universal/microqr` | `encodeMicroQR` |
 | `@sythos/js_barcode_universal/rmqr` | `encodeRMQR` |
 | `@sythos/js_barcode_universal/frameqr` | `encodeFrameQR` |
+| `@sythos/js_barcode_universal/codablockf` | `encodeCodablockF` |
+| `@sythos/js_barcode_universal/code16k` | `encodeCode16K` |
 
 These direct functions expose format-specific signatures. Their declarations
 are the best reference for special payload types and options; the subpath map

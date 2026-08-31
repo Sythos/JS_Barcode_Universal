@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **46 entries**: all 46 are writable and
-45 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **47 entries**: all 47 are writable and
+46 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -54,6 +54,7 @@ corrected in the same change.
 | GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional`, `gs1databar-expanded` | 5 | 5 | Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and linear Expanded physical variants. |
 | MaxiCode | `maxicode` | 1 | 1 | Fixed 30×33 geometry, Modes 2–5 and ISO-8859-1 Code Sets A–E. |
 | Codablock-F | `codablockf` | 1 | 1 | Stacked Code 128 rows with strict row and overall checks; clean integer-scale detector. |
+| Code 16K | `code16k` | 1 | 1 | Compact stacked Code 128 A/B/C rows with dual modulo-107 checks; clean integer-scale detector. |
 
 Use the family pages for payload modes, options, image-reading limits and
 examples:
@@ -68,6 +69,7 @@ examples:
 - [GS1 DataBar Expanded](databar-expanded.md)
 - [MaxiCode](maxicode.md)
 - [Codablock-F](codablockf.md)
+- [Code 16K](code16k.md)
 - [Sythos Canvas QR profile](frameqr-profile.md)
 - [Excluded and intentionally out-of-scope formats](excluded-formats.md)
 

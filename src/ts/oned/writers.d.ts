@@ -143,6 +143,18 @@ export declare function encodeCode128(value: string, options?: {
     gs1?: boolean;
 }): BitMatrix;
 /**
+ * Build the Code 128 data stream used by Code 128 and stacked Code 128
+ * symbologies, without a checksum or stop symbol.
+ */
+export declare function code128DataCodewords(value: string, options?: {
+    gs1?: boolean;
+    startSet?: 'A' | 'B' | 'C';
+}): {
+    start: number;
+    values: number[];
+    mode: 'A' | 'B' | 'C';
+};
+/**
  * Interleaved 2 of 5.
  *
  * Digits are encoded in pairs: the first supplies the bars, the second the

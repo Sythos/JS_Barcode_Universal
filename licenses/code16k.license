@@ -1,0 +1,52 @@
+Code 16K — format provenance and usability
+================================================
+
+This file records the public engineering basis for the Code 16K support in
+Sythos Barcode Universal. It is not legal advice and does not grant a patent,
+trademark or standards licence.
+
+Format background
+-----------------
+
+Code 16K is a compact stacked barcode that uses Code 128 symbol characters in
+multiple rows. Public descriptions, including the USS Code 16K reference,
+describe the row framing, row count, Code 128 data sets and the two modulo-107
+check characters. The implementation uses those structural properties with
+original Sythos TypeScript and generated JavaScript.
+
+Patent and trademark status
+---------------------------
+
+[REGISTRY CHECK REQUIRED] The project has not established a definitive current
+patent-family, term or trademark position for every Code 16K jurisdiction.
+The format name is used descriptively. Users with a regulated or commercial
+deployment must obtain their own legal and standards review.
+
+Implementation boundary
+----------------------
+
+The writer, reader and detector are original MIT-licensed Sythos work. They
+validate every row, the row framing, both global check characters and complete
+geometry before returning a result. The implementation supports the bounded
+Code 128 A/B/C and optional GS1 profiles documented in the format guide; modes
+that need a dedicated shift encoder are rejected rather than guessed.
+
+Third-party software such as ZXing or BWIPP, when used by maintainers, is used
+only as an independent black-box validation tool. No third-party source code,
+tables or runtime dependency is copied or shipped in this SDK. Please open a
+GitHub issue with any contrary note, patent concern or format correction so it
+can be reviewed and recorded.
+
+License of this implementation
+-------------------------------
+
+The original implementation is distributed under the MIT License in the
+repository root. The format's external names and rights remain separate from
+the SDK licence.
+
+References
+----------
+
+- USS Code 16K public reference for row framing and check-character structure.
+- Code 128 public descriptions for the underlying symbol alphabet.
+- `NOTICE.md` attribution and verification log in this repository.

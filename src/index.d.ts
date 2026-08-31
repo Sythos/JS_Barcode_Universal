@@ -74,6 +74,12 @@ export {
     detectCodablockF,
     detectAndDecodeCodablockF,
 } from './ts/codablockf/index.js';
+export {
+    encodeCode16K,
+    decodeCode16K,
+    detectCode16K,
+    detectAndDecodeCode16K,
+} from './ts/code16k/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './ts/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './ts/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './ts/rmqr/index.js';
