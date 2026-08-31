@@ -110,7 +110,7 @@ part of the Sythos profile, while scanner-specific CC-A/CC-B tables, linkage
 rules and certification requirements can be broader. For a regulated or
 high-volume deployment, validate printed output with the target scanner and
 complete the independent standards, patent and trademark review recorded in
-[`licenses/gs1-composite.license`](../../licenses/gs1-composite.license).
+[`licenses/gs1-composite.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/gs1-composite.license).
 
 The implementation is original Sythos code under MIT and has no runtime
 dependencies. Independent libraries may be used as black-box validation
