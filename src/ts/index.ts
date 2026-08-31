@@ -83,6 +83,7 @@ import * as codablockf from './codablockf/index.js';
 import * as code16k from './code16k/index.js';
 import * as dotcode from './dotcode/index.js';
 import * as hanxin from './hanxin/index.js';
+import * as composite from './composite/index.js';
 
 export { BitMatrix };
 export {
@@ -121,6 +122,14 @@ export {
 } from './code16k/index.js';
 export * from './dotcode/index.js';
 export * from './hanxin/index.js';
+export {
+  GS1_COMPOSITE_PROFILE,
+  GS1_COMPOSITE_HOSTS,
+  encodeGS1Composite,
+  decodeGS1Composite,
+  detectGS1Composite,
+  detectAndDecodeGS1Composite,
+} from './composite/index.js';
 export {
   encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417,
 } from './micropdf417/index.js';
@@ -195,6 +204,8 @@ const dotCodeCanEncode = typeof dotcode.encodeDotCode === 'function';
 const dotCodeCanDecode = typeof dotcode.detectAndDecodeDotCode === 'function';
 const hanXinCanEncode = typeof hanxin.encodeHanXin === 'function';
 const hanXinCanDecode = typeof hanxin.detectAndDecodeHanXin === 'function';
+const gs1CompositeCanEncode = typeof composite.encodeGS1Composite === 'function';
+const gs1CompositeCanDecode = typeof composite.detectAndDecodeGS1Composite === 'function';
 
 /**
  * Every format this build supports.
@@ -356,6 +367,13 @@ export function listFormats() {
     canRead: hanXinCanDecode,
     kind: /** @type {'2D'} */ ('2D'),
   });
+  formats.push({
+    id: 'gs1composite',
+    label: 'GS1 DataBar Composite (bounded profile)',
+    canWrite: gs1CompositeCanEncode,
+    canRead: gs1CompositeCanDecode,
+    kind: /** @type {'2D'} */ ('2D'),
+  });
 
   return formats;
 }
@@ -474,6 +492,9 @@ export function encode(text, options = {}) {
   if (format === 'hanxin' || format === 'han-xin') {
     return hanxin.encodeHanXin(value, options);
   }
+  if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
+    return composite.encodeGS1Composite(value, options);
+  }
   if (format === 'telepennumeric' || format === 'telepen-numeric') {
     return encodeTelepenNumeric(value);
   }
@@ -529,7 +550,7 @@ export function encode(text, options = {}) {
       'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
       'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
       'imb', 'onecode', 'usps-onecode',
-      'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode', 'hanxin'].join(', ');
+      'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode', 'hanxin', 'gs1composite', 'gs1-composite', 'composite'].join(', ');
     throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
   }
   return entry.encode(value, options);
@@ -609,6 +630,7 @@ export function decode(image, options = {}) {
   const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
   const wantDotCode = !want || want.has('dotcode') || want.has('dot-code');
   const wantHanXin = !want || want.has('hanxin') || want.has('han-xin');
+  const wantGS1Composite = !want || want.has('gs1composite') || want.has('gs1-composite') || want.has('composite');
   const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
   const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
     || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -632,7 +654,7 @@ export function decode(image, options = {}) {
   const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
   const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
     || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-    || wantCodablockF || wantCode16K || wantDotCode || wantHanXin
+    || wantCodablockF || wantCode16K || wantDotCode || wantHanXin || wantGS1Composite
     || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
 
   const source = LuminanceSource.fromImageData(image);
@@ -824,6 +846,15 @@ export function decode(image, options = {}) {
         }
       }
 
+      if (wantGS1Composite && gs1CompositeCanDecode) {
+        try {
+          const found = composite.detectAndDecodeGS1Composite(candidateBits);
+          if (found) add(found, 'gs1composite');
+        } catch {
+          /* no bounded GS1 Composite symbol in this pass */
+        }
+      }
+
 
       if (wantDataBarStacked && dataBarStackedCanDecode) {
         try {
@@ -962,9 +993,10 @@ export function decode(image, options = {}) {
         || id === 'pdf417' || id === 'pdf-417'
         || id === 'compactpdf417' || id === 'compact-pdf417' || id === 'compact-pdf-417'
         || id === 'maxicode' || id === 'maxi-code'
-        || id === 'hanxin' || id === 'han-xin';
+        || id === 'hanxin' || id === 'han-xin'
+        || id === 'gs1composite' || id === 'gs1-composite' || id === 'composite';
     })
-    : ['qr', 'pdf417', 'compactpdf417', 'maxicode', 'hanxin'];
+    : ['qr', 'pdf417', 'compactpdf417', 'maxicode', 'hanxin', 'gs1composite'];
   const shouldRetryGlobal = unique.length === 0
     && (binarizer === 'auto' || binarizer === 'hybrid')
     && retryFormats.length > 0;

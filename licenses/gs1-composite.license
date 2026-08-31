@@ -1,0 +1,106 @@
+GS1 DataBar Composite — bounded profile provenance and usability
+===============================================================
+
+This file records the engineering and redistribution boundary for the
+`gs1composite` profile shipped by Sythos Barcode Universal. It is an
+ENGINEERING INVENTORY, NOT LEGAL ADVICE. Patent, copyright, trademark and
+standards conclusions require independent review for the jurisdiction and use
+case involved.
+
+
+FORMAT AND SPECIFICATION
+------------------------
+
+GS1 DataBar Composite symbols combine a linked GS1 DataBar linear component
+with a two-dimensional CC-A or CC-B component. The relevant standards include
+ISO/IEC 24723 and GS1 General Specifications. The standard text is copyrighted
+by its publishers and is not reproduced or redistributed here.
+
+This SDK ships a deliberately bounded Sythos profile: one validated DataBar
+host (Omnidirectional, Truncated, Stacked, Stacked Omnidirectional, Limited or
+Expanded) is composed with one strict MicroPDF417-derived component. The
+profile uses an internal marker and one deterministic geometry so a detector
+never pairs two unrelated symbols merely because they are near each other. It
+does not claim complete ISO/IEC 24723 conformance, certification or scanner
+interoperability for every composite layout.
+
+
+PATENT AND TRADEMARK STATUS
+---------------------------
+
+GS1, GS1 DataBar and the composite symbology names may be protected marks or
+subject to usage rules. The current ownership, patent and licensing position
+for every composite component requires jurisdiction-specific review. No patent
+clearance, public-domain conclusion, GS1 certification or endorsement is
+asserted here. [TO VERIFY]
+
+The format names are used descriptively to identify the engineering profile.
+The MIT licence below covers original Sythos code only; it does not grant any
+rights in standards text, marks, patents, certification programmes or external
+specification material. [TO VERIFY]
+
+
+IMPLEMENTATION BASIS
+--------------------
+
+The encoder, decoder, detector, layout checks and tests are original Sythos
+TypeScript with generated JavaScript runtime modules. Existing Sythos GS1
+element-string and DataBar validators provide the linear side. The companion
+component reuses the project's own MicroPDF417 runtime primitives and strict
+error correction, then verifies a private profile marker, linkage flag,
+separator and shared integer module scale before returning data.
+
+No ZXing, BWIPP, Zint or other third-party source code, table or runtime
+dependency is copied into or shipped by this package. Independent software,
+when consulted, is used only as a black-box engineering check and is not part
+of this distribution.
+
+
+MIT LICENCE FOR ORIGINAL WORK
+-----------------------------
+
+The original implementation in `src/ts/composite/` and its generated runtime
+in `src/js/composite/` are distributed under the MIT License:
+
+Copyright (c) 2026 Sythos (https://www.sythos.net)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+CONCLUSION
+----------
+
+The MIT License covers the original Sythos implementation and does not turn
+this bounded profile into a licence for ISO/IEC, GS1 or any third-party rights.
+Applications requiring certified GS1 DataBar Composite interoperability must
+validate their target scanner, obtain any required permissions and perform
+their own legal review before deployment.
+
+Any concern about the available material, a conflicting rights notice or a
+possible format limitation should be reported through a GitHub issue with a
+public reference so it can be reviewed and recorded.
+
+References relied upon:
+
+- ISO/IEC 24723, GS1 Composite bar code symbology specification
+- GS1 General Specifications: https://ref.gs1.org/standards/genspecs/
+- GS1 DataBar overview: https://www.gs1.org/standards/barcodes/databar
+- Sythos MicroPDF417 provenance inventory: `licenses/micropdf417.license`
+- Independent black-box checks, when used, are recorded in `NOTICE.md` and do
+  not contribute source code

@@ -114,9 +114,7 @@ excerpt the specification documents.
     ISO/IEC 24724    (GS1 DataBar)    ISO/IEC — copyrighted, paywalled
     ISO 2108         (ISBN numbering) ISO — copyrighted; the numbering
                                       scheme, not a symbology
-    ISO/IEC 24723-5  (GS1 Composite,
-                      DataBar, DotCode
-                      and related)    ISO/IEC — copyrighted, paywalled
+    ISO/IEC 24723    (GS1 Composite)   ISO/IEC — copyrighted, paywalled
     GS1 General Specifications        GS1 — freely downloadable; redistribution
                                       terms are GS1's own       [TO VERIFY]
     AIM symbology specifications      AIM Inc. — terms vary     [TO VERIFY]
@@ -157,6 +155,8 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
                                       public use                   [TO VERIFY]
     DotCode        AIM                open AIM standard            [TO VERIFY]
     Han Xin Code   Chinese nat'l std  status under GB/T 21049      [TO VERIFY]
+    GS1 Composite  GS1 / ISO/IEC 24723  component and patent status require
+                                      current jurisdictional review [TO VERIFY]
     DataBar/GS1    GS1                published for open use       [TO VERIFY]
     Code 128 / 39 /
       93 / Codabar / ITF / MSI /

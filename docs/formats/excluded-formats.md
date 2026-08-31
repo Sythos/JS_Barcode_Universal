@@ -36,7 +36,7 @@ These names do not appear as supported IDs in the current registry:
 | Micro QR ECI | Outside the current Micro QR API scope. |
 | Micro QR FNC1 / GS1 | Outside the current Micro QR API scope. |
 | Micro QR Structured Append | Outside the current Micro QR API scope. |
-| GS1 Composite | Not implemented; stacked composite geometry is separate from the shipped GS1 DataBar path. |
+| Full ISO/IEC 24723 composite variants | The shipped `gs1composite` entry is a bounded Sythos profile; complete certified interoperability and every normative layout remain outside scope. |
 
 These are scope statements, not claims that the formats are impossible to
 implement. A future implementation would need its own source audit, fixtures,
@@ -72,6 +72,8 @@ A format family can be present while a variant remains out of scope. Examples:
 - `gs1databar14` does not mean every GS1 DataBar layout; Limited, Stacked,
   Stacked Omnidirectional and Expanded are separate explicit IDs, while
   Expanded Stacked remains outside scope;
+- `gs1composite` is the bounded Sythos profile, not a promise of complete
+  ISO/IEC 24723 certification or every external scanner's composite dialect;
 - `microqr` does not mean every Micro QR optional feature;
 - `pdf417` does not mean Compact PDF417 or MicroPDF417;
 - `frameqr` does not mean DENSO FrameQR;

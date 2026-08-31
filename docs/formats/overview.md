@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **49 entries**: all 49 are writable and
-48 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **50 entries**: all 50 are writable and
+49 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -57,6 +57,7 @@ corrected in the same change.
 | Code 16K | `code16k` | 1 | 1 | Compact stacked Code 128 A/B/C rows with dual modulo-107 checks; clean integer-scale detector. |
 | DotCode | `dotcode` | 1 | 1 | Alternating dot grid, five-of-nine patterns, four masks and GF(113) correction; clean integer-scale detector. |
 | Han Xin Code | `hanxin` | 1 | 1 | Compact alignment-free versions 1–3, numeric/text/byte modes, four masks and GF(256) correction; clean integer-scale detector. |
+| GS1 DataBar Composite | `gs1composite` | 1 | 1 | Bounded Sythos profile linking one validated DataBar host to a strict MicroPDF417-derived CC-A or CC-B component. |
 
 Use the family pages for payload modes, options, image-reading limits and
 examples:
@@ -74,6 +75,7 @@ examples:
 - [Code 16K](code16k.md)
 - [DotCode](dotcode.md)
 - [Han Xin Code](hanxin.md)
+- [GS1 DataBar Composite](gs1-composite.md)
 - [Sythos Canvas QR profile](frameqr-profile.md)
 - [Excluded and intentionally out-of-scope formats](excluded-formats.md)
 

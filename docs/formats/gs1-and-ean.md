@@ -166,6 +166,13 @@ const stacked = encodeDataBar14Stacked('01234567890128');
 const stackedOmni = encodeDataBarStackedOmnidirectional('01234567890128');
 ```
 
+### GS1 DataBar Composite
+
+The root capability also includes the bounded `gs1composite` profile. It links
+one of the validated DataBar hosts to a strict CC-A or CC-B component; see the
+[dedicated Composite guide](gs1-composite.md) for the object-shaped input and
+its deliberately conservative interoperability boundary.
+
 ### GS1 DataBar Expanded
 
 Expanded carries a longer GS1 element string in a sequence of constrained

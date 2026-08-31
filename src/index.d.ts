@@ -45,6 +45,7 @@
  * @module @sythos/js_barcode_universal
  */
 import { BitMatrix } from './ts/core/bit-matrix.js';
+import type { GS1CompositeComponent, GS1CompositeInput } from './ts/composite/index.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './ts/core/errors.js';
 export { LuminanceSource } from './ts/image/luminance.js';
@@ -86,6 +87,22 @@ export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecod
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './ts/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './ts/rmqr/index.js';
 export { encodeFrameQR, decodeFrameQR, detectFrameQR, detectAndDecodeFrameQR, } from './ts/frameqr/index.js';
+export {
+    GS1_COMPOSITE_PROFILE,
+    GS1_COMPOSITE_HOSTS,
+    encodeGS1Composite,
+    decodeGS1Composite,
+    detectGS1Composite,
+    detectAndDecodeGS1Composite,
+} from './ts/composite/index.js';
+export type {
+    GS1CompositeHostFormat,
+    GS1CompositeComponent,
+    GS1Element,
+    GS1CompositeInput,
+    GS1CompositeOptions,
+    GS1CompositeResult,
+} from './ts/composite/index.js';
 export type FormatInfo = {
     id: string;
     label: string;
@@ -113,7 +130,7 @@ export declare function listFormats(): FormatInfo[];
  * output medium. Linear symbols come back one module tall; height is a
  * rendering decision, not an encoding one.
  *
- * @param {string | number} text
+ * @param {string | number | GS1CompositeInput} text
  * @param {object} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
  * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
@@ -126,6 +143,8 @@ export declare function listFormats(): FormatInfo[];
  * @param {number} [options.wideRatio] Wide-bar ratio for Code 25 variants.
  * @param {boolean} [options.fullAscii] Code 39 extended encoding.
  * @param {boolean} [options.gs1] Emit a leading FNC1.
+ * @param {GS1CompositeComponent} [options.component] Bounded GS1 Composite component selection.
+ * @param {1|2|3} [options.separatorGap] Composite separator rows.
  * @param {number} [options.layers] Aztec layer count; automatic if omitted.
  * @param {boolean} [options.compact] Force an Aztec Compact or Full symbol.
  * @param {number} [options.eccPercent] Requested Aztec error-correction percentage.
@@ -148,7 +167,7 @@ export declare function listFormats(): FormatInfo[];
  * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
-export declare function encode(text: string | number, options?: {
+export declare function encode(text: string | number | GS1CompositeInput, options?: {
     format?: string;
     ecc?: 'L' | 'M' | 'Q' | 'H' | 'L1' | 'L2' | 'L3' | 'L4' | 1 | 2 | 3 | 4;
     version?: number;
@@ -184,6 +203,8 @@ export declare function encode(text: string | number, options?: {
     moduleScale?: number;
     scale?: number;
     height?: number;
+    component?: GS1CompositeComponent;
+    separatorGap?: 1 | 2 | 3;
     canvas?: {
         shape?: 'square' | 'circle' | 'diamond';
         size?: number;
@@ -340,6 +361,16 @@ export type DecodeResult = {
     checkDigit?: boolean;
     /** PZN variant identified by the decoder. */
     pznVariant?: 'pzn7' | 'pzn8';
+    /** Whether the bounded GS1 Composite component is CC-A or CC-B. */
+    component?: 'cc-a' | 'cc-b';
+    /** Selected MicroPDF417-derived composite component variant. */
+    componentVariant?: number;
+    componentRows?: number;
+    componentColumns?: number;
+    componentRowHeight?: number;
+    separatorGap?: number;
+    linearFormat?: string;
+    linear?: Record<string, unknown>;
     /** MaxiCode mode or Han Xin payload mode. */
     mode?: 2 | 3 | 4 | 5 | 'numeric' | 'text' | 'byte';
     /** Han Xin data mask. */

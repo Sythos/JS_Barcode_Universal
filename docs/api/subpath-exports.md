@@ -32,6 +32,7 @@ Only these public subpaths are compatibility promises; arbitrary paths under
 | `@sythos/js_barcode_universal/code16k` | Code 16K stacked Code 128 A/B/C encoder, decoder and clean-raster detector. |
 | `@sythos/js_barcode_universal/dotcode` | DotCode encoder, decoder and bounded clean-raster detector. |
 | `@sythos/js_barcode_universal/hanxin` | Han Xin Code encoder, decoder, table helpers and bounded clean-raster detector. |
+| `@sythos/js_barcode_universal/composite` | Bounded GS1 DataBar Composite encoder, decoder and strict complete-geometry detector. |
 | `@sythos/js_barcode_universal/render` | All renderers, canvas backends, option normalisation and colour parsing. |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI`. |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI`, `deflateStored`. |

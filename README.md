@@ -104,6 +104,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/maxicode` | `encodeMaxiCode`, `decodeMaxiCode`, `detectMaxiCode`, `detectAndDecodeMaxiCode` |
 | `@sythos/js_barcode_universal/dotcode` | `encodeDotCode`, `decodeDotCode`, `detectDotCode`, `detectAndDecodeDotCode` |
 | `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes`, `decodeHanXin`, `detectHanXin`, `detectAndDecodeHanXin` |
+| `@sythos/js_barcode_universal/composite` | `encodeGS1Composite`, `decodeGS1Composite`, `detectGS1Composite`, `detectAndDecodeGS1Composite` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -288,10 +289,11 @@ time.
 | Code 16K | `code16k` | 2D | ✅ | ✅ |
 | DotCode | `dotcode` | 2D | ✅ | ✅ |
 | Han Xin Code | `hanxin` | 2D | ✅ | ✅ |
+| GS1 DataBar Composite (bounded Sythos profile) | `gs1composite` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Forty-nine listed formats are writable and forty-eight are readable (EAN-2 and EAN-5 are
+Fifty listed formats are writable and forty-nine are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -391,6 +393,30 @@ module scale and either polarity. Versions 4–84, Chinese/GB18030 compaction,
 ECI, perspective correction and multi-symbol camera scenes remain outside this
 profile. See [`docs/formats/hanxin.md`](docs/formats/hanxin.md) and
 [`licenses/hanxin.license`](licenses/hanxin.license).
+
+GS1 DataBar Composite is available as the bounded `gs1composite` profile. It
+links one validated DataBar host to one strict CC-A or CC-B component and
+requires the complete geometry, linkage flag, private profile marker and
+shared integer module scale to validate before returning data:
+
+```js
+import {
+  encodeGS1Composite,
+  detectAndDecodeGS1Composite,
+} from '@sythos/js_barcode_universal/composite';
+
+const matrix = encodeGS1Composite({
+  linear: { format: 'databar14', value: '00012345678905' },
+  data: '(01)09506000134352(17)260101',
+});
+const hit = detectAndDecodeGS1Composite(matrix.withMargin(3).scale(2));
+console.log(hit?.text, hit?.linearFormat, hit?.component);
+```
+
+This is an original Sythos engineering profile, not a claim of complete
+ISO/IEC 24723 certification or universal scanner interoperability. Its full
+limits and legal boundary are in [`docs/formats/gs1-composite.md`](docs/formats/gs1-composite.md)
+and [`licenses/gs1-composite.license`](licenses/gs1-composite.license).
 
 [^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
 and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is
@@ -701,9 +727,9 @@ The `databar` subpath exposes original GS1 GTIN/AI codecs and five physical
 variants: Omnidirectional and Truncated through `encodeDataBar14`, Limited through
 `encodeDataBarLimited`, Stacked through `encodeDataBar14Stacked`, Stacked
 Omnidirectional through `encodeDataBarStackedOmnidirectional`, and linear Expanded
-through `encodeDataBarExpanded`. The physical paths
-encode the fixed GS1 `(01)` GTIN element and can carry the standard composite
-linkage flag; the companion composite component is not part of these helpers.
+through `encodeDataBarExpanded`. The physical paths encode the fixed GS1 `(01)`
+GTIN element and can carry the standard composite linkage flag. The complete
+bounded composition is exposed separately through the `composite` subpath.
 
 The clean readers require a complete dark-on-light or inverted binary raster,
 integer module scaling and valid checksum/guard structure. The Limited and

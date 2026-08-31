@@ -48,6 +48,7 @@ appendix carries the consolidated inventory these files expand on.
 | Code 16K | [`code16k.license`](code16k.license) | 2 |
 | DotCode | [`dotcode.license`](dotcode.license) | 2 |
 | Han Xin Code | [`hanxin.license`](hanxin.license) | 2 |
+| GS1 DataBar Composite (bounded profile) | [`gs1-composite.license`](gs1-composite.license) | 2 |
 
 ## On the `[TO VERIFY]` markers
 

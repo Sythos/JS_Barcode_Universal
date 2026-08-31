@@ -45,6 +45,7 @@
  * @module @sythos/js_barcode_universal
  */
 import { BitMatrix } from './core/bit-matrix.js';
+import type { GS1CompositeComponent, GS1CompositeInput } from './composite/index.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './core/errors.js';
 export { LuminanceSource } from './image/luminance.js';
@@ -66,6 +67,22 @@ export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecod
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './rmqr/index.js';
 export { encodeFrameQR, decodeFrameQR, detectFrameQR, detectAndDecodeFrameQR, } from './frameqr/index.js';
+export {
+  GS1_COMPOSITE_PROFILE,
+  GS1_COMPOSITE_HOSTS,
+  encodeGS1Composite,
+  decodeGS1Composite,
+  detectGS1Composite,
+  detectAndDecodeGS1Composite,
+} from './composite/index.js';
+export type {
+  GS1CompositeHostFormat,
+  GS1CompositeComponent,
+  GS1Element,
+  GS1CompositeInput,
+  GS1CompositeOptions,
+  GS1CompositeResult,
+} from './composite/index.js';
 export type FormatInfo = {
     id: string;
     label: string;
@@ -124,7 +141,7 @@ export declare function listFormats(): FormatInfo[];
  * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
-export declare function encode(text: string | number, options?: {
+export declare function encode(text: string | number | GS1CompositeInput, options?: {
     format?: string;
     ecc?: 'L' | 'M' | 'Q' | 'H';
     version?: number;
@@ -155,6 +172,9 @@ export declare function encode(text: string | number, options?: {
         centerY?: number;
         angle?: 0 | 90 | 180 | 270;
     };
+    component?: GS1CompositeComponent;
+    separatorGap?: 1 | 2 | 3;
+    moduleScale?: number;
 }): BitMatrix;
 export type DecodeResult = {
     text: string;
@@ -298,6 +318,16 @@ export type DecodeResult = {
     checkDigit?: boolean;
     /** PZN variant identified by the decoder. */
     pznVariant?: 'pzn7' | 'pzn8';
+    /** Whether the composite component is CC-A or CC-B. */
+    component?: 'cc-a' | 'cc-b';
+    /** Selected MicroPDF417-derived composite component variant. */
+    componentVariant?: number;
+    componentRows?: number;
+    componentColumns?: number;
+    componentRowHeight?: number;
+    separatorGap?: number;
+    linearFormat?: string;
+    linear?: Record<string, unknown>;
 };
 /**
  * @typedef {object} DecodeResult

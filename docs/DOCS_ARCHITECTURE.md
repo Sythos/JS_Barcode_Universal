@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 49 entries and 48 generally readable
+The current registry snapshot reports 50 entries and 49 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -105,6 +105,8 @@ turning the count into marketing copy:
   geometry, legal patterns and GF(113) checks;
 - Han Xin is a compact alignment-free path covering versions 1–3, with strict
   structural validation and GF(256) checks;
+- GS1 DataBar Composite is a bounded profile that validates one linked DataBar
+  host and one MicroPDF417-derived CC-A or CC-B component as a single geometry;
 - the postal family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post
   and IMb) uses strict operator-specific height-coded alphabets and checks;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
@@ -305,6 +307,9 @@ M12 is complete: the DotCode format page, navigation entry and registry counts
 are in sync with the shipped runtime and its declaration surface.
 M13 is complete: the Han Xin format page, navigation entry and registry counts
 are in sync with the shipped runtime and its declaration surface.
+M14 is complete: the bounded GS1 DataBar Composite page, navigation entry,
+registry counts, subpath export and licence inventory are in sync with the
+shipped runtime and declaration surface.
 
 ## M0 exit criteria
 

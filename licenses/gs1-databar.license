@@ -73,8 +73,10 @@ CONCLUSION
 Only original Sythos DataBar code is distributed under the MIT License.
 Omnidirectional, Truncated, Limited, Stacked, Stacked Omnidirectional and
 Expanded image support is exposed after checksum-validated geometry and
-black-box verification. Expanded Stacked and composite components remain
-outside this capability.
+black-box verification. Expanded Stacked remains outside this capability; the
+separate bounded GS1 Composite profile is documented in
+`licenses/gs1-composite.license` and does not claim complete ISO/IEC 24723
+interoperability.
 [LEGAL REVIEW]
 
 References relied upon:

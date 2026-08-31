@@ -51,8 +51,9 @@ const image = toImageData(symbol.withMargin(4), { scale: 1 });
 ```
 
 `linkage: true` sets the composite-linkage flag. It does not generate a
-composite component; applications that need one must provide and validate that
-component separately.
+composite component by itself; applications that need the bounded Sythos
+profile can use the dedicated [`gs1composite` guide](gs1-composite.md), which
+composes and validates both halves as one geometry.
 
 ## Read a matrix or scanline
 

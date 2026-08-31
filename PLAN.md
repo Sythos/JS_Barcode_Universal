@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-49 listed formats write, 48 read; PDF417 image reading is now enabled after synthetic, black-box and
+50 listed formats write, 49 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -105,7 +105,7 @@ Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expande
 readers are integrated without replacing the existing reader. MaxiCode modes 2–5 are likewise integrated as a
 separate fixed-grid 2D path, and Codablock-F and Code 16K use separate stacked
 Code 128 paths with complete-row validation.
-The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M13 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
+The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M14 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
 the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
 no dispatch rewrite was necessary. This finite 45°-step retry policy does not claim arbitrary
 perspective, curved-media, severe-occlusion or multi-symbol robustness. Pharmacode remains deliberately `readable: false` because its
@@ -122,7 +122,7 @@ advertises `canRead: true`; extreme glare, severe occlusion, curved media and
 multi-symbol scenes remain outside the validated robustness envelope. Black-box
 Text/Numeric interop is recorded; byte-for-byte interop remains explicitly unclaimed.
 
-### M2–M13 format group
+### M2–M14 format group
 
 The format group that followed the PDF417 work is complete locally and is kept
 as one reviewable gate because the DataBar paths share strict raster and GTIN
@@ -142,6 +142,7 @@ validation boundaries, while Telepen adds a self-contained scanline grammar:
 | M11 | Code 16K | Compact stacked Code 128 rows, 2–16 rows, five symbols per row, modes A/B/C, optional GS1 modes, row framing and dual modulo-107 checks | Round trips, numeric compression, explicit row geometry, integer-scale image detection, damaged-row rejection, package and declaration checks |
 | M12 | DotCode | Alternating dot grid, six reserved corners, five-of-nine patterns, four masks, GF(113) Reed–Solomon, A/B/C plus binary payload path and strict clean-raster detector | Round trips for text, UTF-8, GS1 and binary payloads, all masks, orientation/polarity, bounded dimensions, malformed-input rejection, package and declaration checks |
 | M13 | Han Xin Code | Compact alignment-free versions 1–3, numeric/text/byte modes, L1–L4 ECC, four masks, GF(256) Reed–Solomon and strict clean integer-scale detector | Seven focused tests covering tables, modes, versions/ECC, orientation/polarity, detection, correction, malformed input, root aliases, package and declaration checks |
+| M14 | GS1 DataBar Composite | Bounded Sythos profile linking one validated DataBar host to one strict MicroPDF417-derived CC-A or CC-B component, with linkage, marker, separator, shared scale and complete-geometry checks | Five focused tests covering all supported hosts, CC-A/B selection, margins, scaling, quarter turns, standalone/corrupt rejection, root aliases, package, declaration and licence checks |
 
 The JavaScript runtime and TypeScript declarations are generated and checked
 together. The grouped CI gate runs `test:formats`, TypeScript checks, lint,
@@ -155,9 +156,10 @@ scenes remain outside this group.
 
 **Long tail, tiered by shared machinery** — this is what makes scope cuttable intelligently:
 
-- *Each effectively its own project:* GS1 Composite. The five
-GS1 DataBar physical variants currently shipped remain bounded to their documented
-geometry and validation profiles.
+- *Each effectively its own project:* complete ISO/IEC 24723 composite
+  interoperability. The shipped `gs1composite` entry is intentionally limited
+  to the documented Sythos bounded profile; external certified layouts remain
+  outside scope.
 
 **Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Ultracode. Listed with reasons in `LICENSE` §6.
 
