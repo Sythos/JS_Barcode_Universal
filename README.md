@@ -241,57 +241,57 @@ time.
 
 | Format | `id` | Kind | Write | Read |
 |---|---|:---:|:---:|:---:|
-| EAN-13 | `ean13` | 1D | ✅ | ✅ |
-| EAN-8 | `ean8` | 1D | ✅ | ✅ |
-| UPC-A | `upca` | 1D | ✅ | ✅ |
-| UPC-E | `upce` | 1D | ✅ | ✅ |
-| ISBN (Bookland) | `isbn` | 1D | ✅ | ✅ [^1] |
-| Code 128 | `code128` | 1D | ✅ | ✅ |
-| GS1-128 | `gs1128` | 1D | ✅ | ✅ [^1] |
-| Code 39 | `code39` | 1D | ✅ | ✅ |
-| Code 93 | `code93` | 1D | ✅ | ✅ |
-| ITF (Interleaved 2 of 5) | `itf` | 1D | ✅ | ✅ |
-| ITF-14 | `itf14` | 1D | ✅ | ✅ [^1] |
-| Code 25 / Standard 2 of 5 | `standard2of5` | 1D | ✅ | ✅ [^4] |
-| Industrial 2 of 5 | `industrial2of5` | 1D | ✅ | ✅ [^4] |
-| IATA 2 of 5 | `iata2of5` | 1D | ✅ | ✅ [^4] |
+| Australia Post 4-State | `auspost` | 1D | ✅ | ✅ |
 | Codabar | `codabar` | 1D | ✅ | ✅ |
 | Code 11 | `code11` | 1D | ✅ | ✅ |
-| MSI Plessey | `msi` | 1D | ✅ | ✅ |
-| Telepen (ASCII and Numeric) | `telepen` | 1D | ✅ | ✅ [^3] |
+| Code 128 | `code128` | 1D | ✅ | ✅ |
+| Code 25 / Standard 2 of 5 | `standard2of5` | 1D | ✅ | ✅ [^4] |
 | Code 32 (Italian Pharmacode) | `code32` | 1D | ✅ | ✅ |
-| PZN-7 / PZN-8 | `pzn` | 1D | ✅ | ✅ |
-| Pharmacode | `pharmacode` | 1D | ✅ | — |
-| USPS POSTNET | `postnet` | 1D | ✅ | ✅ |
-| USPS PLANET | `planet` | 1D | ✅ | ✅ |
-| Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | ✅ | ✅ |
-| KIX postal code | `kix` | 1D | ✅ | ✅ |
-| Australia Post 4-State | `auspost` | 1D | ✅ | ✅ |
-| Japan Post 4-State | `japanpost` | 1D | ✅ | ✅ |
-| USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | ✅ | ✅ |
-| QR Code | `qr` | 2D | ✅ | ✅ |
-| Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
-| Aztec Code | `aztec` | 2D | ✅ | ✅ |
-| PDF417 | `pdf417` | 2D | ✅ | ✅ |
-| MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
-| Micro QR Code | `microqr` | 2D | ✅ | ✅ |
-| rMQR Code | `rmqr` | 2D | ✅ | ✅ |
-| Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | ✅ | ✅ |
-| Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
-| Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
+| Code 39 | `code39` | 1D | ✅ | ✅ |
+| Code 93 | `code93` | 1D | ✅ | ✅ |
+| EAN-13 | `ean13` | 1D | ✅ | ✅ |
+| EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
+| EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
+| EAN-8 | `ean8` | 1D | ✅ | ✅ |
+| GS1 DataBar Expanded | `gs1databar-expanded` | 1D | ✅ | ✅ |
+| GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
 | GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | ✅ |
 | GS1 DataBar Stacked | `gs1databar-stacked` | 1D | ✅ | ✅ |
 | GS1 DataBar Stacked Omnidirectional | `gs1databar-stacked-omnidirectional` | 1D | ✅ | ✅ |
-| GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
-| GS1 DataBar Expanded | `gs1databar-expanded` | 1D | ✅ | ✅ |
-| MaxiCode | `maxicode` | 2D | ✅ | ✅ |
+| GS1-128 | `gs1128` | 1D | ✅ | ✅ [^1] |
+| IATA 2 of 5 | `iata2of5` | 1D | ✅ | ✅ [^4] |
+| Industrial 2 of 5 | `industrial2of5` | 1D | ✅ | ✅ [^4] |
+| ISBN (Bookland) | `isbn` | 1D | ✅ | ✅ [^1] |
+| ITF (Interleaved 2 of 5) | `itf` | 1D | ✅ | ✅ |
+| ITF-14 | `itf14` | 1D | ✅ | ✅ [^1] |
+| Japan Post 4-State | `japanpost` | 1D | ✅ | ✅ |
+| KIX postal code | `kix` | 1D | ✅ | ✅ |
+| MSI Plessey | `msi` | 1D | ✅ | ✅ |
+| Pharmacode | `pharmacode` | 1D | ✅ | — |
+| PZN-7 / PZN-8 | `pzn` | 1D | ✅ | ✅ |
+| Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | ✅ | ✅ |
+| Telepen (ASCII and Numeric) | `telepen` | 1D | ✅ | ✅ [^3] |
+| UPC-A | `upca` | 1D | ✅ | ✅ |
+| UPC-E | `upce` | 1D | ✅ | ✅ |
+| USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | ✅ | ✅ |
+| USPS PLANET | `planet` | 1D | ✅ | ✅ |
+| USPS POSTNET | `postnet` | 1D | ✅ | ✅ |
+| Aztec Code | `aztec` | 2D | ✅ | ✅ |
+| Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
 | Codablock-F | `codablockf` | 2D | ✅ | ✅ |
 | Code 16K | `code16k` | 2D | ✅ | ✅ |
+| Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
+| Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
 | DotCode | `dotcode` | 2D | ✅ | ✅ |
-| Han Xin Code | `hanxin` | 2D | ✅ | ✅ |
 | GS1 DataBar Composite (bounded Sythos profile) | `gs1composite` | 2D | ✅ | ✅ |
-| EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
-| EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
+| Han Xin Code | `hanxin` | 2D | ✅ | ✅ |
+| MaxiCode | `maxicode` | 2D | ✅ | ✅ |
+| Micro QR Code | `microqr` | 2D | ✅ | ✅ |
+| MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
+| PDF417 | `pdf417` | 2D | ✅ | ✅ |
+| QR Code | `qr` | 2D | ✅ | ✅ |
+| rMQR Code | `rmqr` | 2D | ✅ | ✅ |
+| Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | ✅ | ✅ |
 
 Fifty listed formats are writable and forty-nine are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
