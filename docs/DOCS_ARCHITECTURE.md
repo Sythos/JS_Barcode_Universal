@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 50 entries and 49 generally readable
+The current registry snapshot reports 51 entries and 50 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
