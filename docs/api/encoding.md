@@ -53,7 +53,7 @@ final authority if a future release changes a capability flag:
 | --- | --- |
 | 1D | `ean13`, `ean8`, `upca`, `isbn`, `upce`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `codabar`, `code11`, `msi`, `pharmacode` |
 | Supplements | `ean2`, `ean5` |
-| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode`, `codablockf`, `code16k` |
+| 2D | `qr`, `datamatrix`, `aztec`, `aztecrune`, `pdf417`, `compactpdf417`, `micropdf417`, `microqr`, `rmqr`, `frameqr`, `maxicode`, `codablockf`, `code16k`, `dotcode` |
 | GS1 | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional` |
 
 The name alone does not mean “readable in every image”. Check

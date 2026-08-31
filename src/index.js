@@ -65,6 +65,7 @@ import * as databar from './js/databar/index.js';
 import * as maxicode from './js/maxicode/index.js';
 import * as codablockf from './js/codablockf/index.js';
 import * as code16k from './js/code16k/index.js';
+import * as dotcode from './js/dotcode/index.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './js/core/errors.js';
 export { LuminanceSource } from './js/image/luminance.js';
@@ -87,6 +88,7 @@ export * from './js/databar/index.js';
 export { encodeMaxiCode, decodeMaxiCode, detectMaxiCode, detectAndDecodeMaxiCode, } from './js/maxicode/index.js';
 export { encodeCodablockF, decodeCodablockF, detectCodablockF, detectAndDecodeCodablockF, } from './js/codablockf/index.js';
 export { encodeCode16K, decodeCode16K, detectCode16K, detectAndDecodeCode16K, } from './js/code16k/index.js';
+export * from './js/dotcode/index.js';
 export { encodeMicroPDF417, decodeMicroPDF417, detectMicroPDF417, detectAndDecodeMicroPDF417, } from './js/micropdf417/index.js';
 export { encodeMicroQR, decodeMicroQR, detectMicroQR, detectAndDecodeMicroQR } from './js/microqr/index.js';
 export { encodeRMQR, decodeRMQR, detectRMQR, detectAndDecodeRMQR } from './js/rmqr/index.js';
@@ -151,6 +153,8 @@ const codablockfCanEncode = typeof codablockf.encodeCodablockF === 'function';
 const codablockfCanDecode = typeof codablockf.detectAndDecodeCodablockF === 'function';
 const code16kCanEncode = typeof code16k.encodeCode16K === 'function';
 const code16kCanDecode = typeof code16k.detectAndDecodeCode16K === 'function';
+const dotCodeCanEncode = typeof dotcode.encodeDotCode === 'function';
+const dotCodeCanDecode = typeof dotcode.detectAndDecodeDotCode === 'function';
 /**
  * Every format this build supports.
  *
@@ -296,6 +300,13 @@ export function listFormats() {
         canRead: code16kCanDecode,
         kind: /** @type {'2D'} */ ('2D'),
     });
+    formats.push({
+        id: 'dotcode',
+        label: 'DotCode',
+        canWrite: dotCodeCanEncode,
+        canRead: dotCodeCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -404,6 +415,9 @@ export function encode(text, options = {}) {
     if (format === 'code16k' || format === 'code-16k') {
         return code16k.encodeCode16K(value, options);
     }
+    if (format === 'dotcode' || format === 'dot-code') {
+        return dotcode.encodeDotCode(value, options);
+    }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
     }
@@ -457,7 +471,7 @@ export function encode(text, options = {}) {
             'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
             'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
             'imb', 'onecode', 'usps-onecode',
-            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k'].join(', ');
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -531,6 +545,7 @@ export function decode(image, options = {}) {
     const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
     const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
     const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
+    const wantDotCode = !want || want.has('dotcode') || want.has('dot-code');
     const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
     const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
         || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -554,7 +569,7 @@ export function decode(image, options = {}) {
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
         || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-        || wantCodablockF || wantCode16K
+        || wantCodablockF || wantCode16K || wantDotCode
         || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
@@ -746,6 +761,16 @@ export function decode(image, options = {}) {
                     catch {
                         /* no Code 16K in this pass */
                     }
+                }
+            }
+            if (wantDotCode && dotCodeCanDecode) {
+                try {
+                    const found = dotcode.detectAndDecodeDotCode(candidateBits);
+                    for (const result of found)
+                        add(result, 'dotcode');
+                }
+                catch {
+                    /* no DotCode in this pass */
                 }
             }
             if (wantDataBarStacked && dataBarStackedCanDecode) {

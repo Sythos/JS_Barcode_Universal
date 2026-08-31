@@ -1,0 +1,66 @@
+DotCode format provenance and implementation licence
+======================================================
+
+This file records the public engineering basis for DotCode support in Sythos
+Barcode Universal. It is not legal advice and it does not grant a patent,
+trademark or standards licence.
+
+Implementation licence
+----------------------
+
+The DotCode writer, reader, detector, tables and tests in this repository are
+original Sythos work and are distributed under the MIT License in the
+repository root. The TypeScript sources are authoritative; generated
+JavaScript and declaration files are part of the same implementation.
+
+The implementation is dependency-free at runtime. It does not include or
+link to ZXing, Zint, BWIPP or another third-party barcode implementation.
+
+Public material and validation boundary
+----------------------------------------
+
+The implementation uses public descriptions of the DotCode layout, its
+five-of-nine dot assignment, code sets, masking and error-correction
+procedure. Public AIM and GS1 resources, the DotCode overview on Wikipedia
+and Zint's public DotCode backend were consulted for format understanding and
+interoperability cross-checking. Zint, ZXing and any other third-party
+software are used only as independent black-box validation or documentation
+references. No third-party source code, generated lookup table or runtime
+dependency has been copied into or shipped with this SDK.
+
+Patent and trademark review
+---------------------------
+
+The repository does not claim that every DotCode patent, patent application,
+standard, certification or trademark question has been resolved in every
+country. The format name is used descriptively. Users remain responsible for
+their own standards, patent, trademark and commercial due diligence before a
+regulated or high-volume deployment.
+
+The MIT licence covers this original implementation only. It does not grant
+rights that may belong to a standards body, patent holder or trademark owner.
+If you have a contrary legal notice, format correction or rights concern,
+please open a GitHub issue with the relevant public reference so it can be
+reviewed and recorded.
+
+Implementation limits
+---------------------
+
+This release intentionally rejects unsupported structured append, ECI,
+macro/AI 17 and FNC2/FNC3 control sequences rather than returning a partial or
+guessed payload. The detector is limited to clean binary rasters, integer
+module scales, bounded dimensions and quarter-turn orientations. These are
+documented product boundaries, not claims about the complete DotCode standard.
+
+References
+----------
+
+- AIM standards and technical symbology resources:
+  https://www.aimglobal.org/standards/
+- DotCode overview:
+  https://en.wikipedia.org/wiki/DotCode
+- GS1 General Specifications:
+  https://ref.gs1.org/standards/genspecs/
+- Zint DotCode backend, consulted only as an independent interoperability
+  reference:
+  https://github.com/zint/zint/blob/master/backend/dotcode.c

@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-47 listed formats write, 46 read; PDF417 image reading is now enabled after synthetic, black-box and
+48 listed formats write, 47 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -87,6 +87,7 @@ remain outside the validated robustness envelope.
 | **MaxiCode** — fixed 30×33 geometry, modes 2–5, ISO-8859-1 Code Sets A–E, Reed–Solomon and clean raster detector | ✅ write + image read |
 | **Codablock-F** — stacked Code 128 rows, 2–44 rows, row modulo-103 checks and two overall modulo-86 checks | ✅ write + image read; clean integer-scale detector |
 | **Code 16K** — compact stacked Code 128 A/B/C rows, 2–16 rows, dual modulo-107 checks and clean integer-scale detector | ✅ write + image read |
+| **DotCode** — bounded alternating-dot profile, five-of-nine patterns, four masks, GF(113) correction and strict raster detector | ✅ write + image read |
 | **Renderers** — SVG, ImageData, PNG, 2D canvas, WebGL2, WebGPU | ✅ 38 tests |
 | **Bundler** — own, ~200 lines, IIFE + ESM output | ✅ |
 | **Examples** — `create.html` (with the QR content-type builder), `read.html` | ✅ |
@@ -103,7 +104,7 @@ Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and Expande
 readers are integrated without replacing the existing reader. MaxiCode modes 2–5 are likewise integrated as a
 separate fixed-grid 2D path, and Codablock-F and Code 16K use separate stacked
 Code 128 paths with complete-row validation.
-The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M11 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
+The regression and false-positive corpus includes the baseline suite plus focused coverage for large-raster fallback, strict camera-profile validation, and the M2–M12 format group. The camera profile requires quiet-zone-qualified, repeated 1D reads, emits no partial or structurally inconsistent value, and exposes confidence metadata; it evaluates the fixed in-plane orientations `0°`, `45°`, `90°`, `135°`, `180°`, `225°`, `270°` and `315°` for supported camera detector passes. It deliberately preserves the unrestricted default mode. A local benchmark of
 the unrestricted scanner remains in the expected tens-of-milliseconds range per rendered frame;
 no dispatch rewrite was necessary. This finite 45°-step retry policy does not claim arbitrary
 perspective, curved-media, severe-occlusion or multi-symbol robustness. Pharmacode remains deliberately `readable: false` because its
@@ -120,7 +121,7 @@ advertises `canRead: true`; extreme glare, severe occlusion, curved media and
 multi-symbol scenes remain outside the validated robustness envelope. Black-box
 Text/Numeric interop is recorded; byte-for-byte interop remains explicitly unclaimed.
 
-### M2–M11 format group
+### M2–M12 format group
 
 The format group that followed the PDF417 work is complete locally and is kept
 as one reviewable gate because the DataBar paths share strict raster and GTIN
@@ -138,6 +139,7 @@ validation boundaries, while Telepen adds a self-contained scanline grammar:
 | M9 | Postal 4-state family | USPS POSTNET and PLANET, Royal Mail RM4SCC, KIX, Australia Post, Japan Post and USPS Intelligent Mail (IMb); shared height-coded classifier, operator-specific framing, checks and aliases | Seven-format round trips, quiet-zone and damaged-symbol rejection, Australia character/numeric modes, IMb 20/25/29/31 lengths, package/type checks and independent BWIPP black-box vectors |
 | M10 | Codablock-F | Stacked Code 128 rows with Code B framing, 2–44 rows, 4–62 data symbols per row, modulo-103 row checks and two modulo-86 overall checks | Round trips, explicit geometry, integer-scale image detection, complete-row enforcement, damaged-row rejection, package and declaration checks |
 | M11 | Code 16K | Compact stacked Code 128 rows, 2–16 rows, five symbols per row, modes A/B/C, optional GS1 modes, row framing and dual modulo-107 checks | Round trips, numeric compression, explicit row geometry, integer-scale image detection, damaged-row rejection, package and declaration checks |
+| M12 | DotCode | Alternating dot grid, six reserved corners, five-of-nine patterns, four masks, GF(113) Reed–Solomon, A/B/C plus binary payload path and strict clean-raster detector | Round trips for text, UTF-8, GS1 and binary payloads, all masks, orientation/polarity, bounded dimensions, malformed-input rejection, package and declaration checks |
 
 The JavaScript runtime and TypeScript declarations are generated and checked
 together. The grouped CI gate runs `test:formats`, TypeScript checks, lint,
@@ -151,7 +153,7 @@ scenes remain outside this group.
 
 **Long tail, tiered by shared machinery** — this is what makes scope cuttable intelligently:
 
-- *Each effectively its own project:* DotCode, Han Xin and GS1 Composite. The five
+- *Each effectively its own project:* Han Xin and GS1 Composite. The five
 GS1 DataBar physical variants currently shipped remain bounded to their documented
 geometry and validation profiles.
 

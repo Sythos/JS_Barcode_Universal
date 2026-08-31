@@ -36,7 +36,6 @@ These names do not appear as supported IDs in the current registry:
 | Micro QR ECI | Outside the current Micro QR API scope. |
 | Micro QR FNC1 / GS1 | Outside the current Micro QR API scope. |
 | Micro QR Structured Append | Outside the current Micro QR API scope. |
-| DotCode | Not implemented; separate detector and placement work is required. |
 | Han Xin Code | Not implemented; format and redistribution review remain outside the current scope. |
 | GS1 Composite | Not implemented; stacked composite geometry is separate from the shipped GS1 DataBar path. |
 

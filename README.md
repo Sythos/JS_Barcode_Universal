@@ -102,6 +102,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/rmqr` | `encodeRMQR`, `decodeRMQR`, `detectRMQR`, `detectAndDecodeRMQR` |
 | `@sythos/js_barcode_universal/frameqr` | `encodeFrameQR`, `decodeFrameQR`, `detectFrameQR`, `detectAndDecodeFrameQR` |
 | `@sythos/js_barcode_universal/maxicode` | `encodeMaxiCode`, `decodeMaxiCode`, `detectMaxiCode`, `detectAndDecodeMaxiCode` |
+| `@sythos/js_barcode_universal/dotcode` | `encodeDotCode`, `decodeDotCode`, `detectDotCode`, `detectAndDecodeDotCode` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -284,10 +285,11 @@ time.
 | MaxiCode | `maxicode` | 2D | ✅ | ✅ |
 | Codablock-F | `codablockf` | 2D | ✅ | ✅ |
 | Code 16K | `code16k` | 2D | ✅ | ✅ |
+| DotCode | `dotcode` | 2D | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
 
-Forty-seven listed formats are writable and forty-six are readable (EAN-2 and EAN-5 are
+Forty-eight listed formats are writable and forty-seven are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -344,6 +346,26 @@ rejects missing rows, altered modules, invalid checks and ambiguous geometry;
 arbitrary perspective and multi-symbol camera scenes remain outside the
 validated envelope. See [`docs/formats/code16k.md`](docs/formats/code16k.md)
 and [`licenses/code16k.license`](licenses/code16k.license).
+
+DotCode uses an alternating dot grid rather than a solid finder pattern. The
+writer and reader cover the bounded five-of-nine pattern set, four masks,
+prime-field Reed–Solomon correction, UTF-8 and byte payloads, with optional
+GS1/FNC1 handling:
+
+```js
+import { encodeDotCode, detectAndDecodeDotCode } from '@sythos/js_barcode_universal/dotcode';
+
+const matrix = encodeDotCode('DOTCODE ORDER 123', { width: 29, height: 30, mask: 1 });
+const hits = detectAndDecodeDotCode(matrix.withMargin(3).scale(2), { moduleSize: 2 });
+console.log(hits[0]?.text, hits[0]?.moduleSize);
+```
+
+The detector is intentionally strict: it accepts complete clean binary rasters
+at integer scale, quarter-turn orientations and either polarity, then returns
+only a checksum-validated symbol. Perspective, curved media, severe blur and
+multi-symbol scenes remain outside the supported profile. See
+[`docs/formats/dotcode.md`](docs/formats/dotcode.md) and
+[`licenses/dotcode.license`](licenses/dotcode.license).
 
 [^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
 and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is

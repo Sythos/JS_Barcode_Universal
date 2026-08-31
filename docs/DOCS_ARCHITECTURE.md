@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 47 entries and 46 generally readable
+The current registry snapshot reports 48 entries and 47 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -101,6 +101,8 @@ turning the count into marketing copy:
   detector;
 - Codablock-F is a stacked Code 128 path with complete row and overall checks;
 - Code 16K is a compact stacked Code 128 A/B/C path with dual modulo-107 checks;
+- DotCode is an alternating-dot path whose strict detector relies on bounded
+  geometry, legal patterns and GF(113) checks;
 - the postal family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post
   and IMb) uses strict operator-specific height-coded alphabets and checks;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
@@ -145,6 +147,7 @@ docs/
 │   ├── maxicode.md
 │   ├── codablockf.md
 │   ├── code16k.md
+│   ├── dotcode.md
 │   ├── frameqr-profile.md
 │   └── excluded-formats.md
 ├── guides/
@@ -294,6 +297,8 @@ format catalogue, recipes, FAQ and troubleshooting routes. This proves that
 the site is publicly served; it does not by itself prove that every external
 crawler has indexed it.
 M11 is complete: the Code 16K format page, navigation entry and registry counts
+are in sync with the shipped runtime and its declaration surface.
+M12 is complete: the DotCode format page, navigation entry and registry counts
 are in sync with the shipped runtime and its declaration surface.
 
 ## M0 exit criteria

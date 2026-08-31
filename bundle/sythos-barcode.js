@@ -22408,6 +22408,1358 @@ const __reexport3 = __require("js/code16k/detector.js"); __exports.detectCode16K
 
 };
 
+__modules["js/dotcode/tables.js"] = function (__require, __exports) {
+/**
+ * DotCode structural constants and the public 5-of-9 symbol assignment.
+ *
+ * The pattern assignment is a normative symbology table. It is recorded as
+ * compact hexadecimal values so the runtime does not need a third-party table
+ * or a generated dependency. Bit 8 is the first dot in the nine-dot pattern.
+ * Every entry contains exactly five dark dots.
+ *
+ * @module dotcode/tables
+ */
+const { GaloisField } = __require("js/core/galois-field.js");
+const DOTCODE_MIN_DIMENSION = 5;
+const DOTCODE_MAX_DIMENSION = 200;
+const DOTCODE_FIELD_SIZE = 113;
+const DOTCODE_CODEWORD_COUNT = 113;
+const DOTCODE_MIN_ECC = 3;
+const DOTCODE_MASK_STEPS = Object.freeze([0, 3, 7, 17]);
+/** GF(113), with the primitive root required by the DotCode RS procedure. */
+const GF113_DOTCODE = new GaloisField({
+    size: DOTCODE_FIELD_SIZE,
+    prime: true,
+    generator: 3,
+    name: 'GF(113)/DotCode',
+});
+/**
+ * DotCode Annex C's 113 legal 5-of-9 patterns.
+ *
+ * This is format data, not executable code copied from an implementation.
+ * Keeping it in the authoritative TypeScript source makes the JS runtime and
+ * its declarations reproducible without a package-time generator.
+ */
+const DOTCODE_PATTERNS = Object.freeze([
+    0x155, 0x0ab, 0x0ad, 0x0b5, 0x0d5, 0x156, 0x15a, 0x16a, 0x1aa, 0x0ae,
+    0x0b6, 0x0ba, 0x0d6, 0x0da, 0x0ea, 0x12b, 0x12d, 0x135, 0x14b, 0x14d,
+    0x153, 0x159, 0x165, 0x169, 0x195, 0x1a5, 0x1a9, 0x057, 0x05b, 0x05d,
+    0x06b, 0x06d, 0x075, 0x097, 0x09b, 0x09d, 0x0a7, 0x0b3, 0x0b9, 0x0cb,
+    0x0cd, 0x0d3, 0x0d9, 0x0e5, 0x0e9, 0x12e, 0x136, 0x13a, 0x14e, 0x15c,
+    0x166, 0x16c, 0x172, 0x174, 0x196, 0x19a, 0x1a6, 0x1ac, 0x1b2, 0x1b4,
+    0x1ca, 0x1d2, 0x1d4, 0x05e, 0x06e, 0x076, 0x07a, 0x09e, 0x0bc, 0x0ce,
+    0x0dc, 0x0e6, 0x0ec, 0x0f2, 0x0f4, 0x117, 0x11b, 0x11d, 0x127, 0x133,
+    0x139, 0x147, 0x163, 0x171, 0x18b, 0x18d, 0x193, 0x199, 0x1a3, 0x1b1,
+    0x1c5, 0x1c9, 0x1d1, 0x02f, 0x037, 0x03b, 0x03d, 0x04f, 0x067, 0x073,
+    0x079, 0x08f, 0x0c7, 0x0e3, 0x0f1, 0x11e, 0x13c, 0x178, 0x18e, 0x19c,
+    0x1b8, 0x1c6, 0x1cc,
+]);
+const PATTERN_TO_CODEWORD = new Map(DOTCODE_PATTERNS.map((pattern, value) => [pattern, value]));
+/** Return the nine-dot pattern assigned to a codeword. */
+function dotCodePattern(codeword) {
+    if (!Number.isInteger(codeword) || codeword < 0 || codeword >= DOTCODE_CODEWORD_COUNT) {
+        throw new RangeError(`DotCode: codeword must be an integer in 0..${DOTCODE_CODEWORD_COUNT - 1}`);
+    }
+    return DOTCODE_PATTERNS[codeword];
+}
+/** Return a codeword for a nine-dot pattern, or -1 when it is not assigned. */
+function dotCodeCodeword(pattern) {
+    return PATTERN_TO_CODEWORD.get(pattern) ?? -1;
+}
+/** Number of active alternating positions in a W by H symbol. */
+function dotCodeActivePositions(width, height) {
+    return Math.floor((width * height) / 2);
+}
+/** Number of complete nine-bit codewords available after the mask bits. */
+function dotCodeCodewordCapacity(width, height) {
+    return Math.floor((dotCodeActivePositions(width, height) - 2) / 9);
+}
+/** DotCode uses alternating positions; the six corner positions carry tail bits. */
+function dotCodeIsDataPosition(column, row) {
+    return ((column + row) & 1) === 0;
+}
+/** Return true for one of the six corner positions used by the folded stream. */
+function dotCodeIsCorner(column, row, width, height) {
+    if (column === 0 && row === 0)
+        return true;
+    if (height & 1) {
+        if ((column === width - 2 && row === 0) || (column === width - 1 && row === 1))
+            return true;
+        if (column === 0 && row === height - 1)
+            return true;
+    }
+    else {
+        if (column === width - 1 && row === 0)
+            return true;
+        if ((column === 0 && row === height - 2) || (column === 1 && row === height - 1))
+            return true;
+    }
+    return (column === width - 2 && row === height - 1) ||
+        (column === width - 1 && row === height - 2);
+}
+/** Return the six corner coordinates in wire order for a canonical matrix. */
+function dotCodeCornerOrder(width, height) {
+    if (height & 1) {
+        return [
+            [width - 2, 0],
+            [width - 2, height - 1],
+            [width - 1, 1],
+            [width - 1, height - 2],
+            [0, 0],
+            [0, height - 1],
+        ];
+    }
+    return [
+        [width - 1, height - 2],
+        [0, height - 2],
+        [width - 2, height - 1],
+        [1, height - 1],
+        [width - 1, 0],
+        [0, 0],
+    ];
+}
+/** Largest data-codeword count that fits the supplied nine-bit capacity. */
+function dotCodeDataCapacity(codewordCapacity) {
+    if (!Number.isInteger(codewordCapacity) || codewordCapacity < DOTCODE_MIN_ECC + 1)
+        return 0;
+    let best = 0;
+    for (let data = 1; data <= codewordCapacity; data++) {
+        const ecc = DOTCODE_MIN_ECC + Math.floor(data / 2);
+        if (data + ecc <= codewordCapacity)
+            best = data;
+    }
+    return best;
+}
+/** Check public structural constants and pattern invariants. */
+function validateDotCodeTables() {
+    const errors = [];
+    if (DOTCODE_PATTERNS.length !== DOTCODE_CODEWORD_COUNT) {
+        errors.push(`pattern count ${DOTCODE_PATTERNS.length} is not ${DOTCODE_CODEWORD_COUNT}`);
+    }
+    const seen = new Set();
+    for (let value = 0; value < DOTCODE_PATTERNS.length; value++) {
+        const pattern = DOTCODE_PATTERNS[value];
+        if (seen.has(pattern))
+            errors.push(`pattern 0x${pattern.toString(16)} is duplicated`);
+        seen.add(pattern);
+        if (pattern < 0 || pattern > 0x1ff || pattern.toString(2).split('1').length - 1 !== 5) {
+            errors.push(`pattern ${value} is not a 5-of-9 value`);
+        }
+    }
+    return errors;
+}
+
+__exports.DOTCODE_MIN_DIMENSION = DOTCODE_MIN_DIMENSION;
+__exports.DOTCODE_MAX_DIMENSION = DOTCODE_MAX_DIMENSION;
+__exports.DOTCODE_FIELD_SIZE = DOTCODE_FIELD_SIZE;
+__exports.DOTCODE_CODEWORD_COUNT = DOTCODE_CODEWORD_COUNT;
+__exports.DOTCODE_MIN_ECC = DOTCODE_MIN_ECC;
+__exports.DOTCODE_MASK_STEPS = DOTCODE_MASK_STEPS;
+__exports.GF113_DOTCODE = GF113_DOTCODE;
+__exports.DOTCODE_PATTERNS = DOTCODE_PATTERNS;
+__exports.dotCodePattern = dotCodePattern;
+__exports.dotCodeCodeword = dotCodeCodeword;
+__exports.dotCodeActivePositions = dotCodeActivePositions;
+__exports.dotCodeCodewordCapacity = dotCodeCodewordCapacity;
+__exports.dotCodeIsDataPosition = dotCodeIsDataPosition;
+__exports.dotCodeIsCorner = dotCodeIsCorner;
+__exports.dotCodeCornerOrder = dotCodeCornerOrder;
+__exports.dotCodeDataCapacity = dotCodeDataCapacity;
+__exports.validateDotCodeTables = validateDotCodeTables;
+};
+
+__modules["js/dotcode/encoder.js"] = function (__require, __exports) {
+/** Original dependency-free DotCode encoder. @module dotcode/encoder */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+const { rsEncode } = __require("js/core/reed-solomon.js");
+const { DOTCODE_CODEWORD_COUNT, DOTCODE_FIELD_SIZE, DOTCODE_MAX_DIMENSION, DOTCODE_MASK_STEPS, DOTCODE_MIN_DIMENSION, GF113_DOTCODE, dotCodeActivePositions, dotCodeCodewordCapacity, dotCodeCornerOrder, dotCodeDataCapacity, dotCodeIsCorner, dotCodeIsDataPosition, dotCodePattern } = __require("js/dotcode/tables.js");
+function bytesFor(value, encoding) {
+    if (value instanceof Uint8Array)
+        return new Uint8Array(value);
+    if (Array.isArray(value)) {
+        if (value.some((byte) => !Number.isInteger(byte) || byte < 0 || byte > 255)) {
+            throw new EncodeError('DotCode: byte input must contain integers from 0 to 255');
+        }
+        return Uint8Array.from(value);
+    }
+    if (typeof value !== 'string' || value.length === 0) {
+        throw new EncodeError('DotCode: value must be a non-empty string or byte array');
+    }
+    if (encoding === 'utf8')
+        return new TextEncoder().encode(value);
+    const bytes = new Uint8Array(value.length);
+    for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index);
+        if (code > 255)
+            throw new EncodeError(`DotCode: character U+${code.toString(16).padStart(4, '0')} does not fit ${encoding}`);
+        bytes[index] = code;
+    }
+    return bytes;
+}
+function digit(byte) { return byte >= 48 && byte <= 57; }
+function hasDigitPair(bytes, index) {
+    return index + 1 < bytes.length && digit(bytes[index]) && digit(bytes[index + 1]);
+}
+function appendUpperShift(out, byte) {
+    if (byte < 128 || byte > 255)
+        throw new EncodeError('DotCode: upper-shift byte must be in 128..255');
+    if (byte < 160)
+        out.push(110, byte - 64);
+    else
+        out.push(111, byte - 160);
+}
+function appendCodeSetA(out, byte) {
+    if (byte > 95)
+        throw new EncodeError('DotCode: byte is not directly encodable in Code Set A');
+    out.push(byte < 32 ? byte + 64 : byte - 32);
+}
+function appendCodeSetB(out, byte) {
+    if (byte >= 32 && byte <= 127)
+        out.push(byte - 32);
+    else if (byte === 9)
+        out.push(97);
+    else if (byte === 28)
+        out.push(98);
+    else if (byte === 29)
+        out.push(99);
+    else if (byte === 30)
+        out.push(100);
+    else if (byte === 13)
+        out.push(96);
+    else
+        throw new EncodeError('DotCode: byte is not directly encodable in Code Set B');
+}
+/** Convert five base-259 bytes into six base-103 codewords (or a short tail). */
+function appendBinaryGroup(out, bytes, start, count) {
+    let value = 0;
+    for (let index = 0; index < count; index++)
+        value = value * 259 + bytes[start + index];
+    const words = new Array(count + 1).fill(0);
+    for (let index = words.length - 1; index >= 0; index--) {
+        words[index] = value % 103;
+        value = Math.floor(value / 103);
+    }
+    if (value !== 0)
+        throw new EncodeError('DotCode: binary radix conversion overflow');
+    out.push(...words);
+}
+/**
+ * Encode the supported Code Set A/B/C subset and the complete binary-latch
+ * byte path. The result is deliberately deterministic and never depends on a
+ * third-party encoder.
+ */
+function encodeDataCodewords(bytes, gs1, forceBinary) {
+    if (!bytes.length)
+        throw new EncodeError('DotCode: payload must not be empty');
+    const words = [];
+    let mode = 'C';
+    let position = 0;
+    let usedBinary = forceBinary;
+    // A leading numeric pair would be interpreted as GS1 by readers. FNC1 is
+    // the standard disambiguator for an ordinary numeric message.
+    if (!gs1 && hasDigitPair(bytes, 0))
+        words.push(107);
+    if (forceBinary) {
+        words.push(112);
+        usedBinary = true;
+        for (; position < bytes.length; position += 5)
+            appendBinaryGroup(words, bytes, position, Math.min(5, bytes.length - position));
+        return { words, encoding: 'binary' };
+    }
+    while (position < bytes.length) {
+        const byte = bytes[position];
+        if (mode === 'X') {
+            for (; position < bytes.length; position += 5)
+                appendBinaryGroup(words, bytes, position, Math.min(5, bytes.length - position));
+            break;
+        }
+        if (gs1 && byte === 29) {
+            words.push(107);
+            position++;
+            continue;
+        }
+        if (mode === 'C') {
+            if (hasDigitPair(bytes, position)) {
+                words.push((bytes[position] - 48) * 10 + bytes[position + 1] - 48);
+                position += 2;
+            }
+            else if (byte >= 128) {
+                if (bytes.length - position >= 5) {
+                    words.push(112);
+                    mode = 'X';
+                    usedBinary = true;
+                }
+                else {
+                    appendUpperShift(words, byte);
+                    position++;
+                }
+            }
+            else if (byte < 32) {
+                words.push(101);
+                mode = 'A';
+            }
+            else {
+                words.push(106);
+                mode = 'B';
+            }
+            continue;
+        }
+        if (mode === 'A') {
+            if (hasDigitPair(bytes, position)) {
+                words.push(106);
+                mode = 'C';
+                continue;
+            }
+            if (byte >= 128) {
+                if (bytes.length - position >= 5) {
+                    words.push(112);
+                    mode = 'X';
+                    usedBinary = true;
+                }
+                else {
+                    appendUpperShift(words, byte);
+                    position++;
+                }
+            }
+            else if (byte <= 95) {
+                appendCodeSetA(words, byte);
+                position++;
+            }
+            else {
+                words.push(102);
+                mode = 'B';
+            }
+            continue;
+        }
+        // Code Set B.
+        if (hasDigitPair(bytes, position)) {
+            words.push(106);
+            mode = 'C';
+            continue;
+        }
+        if (byte >= 128) {
+            if (bytes.length - position >= 5) {
+                words.push(112);
+                mode = 'X';
+                usedBinary = true;
+            }
+            else {
+                appendUpperShift(words, byte);
+                position++;
+            }
+        }
+        else if ((byte >= 32 && byte <= 127) || byte === 9 || byte === 28 || byte === 29 || byte === 30) {
+            appendCodeSetB(words, byte);
+            position++;
+        }
+        else {
+            words.push(102);
+            mode = 'A';
+        }
+    }
+    // Binary mode only occurs as the final payload segment above, but RS/data
+    // padding follows it. Terminate explicitly so the padding is not bytes.
+    if (usedBinary && mode === 'X')
+        words.push(109);
+    return { words, encoding: usedBinary ? 'binary' : 'latin1' };
+}
+function codewordEccLength(dataLength) { return 3 + Math.floor(dataLength / 2); }
+function maxDataLength(codewordCapacity) {
+    return dotCodeDataCapacity(codewordCapacity);
+}
+function validateDimension(name, value) {
+    if (value === undefined)
+        return undefined;
+    if (!Number.isInteger(value) || value < DOTCODE_MIN_DIMENSION || value > DOTCODE_MAX_DIMENSION) {
+        throw new EncodeError(`DotCode: ${name} must be an integer in ${DOTCODE_MIN_DIMENSION}..${DOTCODE_MAX_DIMENSION}`);
+    }
+    return value;
+}
+function chooseDimensions(dataLength, options) {
+    const requestedWidth = validateDimension('width', options.width ?? options.columns);
+    const requestedHeight = validateDimension('height', options.height ?? options.rows);
+    if (options.aspectRatio !== undefined && (!Number.isFinite(options.aspectRatio) || options.aspectRatio <= 0)) {
+        throw new EncodeError('DotCode: aspectRatio must be a finite positive number');
+    }
+    if (requestedWidth !== undefined && requestedHeight !== undefined && ((requestedWidth + requestedHeight) & 1) === 0) {
+        throw new EncodeError('DotCode: width plus height must be odd');
+    }
+    const fits = (width, height) => {
+        if (((width + height) & 1) === 0)
+            return null;
+        const slots = dotCodeCodewordCapacity(width, height);
+        const capacity = maxDataLength(slots);
+        if (capacity < dataLength)
+            return null;
+        return { width, height, dataLength: capacity };
+    };
+    if (requestedWidth !== undefined || requestedHeight !== undefined) {
+        if (requestedWidth !== undefined && requestedHeight !== undefined) {
+            const result = fits(requestedWidth, requestedHeight);
+            if (!result)
+                throw new EncodeError('DotCode: payload does not fit the requested dimensions');
+            return result;
+        }
+        const fixed = requestedWidth ?? requestedHeight;
+        let best = null;
+        for (let varying = DOTCODE_MIN_DIMENSION; varying <= DOTCODE_MAX_DIMENSION; varying++) {
+            const width = requestedWidth === undefined ? varying : fixed;
+            const height = requestedWidth === undefined ? fixed : varying;
+            const candidate = fits(width, height);
+            if (candidate) {
+                best = candidate;
+                break;
+            }
+        }
+        if (!best)
+            throw new EncodeError('DotCode: payload does not fit the requested fixed dimension');
+        return best;
+    }
+    const aspect = options.aspectRatio ?? 1.5;
+    let best = null;
+    for (let height = DOTCODE_MIN_DIMENSION; height <= DOTCODE_MAX_DIMENSION; height++) {
+        for (let width = DOTCODE_MIN_DIMENSION; width <= DOTCODE_MAX_DIMENSION; width++) {
+            const candidate = fits(width, height);
+            if (!candidate)
+                continue;
+            const area = width * height;
+            const score = area * 100 + Math.abs(width / height - aspect) * 10 + (candidate.dataLength - dataLength);
+            if (!best || score < best.score)
+                best = { ...candidate, score };
+        }
+    }
+    if (!best)
+        throw new EncodeError('DotCode: payload exceeds the safe 200 by 200 implementation limit');
+    return best;
+}
+function rsProtected(data, mask) {
+    const step = DOTCODE_MASK_STEPS[mask];
+    const protectedData = [mask, ...data.map((value, index) => (value + step * index) % DOTCODE_FIELD_SIZE)];
+    const eccLength = codewordEccLength(data.length);
+    const total = protectedData.length + eccLength;
+    // DotCode interleaves Reed-Solomon blocks by residue class.  A block is
+    // selected with `start + index * blockCount`, and its parity follows that
+    // block's data in the same residue class.  Keeping the mask at wire index
+    // zero is important: it participates in the first RS block just like the
+    // public symbology procedure specifies.
+    const blockCount = Math.ceil(total / (DOTCODE_FIELD_SIZE - 1));
+    const wire = new Array(total).fill(0);
+    for (let block = 0; block < blockCount; block++) {
+        const blockData = Math.ceil((protectedData.length - block) / blockCount);
+        const blockTotal = Math.ceil((total - block) / blockCount);
+        const blockEcc = blockTotal - blockData;
+        const values = [];
+        for (let index = 0; index < blockData; index++)
+            values.push(protectedData[block + index * blockCount]);
+        const parity = rsEncode(values, blockEcc, GF113_DOTCODE, 1);
+        for (let index = 0; index < blockData; index++)
+            wire[block + index * blockCount] = values[index];
+        for (let index = 0; index < blockEcc; index++)
+            wire[block + blockData * blockCount + index * blockCount] = parity[index];
+    }
+    return wire;
+}
+function streamFor(width, height, codewords) {
+    const mask = codewords[0];
+    const bits = [(mask & 2) !== 0, (mask & 1) !== 0];
+    for (let index = 1; index < codewords.length; index++) {
+        const pattern = dotCodePattern(codewords[index]);
+        for (let bit = 8; bit >= 0; bit--)
+            bits.push(((pattern >>> bit) & 1) !== 0);
+    }
+    const active = dotCodeActivePositions(width, height);
+    if (bits.length > active)
+        throw new EncodeError('DotCode: codeword stream exceeds matrix capacity');
+    while (bits.length < active)
+        bits.push(true);
+    return bits;
+}
+function fold(width, height, stream) {
+    const matrix = new BitMatrix(width, height);
+    let position = 0;
+    if (height & 1) {
+        for (let row = 0; row < height; row++)
+            for (let column = 0; column < width; column++) {
+                if (!dotCodeIsDataPosition(column, row))
+                    continue;
+                if (dotCodeIsCorner(column, row, width, height))
+                    continue;
+                const targetY = height - row - 1;
+                matrix.setValue(column, targetY, stream[position++]);
+            }
+    }
+    else {
+        for (let column = 0; column < width; column++)
+            for (let row = 0; row < height; row++) {
+                if (!dotCodeIsDataPosition(column, row))
+                    continue;
+                if (dotCodeIsCorner(column, row, width, height))
+                    continue;
+                matrix.setValue(column, row, stream[position++]);
+            }
+    }
+    for (const [column, row] of dotCodeCornerOrder(width, height))
+        matrix.setValue(column, row, stream[position++]);
+    if (position !== stream.length)
+        throw new EncodeError('DotCode: fold did not consume the complete dot stream');
+    return matrix;
+}
+function maskScore(matrix) {
+    let score = 0;
+    for (let row = 0; row < matrix.height; row++) {
+        let count = 0;
+        for (let column = row & 1; column < matrix.width; column += 2)
+            if (matrix.get(column, row))
+                count++;
+        if (count)
+            score += 2 + Math.min(count, 10);
+    }
+    for (let column = 0; column < matrix.width; column++) {
+        let count = 0;
+        for (let row = column & 1; row < matrix.height; row += 2)
+            if (matrix.get(column, row))
+                count++;
+        if (count)
+            score += 2 + Math.min(count, 10);
+    }
+    for (let row = 0; row < matrix.height; row++)
+        for (let column = row & 1; column < matrix.width; column += 2) {
+            if (!matrix.get(column, row) &&
+                !matrix.get(column - 1, row - 1) && !matrix.get(column + 1, row - 1) &&
+                !matrix.get(column - 1, row + 1) && !matrix.get(column + 1, row + 1))
+                score -= 1;
+        }
+    return score;
+}
+function validateMask(value) {
+    if (value === undefined)
+        return undefined;
+    if (!Number.isInteger(value) || value < 0 || value > 3) {
+        throw new EncodeError('DotCode: mask must be an integer in 0..3');
+    }
+    return value;
+}
+function matrixForData(data, options, encoding, gs1) {
+    if (!data.length)
+        throw new EncodeError('DotCode: payload must not be empty');
+    if (data.some((value) => !Number.isInteger(value) || value < 0 || value >= DOTCODE_CODEWORD_COUNT)) {
+        throw new EncodeError(`DotCode: data codewords must be integers in 0..${DOTCODE_CODEWORD_COUNT - 1}`);
+    }
+    const dimensions = chooseDimensions(data.length, options);
+    while (data.length < dimensions.dataLength)
+        data.push(106);
+    const eccLength = codewordEccLength(data.length);
+    const selected = validateMask(options.mask);
+    let bestMask = selected ?? 0;
+    let bestMatrix = null;
+    if (selected === undefined) {
+        let bestScore = Number.NEGATIVE_INFINITY;
+        for (let mask = 0; mask < 4; mask++) {
+            const matrix = fold(dimensions.width, dimensions.height, streamFor(dimensions.width, dimensions.height, rsProtected(data, mask)));
+            const score = maskScore(matrix);
+            if (score >= bestScore) {
+                bestScore = score;
+                bestMask = mask;
+                bestMatrix = matrix;
+            }
+        }
+    }
+    const matrix = (bestMatrix ?? fold(dimensions.width, dimensions.height, streamFor(dimensions.width, dimensions.height, rsProtected(data, bestMask))));
+    matrix.dotcode = {
+        format: 'dotcode', width: dimensions.width, height: dimensions.height,
+        mask: bestMask, dataCodewords: data.length, errorCodewords: eccLength,
+        modulePositions: dotCodeActivePositions(dimensions.width, dimensions.height),
+        gs1, encoding,
+    };
+    return matrix;
+}
+/** Encode a string or byte payload into a DotCode module matrix. */
+function encodeDotCode(value, options = {}) {
+    const requestedEncoding = options.encoding ?? (value instanceof Uint8Array || Array.isArray(value) ? 'binary' : 'utf8');
+    const bytes = bytesFor(value, requestedEncoding);
+    if (!bytes.length)
+        throw new EncodeError('DotCode: payload must not be empty');
+    const encoded = encodeDataCodewords(bytes, options.gs1 === true, requestedEncoding === 'binary');
+    return matrixForData(encoded.words, options, encoded.encoding, options.gs1 === true);
+}
+/** Encode an explicit set of unmasked data codewords for conformance fixtures. */
+function encodeDotCodeCodewords(codewords, options = {}) {
+    if (!Array.isArray(codewords) && !(codewords instanceof Uint8Array))
+        throw new EncodeError('DotCode: codewords must be an array');
+    const data = Array.from(codewords);
+    if (!data.length || data.some((value) => !Number.isInteger(value) || value < 0 || value >= DOTCODE_CODEWORD_COUNT)) {
+        throw new EncodeError(`DotCode: codewords must be integers in 0..${DOTCODE_CODEWORD_COUNT - 1}`);
+    }
+    return matrixForData(data, options, 'binary', options.gs1 === true);
+}
+
+__exports.encodeDotCode = encodeDotCode;
+__exports.encodeDotCodeCodewords = encodeDotCodeCodewords;
+};
+
+__modules["js/dotcode/decoder.js"] = function (__require, __exports) {
+/** Strict DotCode matrix decoder. @module dotcode/decoder */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { ChecksumError, FormatError } = __require("js/core/errors.js");
+const { rsDecode } = __require("js/core/reed-solomon.js");
+const { DOTCODE_CODEWORD_COUNT, DOTCODE_FIELD_SIZE, DOTCODE_MASK_STEPS, DOTCODE_MAX_DIMENSION, DOTCODE_MIN_DIMENSION, GF113_DOTCODE, dotCodeActivePositions, dotCodeCodeword, dotCodeCodewordCapacity, dotCodeCornerOrder, dotCodeDataCapacity, dotCodeIsCorner, dotCodeIsDataPosition } = __require("js/dotcode/tables.js");
+function checkMatrix(matrix) {
+    if (!matrix || !Number.isInteger(matrix.width) || !Number.isInteger(matrix.height) || typeof matrix.get !== 'function') {
+        throw new FormatError('DotCode: no matrix supplied');
+    }
+    if (matrix.width < DOTCODE_MIN_DIMENSION || matrix.height < DOTCODE_MIN_DIMENSION ||
+        matrix.width > DOTCODE_MAX_DIMENSION || matrix.height > DOTCODE_MAX_DIMENSION) {
+        throw new FormatError(`DotCode: dimensions must be in ${DOTCODE_MIN_DIMENSION}..${DOTCODE_MAX_DIMENSION}`);
+    }
+    if (((matrix.width + matrix.height) & 1) === 0) {
+        throw new FormatError('DotCode: width plus height must be odd');
+    }
+}
+function readStream(matrix) {
+    const width = matrix.width;
+    const height = matrix.height;
+    const stream = [];
+    const read = (column, row) => stream.push(matrix.get(column, row));
+    // Odd-height symbols are folded horizontally; even-height symbols are
+    // folded vertically. The six reserved corners are read last in wire order.
+    if (height & 1) {
+        for (let row = 0; row < height; row++)
+            for (let column = 0; column < width; column++) {
+                if (!dotCodeIsDataPosition(column, row) || dotCodeIsCorner(column, row, width, height))
+                    continue;
+                read(column, height - row - 1);
+            }
+    }
+    else {
+        for (let column = 0; column < width; column++)
+            for (let row = 0; row < height; row++) {
+                if (!dotCodeIsDataPosition(column, row) || dotCodeIsCorner(column, row, width, height))
+                    continue;
+                read(column, row);
+            }
+    }
+    for (const [column, row] of dotCodeCornerOrder(width, height))
+        read(column, row);
+    const expected = dotCodeActivePositions(width, height);
+    if (stream.length !== expected)
+        throw new FormatError('DotCode: matrix fold has an invalid active-position count');
+    return stream;
+}
+function unmaskAndCorrect(stream, width, height) {
+    const slots = dotCodeCodewordCapacity(width, height);
+    const dataLength = dotCodeDataCapacity(slots);
+    if (!dataLength)
+        throw new FormatError('DotCode: dimensions cannot carry data and error correction');
+    const errorCodewords = 3 + Math.floor(dataLength / 2);
+    const symbolCodewords = dataLength + errorCodewords;
+    const usedBits = 2 + symbolCodewords * 9;
+    if (usedBits > stream.length)
+        throw new FormatError('DotCode: codeword stream is truncated');
+    for (let bit = usedBits; bit < stream.length; bit++) {
+        if (!stream[bit])
+            throw new FormatError('DotCode: padding bits must be dark');
+    }
+    const wireMask = (stream[0] ? 2 : 0) | (stream[1] ? 1 : 0);
+    if (wireMask < 0 || wireMask > 3)
+        throw new FormatError('DotCode: invalid mask bits');
+    const received = [wireMask];
+    for (let word = 0; word < symbolCodewords; word++) {
+        const offset = 2 + word * 9;
+        let pattern = 0;
+        for (let bit = 0; bit < 9; bit++)
+            pattern = (pattern << 1) | (stream[offset + bit] ? 1 : 0);
+        const codeword = dotCodeCodeword(pattern);
+        if (codeword < 0 || codeword >= DOTCODE_CODEWORD_COUNT) {
+            throw new FormatError(`DotCode: unassigned 5-of-9 pattern 0x${pattern.toString(16)}`);
+        }
+        received.push(codeword);
+    }
+    const protectedLength = dataLength + 1;
+    const totalLength = protectedLength + errorCodewords;
+    const blockCount = Math.ceil(totalLength / (DOTCODE_FIELD_SIZE - 1));
+    const corrected = received.slice();
+    let corrections = 0;
+    for (let block = 0; block < blockCount; block++) {
+        const blockData = Math.ceil((protectedLength - block) / blockCount);
+        const blockTotal = Math.ceil((totalLength - block) / blockCount);
+        const blockEcc = blockTotal - blockData;
+        if (blockData < 1 || blockEcc < 1)
+            throw new FormatError('DotCode: invalid interleaved RS block layout');
+        const blockValues = [];
+        // The first protected value is the two-bit mask itself, so protected data
+        // starts at received[0], exactly as it does in the encoder's wire array.
+        for (let index = 0; index < blockData; index++)
+            blockValues.push(received[block + index * blockCount]);
+        for (let index = 0; index < blockEcc; index++) {
+            // The encoder's wire indexes include the mask at position zero. Data
+            // is consequently read at 1+offset, while parity starts at the raw
+            // interleaved offset returned by the standard layout.
+            const value = received[block + blockData * blockCount + index * blockCount];
+            if (value === undefined)
+                throw new FormatError('DotCode: truncated RS parity block');
+            blockValues.push(value);
+        }
+        try {
+            corrections += rsDecode(blockValues, blockEcc, GF113_DOTCODE, 1);
+        }
+        catch (error) {
+            if (error instanceof ChecksumError)
+                throw error;
+            throw new ChecksumError('DotCode: Reed-Solomon verification failed');
+        }
+        for (let index = 0; index < blockData; index++)
+            corrected[block + index * blockCount] = blockValues[index];
+    }
+    const correctedMask = corrected[0];
+    if (!Number.isInteger(correctedMask) || correctedMask < 0 || correctedMask > 3) {
+        throw new ChecksumError('DotCode: Reed-Solomon corrected an invalid mask value');
+    }
+    const correctedMaskValue = correctedMask;
+    const step = DOTCODE_MASK_STEPS[correctedMaskValue];
+    const data = [];
+    for (let index = 0; index < dataLength; index++) {
+        const value = corrected[1 + index];
+        const unmapped = (value - step * index) % DOTCODE_FIELD_SIZE;
+        data.push((unmapped + DOTCODE_FIELD_SIZE) % DOTCODE_FIELD_SIZE);
+    }
+    return { data, mask: correctedMaskValue, errorCodewords, corrections };
+}
+function appendBytes(output, values) {
+    if (typeof values === 'number')
+        output.push(values);
+    else
+        output.push(...values);
+}
+function aCharacter(codeword) {
+    if (codeword < 0 || codeword > 95)
+        throw new FormatError('DotCode: invalid Code Set A character');
+    return codeword < 64 ? codeword + 32 : codeword - 64;
+}
+function bCharacter(codeword) {
+    if (codeword < 0 || codeword > 95)
+        throw new FormatError('DotCode: invalid Code Set B character');
+    return codeword + 32;
+}
+function bSymbols(codeword) {
+    if (codeword <= 95)
+        return bCharacter(codeword);
+    if (codeword === 96)
+        return [13, 10];
+    if (codeword === 97)
+        return 9;
+    if (codeword === 98)
+        return 28;
+    if (codeword === 99)
+        return 29;
+    if (codeword === 100)
+        return 30;
+    throw new FormatError('DotCode: invalid Code Set B character');
+}
+function cCharacters(codeword) {
+    if (codeword < 0 || codeword > 99)
+        throw new FormatError('DotCode: invalid Code Set C pair');
+    return [48 + Math.floor(codeword / 10), 48 + (codeword % 10)];
+}
+function binaryDigitsToBytes(words) {
+    if (!words.length || words.length > 6 || words.length === 1) {
+        throw new FormatError('DotCode: incomplete binary radix group');
+    }
+    if (words.some((word) => word < 0 || word > 102))
+        throw new FormatError('DotCode: binary group contains a control codeword');
+    let value = 0;
+    for (const word of words)
+        value = value * 103 + word;
+    const digitCount = words.length - 1;
+    const bytes = new Array(digitCount).fill(0);
+    for (let index = digitCount - 1; index >= 0; index--) {
+        const digit = value % 259;
+        value = Math.floor(value / 259);
+        if (digit > 255)
+            throw new FormatError('DotCode: ECI or reserved binary value is not supported');
+        bytes[index] = digit;
+    }
+    if (value !== 0)
+        throw new FormatError('DotCode: binary radix group overflows five base-259 digits');
+    return bytes;
+}
+function decodePayload(data) {
+    const words = data.slice();
+    while (words.length && words[words.length - 1] === 106)
+        words.pop();
+    if (!words.length)
+        throw new FormatError('DotCode: data contains padding only');
+    const bytes = [];
+    let mode = 'C';
+    let position = 0;
+    let lead = true;
+    let gs1 = false;
+    let binarySeen = false;
+    const markData = () => { lead = false; };
+    const markControl = () => { if (lead)
+        lead = false; };
+    const readWord = (message) => {
+        if (position >= words.length)
+            throw new FormatError(`DotCode: ${message} is truncated`);
+        return words[position++];
+    };
+    const readB = () => appendBytes(bytes, bSymbols(readWord('Code Set B shift')));
+    const readA = () => appendBytes(bytes, aCharacter(readWord('Code Set A shift')));
+    const readC = () => appendBytes(bytes, cCharacters(readWord('Code Set C shift')));
+    const readBShift = (count) => { for (let index = 0; index < count; index++)
+        readB(); };
+    const readCShift = (count) => {
+        for (let index = 0; index < count; index++) {
+            const value = readWord('Code Set C shift');
+            appendBytes(bytes, cCharacters(value));
+        }
+    };
+    while (position < words.length) {
+        const codeword = words[position++];
+        if (mode === 'X') {
+            const group = [codeword];
+            while (group[group.length - 1] <= 102 && position < words.length && words[position] <= 102)
+                group.push(words[position++]);
+            if (group[0] <= 102) {
+                // The final short group has 2..5 codewords; a full group has six.
+                if (group.length % 6 === 1) {
+                    // A control follows a complete group and is handled below. This
+                    // branch is only reached when the symbol ends on one stray value.
+                    throw new FormatError('DotCode: binary radix group has an invalid length');
+                }
+                for (let offset = 0; offset < group.length; offset += 6) {
+                    const size = Math.min(6, group.length - offset);
+                    if (size === 1)
+                        throw new FormatError('DotCode: binary radix group has an invalid length');
+                    appendBytes(bytes, binaryDigitsToBytes(group.slice(offset, offset + size)));
+                }
+            }
+            // A control codeword interrupts binary mode. The group was collected
+            // only from data codewords, so the control remains at `codeword`.
+            const control = group[0] > 102 ? group[0] : null;
+            if (control === null)
+                continue;
+            markControl();
+            if (control >= 103 && control <= 108) {
+                readCShift(control - 101);
+                mode = 'X';
+            }
+            else if (control === 109)
+                mode = 'A';
+            else if (control === 110)
+                mode = 'B';
+            else if (control === 111)
+                mode = 'C';
+            else if (control === 112)
+                throw new FormatError('DotCode: structured binary separation is not supported');
+            else
+                throw new FormatError('DotCode: unsupported binary control codeword');
+            continue;
+        }
+        if (mode === 'C') {
+            if (codeword <= 99) {
+                if (lead)
+                    gs1 = true;
+                appendBytes(bytes, cCharacters(codeword));
+                markData();
+            }
+            else if (codeword === 100) {
+                markControl();
+                throw new FormatError('DotCode: Code Set C macro/AI 17 encoding is not supported');
+            }
+            else if (codeword === 101) {
+                mode = 'A';
+            }
+            else if (codeword >= 102 && codeword <= 105) {
+                readBShift(codeword - 101);
+                markControl();
+            }
+            else if (codeword === 106) {
+                mode = 'B';
+            }
+            else if (codeword === 107) {
+                if (lead) {
+                    lead = false;
+                }
+                else
+                    appendBytes(bytes, 29);
+            }
+            else if (codeword === 108 || codeword === 109) {
+                markControl();
+                throw new FormatError(`DotCode: ${codeword === 108 ? 'FNC2' : 'FNC3'} is not supported`);
+            }
+            else if (codeword === 110 || codeword === 111) {
+                const shifted = readWord('upper shift');
+                const value = codeword === 110 ? shifted + 64 : shifted + 160;
+                if ((codeword === 110 && (shifted < 64 || shifted > 95)) || (codeword === 111 && (shifted < 0 || shifted > 95)) || value > 255) {
+                    throw new FormatError('DotCode: invalid upper-shift operand');
+                }
+                appendBytes(bytes, value);
+                markData();
+            }
+            else if (codeword === 112) {
+                mode = 'X';
+                binarySeen = true;
+                markControl();
+            }
+            else
+                throw new FormatError(`DotCode: unsupported Code Set C codeword ${codeword}`);
+            continue;
+        }
+        if (mode === 'A') {
+            if (codeword <= 95) {
+                appendBytes(bytes, aCharacter(codeword));
+                markData();
+            }
+            else if (codeword === 96) {
+                appendBytes(bytes, [13, 10]);
+                markData();
+            }
+            else if (codeword >= 97 && codeword <= 101) {
+                readBShift(codeword - 95);
+                markControl();
+            }
+            else if (codeword === 102)
+                mode = 'B';
+            else if (codeword >= 103 && codeword <= 105) {
+                readCShift(codeword - 101);
+                markControl();
+            }
+            else if (codeword === 106)
+                mode = 'C';
+            else if (codeword === 107) {
+                appendBytes(bytes, lead ? [] : 29);
+                lead = false;
+            }
+            else if (codeword === 108 || codeword === 109) {
+                markControl();
+                throw new FormatError(`DotCode: ${codeword === 108 ? 'FNC2' : 'FNC3'} is not supported`);
+            }
+            else if (codeword === 110 || codeword === 111) {
+                const shifted = readWord('upper shift');
+                const value = codeword === 110 ? shifted + 64 : shifted + 160;
+                if ((codeword === 110 && (shifted < 64 || shifted > 95)) || (codeword === 111 && (shifted < 0 || shifted > 95)) || value > 255) {
+                    throw new FormatError('DotCode: invalid upper-shift operand');
+                }
+                appendBytes(bytes, value);
+                markData();
+            }
+            else if (codeword === 112) {
+                mode = 'X';
+                binarySeen = true;
+                markControl();
+            }
+            else
+                throw new FormatError(`DotCode: unsupported Code Set A codeword ${codeword}`);
+            continue;
+        }
+        // Code Set B.
+        if (codeword <= 95) {
+            appendBytes(bytes, bCharacter(codeword));
+            markData();
+        }
+        else if (codeword === 96) {
+            appendBytes(bytes, [13, 10]);
+            markData();
+        }
+        else if (codeword === 97) {
+            appendBytes(bytes, 9);
+            markData();
+        }
+        else if (codeword === 98) {
+            appendBytes(bytes, 28);
+            markData();
+        }
+        else if (codeword === 99) {
+            appendBytes(bytes, 29);
+            markData();
+        }
+        else if (codeword === 100) {
+            appendBytes(bytes, 30);
+            markData();
+        }
+        else if (codeword === 101) {
+            readA();
+            markControl();
+        }
+        else if (codeword === 102)
+            mode = 'A';
+        else if (codeword >= 103 && codeword <= 105) {
+            readBShift(codeword - 101);
+            markControl();
+        }
+        else if (codeword === 106) {
+            mode = 'C';
+        }
+        else if (codeword === 107) {
+            appendBytes(bytes, lead ? [] : 29);
+            lead = false;
+        }
+        else if (codeword === 108 || codeword === 109) {
+            markControl();
+            throw new FormatError(`DotCode: ${codeword === 108 ? 'FNC2' : 'FNC3'} is not supported`);
+        }
+        else if (codeword === 110 || codeword === 111) {
+            const shifted = readWord('upper shift');
+            const value = codeword === 110 ? shifted + 64 : shifted + 160;
+            if ((codeword === 110 && (shifted < 64 || shifted > 95)) || (codeword === 111 && (shifted < 0 || shifted > 95)) || value > 255) {
+                throw new FormatError('DotCode: invalid upper-shift operand');
+            }
+            appendBytes(bytes, value);
+            markData();
+        }
+        else if (codeword === 112) {
+            mode = 'X';
+            binarySeen = true;
+            markControl();
+        }
+        else
+            throw new FormatError(`DotCode: unsupported Code Set B codeword ${codeword}`);
+    }
+    if (!bytes.length)
+        throw new FormatError('DotCode: decoded payload is empty');
+    let text = '';
+    let encoding = 'latin1';
+    try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(bytes));
+        encoding = 'utf8';
+    }
+    catch {
+        for (const byte of bytes)
+            text += String.fromCharCode(byte);
+    }
+    return { text, bytes: Uint8Array.from(bytes), gs1, encoding, binarySeen };
+}
+function rotate(matrix, degrees) {
+    if (degrees === 0)
+        return matrix.clone();
+    const output = degrees === 90 || degrees === 270 ? new BitMatrix(matrix.height, matrix.width) : new BitMatrix(matrix.width, matrix.height);
+    for (let y = 0; y < matrix.height; y++)
+        for (let x = 0; x < matrix.width; x++) {
+            let nx = x;
+            let ny = y;
+            if (degrees === 90) {
+                nx = matrix.height - 1 - y;
+                ny = x;
+            }
+            else if (degrees === 180) {
+                nx = matrix.width - 1 - x;
+                ny = matrix.height - 1 - y;
+            }
+            else {
+                nx = y;
+                ny = matrix.width - 1 - x;
+            }
+            output.setValue(nx, ny, matrix.get(x, y));
+        }
+    return output;
+}
+function inverted(matrix) {
+    const output = matrix.clone();
+    for (let y = 0; y < output.height; y++)
+        for (let x = 0; x < output.width; x++)
+            output.flip(x, y);
+    return output;
+}
+function decodeCanonical(matrix) {
+    checkMatrix(matrix);
+    // Inactive checkerboard positions are structural whitespace. Accepting a
+    // dark bit there would turn arbitrary dense artwork into a false positive.
+    for (let y = 0; y < matrix.height; y++)
+        for (let x = 0; x < matrix.width; x++) {
+            // The specification deliberately places two of the six tail/corner bits
+            // on the opposite checkerboard parity. They are the only legal exception.
+            if (!dotCodeIsDataPosition(x, y) && !dotCodeIsCorner(x, y, matrix.width, matrix.height) && matrix.get(x, y)) {
+                throw new FormatError('DotCode: inactive alternating position is dark');
+            }
+        }
+    const stream = readStream(matrix);
+    const corrected = unmaskAndCorrect(stream, matrix.width, matrix.height);
+    const payload = decodePayload(corrected.data);
+    return { ...payload, ...corrected, width: matrix.width, height: matrix.height };
+}
+/** Decode a sampled DotCode matrix, trying quarter turns and polarity. */
+function decodeDotCode(matrix, options = {}) {
+    checkMatrix(matrix);
+    if (options.rotation !== undefined && options.rotation !== 'auto' &&
+        options.rotation !== 0 && options.rotation !== 90 && options.rotation !== 180 && options.rotation !== 270) {
+        throw new FormatError('DotCode: rotation must be 0, 90, 180, 270 or auto');
+    }
+    if (options.inverted !== undefined && options.inverted !== 'auto' && typeof options.inverted !== 'boolean') {
+        throw new FormatError('DotCode: inverted must be true, false or auto');
+    }
+    const rotations = options.rotation === undefined || options.rotation === 'auto'
+        ? [0, 90, 180, 270] : [options.rotation];
+    const polarities = options.inverted === undefined || options.inverted === 'auto'
+        ? [false, true] : [options.inverted];
+    let firstError = null;
+    for (const rotation of rotations)
+        for (const isInverted of polarities) {
+            try {
+                let oriented = rotate(matrix, rotation);
+                if (isInverted)
+                    oriented = inverted(oriented);
+                const decoded = decodeCanonical(oriented);
+                return {
+                    format: 'dotcode', text: decoded.text, bytes: decoded.bytes,
+                    width: decoded.width, height: decoded.height, mask: decoded.mask,
+                    dataCodewords: decoded.data.length, errorCodewords: decoded.errorCodewords,
+                    corrections: decoded.corrections, gs1: decoded.gs1, encoding: decoded.encoding,
+                    rotation, inverted: isInverted,
+                };
+            }
+            catch (error) {
+                if (firstError === null)
+                    firstError = error;
+            }
+        }
+    if (firstError instanceof Error)
+        throw firstError;
+    throw new FormatError('DotCode: matrix could not be decoded');
+}
+__exports.ChecksumError = ChecksumError; __exports.FormatError = FormatError;
+
+__exports.decodeDotCode = decodeDotCode;
+};
+
+__modules["js/dotcode/detector.js"] = function (__require, __exports) {
+/** Clean-raster DotCode detector. @module dotcode/detector */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { FormatError, NotFoundError } = __require("js/core/errors.js");
+const { decodeDotCode } = __require("js/dotcode/decoder.js");
+const MAX_RASTER_PIXELS = 16777216;
+function validateImage(image) {
+    if (!image || !Number.isInteger(image.width) || !Number.isInteger(image.height) || typeof image.get !== 'function') {
+        throw new NotFoundError('DotCode detector: no binary image supplied');
+    }
+    if (image.width < 1 || image.height < 1 || image.width * image.height > MAX_RASTER_PIXELS) {
+        throw new FormatError(`DotCode detector: raster must contain at most ${MAX_RASTER_PIXELS} pixels`);
+    }
+}
+function boundsFor(image, dark) {
+    let minX = image.width;
+    let minY = image.height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < image.height; y++)
+        for (let x = 0; x < image.width; x++) {
+            if (image.get(x, y) !== dark)
+                continue;
+            if (x < minX)
+                minX = x;
+            if (x > maxX)
+                maxX = x;
+            if (y < minY)
+                minY = y;
+            if (y > maxY)
+                maxY = y;
+        }
+    return maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+function rotateImage(image, degrees) {
+    if (degrees === 0)
+        return image.clone();
+    const result = degrees === 90 || degrees === 270 ? new BitMatrix(image.height, image.width) : new BitMatrix(image.width, image.height);
+    for (let y = 0; y < image.height; y++)
+        for (let x = 0; x < image.width; x++) {
+            let nx = x;
+            let ny = y;
+            if (degrees === 90) {
+                nx = image.height - 1 - y;
+                ny = x;
+            }
+            else if (degrees === 180) {
+                nx = image.width - 1 - x;
+                ny = image.height - 1 - y;
+            }
+            else {
+                nx = y;
+                ny = image.width - 1 - x;
+            }
+            result.setValue(nx, ny, image.get(x, y));
+        }
+    return result;
+}
+function sampleCandidate(image, candidate) {
+    const { x, y, width, height, scale, inverted } = candidate;
+    if (x < 0 || y < 0 || x + width * scale > image.width || y + height * scale > image.height)
+        return null;
+    const matrix = new BitMatrix(width, height);
+    const threshold = Math.ceil(scale * scale / 2);
+    for (let row = 0; row < height; row++)
+        for (let column = 0; column < width; column++) {
+            let dark = 0;
+            for (let py = 0; py < scale; py++)
+                for (let px = 0; px < scale; px++) {
+                    if (image.get(x + column * scale + px, y + row * scale + py) === !inverted)
+                        dark++;
+                }
+            if (dark >= threshold)
+                matrix.set(column, row);
+        }
+    return matrix;
+}
+function validDimension(width, height) {
+    return Number.isInteger(width) && Number.isInteger(height) && width >= 5 && height >= 5 && ((width + height) & 1) === 1;
+}
+function addCandidate(list, seen, candidate) {
+    if (!validDimension(candidate.width, candidate.height) || candidate.scale < 1)
+        return;
+    const key = `${candidate.x},${candidate.y},${candidate.width},${candidate.height},${candidate.scale},${candidate.inverted ? 1 : 0}`;
+    if (seen.has(key))
+        return;
+    seen.add(key);
+    list.push(candidate);
+}
+function candidateList(image, bounds, scale, inverted) {
+    const candidates = [];
+    const seen = new Set();
+    const frameWidth = Math.floor(image.width / scale);
+    const frameHeight = Math.floor(image.height / scale);
+    // Most generated matrices have a known integer quiet-zone margin. Trying a
+    // few margins first keeps the detector fast and deterministic.
+    for (let margin = 0; margin <= 4; margin++) {
+        addCandidate(candidates, seen, {
+            x: margin * scale, y: margin * scale,
+            width: frameWidth - margin * 2, height: frameHeight - margin * 2,
+            scale, inverted,
+        });
+    }
+    // A cropped camera ROI may not include the quiet zone. Estimate the logical
+    // dimensions from the dark bounding box and permit a small border slack.
+    const estimateWidth = Math.round(bounds.width / scale);
+    const estimateHeight = Math.round(bounds.height / scale);
+    for (let extraWidth = -2; extraWidth <= 6; extraWidth++)
+        for (let extraHeight = -2; extraHeight <= 6; extraHeight++) {
+            const width = estimateWidth + extraWidth;
+            const height = estimateHeight + extraHeight;
+            if (!validDimension(width, height))
+                continue;
+            for (let left = 0; left <= 4; left++)
+                for (let top = 0; top <= 4; top++) {
+                    addCandidate(candidates, seen, {
+                        x: bounds.x - left * scale, y: bounds.y - top * scale,
+                        width, height, scale, inverted,
+                    });
+                }
+        }
+    return candidates;
+}
+function inversePoint(point, originalWidth, originalHeight, rotation) {
+    if (rotation === 0)
+        return point;
+    if (rotation === 90)
+        return { x: point.y, y: originalHeight - 1 - point.x };
+    if (rotation === 180)
+        return { x: originalWidth - 1 - point.x, y: originalHeight - 1 - point.y };
+    return { x: originalWidth - 1 - point.y, y: point.x };
+}
+function cornersFor(candidate, source, rotation) {
+    const right = candidate.x + candidate.width * candidate.scale;
+    const bottom = candidate.y + candidate.height * candidate.scale;
+    return [
+        inversePoint({ x: candidate.x, y: candidate.y }, source.width, source.height, rotation),
+        inversePoint({ x: right, y: candidate.y }, source.width, source.height, rotation),
+        inversePoint({ x: right, y: bottom }, source.width, source.height, rotation),
+        inversePoint({ x: candidate.x, y: bottom }, source.width, source.height, rotation),
+    ];
+}
+/**
+ * Detect clean, axis-aligned DotCode rasters at integer module scale.
+ *
+ * DotCode has no finder pattern. This detector therefore treats geometry and
+ * the strict decoder as one gate: a bounding-box hypothesis is returned only
+ * after checkerboard structure, legal patterns, padding, and Reed-Solomon all
+ * pass. It intentionally does not claim perspective or arbitrary-angle camera
+ * support; callers should rectify those images before invoking this API.
+ */
+function detectDotCode(binaryImage, options = {}) {
+    validateImage(binaryImage);
+    if (options.moduleSize !== undefined && (!Number.isInteger(options.moduleSize) || options.moduleSize < 1 || options.moduleSize > 128)) {
+        throw new FormatError('DotCode detector: moduleSize must be an integer in 1..128');
+    }
+    if (options.maxModuleSize !== undefined && (!Number.isInteger(options.maxModuleSize) || options.maxModuleSize < 1 || options.maxModuleSize > 128)) {
+        throw new FormatError('DotCode detector: maxModuleSize must be an integer in 1..128');
+    }
+    const rotations = options.rotations ?? [0, 90, 180, 270];
+    if (!Array.isArray(rotations) || rotations.some((value) => value !== 0 && value !== 90 && value !== 180 && value !== 270)) {
+        throw new FormatError('DotCode detector: rotations must contain quarter-turns only');
+    }
+    const polarities = options.inverted === undefined || options.inverted === 'auto'
+        ? [false, true] : [options.inverted];
+    const detections = [];
+    const seen = new Set();
+    for (const rotation of rotations) {
+        const oriented = rotateImage(binaryImage, rotation);
+        for (const inverted of polarities) {
+            const bounds = boundsFor(oriented, !inverted);
+            if (!bounds)
+                continue;
+            const maxScale = options.moduleSize ?? Math.min(options.maxModuleSize ?? 32, 128, Math.max(1, Math.floor(Math.min(oriented.width, oriented.height) / 5)));
+            const scales = options.moduleSize ? [options.moduleSize] : Array.from({ length: maxScale }, (_, index) => index + 1);
+            for (const scale of scales) {
+                const candidates = candidateList(oriented, bounds, scale, inverted);
+                for (const candidate of candidates) {
+                    const matrix = sampleCandidate(oriented, candidate);
+                    if (!matrix)
+                        continue;
+                    let decoded;
+                    try {
+                        decoded = decodeDotCode(matrix, { rotation: 0, inverted: false });
+                    }
+                    catch {
+                        continue;
+                    }
+                    const detectionCorners = cornersFor(candidate, binaryImage, rotation);
+                    const centre = detectionCorners.reduce((sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }), { x: 0, y: 0 });
+                    const shape = [decoded.width, decoded.height].sort((left, right) => left - right).join('x');
+                    const key = `${decoded.text}\u0000${shape}\u0000${Math.round(centre.x / (scale * 2))},${Math.round(centre.y / (scale * 2))}`;
+                    if (seen.has(key))
+                        continue;
+                    seen.add(key);
+                    detections.push({
+                        ...decoded,
+                        rotation,
+                        inverted,
+                        matrix,
+                        moduleSize: scale,
+                        corners: detectionCorners,
+                    });
+                    // The first strict hit for a given orientation and scale is the
+                    // highest-quality hypothesis; later dimensions are usually margin
+                    // variants of the same symbol.
+                    break;
+                }
+            }
+        }
+    }
+    detections.sort((left, right) => left.corrections - right.corrections || right.moduleSize - left.moduleSize);
+    return detections;
+}
+/** Return the first strictly decoded DotCode result, or an empty array. */
+function detectAndDecodeDotCode(binaryImage, options = {}) {
+    try {
+        return detectDotCode(binaryImage, options);
+    }
+    catch {
+        return [];
+    }
+}
+
+__exports.detectDotCode = detectDotCode;
+__exports.detectAndDecodeDotCode = detectAndDecodeDotCode;
+};
+
+__modules["js/dotcode/index.js"] = function (__require, __exports) {
+/** Public DotCode module surface. @module dotcode */
+const __reexport0 = __require("js/dotcode/encoder.js"); __exports.encodeDotCode = __reexport0.encodeDotCode; __exports.encodeDotCodeCodewords = __reexport0.encodeDotCodeCodewords;
+const __reexport1 = __require("js/dotcode/decoder.js"); __exports.decodeDotCode = __reexport1.decodeDotCode;
+const __reexport2 = __require("js/dotcode/detector.js"); __exports.detectDotCode = __reexport2.detectDotCode; __exports.detectAndDecodeDotCode = __reexport2.detectAndDecodeDotCode;
+const __reexport3 = __require("js/dotcode/tables.js"); __exports.DOTCODE_CODEWORD_COUNT = __reexport3.DOTCODE_CODEWORD_COUNT; __exports.DOTCODE_FIELD_SIZE = __reexport3.DOTCODE_FIELD_SIZE; __exports.DOTCODE_MASK_STEPS = __reexport3.DOTCODE_MASK_STEPS; __exports.DOTCODE_MAX_DIMENSION = __reexport3.DOTCODE_MAX_DIMENSION; __exports.DOTCODE_MIN_DIMENSION = __reexport3.DOTCODE_MIN_DIMENSION; __exports.DOTCODE_PATTERNS = __reexport3.DOTCODE_PATTERNS; __exports.dotCodeActivePositions = __reexport3.dotCodeActivePositions; __exports.dotCodeCodeword = __reexport3.dotCodeCodeword; __exports.dotCodeCodewordCapacity = __reexport3.dotCodeCodewordCapacity; __exports.dotCodeCornerOrder = __reexport3.dotCodeCornerOrder; __exports.dotCodeDataCapacity = __reexport3.dotCodeDataCapacity; __exports.dotCodeIsCorner = __reexport3.dotCodeIsCorner; __exports.dotCodeIsDataPosition = __reexport3.dotCodeIsDataPosition; __exports.dotCodePattern = __reexport3.dotCodePattern; __exports.validateDotCodeTables = __reexport3.validateDotCodeTables;
+
+
+};
+
 __modules["js/render/options.js"] = function (__require, __exports) {
 /**
  * Shared render options, normalised once so every backend agrees.
@@ -23672,6 +25024,7 @@ const databar = __require("js/databar/index.js");
 const maxicode = __require("js/maxicode/index.js");
 const codablockf = __require("js/codablockf/index.js");
 const code16k = __require("js/code16k/index.js");
+const dotcode = __require("js/dotcode/index.js");
 __exports.BitMatrix = BitMatrix;
 const __reexport0 = __require("js/core/errors.js"); __exports.BarcodeError = __reexport0.BarcodeError; __exports.EncodeError = __reexport0.EncodeError; __exports.NotFoundError = __reexport0.NotFoundError; __exports.FormatError = __reexport0.FormatError; __exports.ChecksumError = __reexport0.ChecksumError;
 const __reexport1 = __require("js/image/luminance.js"); __exports.LuminanceSource = __reexport1.LuminanceSource;
@@ -23694,6 +25047,7 @@ Object.assign(__exports, __require("js/databar/index.js"));
 const __reexport12 = __require("js/maxicode/index.js"); __exports.encodeMaxiCode = __reexport12.encodeMaxiCode; __exports.decodeMaxiCode = __reexport12.decodeMaxiCode; __exports.detectMaxiCode = __reexport12.detectMaxiCode; __exports.detectAndDecodeMaxiCode = __reexport12.detectAndDecodeMaxiCode;
 const __reexport13 = __require("js/codablockf/index.js"); __exports.encodeCodablockF = __reexport13.encodeCodablockF; __exports.decodeCodablockF = __reexport13.decodeCodablockF; __exports.detectCodablockF = __reexport13.detectCodablockF; __exports.detectAndDecodeCodablockF = __reexport13.detectAndDecodeCodablockF;
 const __reexport14 = __require("js/code16k/index.js"); __exports.encodeCode16K = __reexport14.encodeCode16K; __exports.decodeCode16K = __reexport14.decodeCode16K; __exports.detectCode16K = __reexport14.detectCode16K; __exports.detectAndDecodeCode16K = __reexport14.detectAndDecodeCode16K;
+Object.assign(__exports, __require("js/dotcode/index.js"));
 const __reexport15 = __require("js/micropdf417/index.js"); __exports.encodeMicroPDF417 = __reexport15.encodeMicroPDF417; __exports.decodeMicroPDF417 = __reexport15.decodeMicroPDF417; __exports.detectMicroPDF417 = __reexport15.detectMicroPDF417; __exports.detectAndDecodeMicroPDF417 = __reexport15.detectAndDecodeMicroPDF417;
 const __reexport16 = __require("js/microqr/index.js"); __exports.encodeMicroQR = __reexport16.encodeMicroQR; __exports.decodeMicroQR = __reexport16.decodeMicroQR; __exports.detectMicroQR = __reexport16.detectMicroQR; __exports.detectAndDecodeMicroQR = __reexport16.detectAndDecodeMicroQR;
 const __reexport17 = __require("js/rmqr/index.js"); __exports.encodeRMQR = __reexport17.encodeRMQR; __exports.decodeRMQR = __reexport17.decodeRMQR; __exports.detectRMQR = __reexport17.detectRMQR; __exports.detectAndDecodeRMQR = __reexport17.detectAndDecodeRMQR;
@@ -23758,6 +25112,8 @@ const codablockfCanEncode = typeof codablockf.encodeCodablockF === 'function';
 const codablockfCanDecode = typeof codablockf.detectAndDecodeCodablockF === 'function';
 const code16kCanEncode = typeof code16k.encodeCode16K === 'function';
 const code16kCanDecode = typeof code16k.detectAndDecodeCode16K === 'function';
+const dotCodeCanEncode = typeof dotcode.encodeDotCode === 'function';
+const dotCodeCanDecode = typeof dotcode.detectAndDecodeDotCode === 'function';
 /**
  * Every format this build supports.
  *
@@ -23903,6 +25259,13 @@ function listFormats() {
         canRead: code16kCanDecode,
         kind: /** @type {'2D'} */ ('2D'),
     });
+    formats.push({
+        id: 'dotcode',
+        label: 'DotCode',
+        canWrite: dotCodeCanEncode,
+        canRead: dotCodeCanDecode,
+        kind: /** @type {'2D'} */ ('2D'),
+    });
     return formats;
 }
 /**
@@ -24011,6 +25374,9 @@ function encode(text, options = {}) {
     if (format === 'code16k' || format === 'code-16k') {
         return code16k.encodeCode16K(value, options);
     }
+    if (format === 'dotcode' || format === 'dot-code') {
+        return dotcode.encodeDotCode(value, options);
+    }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
     }
@@ -24064,7 +25430,7 @@ function encode(text, options = {}) {
             'postnet', 'usps-postnet', 'planet', 'usps-planet', 'rm4scc', 'royalmail', 'royal-mail',
             'kix', 'auspost', 'australia-post', 'australiapost', 'japanpost', 'japan-post',
             'imb', 'onecode', 'usps-onecode',
-            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k'].join(', ');
+            'qr', 'datamatrix', 'aztec', 'aztecrune', 'pdf417', 'compactpdf417', 'micropdf417', 'microqr', 'rmqr', 'frameqr', 'gs1databar14', 'gs1databar-stacked', 'gs1databar-stacked-omnidirectional', 'gs1databar-limited', 'gs1databar-expanded', 'maxicode', 'codablockf', 'code16k', 'dotcode'].join(', ');
         throw new EncodeError(`Unknown format "${format}". Known formats: ${known}`);
     }
     return entry.encode(value, options);
@@ -24138,6 +25504,7 @@ function decode(image, options = {}) {
     const wantMaxiCode = !want || want.has('maxicode') || want.has('maxi-code');
     const wantCodablockF = !want || want.has('codablockf') || want.has('codablock-f') || want.has('codablock');
     const wantCode16K = !want || want.has('code16k') || want.has('code-16k');
+    const wantDotCode = !want || want.has('dotcode') || want.has('dot-code');
     const wantDataBarStacked = !want || want.has('gs1databar-stacked') || want.has('gs1-databar-stacked') || want.has('databar-stacked');
     const wantDataBarStackedOmni = !want || want.has('gs1databar-stacked-omnidirectional')
         || want.has('gs1-databar-stacked-omnidirectional') || want.has('databar-stacked-omni');
@@ -24161,7 +25528,7 @@ function decode(image, options = {}) {
     const wantOneD = !want || [...want].some((f) => f in ONED_FORMATS || oneDAliases.has(f));
     const wantTwoD = wantQR || wantDataMatrix || wantAztec || wantAztecRune || wantPDF417
         || wantCompactPDF417 || wantMicroPDF417 || wantMicroQR || wantRMQR || wantFrameQR || wantMaxiCode
-        || wantCodablockF || wantCode16K
+        || wantCodablockF || wantCode16K || wantDotCode
         || wantDataBarStacked || wantDataBarStackedOmni || wantDataBarLimited || wantDataBarExpanded;
     const source = LuminanceSource.fromImageData(image);
     const results = [];
@@ -24353,6 +25720,16 @@ function decode(image, options = {}) {
                     catch {
                         /* no Code 16K in this pass */
                     }
+                }
+            }
+            if (wantDotCode && dotCodeCanDecode) {
+                try {
+                    const found = dotcode.detectAndDecodeDotCode(candidateBits);
+                    for (const result of found)
+                        add(result, 'dotcode');
+                }
+                catch {
+                    /* no DotCode in this pass */
                 }
             }
             if (wantDataBarStacked && dataBarStackedCanDecode) {
