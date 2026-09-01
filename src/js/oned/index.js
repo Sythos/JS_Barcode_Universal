@@ -41,6 +41,7 @@ export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_
 export { decodeOneD, decodeOneDStrict, decodeCode32, decodePZN, decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5, decodeDataLogic2of5, decodeMatrix2of5, decodeFIM, decodePlessey, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
 export { POSTAL_FORMATS, POSTAL_ALIASES, STATE_PROFILES, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, decodePostal, } from './postal.js';
 export { encodePostBarC10, encodePostBarD22, encodePostBarG12, decodePostBar, } from './postbar.js';
+export { encodeDXFilmEdge, decodeDXFilmEdge, decodeDXFilmEdgeMatrix } from './dxfilmedge.js';
 export { validateTables } from './patterns.js';
 import { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
@@ -50,6 +51,7 @@ import { encodeFIM } from './fim.js';
 import { encodePlessey } from './plessey.js';
 import { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, } from './postal.js';
 import { encodePostBarC10, encodePostBarD22, encodePostBarG12 } from './postbar.js';
+import { encodeDXFilmEdge } from './dxfilmedge.js';
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
  *
@@ -106,4 +108,5 @@ export const ONED_FORMATS = {
     postbarc10: { encode: encodePostBarC10, readable: true, label: 'PostBar.C10 (Canada Post, internal)' },
     postbard22: { encode: encodePostBarD22, readable: true, label: 'PostBar.D22 (Canada Post, domestic)' },
     postbarg12: { encode: encodePostBarG12, readable: true, label: 'PostBar.G12 (Canada Post, international)' },
+    dxfilmedge: { encode: encodeDXFilmEdge, readable: true, label: 'DX Film Edge Barcode' },
 };

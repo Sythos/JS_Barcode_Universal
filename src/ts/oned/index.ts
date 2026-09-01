@@ -98,6 +98,9 @@ export {
 } from './postbar.js';
 export type { PostBarProfileId, PostBarDecodeResult, PostBarOptions } from './postbar.js';
 
+export { encodeDXFilmEdge, decodeDXFilmEdge, decodeDXFilmEdgeMatrix } from './dxfilmedge.js';
+export type { DXFilmEdgeFields, DXFilmEdgeDecodeResult, DXFilmEdgeOptions } from './dxfilmedge.js';
+
 export { validateTables } from './patterns.js';
 
 import {
@@ -116,6 +119,7 @@ import {
   encodeAustraliaPost, encodeJapanPost, encodeIMB,
 } from './postal.js';
 import { encodePostBarC10, encodePostBarD22, encodePostBarG12 } from './postbar.js';
+import { encodeDXFilmEdge } from './dxfilmedge.js';
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -173,4 +177,5 @@ export const ONED_FORMATS = {
   postbarc10: { encode: encodePostBarC10, readable: true, label: 'PostBar.C10 (Canada Post, internal)' },
   postbard22: { encode: encodePostBarD22, readable: true, label: 'PostBar.D22 (Canada Post, domestic)' },
   postbarg12: { encode: encodePostBarG12, readable: true, label: 'PostBar.G12 (Canada Post, international)' },
+  dxfilmedge: { encode: encodeDXFilmEdge, readable: true, label: 'DX Film Edge Barcode' },
 };

@@ -55,6 +55,7 @@ import { decodeTelepen } from './telepen.js';
 import { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
 import { decodePostal } from './postal.js';
 import { decodePostBar } from './postbar.js';
+import { decodeDXFilmEdge } from './dxfilmedge.js';
 import { FIM_PATTERNS } from './fim.js';
 import { PLESSEY_DIGIT_PATTERNS, PLESSEY_START, PLESSEY_STOP, PLESSEY_MAX_DIGITS, plesseyCheckDigits } from './plessey.js';
 /* ------------------------------------------------------------------ *
@@ -1767,6 +1768,18 @@ export function decodeOneD(image, options = {}) {
             if (enabled && !enabled.has(result.format))
                 continue;
             const key = `${result.format}:${result.postalCode}:${result.machineId ?? ''}:${result.customerInfo ?? ''}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            results.push({ ...result, row: postalRow });
+        }
+    }
+    // DX Film Edge is a fixed two-row clock+data raster, not a scanline
+    // format: decoded once here, like postal/PostBar, rather than through the
+    // ordinary width-modulated readers below.
+    if (!enabled || enabled.has('dxfilmedge')) {
+        for (const result of decodeDXFilmEdge(image, { profile: cameraProfile ? 'camera' : undefined })) {
+            const key = `dxfilmedge:${result.productCode}:${result.generation}:${result.frameNumber ?? ''}:${result.halfFrame ?? ''}`;
             if (seen.has(key))
                 continue;
             seen.add(key);

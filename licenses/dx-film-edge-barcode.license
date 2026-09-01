@@ -1,0 +1,121 @@
+DX Film Edge Barcode — format provenance and usability
+==========================================================================
+
+This file records where the DX film edge barcode symbology comes from,
+what governs it, and the basis on which this project implements and
+redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Part of Kodak's "DX" (Digital indeX) encoding system for 35mm film,
+introduced in 1983. The specific two-track latent-image barcode printed
+along the film edge below the sprocket holes (distinct from the
+Interleaved 2 of 5 barcode on the film cartridge, and from the
+camera-readable DX CAS checkerboard) was patented by Eastman Kodak:
+US Patent 4,965,628A, "Photographic Film With Latent Image Multi-Field
+Bar Code and Eye-Readable Symbols" (Olliver, Johnson, Patton; filed 1989,
+granted 23 October 1990). The broader DX encoding system was later folded
+into ANSI PH1.14 / NAPM IT1.14, and is now part of ISO 1007 (a paywalled
+standard; not consulted or relied on here).
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+The exact field structure implemented here was cross-verified across
+three independent sources:
+  - US Patent 4,965,628A itself, read directly from its own page images
+    (not automated text extraction). Its high-level summary states a
+    7-bit frame-number field; this conflicts with every other source and
+    with real film samples.
+  - The raw wikitext of Wikipedia's "DX encoding" article, itself citing
+    a 2017 peer-reviewed archival-science paper (Gschwind, Zbinden,
+    Trumpy & Delaney, "Color negatives at the demise of silver halides,"
+    ICOM-CC 18th Triennial Conference) that empirically analyzed real
+    developed film samples: 6 start bits, 7 bits product code, 1
+    unassigned bit, 4 bits generation, 7-bit frame/half-frame number, 1
+    unassigned bit, 1 parity bit, 4 stop bits.
+  - Zint (libzint, BSD-3-Clause)'s `dxfilmedge.c`, used only as a
+    black-box behavioural reference (never copied), confirms a 6-bit
+    frame number (not 7) and clarifies the two "unassigned" bit positions
+    are fixed separator bits (always 0): one immediately after the 7-bit
+    product code, one immediately after the half-frame flag. This is the
+    structure this project implements, since it is the one consistent
+    with a real, independently-verified open-source implementation and
+    real film samples, not merely a patent's own high-level abstract.
+
+Specification TEXT (the patent, the Wikipedia article, the cited academic
+paper) is copyrighted by its authors/publishers. The SYMBOLOGY it
+describes — a defunct-for-new-manufacture 1980s film marking scheme — is
+not a work of authorship. This project implements the symbology from its
+own original code; it does not reproduce, redistribute or excerpt any of
+the cited texts or Zint's source.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+US 4,965,628A was filed in 1989 and granted 23 October 1990; under the
+pre-1995 17-years-from-grant US patent term, it expired around 2007.
+[TO VERIFY] A related extension patent (frame-number printing,
+EP 0838718B1 / US 5,872,616A) was filed in the mid-1990s and expired
+around 2017 under the 20-years-from-filing term used for patents filed
+after 8 June 1995. [TO VERIFY] No evidence of any live patent covering
+this symbology was found.
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"DX" and "Kodak" are understood to be trademarks of Eastman Kodak
+Company. [TO VERIFY] No trademark search was carried out. A trademark
+does not restrict implementing a symbology; it restricts branding — how
+a product names and presents itself. This project's `dxfilmedge` format
+id and documentation use the name descriptively, to identify the
+historical film-marking scheme being implemented, not as a product brand
+or a claim of Kodak endorsement.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+The bit-field layout (start pattern, product-code field, separator,
+generation field, optional frame-number/half-frame fields, parity bit,
+stop pattern), the fixed clock-track synchronization patterns, and the
+parity algorithm (XOR of all data-track bits between the start and stop
+patterns) are original Sythos data and code, verified as described above
+against the patent's own drawings and cross-checked against real-sample
+literature and one independent open-source implementation used
+exclusively as a black-box behavioural reference. No source code, table
+or image asset from any other barcode implementation is copied or
+shipped.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, the DX film edge barcode is
+understood to be freely implementable and redistributable: its
+originating and extension patents are both expired, and its structure is
+documented across multiple independent, cross-referenced public sources.
+This project's implementation of it is distributed under the MIT License
+with no additional restriction.
+
+References relied upon:
+  - US Patent 4,965,628A (Eastman Kodak, filed 1989, granted 1990,
+    expired ~2007) [TO VERIFY]
+  - EP 0838718B1 / US 5,872,616A (frame-number extension, expired ~2017)
+    [TO VERIFY]
+  - Wikipedia, "DX encoding" article, raw wikitext, citing Gschwind et
+    al. 2017 (ICOM-CC 18th Triennial Conference Preprints)
+  - Zint (libzint, BSD-3-Clause) `dxfilmedge.c`, consulted only as an
+    independent black-box behavioural reference, not copied from
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

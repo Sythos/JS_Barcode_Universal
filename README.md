@@ -262,6 +262,7 @@ make that distinction visible.
 | Code 32 (Italian Pharmacode) | `code32` | 1D | Linear | ✅ | ✅ |
 | Code 39 | `code39` | 1D | Linear | ✅ | ✅ |
 | Code 93 | `code93` | 1D | Linear | ✅ | ✅ |
+| DX Film Edge Barcode | `dxfilmedge` | 1D | Linear | ✅ | ✅ |
 | EAN-13 | `ean13` | 1D | Linear | ✅ | ✅ |
 | EAN-2 supplement | `ean2` | 1D | Linear | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | Linear | ✅ | ✅ [^2] |
@@ -315,7 +316,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Sixty listed formats are writable and fifty-nine are readable through the counted
+Sixty-one listed formats are writable and sixty are readable through the counted
 `listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
 parent-bound supplements). **KarTrak ACI sits outside that count**: it is colour-coded, not
 black/white, so it cannot go through `BitMatrix`-based `encode()`/`decode()` at all — it ships

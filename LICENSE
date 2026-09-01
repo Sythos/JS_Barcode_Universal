@@ -141,6 +141,12 @@ excerpt the specification documents.
                                       disclosure in US Patent 5,602,382A
                                       (expired), see
                                       licenses/postbar.license    [TO VERIFY]
+    DX Film Edge Barcode              no separate published standard; the
+                                      only detailed disclosure is US Patent
+                                      4,965,628A (expired), cross-checked
+                                      against real-sample literature, see
+                                      licenses/dx-film-edge-barcode.license
+                                                                  [TO VERIFY]
 
 
 4. PATENT POSITIONS
@@ -209,6 +215,10 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
                                       5,602,382A, filed 1994, expired
                                       ~2014 under the 20-years-from-filing
                                       term                        [TO VERIFY]
+    DX Film Edge Barcode              originating patent US 4,965,628A
+                                      (filed 1989, granted 1990) expired
+                                      ~2007; extension patent EP0838718B1/
+                                      US5872616A expired ~2017      [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.
@@ -239,6 +249,7 @@ names and presents itself.
                               America; system defunct and unused since
                               1978                                    [TO VERIFY]
     PostBar, Canada Post      Canada Post Corporation                [TO VERIFY]
+    DX, Kodak                 Eastman Kodak Company                  [TO VERIFY]
 
 All marks are the property of their respective owners and are used here in a
 purely descriptive, nominative sense — to identify which symbologies this

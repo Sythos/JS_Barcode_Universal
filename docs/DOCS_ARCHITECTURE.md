@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 60 entries and 59 generally readable
+The current registry snapshot reports 61 entries and 60 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -113,6 +113,10 @@ turning the count into marketing copy:
   visual family, but implements only the three profiles this SDK could
   directly verify from US Patent 5,602,382A — not every profile the patent
   names — and corrects damage via a real Reed-Solomon check over GF(64);
+- DX Film Edge Barcode (`dxfilmedge`) is a fixed two-track (clock + data)
+  code, not a scanline format; its bit widths follow real film samples and
+  an independent open-source implementation rather than the originating
+  patent's own high-level summary, which states a conflicting field width;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
   licensing boundary is documented in `PLAN.md`;
 - any future unsupported variant must be labelled as unsupported, not silently
@@ -154,6 +158,7 @@ docs/
 │   ├── postal.md
 │   ├── kartrak.md
 │   ├── postbar.md
+│   ├── dxfilmedge.md
 │   ├── maxicode.md
 │   ├── codablockf.md
 │   ├── code16k.md

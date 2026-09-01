@@ -81,6 +81,7 @@ test/*
 !test/gs1-composite.test.js
 !test/kartrak.test.js
 !test/postbar.test.js
+!test/dxfilmedge.test.js
 !test/aztec-decoder.test.js
 !test/aztec-tables.test.js
 !test/aztecrune.blackbox.test.js

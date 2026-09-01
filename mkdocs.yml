@@ -83,6 +83,7 @@ nav:
           - Postal 4-state: formats/postal.md
           - KarTrak ACI (experimental): formats/kartrak.md
           - PostBar (Canada Post): formats/postbar.md
+          - DX Film Edge Barcode: formats/dxfilmedge.md
           - GS1, EAN and UPC: formats/gs1-and-ean.md
           - GS1 DataBar Expanded: formats/databar-expanded.md
       - Stacked (2D):

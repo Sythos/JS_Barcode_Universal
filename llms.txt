@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 60 writable entries and 59 readable entries;
+At the current checkout it reports 61 writable entries and 60 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
@@ -72,6 +72,7 @@ remain parent-bound supplements.
 - MSI Plessey — write and read, with optional check-digit validation
 - Plessey Code — write and read; the original format MSI descends from, sixteen-value hex alphabet with a mandatory CRC-8 check (no unchecked mode)
 - PostBar.C10, PostBar.D22, PostBar.G12 (Canada Post CPC four-state) — write and read; Reed-Solomon over GF(64) protects the payload (not just a check character), implemented from US Patent 5,602,382A since Canada Post's own spec is unpublished; see docs/formats/postbar.md
+- DX Film Edge Barcode — write and read; Kodak's latent-image two-track (clock + data) code printed along 35mm film, distinct from the film cartridge's ordinary ITF barcode; implemented from US Patent 4,965,628A cross-checked against real-film-sample literature since the patent's own high-level summary states a conflicting field width; see docs/formats/dxfilmedge.md
 - Code 32 (Italian Pharmacode) — write and read with validated pharmaceutical check digit
 - PZN-7 and PZN-8 — write and read; the decoder exposes `pznVariant`
 - Telepen — write and read in full seven-bit ASCII mode; explicit Telepen Numeric

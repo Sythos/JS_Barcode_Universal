@@ -47,6 +47,12 @@ the same reader path and is documented separately in the
 [PostBar guide](postbar.md): `postbarc10`, `postbard22` and `postbarg12`,
 exported as `encodePostBarC10`, `encodePostBarD22` and `encodePostBarG12`.
 
+DX Film Edge Barcode (Kodak's two-track clock+data code on 35mm film) is
+also decoded outside the ordinary scanline readers, since it is a fixed
+two-row raster rather than a width-modulated symbol; documented separately
+in the [DX Film Edge guide](dxfilmedge.md): `dxfilmedge`, exported as
+`encodeDXFilmEdge`.
+
 The runtime registry is the source of truth for these flags. `ITF-14`,
 Bookland ISBN and JAN are meaningful application profiles over their base
 symbol grammar, so a shared decoder can return `itf` or `ean13` while
