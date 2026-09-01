@@ -240,6 +240,12 @@ status too unclear to redistribute an implementation with confidence:
     Microsoft Tag ........... proprietary, discontinued
     Bokode .................. research project, unclear status
     Softstrip ............... obsolete, unclear status
+    PostBar .................. proprietary, Canada Post Corporation;
+                               engineering spec is not published, only
+                               available on request from Canada Post; a
+                               related mechanism is covered by US Patent
+                               5,602,382 (filed 1997, assigned to Canada
+                               Post Corp.)                [TO VERIFY]
     Ultracode ............... status unresolved            [TO VERIFY]
     DENSO FrameQR ........... proprietary format; this project implements
                               only a separate FrameQR Code profile

@@ -176,7 +176,7 @@ format-by-format in `plan_v2.md` at the parent workspace root (outside `git/`).
   to the documented Sythos bounded profile; external certified layouts remain
   outside scope.
 
-**Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Ultracode. Listed with reasons in `LICENSE` §6.
+**Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, PostBar, Ultracode. Listed with reasons in `LICENSE` §6.
 
 **Not implemented, architecturally** — not a licence question at all: KarTrak ACI (AAR Automatic Car Identification) encodes data as which of four *colours* appears in each of thirteen stripe pairs on a physical plate, read by dedicated trackside colour-sensing hardware. This SDK's `BitMatrix`, renderers and generic image reader are strictly monochrome by design; representing it would require a new colour-aware rendering/decoding pipeline, not a format module. See `docs/formats/excluded-formats.md`.
 

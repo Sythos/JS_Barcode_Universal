@@ -57,6 +57,15 @@ not sufficiently clear to redistribute with confidence:
 - Microsoft Tag
 - Bokode
 - Softstrip
+- PostBar (Canada Post 4-State): the Canada Post engineering specification
+  is not published — it is available only on request from Canada Post —
+  and a related mechanism (the data content identifier field) is covered
+  by [US Patent 5,602,382](https://patents.google.com/patent/US5602382A/en),
+  filed 1997 and assigned to Canada Post Corporation. Unlike the other
+  4-state postal formats already implemented here (POSTNET, PLANET,
+  RM4SCC, Australia Post, Japan Post, IMb — all openly published by their
+  respective operators), PostBar's own Wikipedia article describes it as
+  using "an obscured structure and encoding system unique to Canada Post."
 - Ultracode
 
 The list is maintained together with the legal-review notes in
