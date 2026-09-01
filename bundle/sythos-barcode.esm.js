@@ -1303,6 +1303,26 @@ function encodeISBN(value) {
     throw new EncodeError(`ISBN: expected 10 or 13 digits, hyphens optional — got "${value}"`);
 }
 /**
+ * JAN (Japanese Article Number). Structurally an EAN-13 whose GS1 prefix
+ * falls in Japan's assigned 45x/49x range — not a distinct symbology or
+ * check digit algorithm.
+ *
+ * @param {string} value 12 or 13 digits.
+ * @returns {BitMatrix}
+ */
+function encodeJAN(value) {
+    requireDigits(value, 'JAN');
+    if (value.length !== 12 && value.length !== 13) {
+        throw new EncodeError(`JAN: needs 12 or 13 digits, got ${value.length}`);
+    }
+    const prefix = value.slice(0, 2);
+    if (prefix !== '45' && prefix !== '49') {
+        throw new EncodeError(`JAN must begin with 45 or 49, got ${prefix}`);
+    }
+    // encodeEAN13 appends the check digit at 12, or verifies it at 13.
+    return encodeEAN13(value);
+}
+/**
  * UPC-A. Structurally an EAN-13 whose first digit is zero.
  *
  * @param {string} value 11 or 12 digits.
@@ -1975,6 +1995,7 @@ __exports.ean13CheckDigit = ean13CheckDigit;
 __exports.encodeEAN13 = encodeEAN13;
 __exports.encodeEAN8 = encodeEAN8;
 __exports.encodeISBN = encodeISBN;
+__exports.encodeJAN = encodeJAN;
 __exports.encodeUPCA = encodeUPCA;
 __exports.upceToUpcaBody = upceToUpcaBody;
 __exports.encodeUPCE = encodeUPCE;
@@ -5881,7 +5902,7 @@ const DECODERS = [
     ['itf6', decodeITF6],
     ['codabar', decodeCodabar],
 ];
-const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn']);
+const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn', 'jan']);
 const EAN_SUPPLEMENT_FORMATS = new Set(['ean2', 'ean5']);
 /** @param {string} format @returns {boolean} */
 function isEANParentFormat(format) {
@@ -5898,7 +5919,13 @@ function isEANParentFormat(format) {
 function isRequestedEANParent(result, enabled) {
     if (enabled.has(result.format))
         return true;
-    return result.format === 'ean13' && enabled.has('isbn') && /^97[89]/.test(result.text);
+    if (result.format !== 'ean13')
+        return false;
+    if (enabled.has('isbn') && /^97[89]/.test(result.text))
+        return true;
+    if (enabled.has('jan') && /^(45|49)/.test(result.text))
+        return true;
+    return false;
 }
 /** @param {object} result @returns {object} */
 function withoutEANAddon(result) {
@@ -6008,7 +6035,7 @@ function decodeOneD(image, options = {}) {
             return enabled.has('facing-identification-mark');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
-                (id === 'ean13' && enabled.has('isbn'));
+                (id === 'ean13' && (enabled.has('isbn') || enabled.has('jan')));
         }
         if (id === 'code128')
             return enabled.has('gs1128');
@@ -6223,7 +6250,7 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  *
  * @module oned
  */
-const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeITF6 = __reexport0.encodeITF6; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeJAN = __reexport0.encodeJAN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeITF6 = __reexport0.encodeITF6; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_DATALOGIC_DIGIT_PATTERNS = __reexport1.CODE25_DATALOGIC_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5; __exports.encodeDataLogic2of5 = __reexport1.encodeDataLogic2of5;
 const __reexport2 = __require("js/oned/fim.js"); __exports.FIM_PATTERNS = __reexport2.FIM_PATTERNS; __exports.encodeFIM = __reexport2.encodeFIM;
 const __reexport3 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport3.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport3.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport3.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport3.telepenPattern; __exports.encodeTelepen = __reexport3.encodeTelepen; __exports.encodeTelepenNumeric = __reexport3.encodeTelepenNumeric; __exports.decodeTelepen = __reexport3.decodeTelepen; __exports.decodeTelepenNumeric = __reexport3.decodeTelepenNumeric;
@@ -6231,7 +6258,7 @@ const __reexport4 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __re
 const __reexport5 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport5.decodeOneD; __exports.decodeOneDStrict = __reexport5.decodeOneDStrict; __exports.decodeCode32 = __reexport5.decodeCode32; __exports.decodePZN = __reexport5.decodePZN; __exports.decodeCode25 = __reexport5.decodeCode25; __exports.decodeStandard2of5 = __reexport5.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport5.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport5.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport5.decodeDataLogic2of5; __exports.decodeFIM = __reexport5.decodeFIM; __exports.decodeCode11 = __reexport5.decodeCode11; __exports.decodeMSI = __reexport5.decodeMSI; __exports.patternVariance = __reexport5.patternVariance; __exports.recordPattern = __reexport5.recordPattern; __exports.toNarrowWidePattern = __reexport5.toNarrowWidePattern;
 const __reexport6 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport6.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport6.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport6.STATE_PROFILES; __exports.encodePostnet = __reexport6.encodePostnet; __exports.encodePlanet = __reexport6.encodePlanet; __exports.encodeRM4SCC = __reexport6.encodeRM4SCC; __exports.encodeKIX = __reexport6.encodeKIX; __exports.encodeAustraliaPost = __reexport6.encodeAustraliaPost; __exports.encodeJapanPost = __reexport6.encodeJapanPost; __exports.encodeIMB = __reexport6.encodeIMB; __exports.decodePostal = __reexport6.decodePostal;
 const __reexport7 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport7.validateTables;
-const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
 const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } = __require("js/oned/code25.js");
@@ -6252,6 +6279,7 @@ const ONED_FORMATS = {
     ean8: { encode: encodeEAN8, readable: true, label: 'EAN-8' },
     upca: { encode: encodeUPCA, readable: true, label: 'UPC-A' },
     isbn: { encode: encodeISBN, readable: true, label: 'ISBN (Bookland EAN-13)' },
+    jan: { encode: encodeJAN, readable: true, label: 'JAN (Japanese Article Number)' },
     upce: { encode: encodeUPCE, readable: true, label: 'UPC-E' },
     code128: { encode: encodeCode128, readable: true, label: 'Code 128' },
     gs1128: {
@@ -28210,6 +28238,7 @@ export const {
   encodeITF14,
   encodeITF6,
   encodeIndustrial2of5,
+  encodeJAN,
   encodeJapanPost,
   encodeKIX,
   encodeMSI,

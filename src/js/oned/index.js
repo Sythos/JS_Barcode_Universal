@@ -32,7 +32,7 @@
  *
  * @module oned
  */
-export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, code32CheckDigit, decodeCode32Payload, decodePZNPayload, ean13CheckDigit, } from './writers.js';
+export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, code32CheckDigit, decodeCode32Payload, decodePZNPayload, ean13CheckDigit, } from './writers.js';
 export { CODE25_DIGIT_PATTERNS, CODE25_DATALOGIC_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, encodeCode25, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5, } from './code25.js';
 export { FIM_PATTERNS, encodeFIM } from './fim.js';
 export { TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH, telepenPattern, encodeTelepen, encodeTelepenNumeric, decodeTelepen, decodeTelepenNumeric, } from './telepen.js';
@@ -40,7 +40,7 @@ export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_
 export { decodeOneD, decodeOneDStrict, decodeCode32, decodePZN, decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5, decodeDataLogic2of5, decodeFIM, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
 export { POSTAL_FORMATS, POSTAL_ALIASES, STATE_PROFILES, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, decodePostal, } from './postal.js';
 export { validateTables } from './patterns.js';
-import { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, } from './writers.js';
+import { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
 import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } from './code25.js';
@@ -61,6 +61,7 @@ export const ONED_FORMATS = {
     ean8: { encode: encodeEAN8, readable: true, label: 'EAN-8' },
     upca: { encode: encodeUPCA, readable: true, label: 'UPC-A' },
     isbn: { encode: encodeISBN, readable: true, label: 'ISBN (Bookland EAN-13)' },
+    jan: { encode: encodeJAN, readable: true, label: 'JAN (Japanese Article Number)' },
     upce: { encode: encodeUPCE, readable: true, label: 'UPC-E' },
     code128: { encode: encodeCode128, readable: true, label: 'Code 128' },
     gs1128: {

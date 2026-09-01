@@ -13,6 +13,7 @@ needs to be printed or displayed at a useful height.
 | UPC-A | `upca` | ✅ | ✅ | Encoded through the EAN/UPC family rules. |
 | UPC-E | `upce` | ✅ | ✅ | Compact UPC form with expansion/check validation. |
 | ISBN (Bookland) | `isbn` | ✅ | ✅ | ISBN-10/ISBN-13 is emitted as Bookland EAN-13. |
+| JAN (Japanese Article Number) | `jan` | ✅ | ✅ | EAN-13 restricted to the 45/49 GS1 prefix range; same shared-decoder pattern as ISBN. |
 | Code 128 | `code128` | ✅ | ✅ | Automatic code-set selection with checksum validation. |
 | GS1-128 | `gs1128` | ✅ | ✅ | Code 128 with GS1 FNC1 semantics and parsed metadata. |
 | Code 39 | `code39` | ✅ | ✅ | Optional modulo-43 check character and Full ASCII writer mode. |
@@ -39,11 +40,13 @@ KIX, Australia Post, Japan Post and USPS IMb. They are exported from this
 subpath as `encodePostnet`, `encodePlanet`, `encodeRM4SCC`, `encodeKIX`,
 `encodeAustraliaPost`, `encodeJapanPost` and `encodeIMB`.
 
-The runtime registry is the source of truth for these flags. `ITF-14` and
-Bookland ISBN are meaningful application profiles over their base symbol
-grammar, so a shared decoder can return `itf` or `ean13` while preserving the
-decoded payload. This is not a data-loss claim; it is the current result-format
-contract.
+The runtime registry is the source of truth for these flags. `ITF-14`,
+Bookland ISBN and JAN are meaningful application profiles over their base
+symbol grammar, so a shared decoder can return `itf` or `ean13` while
+preserving the decoded payload. This is not a data-loss claim; it is the
+current result-format contract. `ITF-6` is the one exception in this group:
+it keeps its own id and mandatory check-digit validation rather than
+folding into `itf` — see below.
 
 ## Writing examples
 
@@ -55,6 +58,7 @@ import {
   encodeCode39,
   encodeCode128,
   encodeEAN13,
+  encodeJAN,
   encodeTelepen,
   encodeTelepenNumeric,
   encodeIndustrial2of5,
@@ -75,6 +79,7 @@ import {
 } from '@sythos/js_barcode_universal/oned';
 
 const retail = encodeEAN13('590123412345'); // check digit is appended
+const jan = encodeJAN('490123456789'); // check digit is appended
 const code39 = encodeCode39('A-123', { checkDigit: true });
 const code128 = encodeCode128('ABC-123');
 const telepen = encodeTelepen('TELEPEN-ASCII');

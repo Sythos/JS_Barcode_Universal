@@ -1,0 +1,81 @@
+JAN (Japanese Article Number) — format provenance and usability
+==========================================================================
+
+This file records where the JAN symbology comes from, what governs it, and
+the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+JAN is a NUMBERING convention, not a distinct symbology. A JAN barcode is
+an ordinary EAN-13 whose GS1 country-code prefix falls in the range
+assigned to Japan (45x or 49x). The number is administered by GS1 Japan;
+the symbol is EAN-13 under GS1's rules — the same relationship this
+project already implements for ISBN (`licenses/isbn.license`).
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 15420 — EAN/UPC bar code symbology specification (the symbol).
+GS1 General Specifications, GS1 AISBL — freely published; redistribution
+terms are GS1's own [TO VERIFY]
+JIS X 0501 — the Japanese standard referencing JAN/EAN, as adopted
+domestically. [TO VERIFY]
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+Inherits EAN-13's position; no patent encumbrance is known for the
+numbering convention or the symbol used to print it. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+No live trademark restriction is known on implementing JAN encoding.
+"JAN" is a standard designation administered by GS1 Japan. [TO VERIFY]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+JAN is implemented here as a thin prefix-validating wrapper over this
+project's existing EAN-13 encoder — no new digit grammar, check digit
+algorithm or symbol structure. Reading follows the same shared-decoder
+pattern already used for ISBN: a JAN read is reported as `ean13`, with the
+`jan` id available as a `formats` filter that requires the 45/49 prefix.
+No source code or constant table from any other barcode implementation is
+copied or shipped.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, JAN is understood to be freely
+implementable and redistributable at the same trust bar already applied to
+ISBN, and this project's implementation of it is distributed under the MIT
+License with no additional restriction.
+
+References relied upon:
+  - ISO/IEC 15420, ISO/IEC
+  - GS1 General Specifications, GS1 AISBL — freely published;
+    redistribution terms are GS1's own [TO VERIFY]
+  - JIS X 0501, Japanese Standards Association [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

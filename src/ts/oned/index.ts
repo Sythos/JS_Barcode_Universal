@@ -35,7 +35,7 @@
  */
 
 export {
-  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
+  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN,
   encodeCode39, encodeCode93, encodeCode128,
   code128DataCodewords,
   encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
@@ -90,7 +90,7 @@ export type { PostalFormat, PostalOptions, PostalDecodeResult } from './postal.j
 export { validateTables } from './patterns.js';
 
 import {
-  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
+  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN,
   encodeCode39, encodeCode93, encodeCode128,
   encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, encodeCode32, encodePZN,
@@ -119,6 +119,7 @@ export const ONED_FORMATS = {
   ean8: { encode: encodeEAN8, readable: true, label: 'EAN-8' },
   upca: { encode: encodeUPCA, readable: true, label: 'UPC-A' },
   isbn: { encode: encodeISBN, readable: true, label: 'ISBN (Bookland EAN-13)' },
+  jan: { encode: encodeJAN, readable: true, label: 'JAN (Japanese Article Number)' },
   upce: { encode: encodeUPCE, readable: true, label: 'UPC-E' },
   code128: { encode: encodeCode128, readable: true, label: 'Code 128' },
   gs1128: {

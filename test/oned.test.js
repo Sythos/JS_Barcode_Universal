@@ -40,7 +40,7 @@ import assert from 'node:assert/strict';
 
 import { validateTables } from '../src/js/oned/patterns.js';
 import {
-  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
+  encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN,
   encodeCode39, encodeCode93, encodeCode128,
   encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, ean13CheckDigit,
@@ -132,6 +132,19 @@ test('ISBN enforces its own numbering rules', () => {
   // Bookland prefixes only.
   assert.throws(() => encodeISBN('1234567890123'), EncodeError);
   assert.throws(() => encodeISBN('123'), EncodeError);
+});
+
+test('JAN is an EAN-13 restricted to the 45/49 GS1 prefix range', () => {
+  // JAN carries no separate check digit algorithm: it is exactly the EAN-13
+  // symbol for the same 13-digit body once the prefix is validated.
+  const jan = encodeJAN('4901234567894');
+  const ean13 = encodeEAN13('4901234567894');
+  assert.equal(jan.toString('1', '0'), ean13.toString('1', '0'));
+  assert.equal(jan.width, 95);
+
+  assert.doesNotThrow(() => encodeJAN('450123456789')); // 12 digits, auto check digit
+  assert.throws(() => encodeJAN('1234567890123'), EncodeError); // outside 45/49
+  assert.throws(() => encodeJAN('123'), EncodeError);
 });
 
 test('UPC-E produces a 51-module symbol', () => {
@@ -254,6 +267,21 @@ test('reader recovers EAN-13', () => {
   const results = decodeOneD(image, { formats: ['ean13'] });
   assert.ok(results.length > 0, 'nothing decoded');
   assert.equal(results[0].text, '5901234123457');
+});
+
+test('reader recovers a JAN symbol when requested by its own id', () => {
+  // JAN shares the EAN-13 decoder and is never relabelled, matching the
+  // ISBN precedent: only the `formats` filter changes, not the result shape.
+  const image = stretch(encodeJAN('4901234567894'));
+  const asJAN = decodeOneD(image, { formats: ['jan'] });
+  assert.equal(asJAN.length, 1);
+  assert.equal(asJAN[0].format, 'ean13');
+  assert.equal(asJAN[0].text, '4901234567894');
+
+  // An ordinary EAN-13 outside the 45/49 range does not satisfy a `jan`-only
+  // request, even though it is a perfectly valid EAN-13.
+  const nonJAN = stretch(encodeEAN13('5901234123457'));
+  assert.deepEqual(decodeOneD(nonJAN, { formats: ['jan'] }), []);
 });
 
 test('reader recovers EAN-8', () => {

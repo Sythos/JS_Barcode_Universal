@@ -240,6 +240,27 @@ export function encodeISBN(value) {
 }
 
 /**
+ * JAN (Japanese Article Number). Structurally an EAN-13 whose GS1 prefix
+ * falls in Japan's assigned 45x/49x range — not a distinct symbology or
+ * check digit algorithm.
+ *
+ * @param {string} value 12 or 13 digits.
+ * @returns {BitMatrix}
+ */
+export function encodeJAN(value) {
+  requireDigits(value, 'JAN');
+  if (value.length !== 12 && value.length !== 13) {
+    throw new EncodeError(`JAN: needs 12 or 13 digits, got ${value.length}`);
+  }
+  const prefix = value.slice(0, 2);
+  if (prefix !== '45' && prefix !== '49') {
+    throw new EncodeError(`JAN must begin with 45 or 49, got ${prefix}`);
+  }
+  // encodeEAN13 appends the check digit at 12, or verifies it at 13.
+  return encodeEAN13(value);
+}
+
+/**
  * UPC-A. Structurally an EAN-13 whose first digit is zero.
  *
  * @param {string} value 11 or 12 digits.

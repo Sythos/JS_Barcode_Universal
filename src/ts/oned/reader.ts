@@ -1490,7 +1490,7 @@ const DECODERS = [
   ['codabar', decodeCodabar],
 ];
 
-const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn']);
+const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn', 'jan']);
 const EAN_SUPPLEMENT_FORMATS = new Set(['ean2', 'ean5']);
 
 /** @param {string} format @returns {boolean} */
@@ -1508,7 +1508,10 @@ function isEANParentFormat(format) {
  */
 function isRequestedEANParent(result, enabled) {
   if (enabled.has(result.format)) return true;
-  return result.format === 'ean13' && enabled.has('isbn') && /^97[89]/.test(result.text);
+  if (result.format !== 'ean13') return false;
+  if (enabled.has('isbn') && /^97[89]/.test(result.text)) return true;
+  if (enabled.has('jan') && /^(45|49)/.test(result.text)) return true;
+  return false;
 }
 
 /** @param {object} result @returns {object} */
@@ -1608,7 +1611,7 @@ export function decodeOneD(image, options = {}) {
     if (id === 'fim') return enabled.has('facing-identification-mark');
     if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
       return enabled.has('ean2') || enabled.has('ean5') ||
-        (id === 'ean13' && enabled.has('isbn'));
+        (id === 'ean13' && (enabled.has('isbn') || enabled.has('jan')));
     }
     if (id === 'code128') return enabled.has('gs1128');
     if (id === 'gs1databar14') return enabled.has('databar') || enabled.has('gs1-databar14');

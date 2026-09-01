@@ -25,8 +25,8 @@ for (const format of formats) {
 }
 ```
 
-At this checkout the registry returns **54 entries**: all 54 are writable and
-53 are readable. Pharmacode is intentionally the only `canRead: false` entry.
+At this checkout the registry returns **55 entries**: all 55 are writable and
+54 are readable. Pharmacode is intentionally the only `canRead: false` entry.
 EAN-2 and EAN-5 report `canRead: true`, but each also carries
 `role: 'supplement'`; their image path is valid only when a validated EAN/UPC
 parent is present. Do not turn those flags into a claim that a supplement is a
@@ -52,7 +52,7 @@ Omnidirectional are `1D` by kind but physically stacked.
 
 | Family | Runtime IDs | Structure | Write | Read | Main boundary |
 | --- | --- | :---: | :---: | :---: | --- |
-| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `itf6`, `standard2of5`, `industrial2of5`, `iata2of5`, `datalogic2of5`, `fim`, `codabar`, `code11`, `msi`, `code32`, `pzn`, `telepen`, `pharmacode` | Linear | 24 | 23 | Pharmacode is writer-only; Code 25 aliases, PZN variants, Data Logic's rejected 2:1 ratio, FIM's fixed five-pattern enum, ITF-6's dual `itf`/`itf6` report and Telepen Numeric are explicit modes/limits. |
+| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `jan`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `itf6`, `standard2of5`, `industrial2of5`, `iata2of5`, `datalogic2of5`, `fim`, `codabar`, `code11`, `msi`, `code32`, `pzn`, `telepen`, `pharmacode` | Linear | 25 | 24 | Pharmacode is writer-only; Code 25 aliases, PZN variants, Data Logic's rejected 2:1 ratio, FIM's fixed five-pattern enum, ITF-6's dual `itf`/`itf6` report, JAN's shared `ean13` report and Telepen Numeric are explicit modes/limits. |
 | Postal 4-state | `postnet`, `planet`, `rm4scc`, `kix`, `auspost`, `japanpost`, `imb` | Linear | 7 | 7 | Operator-specific height-coded alphabets with strict framing; IMb is also known as OneCode. |
 | EAN/UPC supplements | `ean2`, `ean5` | Linear | 2 | 2* | `*` means parent-bound, not standalone reading. |
 | QR family | `qr`, `microqr`, `rmqr` | Matrix | 3 | 3 | These are related families with different geometry and feature sets. |

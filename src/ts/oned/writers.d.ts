@@ -82,6 +82,7 @@ export declare function encodeEAN8(value: string): BitMatrix;
  * @returns {BitMatrix}
  */
 export declare function encodeISBN(value: string): BitMatrix;
+export declare function encodeJAN(value: string): BitMatrix;
 /**
  * UPC-A. Structurally an EAN-13 whose first digit is zero.
  *

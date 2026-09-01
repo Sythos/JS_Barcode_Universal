@@ -275,6 +275,7 @@ make that distinction visible.
 | ITF (Interleaved 2 of 5) | `itf` | 1D | Linear | ✅ | ✅ |
 | ITF-14 | `itf14` | 1D | Linear | ✅ | ✅ [^1] |
 | ITF-6 | `itf6` | 1D | Linear | ✅ | ✅ [^5] |
+| JAN (Japanese Article Number) | `jan` | 1D | Linear | ✅ | ✅ [^1] |
 | Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
 | KIX postal code | `kix` | 1D | Linear | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
@@ -306,7 +307,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-four listed formats are writable and fifty-three are readable (EAN-2 and EAN-5 are
+Fifty-five listed formats are writable and fifty-four are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -436,11 +437,11 @@ ISO/IEC 24723 certification or universal scanner interoperability. Its full
 limits and legal boundary are in [`docs/formats/gs1-composite.md`](docs/formats/gs1-composite.md)
 and [`licenses/gs1-composite.license`](licenses/gs1-composite.license).
 
-[^1]: `itf14` and `isbn` share a decoder with their base format, so an ITF-14 comes back as `itf`
-and an ISBN as `ean13`. GS1-128 is classified separately as `gs1128` when its leading FNC1 is
-present and exposes `gs1`, `symbologyIdentifier` and parsed `elements` metadata. The payload is
-intact either way — an ITF-14 is an ITF fixed at fourteen digits, and an ISBN barcode is an EAN-13
-with a 978/979 prefix.
+[^1]: `itf14`, `isbn` and `jan` share a decoder with their base format, so an ITF-14 comes back as
+`itf`, an ISBN as `ean13`, and a JAN as `ean13`. GS1-128 is classified separately as `gs1128` when
+its leading FNC1 is present and exposes `gs1`, `symbologyIdentifier` and parsed `elements`
+metadata. The payload is intact either way — an ITF-14 is an ITF fixed at fourteen digits, an ISBN
+barcode is an EAN-13 with a 978/979 prefix, and a JAN barcode is an EAN-13 with a 45/49 prefix.
 
 [^2]: EAN-2 and EAN-5 are recognized only when attached to a validated EAN-13, EAN-8, UPC-A or
 UPC-E parent; they are not independent generic retail-symbol readers.
