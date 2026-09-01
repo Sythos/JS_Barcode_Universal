@@ -57,15 +57,17 @@ not sufficiently clear to redistribute with confidence:
 - Microsoft Tag
 - Bokode
 - Softstrip
-- PostBar (Canada Post 4-State): the Canada Post engineering specification
-  is not published — it is available only on request from Canada Post —
-  and a related mechanism (the data content identifier field) is covered
-  by [US Patent 5,602,382](https://patents.google.com/patent/US5602382A/en),
-  filed 1997 and assigned to Canada Post Corporation. Unlike the other
-  4-state postal formats already implemented here (POSTNET, PLANET,
-  RM4SCC, Australia Post, Japan Post, IMb — all openly published by their
-  respective operators), PostBar's own Wikipedia article describes it as
-  using "an obscured structure and encoding system unique to Canada Post."
+- Codablock A (the Code-39-based stacked sibling of the already-implemented
+  Codablock-F): a real, structurally distinct symbology — different row
+  indicator scheme, mod-43 checksum, Code 39 rather than Code 128 rows —
+  not just an older name for Codablock-F. Its only known standard citation
+  is AIM USA's 1994 "TSC052 — Codablock A (39)," which could not be found
+  published anywhere (not on AIM's site, not archived, not mirrored); no
+  major open-source barcode library (Zint, BWIPP, OkapiBarcode) implements
+  it either, which corroborates the same access problem rather than an
+  oversight. Secondary sources describe only high-level parameters (row
+  count, mod-43 checksum), not the row-indicator bit encoding or full
+  checksum construction needed to implement it without guessing.
 - Ultracode
 
 The list is maintained together with the legal-review notes in

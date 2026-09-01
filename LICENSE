@@ -263,6 +263,14 @@ status too unclear to redistribute an implementation with confidence:
     Microsoft Tag ........... proprietary, discontinued
     Bokode .................. research project, unclear status
     Softstrip ............... obsolete, unclear status
+    Codablock A .............. real, structurally distinct from the
+                               already-implemented Codablock-F (Code
+                               39 rows, mod-43 checksum); its only known
+                               standard citation, AIM USA's 1994
+                               "TSC052 - Codablock A (39)," could not be
+                               found published anywhere; no major
+                               open-source library implements it either
+                                                         [TO VERIFY]
     Ultracode ............... status unresolved            [TO VERIFY]
     DENSO FrameQR ........... proprietary format; this project implements
                               only a separate FrameQR Code profile
