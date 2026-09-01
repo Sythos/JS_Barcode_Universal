@@ -77,21 +77,24 @@ nav:
       - Subpath exports: api/subpath-exports.md
   - Formats:
       - Overview: formats/overview.md
-      - Linear 1D: formats/oned.md
-      - Postal 4-state: formats/postal.md
-      - QR family: formats/qr-family.md
-      - Data Matrix ECC 200: formats/datamatrix.md
-      - Aztec family: formats/aztec.md
-      - PDF417 family: formats/pdf417-family.md
-      - GS1, EAN and UPC: formats/gs1-and-ean.md
-      - GS1 DataBar Expanded: formats/databar-expanded.md
-      - MaxiCode: formats/maxicode.md
-      - Codablock-F: formats/codablockf.md
-      - Code 16K: formats/code16k.md
-      - DotCode: formats/dotcode.md
-      - Han Xin Code: formats/hanxin.md
-      - GS1 DataBar Composite: formats/gs1-composite.md
-      - Sythos Canvas QR profile: formats/frameqr-profile.md
+      - Linear (1D):
+          - Linear 1D: formats/oned.md
+          - Postal 4-state: formats/postal.md
+          - GS1, EAN and UPC: formats/gs1-and-ean.md
+          - GS1 DataBar Expanded: formats/databar-expanded.md
+      - Stacked (2D):
+          - PDF417 family: formats/pdf417-family.md
+          - Codablock-F: formats/codablockf.md
+          - Code 16K: formats/code16k.md
+          - GS1 DataBar Composite: formats/gs1-composite.md
+      - Matrix (2D):
+          - QR family: formats/qr-family.md
+          - Data Matrix ECC 200: formats/datamatrix.md
+          - Aztec family: formats/aztec.md
+          - MaxiCode: formats/maxicode.md
+          - DotCode: formats/dotcode.md
+          - Han Xin Code: formats/hanxin.md
+          - Sythos Canvas QR profile: formats/frameqr-profile.md
       - Excluded and out-of-scope formats: formats/excluded-formats.md
   - Platform guides:
       - Browser: guides/browser.md

@@ -41,23 +41,32 @@ corrected in the same change.
 
 ## The current families
 
-| Family | Runtime IDs | Write | Read | Main boundary |
-| --- | --- | :---: | :---: | --- |
-| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `standard2of5`, `industrial2of5`, `iata2of5`, `codabar`, `code11`, `msi`, `code32`, `pzn`, `telepen`, `pharmacode` | 21 | 20 | Pharmacode is writer-only; Code 25 aliases, PZN variants and Telepen Numeric are explicit modes. |
-| Postal 4-state | `postnet`, `planet`, `rm4scc`, `kix`, `auspost`, `japanpost`, `imb` | 7 | 7 | Operator-specific height-coded alphabets with strict framing; IMb is also known as OneCode. |
-| EAN/UPC supplements | `ean2`, `ean5` | 2 | 2* | `*` means parent-bound, not standalone reading. |
-| QR family | `qr`, `microqr`, `rmqr` | 3 | 3 | These are related families with different geometry and feature sets. |
-| Data Matrix | `datamatrix` | 1 | 1 | Classic ECC 200 square and rectangular symbols; DMRE is outside scope. |
-| Aztec family | `aztec`, `aztecrune` | 2 | 2 | Aztec Code and Aztec Rune are separate grammars. |
-| PDF417 family | `pdf417`, `compactpdf417`, `micropdf417` | 3 | 3 | Full, truncated and Micro geometry are not aliases. |
-| Project profile | `frameqr` | 1 | 1 | Sythos Canvas QR is not DENSO FrameQR compatibility. |
-| GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional`, `gs1databar-expanded` | 5 | 5 | Omnidirectional/Truncated, Limited, Stacked, Stacked Omnidirectional and linear Expanded physical variants. |
-| MaxiCode | `maxicode` | 1 | 1 | Fixed 30×33 geometry, Modes 2–5 and ISO-8859-1 Code Sets A–E. |
-| Codablock-F | `codablockf` | 1 | 1 | Stacked Code 128 rows with strict row and overall checks; clean integer-scale detector. |
-| Code 16K | `code16k` | 1 | 1 | Compact stacked Code 128 A/B/C rows with dual modulo-107 checks; clean integer-scale detector. |
-| DotCode | `dotcode` | 1 | 1 | Alternating dot grid, five-of-nine patterns, four masks and GF(113) correction; clean integer-scale detector. |
-| Han Xin Code | `hanxin` | 1 | 1 | Compact alignment-free versions 1–3, numeric/text/byte modes, four masks and GF(256) correction; clean integer-scale detector. |
-| GS1 DataBar Composite | `gs1composite` | 1 | 1 | Bounded Sythos profile linking one validated DataBar host to a strict MicroPDF417-derived CC-A or CC-B component. |
+Beyond `kind` (the API's literal `'1D' | '2D'` value), the family table below
+also notes each family's **Structure** — a descriptive-only grouping, not
+part of the API surface: **Linear** (a single row), **Stacked** (multiple
+linear-derived rows, including PDF417-style and stacked GS1 DataBar
+variants), or **Matrix** (a true two-dimensional grid). Structure exists
+because `kind` alone hides real differences: Codablock-F and Code 16K are
+`2D` by kind but row-stacked, not gridded; GS1 DataBar Stacked and Stacked
+Omnidirectional are `1D` by kind but physically stacked.
+
+| Family | Runtime IDs | Structure | Write | Read | Main boundary |
+| --- | --- | :---: | :---: | :---: | --- |
+| Linear 1D | `ean13`, `ean8`, `upca`, `upce`, `isbn`, `code128`, `gs1128`, `code39`, `code93`, `itf`, `itf14`, `standard2of5`, `industrial2of5`, `iata2of5`, `codabar`, `code11`, `msi`, `code32`, `pzn`, `telepen`, `pharmacode` | Linear | 21 | 20 | Pharmacode is writer-only; Code 25 aliases, PZN variants and Telepen Numeric are explicit modes. |
+| Postal 4-state | `postnet`, `planet`, `rm4scc`, `kix`, `auspost`, `japanpost`, `imb` | Linear | 7 | 7 | Operator-specific height-coded alphabets with strict framing; IMb is also known as OneCode. |
+| EAN/UPC supplements | `ean2`, `ean5` | Linear | 2 | 2* | `*` means parent-bound, not standalone reading. |
+| QR family | `qr`, `microqr`, `rmqr` | Matrix | 3 | 3 | These are related families with different geometry and feature sets. |
+| Data Matrix | `datamatrix` | Matrix | 1 | 1 | Classic ECC 200 square and rectangular symbols; DMRE is outside scope. |
+| Aztec family | `aztec`, `aztecrune` | Matrix | 2 | 2 | Aztec Code and Aztec Rune are separate grammars. |
+| PDF417 family | `pdf417`, `compactpdf417`, `micropdf417` | Stacked | 3 | 3 | Full, truncated and Micro geometry are not aliases. |
+| Project profile | `frameqr` | Matrix | 1 | 1 | Sythos Canvas QR is not DENSO FrameQR compatibility. |
+| GS1 DataBar | `gs1databar14`, `gs1databar-limited`, `gs1databar-stacked`, `gs1databar-stacked-omnidirectional`, `gs1databar-expanded` | Linear / Stacked | 5 | 5 | Omnidirectional/Truncated, Limited and linear Expanded are Linear; Stacked and Stacked Omnidirectional are Stacked. |
+| MaxiCode | `maxicode` | Matrix | 1 | 1 | Fixed 30×33 geometry, Modes 2–5 and ISO-8859-1 Code Sets A–E. |
+| Codablock-F | `codablockf` | Stacked | 1 | 1 | Stacked Code 128 rows with strict row and overall checks; clean integer-scale detector. |
+| Code 16K | `code16k` | Stacked | 1 | 1 | Compact stacked Code 128 A/B/C rows with dual modulo-107 checks; clean integer-scale detector. |
+| DotCode | `dotcode` | Matrix | 1 | 1 | Alternating dot grid, five-of-nine patterns, four masks and GF(113) correction; clean integer-scale detector. |
+| Han Xin Code | `hanxin` | Matrix | 1 | 1 | Compact alignment-free versions 1–3, numeric/text/byte modes, four masks and GF(256) correction; clean integer-scale detector. |
+| GS1 DataBar Composite | `gs1composite` | Stacked | 1 | 1 | Bounded Sythos profile linking one validated DataBar host to a strict MicroPDF417-derived CC-A or CC-B component. |
 
 Use the family pages for payload modes, options, image-reading limits and
 examples:

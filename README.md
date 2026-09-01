@@ -234,66 +234,74 @@ orientation that was scanned; unavailable quality data is represented by `null` 
 
 ---
 
-## Supported 1D and 2D barcode formats
+## Supported barcode formats
 
 Generated from `listFormats()`, which reports writing and reading as separate capabilities.
 Writing a symbology is a table lookup; reading one needs a detector that finds it in a
 photograph. The two lists legitimately differ, and saying so here is better than failing at call
 time.
 
-| Format | `id` | Kind | Write | Read |
-|---|---|:---:|:---:|:---:|
-| Australia Post 4-State | `auspost` | 1D | ✅ | ✅ |
-| Codabar | `codabar` | 1D | ✅ | ✅ |
-| Code 11 | `code11` | 1D | ✅ | ✅ |
-| Code 128 | `code128` | 1D | ✅ | ✅ |
-| Code 25 / Standard 2 of 5 | `standard2of5` | 1D | ✅ | ✅ [^4] |
-| Code 32 (Italian Pharmacode) | `code32` | 1D | ✅ | ✅ |
-| Code 39 | `code39` | 1D | ✅ | ✅ |
-| Code 93 | `code93` | 1D | ✅ | ✅ |
-| EAN-13 | `ean13` | 1D | ✅ | ✅ |
-| EAN-2 supplement | `ean2` | 1D | ✅ | ✅ [^2] |
-| EAN-5 supplement | `ean5` | 1D | ✅ | ✅ [^2] |
-| EAN-8 | `ean8` | 1D | ✅ | ✅ |
-| GS1 DataBar Expanded | `gs1databar-expanded` | 1D | ✅ | ✅ |
-| GS1 DataBar Limited | `gs1databar-limited` | 1D | ✅ | ✅ |
-| GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | ✅ | ✅ |
-| GS1 DataBar Stacked | `gs1databar-stacked` | 1D | ✅ | ✅ |
-| GS1 DataBar Stacked Omnidirectional | `gs1databar-stacked-omnidirectional` | 1D | ✅ | ✅ |
-| GS1-128 | `gs1128` | 1D | ✅ | ✅ [^1] |
-| IATA 2 of 5 | `iata2of5` | 1D | ✅ | ✅ [^4] |
-| Industrial 2 of 5 | `industrial2of5` | 1D | ✅ | ✅ [^4] |
-| ISBN (Bookland) | `isbn` | 1D | ✅ | ✅ [^1] |
-| ITF (Interleaved 2 of 5) | `itf` | 1D | ✅ | ✅ |
-| ITF-14 | `itf14` | 1D | ✅ | ✅ [^1] |
-| Japan Post 4-State | `japanpost` | 1D | ✅ | ✅ |
-| KIX postal code | `kix` | 1D | ✅ | ✅ |
-| MSI Plessey | `msi` | 1D | ✅ | ✅ |
-| Pharmacode | `pharmacode` | 1D | ✅ | — |
-| PZN-7 / PZN-8 | `pzn` | 1D | ✅ | ✅ |
-| Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | ✅ | ✅ |
-| Telepen (ASCII and Numeric) | `telepen` | 1D | ✅ | ✅ [^3] |
-| UPC-A | `upca` | 1D | ✅ | ✅ |
-| UPC-E | `upce` | 1D | ✅ | ✅ |
-| USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | ✅ | ✅ |
-| USPS PLANET | `planet` | 1D | ✅ | ✅ |
-| USPS POSTNET | `postnet` | 1D | ✅ | ✅ |
-| Aztec Code | `aztec` | 2D | ✅ | ✅ |
-| Aztec Rune | `aztecrune` | 2D | ✅ | ✅ |
-| Codablock-F | `codablockf` | 2D | ✅ | ✅ |
-| Code 16K | `code16k` | 2D | ✅ | ✅ |
-| Compact PDF417 | `compactpdf417` | 2D | ✅ | ✅ |
-| Data Matrix ECC 200 | `datamatrix` | 2D | ✅ | ✅ |
-| DotCode | `dotcode` | 2D | ✅ | ✅ |
-| GS1 DataBar Composite (bounded Sythos profile) | `gs1composite` | 2D | ✅ | ✅ |
-| Han Xin Code | `hanxin` | 2D | ✅ | ✅ |
-| MaxiCode | `maxicode` | 2D | ✅ | ✅ |
-| Micro QR Code | `microqr` | 2D | ✅ | ✅ |
-| MicroPDF417 | `micropdf417` | 2D | ✅ | ✅ |
-| PDF417 | `pdf417` | 2D | ✅ | ✅ |
-| QR Code | `qr` | 2D | ✅ | ✅ |
-| rMQR Code | `rmqr` | 2D | ✅ | ✅ |
-| Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | ✅ | ✅ |
+`Kind` is the literal `'1D' | '2D'` value `format.kind` returns from the API — it never changes.
+`Structure` is a descriptive grouping only, not part of the API: **Linear** (a single row),
+**Stacked** (multiple linear-derived rows, including PDF417-style and stacked GS1 DataBar
+variants), or **Matrix** (a true two-dimensional grid, e.g. QR or Data Matrix). A few formats are
+`2D` by Kind but row-stacked rather than gridded (Codablock-F, Code 16K), and two are `1D` by Kind
+but physically stacked (GS1 DataBar Stacked and Stacked Omnidirectional) — Structure exists to
+make that distinction visible.
+
+| Format | `id` | Kind | Structure | Write | Read |
+|---|---|:---:|:---:|:---:|:---:|
+| Australia Post 4-State | `auspost` | 1D | Linear | ✅ | ✅ |
+| Codabar | `codabar` | 1D | Linear | ✅ | ✅ |
+| Code 11 | `code11` | 1D | Linear | ✅ | ✅ |
+| Code 128 | `code128` | 1D | Linear | ✅ | ✅ |
+| Code 25 / Standard 2 of 5 | `standard2of5` | 1D | Linear | ✅ | ✅ [^4] |
+| Code 32 (Italian Pharmacode) | `code32` | 1D | Linear | ✅ | ✅ |
+| Code 39 | `code39` | 1D | Linear | ✅ | ✅ |
+| Code 93 | `code93` | 1D | Linear | ✅ | ✅ |
+| EAN-13 | `ean13` | 1D | Linear | ✅ | ✅ |
+| EAN-2 supplement | `ean2` | 1D | Linear | ✅ | ✅ [^2] |
+| EAN-5 supplement | `ean5` | 1D | Linear | ✅ | ✅ [^2] |
+| EAN-8 | `ean8` | 1D | Linear | ✅ | ✅ |
+| GS1 DataBar Expanded | `gs1databar-expanded` | 1D | Linear | ✅ | ✅ |
+| GS1 DataBar Limited | `gs1databar-limited` | 1D | Linear | ✅ | ✅ |
+| GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | Linear | ✅ | ✅ |
+| GS1-128 | `gs1128` | 1D | Linear | ✅ | ✅ [^1] |
+| IATA 2 of 5 | `iata2of5` | 1D | Linear | ✅ | ✅ [^4] |
+| Industrial 2 of 5 | `industrial2of5` | 1D | Linear | ✅ | ✅ [^4] |
+| ISBN (Bookland) | `isbn` | 1D | Linear | ✅ | ✅ [^1] |
+| ITF (Interleaved 2 of 5) | `itf` | 1D | Linear | ✅ | ✅ |
+| ITF-14 | `itf14` | 1D | Linear | ✅ | ✅ [^1] |
+| Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
+| KIX postal code | `kix` | 1D | Linear | ✅ | ✅ |
+| MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
+| Pharmacode | `pharmacode` | 1D | Linear | ✅ | — |
+| PZN-7 / PZN-8 | `pzn` | 1D | Linear | ✅ | ✅ |
+| Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | Linear | ✅ | ✅ |
+| Telepen (ASCII and Numeric) | `telepen` | 1D | Linear | ✅ | ✅ [^3] |
+| UPC-A | `upca` | 1D | Linear | ✅ | ✅ |
+| UPC-E | `upce` | 1D | Linear | ✅ | ✅ |
+| USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | Linear | ✅ | ✅ |
+| USPS PLANET | `planet` | 1D | Linear | ✅ | ✅ |
+| USPS POSTNET | `postnet` | 1D | Linear | ✅ | ✅ |
+| Codablock-F | `codablockf` | 2D | Stacked | ✅ | ✅ |
+| Code 16K | `code16k` | 2D | Stacked | ✅ | ✅ |
+| Compact PDF417 | `compactpdf417` | 2D | Stacked | ✅ | ✅ |
+| GS1 DataBar Composite (bounded Sythos profile) | `gs1composite` | 2D | Stacked | ✅ | ✅ |
+| GS1 DataBar Stacked | `gs1databar-stacked` | 1D | Stacked | ✅ | ✅ |
+| GS1 DataBar Stacked Omnidirectional | `gs1databar-stacked-omnidirectional` | 1D | Stacked | ✅ | ✅ |
+| MicroPDF417 | `micropdf417` | 2D | Stacked | ✅ | ✅ |
+| PDF417 | `pdf417` | 2D | Stacked | ✅ | ✅ |
+| Aztec Code | `aztec` | 2D | Matrix | ✅ | ✅ |
+| Aztec Rune | `aztecrune` | 2D | Matrix | ✅ | ✅ |
+| Data Matrix ECC 200 | `datamatrix` | 2D | Matrix | ✅ | ✅ |
+| DotCode | `dotcode` | 2D | Matrix | ✅ | ✅ |
+| Han Xin Code | `hanxin` | 2D | Matrix | ✅ | ✅ |
+| MaxiCode | `maxicode` | 2D | Matrix | ✅ | ✅ |
+| Micro QR Code | `microqr` | 2D | Matrix | ✅ | ✅ |
+| QR Code | `qr` | 2D | Matrix | ✅ | ✅ |
+| rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
+| Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
 Fifty-one listed formats are writable and fifty are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image

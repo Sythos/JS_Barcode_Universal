@@ -79,24 +79,31 @@ remain parent-bound supplements.
 - USPS Intelligent Mail Barcode (IMb / OneCode) — write and read for 20-, 25-, 29- and 31-digit payloads with frame-check validation
 - EAN-2 and EAN-5 supplements — write and parent-bound read only; they require a validated EAN/UPC parent
 
-### 2D matrix and stacked formats
+### 2D stacked formats
+
+Multiple linear-derived rows, not a true grid. GS1 DataBar Stacked and Stacked
+Omnidirectional are also physically stacked but are listed above under 1D
+linear formats because that is the `kind` the public API reports for them.
+
+- PDF417 — write and read, including direct matrix decoding and camera-oriented detection
+- Compact PDF417 — write and read for the truncated PDF417 geometry
+- MicroPDF417 — write and read for the fixed MicroPDF417 variants
+- Codablock-F — write and read for stacked Code 128 rows with row and overall checks; clean integer-scale detection
+- Code 16K — write and read for compact stacked Code 128 A/B/C rows, optional GS1 modes, dual modulo-107 checks and clean integer-scale detection
+- GS1 DataBar Composite — write and read for the bounded Sythos profile linking one validated DataBar host to a strict MicroPDF417-derived CC-A or CC-B component; complete ISO/IEC 24723 certification is not claimed
+
+### 2D matrix formats
 
 - QR Code Model 2 — write and read, versions 1–40, standard ECC levels and payload modes
 - Data Matrix ECC 200 — write and read for classic square and rectangular symbols
 - Aztec Code — write and read, including compact and full symbols
 - Aztec Rune — write and read for the fixed 11×11 rune values
-- PDF417 — write and read, including direct matrix decoding and camera-oriented detection
-- Compact PDF417 — write and read for the truncated PDF417 geometry
-- MicroPDF417 — write and read for the fixed MicroPDF417 variants
 - Micro QR Code — write and read for the supported M1–M4 family; M1 is detection-only
 - rMQR Code — write and read for the supported standard rectangular geometries
 - Sythos Canvas QR profile — write and read as the non-certified `sythos-canvas-qr/1` profile
 - MaxiCode — write and read for fixed 30×33 symbols, Modes 2–5 and ISO-8859-1 Code Sets A–E
-- Codablock-F — write and read for stacked Code 128 rows with row and overall checks; clean integer-scale detection
-- Code 16K — write and read for compact stacked Code 128 A/B/C rows, optional GS1 modes, dual modulo-107 checks and clean integer-scale detection
 - DotCode — write and read for the bounded alternating-dot profile, four masks, GF(113) correction and clean integer-scale detection
 - Han Xin Code — write and read for compact alignment-free versions 1–3, numeric/text/byte modes, four masks, GF(256) correction and clean integer-scale detection
-- GS1 DataBar Composite — write and read for the bounded Sythos profile linking one validated DataBar host to a strict MicroPDF417-derived CC-A or CC-B component; complete ISO/IEC 24723 certification is not claimed
 
 The Sythos Canvas QR profile is not DENSO FrameQR® compatible and does not
 claim native DENSO interoperability.
