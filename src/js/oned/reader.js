@@ -54,6 +54,7 @@ import { decodeDataBar14Scanline } from '../databar/decoder.js';
 import { decodeTelepen } from './telepen.js';
 import { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
 import { decodePostal } from './postal.js';
+import { decodePostBar } from './postbar.js';
 import { FIM_PATTERNS } from './fim.js';
 import { PLESSEY_DIGIT_PATTERNS, PLESSEY_START, PLESSEY_STOP, PLESSEY_MAX_DIGITS, plesseyCheckDigits } from './plessey.js';
 /* ------------------------------------------------------------------ *
@@ -1756,6 +1757,21 @@ export function decodeOneD(image, options = {}) {
             continue;
         seen.add(key);
         results.push({ ...result, row: postalRow });
+    }
+    // PostBar shares the postal family's height-coded, non-scanline geometry,
+    // so it is decoded the same way: once, before the ordinary readers, with
+    // no format-request-broadening side effect for callers who did not ask.
+    if (!enabled || ['postbarc10', 'postbard22', 'postbarg12'].some((id) => enabled.has(id))) {
+        const postbarResults = decodePostBar(image, { profile: cameraProfile ? 'camera' : undefined });
+        for (const result of postbarResults) {
+            if (enabled && !enabled.has(result.format))
+                continue;
+            const key = `${result.format}:${result.postalCode}:${result.machineId ?? ''}:${result.customerInfo ?? ''}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            results.push({ ...result, row: postalRow });
+        }
     }
     if (active.length === 0)
         return results;

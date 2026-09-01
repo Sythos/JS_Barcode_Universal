@@ -92,6 +92,12 @@ export {
 } from './postal.js';
 export type { PostalFormat, PostalOptions, PostalDecodeResult } from './postal.js';
 
+export {
+  encodePostBarC10, encodePostBarD22, encodePostBarG12,
+  decodePostBar,
+} from './postbar.js';
+export type { PostBarProfileId, PostBarDecodeResult, PostBarOptions } from './postbar.js';
+
 export { validateTables } from './patterns.js';
 
 import {
@@ -109,6 +115,7 @@ import {
   encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX,
   encodeAustraliaPost, encodeJapanPost, encodeIMB,
 } from './postal.js';
+import { encodePostBarC10, encodePostBarD22, encodePostBarG12 } from './postbar.js';
 
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -163,4 +170,7 @@ export const ONED_FORMATS = {
   auspost: { encode: encodeAustraliaPost, readable: true, label: 'Australia Post 4-State' },
   japanpost: { encode: encodeJapanPost, readable: true, label: 'Japan Post 4-State' },
   imb: { encode: encodeIMB, readable: true, label: 'USPS Intelligent Mail (IMb)' },
+  postbarc10: { encode: encodePostBarC10, readable: true, label: 'PostBar.C10 (Canada Post, internal)' },
+  postbard22: { encode: encodePostBarD22, readable: true, label: 'PostBar.D22 (Canada Post, domestic)' },
+  postbarg12: { encode: encodePostBarG12, readable: true, label: 'PostBar.G12 (Canada Post, international)' },
 };

@@ -40,6 +40,7 @@ export { TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH, telepenPat
 export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean2Parity, ean5Checksum, ean5CheckDigit, ean5Parity, encodeEAN2, encodeEAN5, encodeEANAddon, encodeEANAddOn, decodeEAN2, decodeEAN5, decodeEANAddon, decodeEANAddOn, composeEANAddon, encodeEAN13WithAddon, encodeEAN8WithAddon, encodeUPCAWithAddon, encodeUPCEWithAddon, } from './addons.js';
 export { decodeOneD, decodeOneDStrict, decodeCode32, decodePZN, decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5, decodeDataLogic2of5, decodeMatrix2of5, decodeFIM, decodePlessey, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
 export { POSTAL_FORMATS, POSTAL_ALIASES, STATE_PROFILES, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, decodePostal, } from './postal.js';
+export { encodePostBarC10, encodePostBarD22, encodePostBarG12, decodePostBar, } from './postbar.js';
 export { validateTables } from './patterns.js';
 import { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
@@ -48,6 +49,7 @@ import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLog
 import { encodeFIM } from './fim.js';
 import { encodePlessey } from './plessey.js';
 import { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, } from './postal.js';
+import { encodePostBarC10, encodePostBarD22, encodePostBarG12 } from './postbar.js';
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
  *
@@ -101,4 +103,7 @@ export const ONED_FORMATS = {
     auspost: { encode: encodeAustraliaPost, readable: true, label: 'Australia Post 4-State' },
     japanpost: { encode: encodeJapanPost, readable: true, label: 'Japan Post 4-State' },
     imb: { encode: encodeIMB, readable: true, label: 'USPS Intelligent Mail (IMb)' },
+    postbarc10: { encode: encodePostBarC10, readable: true, label: 'PostBar.C10 (Canada Post, internal)' },
+    postbard22: { encode: encodePostBarD22, readable: true, label: 'PostBar.D22 (Canada Post, domestic)' },
+    postbarg12: { encode: encodePostBarG12, readable: true, label: 'PostBar.G12 (Canada Post, international)' },
 };

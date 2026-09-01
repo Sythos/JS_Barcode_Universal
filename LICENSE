@@ -136,6 +136,11 @@ excerpt the specification documents.
                                       cross-verified public technical
                                       descriptions, see
                                       licenses/kartrak-aci.license [TO VERIFY]
+    PostBar (Canada Post CPC          CPC's own engineering spec is not
+      four-state bar code)            published; implemented from the
+                                      disclosure in US Patent 5,602,382A
+                                      (expired), see
+                                      licenses/postbar.license    [TO VERIFY]
 
 
 4. PATENT POSITIONS
@@ -200,6 +205,10 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
                                       Servo Corp. refinements (1976-1982)
                                       all expired under the pre-1995
                                       17-year term                [TO VERIFY]
+    PostBar (C10/D22/G12 profiles)    only disclosed via US Patent
+                                      5,602,382A, filed 1994, expired
+                                      ~2014 under the 20-years-from-filing
+                                      term                        [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.
@@ -229,6 +238,7 @@ names and presents itself.
     KarTrak                  formerly GTE Sylvania / Servo Corporation of
                               America; system defunct and unused since
                               1978                                    [TO VERIFY]
+    PostBar, Canada Post      Canada Post Corporation                [TO VERIFY]
 
 All marks are the property of their respective owners and are used here in a
 purely descriptive, nominative sense — to identify which symbologies this
@@ -253,12 +263,6 @@ status too unclear to redistribute an implementation with confidence:
     Microsoft Tag ........... proprietary, discontinued
     Bokode .................. research project, unclear status
     Softstrip ............... obsolete, unclear status
-    PostBar .................. proprietary, Canada Post Corporation;
-                               engineering spec is not published, only
-                               available on request from Canada Post; a
-                               related mechanism is covered by US Patent
-                               5,602,382 (filed 1997, assigned to Canada
-                               Post Corp.)                [TO VERIFY]
     Ultracode ............... status unresolved            [TO VERIFY]
     DENSO FrameQR ........... proprietary format; this project implements
                               only a separate FrameQR Code profile

@@ -1,0 +1,130 @@
+PostBar (Canada Post CPC four-state bar code) — format provenance and usability
+==========================================================================
+
+This file records where the PostBar symbology comes from, what governs it,
+and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN AND SPECIFICATION
+--------------------------------------------------------------------------
+
+"PostBar" is Canada Post Corporation's (CPC) name for its four-state
+(height-coded) bar code family. Canada Post's own engineering specification
+for PostBar is not freely published — it is available only on request from
+Canada Post. This project does NOT hold or rely on that document. Instead,
+this implementation is built entirely from US Patent 5,602,382A ("Multiple
+Bar Code Processing," Canada Post Corporation, filed 31 October 1994,
+granted 11 February 1997), which discloses the complete symbol tables,
+field layouts, and Reed-Solomon parameters in ordinary patent-disclosure
+detail (not merely describing that the format exists).
+
+An earlier research pass reported the patent's own tables as unreliably
+extractable: two independent automated fetches of the same patent (Google
+Patents' rendered page and a separate source) produced conflicting,
+internally-inconsistent digit tables. This project's own `pdftotext
+-layout` pass on the same PDF also produced garbled, column-merged output.
+Direct inspection resolved this: the patent's actual scanned pages,
+rendered to images and read directly, are completely legible and internally
+consistent. The unreliability was in the automated text/OCR extraction
+pipelines, not in the primary source itself — the same lesson this
+project's KarTrak ACI implementation drew from a transposed Wikipedia
+table, one level further (sometimes even a "raw text" layer needs to be
+bypassed in favour of the actual rendered page).
+
+Every table and field layout in this implementation was verified against
+the patent's own fully worked PostBar.C10 example (DCI=Z, postal code
+K1S 5B6, machine ID DHAH): this implementation reproduces the patent's
+stated 16-symbol Reed-Solomon codeword
+(`18 29 12 5 14 27 52 54 4 6 8 33 9 6 20 41`) and the patent's own stated
+bar sequence exactly, symbol for symbol — not merely a self-consistent
+round trip. The PostBar.D22 and PostBar.G12 field layouts were read
+directly from the patent's own field tables and cross-checked for
+internal arithmetic consistency (bar counts summing to the stated totals,
+Reed-Solomon (n,k) parameters matching the stated message/parity symbol
+counts); PostBar.D22's own worked example (postal code L3B 4T9, address
+locator 1420, customer information CFFMIPLXF6V) round-trips correctly
+through this implementation as an additional check.
+
+Specification TEXT (the patent document) is a matter of public record —
+patent disclosures are published precisely so the invention they describe
+can be understood and, once any patent term expires, freely practiced.
+This project implements the SYMBOLOGY the patent discloses (a system of
+tables and field layouts, not a work of authorship in the copyright
+sense); it does not reproduce, redistribute or excerpt the patent
+document itself.
+
+Other formats named in the patent — PostBar.D07, D12, G22, S06, S11 — use
+Reed-Solomon field layouts not fully read and verified by this project and
+are NOT implemented here. Implementing them would need the same direct,
+worked-example-verified treatment given to C10/D22/G12, not an assumption
+that the pattern generalizes.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+US Patent 5,602,382A was filed 31 October 1994 and granted 11 February
+1997. Under the standard 20-years-from-filing US patent term, it expired
+around 31 October 2014, more than a decade before this implementation.
+[TO VERIFY] No evidence of a later, still-active continuation or
+divisional patent covering the same symbol tables was found during
+research; the "available on request" barrier to Canada Post's own current
+engineering specification is a separate, purely practical distribution
+question (see ORIGIN above), not a patent-term one.
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+"PostBar" and "Canada Post" are understood to be trademarks or trade names
+of Canada Post Corporation. [TO VERIFY] No trademark search was carried
+out. A trademark does not restrict implementing a symbology; it restricts
+branding — how a product names and presents itself. This project's
+`postbarc10`/`postbard22`/`postbarg12` format ids and documentation use
+the name descriptively, to identify the symbology being implemented, not
+as a product brand or a claim of Canada Post endorsement or certification.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+The 'A'/'N'/'Z' character tables, the field layouts for PostBar.C10, D22
+and G12, and the Reed-Solomon parameters (defining roots, message/parity
+symbol counts) are original Sythos data, transcribed directly from the
+patent's page images and independently verified against its own worked
+numerical examples as described above — not copied from any other
+implementation (none is known to exist publicly; BWIPP, Zint and ZXing
+were checked and none implement PostBar). Reed-Solomon arithmetic reuses
+this project's existing, already-shipped `src/ts/core/galois-field.ts`
+`GF64` constant (primitive polynomial X^6+X+1 over GF(2), exactly the
+field the patent specifies) and `src/ts/core/reed-solomon.ts` generic
+encoder/decoder, both already used elsewhere in this SDK (e.g. Aztec) —
+reused as-is, not reimplemented a second time. No source code, table or
+image asset from any other barcode implementation is copied or shipped.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, PostBar (the C10/D22/G12 profiles
+specifically) is understood to be freely implementable and redistributable:
+its only detailed technical disclosure is a patent whose term has expired,
+and the symbol tables and field layouts it discloses are systems of
+encoding rules, not copyrightable expression. This project's implementation
+of it is distributed under the MIT License with no additional restriction.
+
+References relied upon:
+  - US Patent 5,602,382A, "Multiple Bar Code Processing," Canada Post
+    Corporation, filed 31 October 1994, granted 11 February 1997 —
+    read directly from rendered page images, not automated text
+    extraction (see ORIGIN above)
+  - The patent's own fully worked PostBar.C10 example, reproduced exactly
+    by this implementation as an independent verification, not merely a
+    self-consistency check
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

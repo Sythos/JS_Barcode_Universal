@@ -285,6 +285,9 @@ make that distinction visible.
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | Linear | ✅ | — |
 | Plessey Code | `plessey` | 1D | Linear | ✅ | ✅ |
+| PostBar.C10 (Canada Post, internal) | `postbarc10` | 1D | Linear | ✅ | ✅ [^7] |
+| PostBar.D22 (Canada Post, domestic) | `postbard22` | 1D | Linear | ✅ | ✅ [^7] |
+| PostBar.G12 (Canada Post, international) | `postbarg12` | 1D | Linear | ✅ | ✅ [^7] |
 | PZN-7 / PZN-8 | `pzn` | 1D | Linear | ✅ | ✅ |
 | Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | Linear | ✅ | ✅ |
 | Telepen (ASCII and Numeric) | `telepen` | 1D | Linear | ✅ | ✅ [^3] |
@@ -312,7 +315,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-seven listed formats are writable and fifty-six are readable through the counted
+Sixty listed formats are writable and fifty-nine are readable through the counted
 `listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
 parent-bound supplements). **KarTrak ACI sits outside that count**: it is colour-coded, not
 black/white, so it cannot go through `BitMatrix`-based `encode()`/`decode()` at all — it ships
@@ -486,6 +489,13 @@ roughly uniform background — no rotation or perspective search, the same "clea
 boundary already documented for MaxiCode. See `docs/formats/kartrak.md` and
 `docs/COLOR_PIPELINE_NOTES.md` for the full picture, including what real-world validation is
 still outstanding.
+
+[^7]: Canada Post's own PostBar engineering specification is not published; this SDK implements
+the C10 (internal), D22 (customer-applied domestic) and G12 (international) profiles from the
+technical disclosure in US Patent 5,602,382A (expired), verified against the patent's own fully
+worked examples. `postbard07`/`postbard12`/`postbarg22`/`postbars06`/`postbars11`/`postbars21`
+are documented by the same patent but not implemented — see `docs/formats/postbar.md`. Reading
+corrects errors via the format's own Reed-Solomon check (over GF(64)) before returning a result.
 
 ### Code 11 and MSI Plessey image reading
 

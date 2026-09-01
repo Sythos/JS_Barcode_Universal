@@ -42,6 +42,11 @@ KIX, Australia Post, Japan Post and USPS IMb. They are exported from this
 subpath as `encodePostnet`, `encodePlanet`, `encodeRM4SCC`, `encodeKIX`,
 `encodeAustraliaPost`, `encodeJapanPost` and `encodeIMB`.
 
+PostBar (Canada Post's own height-coded, Reed-Solomon-protected family) uses
+the same reader path and is documented separately in the
+[PostBar guide](postbar.md): `postbarc10`, `postbard22` and `postbarg12`,
+exported as `encodePostBarC10`, `encodePostBarD22` and `encodePostBarG12`.
+
 The runtime registry is the source of truth for these flags. `ITF-14`,
 Bookland ISBN and JAN are meaningful application profiles over their base
 symbol grammar, so a shared decoder can return `itf` or `ean13` while

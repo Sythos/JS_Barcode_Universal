@@ -80,7 +80,7 @@ two separate questions:
 | `write-only` | A deliberate capability boundary, not a failed promise. |
 | `read` with a qualifier | Reading depends on a parent symbol, metadata or a supported profile. |
 
-The current registry snapshot reports 57 entries and 56 generally readable
+The current registry snapshot reports 60 entries and 59 generally readable
 formats. The documentation must explain the important qualifiers instead of
 turning the count into marketing copy:
 
@@ -109,6 +109,10 @@ turning the count into marketing copy:
   host and one MicroPDF417-derived CC-A or CC-B component as a single geometry;
 - the postal family (POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post
   and IMb) uses strict operator-specific height-coded alphabets and checks;
+- PostBar (`postbarc10`, `postbard22`, `postbarg12`) is the same height-coded
+  visual family, but implements only the three profiles this SDK could
+  directly verify from US Patent 5,602,382A — not every profile the patent
+  names — and corrects damage via a real Reed-Solomon check over GF(64);
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
   licensing boundary is documented in `PLAN.md`;
 - any future unsupported variant must be labelled as unsupported, not silently
@@ -149,6 +153,7 @@ docs/
 │   ├── databar-expanded.md
 │   ├── postal.md
 │   ├── kartrak.md
+│   ├── postbar.md
 │   ├── maxicode.md
 │   ├── codablockf.md
 │   ├── code16k.md
