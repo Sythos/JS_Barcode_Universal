@@ -131,6 +131,11 @@ excerpt the specification documents.
     Royal Mail RM4SCC, KIX,
       Australia Post, Japan Post      respective postal operators; public
                                       material and usage terms vary [TO VERIFY]
+    KarTrak ACI (AAR Automatic Car   no surviving purchasable AAR standard
+      Identification)                 document; implemented from
+                                      cross-verified public technical
+                                      descriptions, see
+                                      licenses/kartrak-aci.license [TO VERIFY]
 
 
 4. PATENT POSITIONS
@@ -190,6 +195,11 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
     Codablock-F / Code 16K             originating patents and current
                                       trademark positions require review
                                                                   [TO VERIFY]
+    KarTrak ACI                       foundational scanning patent (US
+                                      3,225,177, granted 1965) and later
+                                      Servo Corp. refinements (1976-1982)
+                                      all expired under the pre-1995
+                                      17-year term                [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.
@@ -216,6 +226,9 @@ names and presents itself.
     Data Logic, China Post   Datalogic S.p.A.; China Post Group  [TO VERIFY]
     Code 32 / PZN             descriptive pharmaceutical identifiers;
                               no proprietary mark asserted here       [TO VERIFY]
+    KarTrak                  formerly GTE Sylvania / Servo Corporation of
+                              America; system defunct and unused since
+                              1978                                    [TO VERIFY]
 
 All marks are the property of their respective owners and are used here in a
 purely descriptive, nominative sense — to identify which symbologies this

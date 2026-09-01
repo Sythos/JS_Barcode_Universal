@@ -94,20 +94,36 @@ printed, photographed, or scanned by a real camera. That is exactly the
 "field feedback" this evaluation is waiting on before deciding whether to
 build a detector and a real format on top of this.
 
-## What would still be needed before KarTrak (or anything else) could ship
+## Update: KarTrak ACI has since shipped on top of this (M21)
 
-1. A colour-aware detector: locate the plate, correct for rotation/skew,
-   establish the grid geometry `classifyGrid` currently assumes is given.
+`src/ts/kartrak/` now exists, with `encodeKarTrak`/`decodeKarTrak`/
+`detectKarTrak` published at the `@sythos/js_barcode_universal/kartrak`
+subpath — see `docs/formats/kartrak.md`. It stays outside
+`encode()`/`decode()`/`listFormats()` deliberately: those are built around
+`BitMatrix`, and KarTrak's `PolychromeMatrix` output is a genuinely
+different type, not a gap to be closed later. `detectKarTrak` implements
+item 1 below in its narrowest honest form — an axis-aligned bounding-box
+search, no rotation/skew correction — which is enough to round-trip a
+rendered image but not to find a plate in an arbitrary photo. Building it
+surfaced two real detector bugs the earlier synthetic testing on this page
+did not exercise (an absolute-distance background threshold that broke
+under a uniform lighting tint, and a background reference colour close
+enough to white that ordinary pixel noise crossed the boundary); both are
+fixed and covered by `test/kartrak.test.js`. What follows is what is still
+genuinely missing.
+
+## What is still needed before this is real-world ready
+
+1. Rotation/perspective correction for the detector — `detectKarTrak` only
+   handles an axis-aligned plate against a roughly uniform background.
 2. Real-world validation: an actual printed sample, photographed under
    realistic conditions, decoded through this pipeline — synthetic
-   raster tests cannot stand in for this.
-3. A format module (`src/ts/kartrak/` or similar) mapping KarTrak's real
-   13-row/2-stripe/mod-11-check-digit structure onto `PolychromeMatrix`,
-   following the same encode+decode+test+licence-file pattern as every
-   other format in this SDK.
-4. A decision on whether the classifier's plain-Euclidean-RGB approach is
+   raster tests, including KarTrak's own test suite, cannot stand in for
+   this.
+3. A decision on whether the classifier's plain-Euclidean-RGB approach is
    good enough, or needs a perceptually-aware colour space (e.g. Lab) —
    not resolvable without real photographs to test against.
-5. Only then: wiring into `ONED_FORMATS`/`listFormats()`, `package.json`
-   `exports`, and the rest of the public-API checklist in
-   `docs/formats/excluded-formats.md`'s "Adding a future format" section.
+4. Only once 1-3 hold up: consider whether KarTrak (or a future
+   colour-coded format) belongs in the counted registry at all — that
+   would need `encode()`/`decode()` to accept a non-`BitMatrix` result
+   type, a real architectural change, not a per-format addition.

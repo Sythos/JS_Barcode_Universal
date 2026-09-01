@@ -1,0 +1,138 @@
+KarTrak ACI (Automatic Car Identification) — format provenance and usability
+==========================================================================
+
+This file records where the KarTrak ACI symbology comes from, what
+governs it, and the basis on which this project implements and
+redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Developed by GTE Sylvania (David Jarrett Collins) in the early-to-mid
+1960s and adopted by the Association of American Railroads (AAR) Board of
+Directors in September 1967 as a mandatory industry standard for
+interchange railcars in North America. Field-tested against competing
+systems from ABEX and Westinghouse Air Brake Company (Wabco) on the
+Pennsylvania Railroad before selection. Withdrawn as a requirement by AAR
+ballot in early 1978, following a November 1977 AAR white paper on its
+reliability problems, after roughly a decade of mandated use. GTE Sylvania
+exited the field in 1972, selling the system to Servo Corporation of
+America.
+
+No specific AAR standard-number citation for the 1967 KarTrak/ACI mandate
+itself was located. "AAR S-918" is a distinct, later, unrelated standard —
+it defines the 128-bit data format for AEI (Automatic Equipment
+Identification), the RFID system that replaced KarTrak in the 1990s — and
+must not be cited as KarTrak's designation. [TO VERIFY]
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+No surviving, purchasable AAR standards document for KarTrak/ACI was
+located; the system has been defunct since 1978. The colour-to-value
+encoding table and label structure implemented here were cross-verified
+against two independent technical descriptions that agree exactly on
+every table entry:
+  - Wikipedia's "KarTrak" article, "Values of label stripes" table (raw
+    wikitext, not the rendered/summarized page — see IMPLEMENTATION BASIS)
+  - Ian Cranstone, "A guide to ACI (Automatic Car Identification)/Kar Trak
+    labels," nakina.net, 2011
+A third source (an archived icrr.net page, cited by Wikipedia) independently
+corroborates the same 13-line label structure and mod-11 weighted checksum
+formula. The worked example decoded from a real photographed label cited
+by Wikipedia ("Start 8350199918 Stop 5") was independently reproduced by
+this project's own encoder/checksum implementation from only the payload
+digits, which is strong evidence the table and checksum were transcribed
+correctly rather than merely self-consistent.
+
+Specification TEXT (the cited articles) is copyrighted by its authors. The
+SYMBOLOGY it describes — a defunct, AAR-mandated industry scheme from
+1967 — is not a work of authorship. This project implements the
+symbology from its own original code, and does not reproduce, redistribute
+or excerpt the cited articles.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+The foundational optical-scanning patent generally cited for the KarTrak
+system, Sylvania's Francis H. Stites and Raymond Alexander, "Mark
+Sensing," US 3,225,177 (granted 21 December 1965), expired around 1982
+under the pre-1995 17-years-from-grant patent term. Later KarTrak-adjacent
+patents identified — Abex's coded-identification patent US 3,366,952
+(1966/1968) and several Servo Corporation of America refinements from
+1976-1982 (US 3,935,432, US 4,002,889, US 4,329,573) — are similarly all
+decades past expiry under the same rule. No evidence of any live patent
+covering the symbology itself (as opposed to specific scanner hardware
+implementations, all likewise expired) was found. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+No live trademark restriction on implementing or describing KarTrak/ACI is
+known to the author. [TO VERIFY] That is a statement about the author's
+knowledge, not a finding that no mark subsists: no trademark search was
+carried out. "KarTrak" was Sylvania/Servo Corporation branding for a
+system that has been defunct and unused since 1978.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself. This project's
+`kartrak` format id and documentation use the name descriptively, to
+identify the historical symbology being implemented, not as a product
+brand.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+KarTrak ACI is implemented here from the colour-to-value table and label
+structure described above, which are facts about a defunct industry
+scheme rather than works of authorship. The table, the 13-line label
+layout (START, 10 data digits, STOP, mod-11 check digit), and the
+mod-11-weighted checksum formula are original Sythos data and code,
+verified directly against the raw wikitext of the Wikipedia article (not
+the rendered page, after an earlier automated fetch of the same page was
+found to have transposed the table's rows and columns) and cross-checked
+pixel-for-pixel against that article's own reference SVG diagrams
+("Diagram Of a KarTrak ACI Plate.svg", "KarTrak ACI codes.svg") to confirm
+the exact geometry of the START/STOP marker glyphs, which are not simple
+uniform two-stripe digits. No source code, image asset or constant table
+from any other barcode implementation is copied or shipped; this project's
+`src/ts/color/` colour-classification primitives (`PolychromeMatrix`,
+`toColorImageData`, `classifyGrid`) and the `src/ts/kartrak/` format module
+built on them are original Sythos work.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, KarTrak ACI is understood to be
+freely implementable and redistributable: it is a defunct, once-mandatory
+industry scheme from a body (AAR) that itself withdrew it in 1978, its
+foundational patents are all decades expired, and no live specification
+gatekeeper or purchase requirement (unlike PostBar's unpublished Canada
+Post specification, see `licenses/postbar.license` if implemented) stands
+between an implementer and the encoding rules. This project's
+implementation of it is distributed under the MIT License with no
+additional restriction.
+
+References relied upon:
+  - Wikipedia, "KarTrak" article, raw wikitext (colour table, label
+    structure, checksum formula, worked example)
+  - Ian Cranstone, "A guide to ACI (Automatic Car Identification)/Kar Trak
+    labels," nakina.net, 2011 (independent colour-table cross-check)
+  - "Diagram Of a KarTrak ACI Plate.svg" and "KarTrak ACI codes.svg",
+    Wikimedia Commons (geometric verification of digit and START/STOP
+    glyphs)
+  - US Patent 3,225,177 (Sylvania, "Mark Sensing," granted 1965, expired
+    ~1982) and related KarTrak-adjacent patents, all expired [TO VERIFY]
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

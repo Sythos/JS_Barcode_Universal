@@ -81,6 +81,7 @@ nav:
       - Linear (1D):
           - Linear 1D: formats/oned.md
           - Postal 4-state: formats/postal.md
+          - KarTrak ACI (experimental): formats/kartrak.md
           - GS1, EAN and UPC: formats/gs1-and-ean.md
           - GS1 DataBar Expanded: formats/databar-expanded.md
       - Stacked (2D):

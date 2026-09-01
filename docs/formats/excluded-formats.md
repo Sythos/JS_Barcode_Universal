@@ -94,22 +94,6 @@ the application boundary. If a required format is not in `listFormats()`, the
 safe answer is to use a separately licensed/validated implementation rather
 than guessing from a similar-looking symbol.
 
-## Architecturally out of scope
-
-Unlike the rest of this page, these are not licence or evidence gaps —
-they are excluded because the format's data carrier is fundamentally
-incompatible with this SDK's monochrome `BitMatrix`/image pipeline, not
-because a review is pending:
-
-| Format | Why it does not fit |
-| --- | --- |
-| KarTrak ACI (AAR Automatic Car Identification) | A 1967-77 railroad rolling-stock ID system: data is carried by which of four *colours* (blue, white, red, black) appears in each of thirteen stacked stripe pairs on a large plate bolted to a railcar, read trackside by red/blue photomultiplier tubes under a xenon arc light at up to 60 mph — not a black/white module pattern. This SDK's `BitMatrix`, every renderer (`toImageData`/`toPNG`/`toSVG`) and the generic image reader's binarizer are all strictly monochrome by design; there is no colour channel to encode into or decode from. Representing KarTrak would need a genuinely new colour-aware rendering and decoding pipeline, not a new format module — a different, much larger project than adding a symbology within the existing architecture. (Separately: the system itself was withdrawn by AAR around 1977 for reliability problems in real trackside use, so even a from-scratch colour pipeline would be reviving a symbology its own standards body abandoned as unworkable.) |
-
-A future colour-aware rendering path (should one ever be built for a
-different reason) would need its own architectural proposal before this
-entry could move off this page — not just a per-format licence/provenance
-entry like everything else here.
-
 ## Adding a future format
 
 A future addition should update, in one atomic change:

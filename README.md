@@ -107,6 +107,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/dotcode` | `encodeDotCode`, `decodeDotCode`, `detectDotCode`, `detectAndDecodeDotCode` |
 | `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes`, `decodeHanXin`, `detectHanXin`, `detectAndDecodeHanXin` |
 | `@sythos/js_barcode_universal/composite` | `encodeGS1Composite`, `decodeGS1Composite`, `detectGS1Composite`, `detectAndDecodeGS1Composite` |
+| `@sythos/js_barcode_universal/kartrak` | `encodeKarTrak`, `decodeKarTrak`, `decodeKarTrakMatrix`, `detectKarTrak` — experimental, colour-coded, not part of `encode()`/`decode()` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -277,6 +278,7 @@ make that distinction visible.
 | ITF-6 | `itf6` | 1D | Linear | ✅ | ✅ [^5] |
 | JAN (Japanese Article Number) | `jan` | 1D | Linear | ✅ | ✅ [^1] |
 | Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
+| KarTrak ACI (colour, experimental — bounded Sythos profile) | `kartrak` | 1D | Linear | ✅ | ✅ [^6] |
 | KIX postal code | `kix` | 1D | Linear | ✅ | ✅ |
 | Matrix 2 of 5 | `matrix2of5` | 1D | Linear | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
@@ -309,9 +311,13 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-seven listed formats are writable and fifty-six are readable (EAN-2 and EAN-5 are
-parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
-pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
+Fifty-seven listed formats are writable and fifty-six are readable through the counted
+`listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
+parent-bound supplements). **KarTrak ACI sits outside that count**: it is colour-coded, not
+black/white, so it cannot go through `BitMatrix`-based `encode()`/`decode()` at all — it ships
+only as its own `@sythos/js_barcode_universal/kartrak` subpath, listed in the table above for
+visibility, not as the fifty-eighth entry in that count. **Pharmacode remains intentionally
+write-only in the generic image pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
 Code 25 family shares one numeric digit grammar while exposing explicit Standard/Industrial and
@@ -468,6 +474,17 @@ valid ITF-6 symbol legitimately returns both an `itf` result and a validated `it
 same payload, the same way a Code 32 symbol returns both `code32` and its Code 39 carrier.
 Requesting `itf6` alone returns nothing for a six-digit ITF fragment whose check digit does not
 validate.
+
+[^6]: KarTrak ACI (AAR Automatic Car Identification, 1967-1977) encodes each of 13 stacked label
+lines as which of four *colours* (blue, checkerboard/white, red, black) appears in its two
+stripes, not by bar width — so it needs `PolychromeMatrix`, not `BitMatrix`, and is not reachable
+through `encode()`/`decode()`, `listFormats()` or the `formats:` allow-list. Use
+`encodeKarTrak`/`decodeKarTrak`/`detectKarTrak` from `@sythos/js_barcode_universal/kartrak`
+directly. Reading is scoped honestly: `detectKarTrak` locates one axis-aligned plate against a
+roughly uniform background — no rotation or perspective search, the same "clean single-symbol"
+boundary already documented for MaxiCode. See `docs/formats/kartrak.md` and
+`docs/COLOR_PIPELINE_NOTES.md` for the full picture, including what real-world validation is
+still outstanding.
 
 ### Code 11 and MSI Plessey image reading
 

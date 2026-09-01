@@ -148,6 +148,7 @@ docs/
 │   ├── gs1-and-ean.md
 │   ├── databar-expanded.md
 │   ├── postal.md
+│   ├── kartrak.md
 │   ├── maxicode.md
 │   ├── codablockf.md
 │   ├── code16k.md

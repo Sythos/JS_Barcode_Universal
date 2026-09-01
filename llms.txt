@@ -85,6 +85,13 @@ remain parent-bound supplements.
 - USPS Intelligent Mail Barcode (IMb / OneCode) — write and read for 20-, 25-, 29- and 31-digit payloads with frame-check validation
 - EAN-2 and EAN-5 supplements — write and parent-bound read only; they require a validated EAN/UPC parent
 
+**KarTrak ACI (experimental, not in the 57/56 count above)** — colour-coded
+(blue/checkerboard/red/black stripe pairs, not bar width), so it cannot go
+through `BitMatrix`-based `encode()`/`decode()`/`listFormats()` at all. Write
+and read (axis-aligned single-plate detection only, no rotation/perspective
+search) through its own subpath, `@sythos/js_barcode_universal/kartrak`. See
+`docs/formats/kartrak.md` and `docs/COLOR_PIPELINE_NOTES.md`.
+
 ### 2D stacked formats
 
 Multiple linear-derived rows, not a true grid. GS1 DataBar Stacked and Stacked
@@ -150,6 +157,7 @@ subpaths are available for smaller imports, including:
 - `@sythos/js_barcode_universal/databar`
 - `@sythos/js_barcode_universal/hanxin`
 - `@sythos/js_barcode_universal/composite`
+- `@sythos/js_barcode_universal/kartrak` (experimental, colour-coded, not part of `encode()`/`decode()`)
 - `@sythos/js_barcode_universal/render`
 
 Typical usage:
