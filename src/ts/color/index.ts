@@ -30,11 +30,14 @@
  */
 
 /**
- * EXPERIMENTAL — not part of the public API. Not re-exported from
- * `src/ts/index.ts`, not in `package.json` `exports`, no registry entry.
- * See `docs/COLOR_PIPELINE_NOTES.md` for what this is, why it exists
- * separately from `BitMatrix`, and what remains before any format could be
- * built on it. Import only for internal testing during evaluation.
+ * EXPERIMENTAL, published for early/beta use. Available at the
+ * `@sythos/js_barcode_universal/color` subpath, but deliberately NOT
+ * re-exported from the package root (`src/ts/index.ts`) and NOT in
+ * `ONED_FORMATS`/`listFormats()`: it is not part of the stable API and its
+ * shape may still change. See `docs/COLOR_PIPELINE_NOTES.md` for what this
+ * is, why it exists separately from `BitMatrix`, its known limits, and
+ * what remains before a colour-coded format built on it (KarTrak ACI,
+ * `../kartrak/`) could be considered field-ready.
  *
  * @module color
  */

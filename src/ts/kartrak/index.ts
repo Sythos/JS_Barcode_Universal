@@ -62,9 +62,9 @@ import { classifyGrid } from '../color/classify.js';
 import { toColorImageData } from '../color/render.js';
 import { PerspectiveTransform } from '../image/perspective.js';
 
-// Re-exported so a consumer of this format never needs to reach into the
-// still-experimental, unwired `../color/` primitives directly: this subpath
-// is the one supported, public surface for working with a KarTrak plate.
+// Re-exported for convenience, so a consumer of this format doesn't need a
+// second import from the separate (still experimental) `../color/`
+// subpath just to render or hold the matrix this module produces.
 export { PolychromeMatrix, toColorImageData };
 
 export const KARTRAK_PROFILE = 'sythos-kartrak-aci';

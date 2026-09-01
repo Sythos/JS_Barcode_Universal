@@ -78,6 +78,10 @@
       "import": "./src/js/kartrak/index.js",
       "types": "./src/ts/kartrak/index.d.ts"
     },
+    "./color": {
+      "import": "./src/js/color/index.js",
+      "types": "./src/ts/color/index.d.ts"
+    },
     "./aztec": {
       "import": "./src/js/aztec/index.js",
       "types": "./src/ts/aztec/index.d.ts"

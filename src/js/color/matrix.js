@@ -29,11 +29,13 @@
  * Original work. No code from any other barcode implementation.
  */
 /**
- * EXPERIMENTAL — not part of the public API. Not exported from
- * `src/ts/index.ts`, not registered in `ONED_FORMATS`, not added to
- * `package.json` `exports`. This is infrastructure being validated before
- * any format is built on it; see `docs/COLOR_PIPELINE_NOTES.md` for status
- * and what would need to happen before this ships as a real capability.
+ * EXPERIMENTAL, published for early/beta use at the
+ * `@sythos/js_barcode_universal/color` subpath. Not exported from the
+ * package root (`src/ts/index.ts`) and not registered in `ONED_FORMATS` —
+ * it is not part of the stable API and its shape may still change. See
+ * `docs/COLOR_PIPELINE_NOTES.md` for status, known limits, and what would
+ * need to happen before a format built on this (`../kartrak/`) is
+ * field-ready.
  *
  * `PolychromeMatrix` generalises `BitMatrix` from one bit per module to one
  * small palette-index per module, for symbologies where colour (not just

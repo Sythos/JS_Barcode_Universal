@@ -29,7 +29,7 @@
  * Original work. No code from any other barcode implementation.
  */
 /**
- * EXPERIMENTAL — not part of the public API. See `matrix.ts`'s module
+ * EXPERIMENTAL, published for early/beta use. See `matrix.ts`'s module
  * comment for status.
  *
  * Renders a `PolychromeMatrix` to an `ImageData`-shaped raster, the colour

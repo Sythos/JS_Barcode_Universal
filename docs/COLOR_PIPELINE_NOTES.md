@@ -1,9 +1,11 @@
 # Colour-aware rendering/decoding — status notes
 
-Internal engineering notes, not a user-facing capability yet. Excluded from
-the published documentation site (`mkdocs.yml` `exclude_docs`). This
-records why this exists, what was built, what was measured, and what is
-still missing before any format could ship on top of it.
+Internal engineering notes for the experimental `color/` subpath and the
+KarTrak ACI format built on it (`docs/formats/kartrak.md` is the
+user-facing page for that one; this file is excluded from the published
+documentation site via `mkdocs.yml` `exclude_docs`). This records why
+`color/` exists, what was built, what was measured, and what is still
+missing before it — or a format built on it — is genuinely field-ready.
 
 ## Why this exists
 
@@ -15,14 +17,16 @@ monochrome by design. This is a first pass at the infrastructure a
 colour-aware format would need, built and tested in isolation from the
 rest of the SDK so nothing already shipped is put at risk.
 
-**Status: experimental, not wired into the public API.** No format uses
-this. It is not exported from `src/ts/index.ts`, not in `package.json`
-`exports`, not registered in `ONED_FORMATS`. The source files ship in the
-npm tarball only because `package.json`'s `files` list includes all of
-`src/ts` wholesale — they are not importable through any documented
-subpath, and `tools/bundle.mjs` (which walks the graph from the real entry
-point) never reaches them, so `bundle/` and the public surface are
-unaffected.
+**Status: experimental, published for early/beta use.** Available at the
+`@sythos/js_barcode_universal/color` subpath (and re-exported for
+convenience from `@sythos/js_barcode_universal/kartrak`, the one format
+built on it so far). Deliberately NOT exported from the package root
+(`src/ts/index.ts`) and NOT registered in `ONED_FORMATS`/`listFormats()`:
+it is not part of the stable API, and its shape may still change as real
+field feedback comes in. `tools/bundle.mjs` (which walks the graph from
+the real entry point) never reaches it through the root entry, so the
+default `bundle/` output and the counted format registry are unaffected —
+only an explicit import of the `color` or `kartrak` subpath pulls it in.
 
 ## What was built
 

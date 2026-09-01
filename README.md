@@ -108,6 +108,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes`, `decodeHanXin`, `detectHanXin`, `detectAndDecodeHanXin` |
 | `@sythos/js_barcode_universal/composite` | `encodeGS1Composite`, `decodeGS1Composite`, `detectGS1Composite`, `detectAndDecodeGS1Composite` |
 | `@sythos/js_barcode_universal/kartrak` | `encodeKarTrak`, `decodeKarTrak`, `decodeKarTrakMatrix`, `detectKarTrak` — experimental, colour-coded, not part of `encode()`/`decode()` |
+| `@sythos/js_barcode_universal/color` | `PolychromeMatrix`, `toColorImageData`, `classifyGrid` — the experimental colour primitives KarTrak is built on; not registered in `listFormats()`, no stability guarantee yet |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |

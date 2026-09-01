@@ -57,8 +57,9 @@ const image = toColorImageData(matrix, { scale: 10, margin: 10 });
 ```
 
 (`toColorImageData` and `PolychromeMatrix` are re-exported from this
-subpath so nothing else needs to reach into the still-experimental,
-unwired `color/` primitives directly.)
+subpath for convenience — they also live at the separate, equally
+experimental `@sythos/js_barcode_universal/color` subpath, see
+`docs/COLOR_PIPELINE_NOTES.md`.)
 
 The worked example above reproduces the photograph shown on Wikipedia's
 "KarTrak" article, captioned *"Start 8350199918 Stop 5"* — this SDK's

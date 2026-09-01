@@ -30,7 +30,7 @@
  */
 
 /**
- * EXPERIMENTAL — not part of the public API. See `matrix.ts`'s module
+ * EXPERIMENTAL, published for early/beta use. See `matrix.ts`'s module
  * comment for status.
  *
  * Classifies a known module grid in a *raw* (not binarized) RGBA image

@@ -158,6 +158,7 @@ subpaths are available for smaller imports, including:
 - `@sythos/js_barcode_universal/hanxin`
 - `@sythos/js_barcode_universal/composite`
 - `@sythos/js_barcode_universal/kartrak` (experimental, colour-coded, not part of `encode()`/`decode()`)
+- `@sythos/js_barcode_universal/color` (experimental colour primitives KarTrak is built on; no stability guarantee yet)
 - `@sythos/js_barcode_universal/render`
 
 Typical usage:
