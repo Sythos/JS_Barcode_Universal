@@ -25,6 +25,7 @@ needs to be printed or displayed at a useful height.
 | Industrial 2 of 5 | `industrial2of5` | ✅ | ✅ | Two-wide-bar digit grammar with optional modulo-10 check digit. |
 | IATA 2 of 5 | `iata2of5` | ✅ | ✅ | Same digit grammar with the shorter IATA guard frame. |
 | Code 2 of 5 Data Logic (China Post) | `datalogic2of5` | ✅ | ✅ | Width-modulated digit grammar with the shorter IATA-style guard; `wideRatio` is `3..8`, not `2..8`. |
+| Matrix 2 of 5 | `matrix2of5` | ✅ | ✅ | Same width-modulated digit grammar as Data Logic 2 of 5 with its own, longer guard frame; `wideRatio` is also `3..8`. |
 | Facing Identification Mark (FIM) | `fim` | ✅ | ✅ | Fixed enum of five USPS-defined nine-position patterns (`A`-`E`), not a general data carrier. |
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
@@ -64,6 +65,7 @@ import {
   encodeIndustrial2of5,
   encodeIATA2of5,
   encodeDataLogic2of5,
+  encodeMatrix2of5,
   encodeFIM,
   encodeITF6,
   encodeCode32,
@@ -87,6 +89,7 @@ const telepenNumeric = encodeTelepenNumeric('00112738999X');
 const industrial = encodeIndustrial2of5('01234567', { checkDigit: true });
 const iata = encodeIATA2of5('31415926');
 const dataLogic = encodeDataLogic2of5('86420', { checkDigit: true });
+const matrix2of5 = encodeMatrix2of5('86420', { checkDigit: true });
 const fim = encodeFIM('C');
 const itf6 = encodeITF6('12345');
 const code32 = encodeCode32('01234567');
@@ -115,6 +118,12 @@ Its `wideRatio` accepts `3..8`, not `2..8` — a 2:1 ratio makes this digit
 table's mirrored reading collide with a different valid full-length reading,
 so both the writer and reader reject it. An unchecked read shorter than five
 digits is also rejected as not distinctive enough to trust.
+
+`matrix2of5` (alias `matrix-2-of-5`) shares that exact width-modulated digit
+table with Data Logic 2 of 5 but pairs it with its own, longer guard frame.
+The same `3..8` `wideRatio` restriction and five-digit minimum apply, for
+the same reason: the collision risk lives in the shared digit table, not in
+either format's guard.
 
 ```js
 import { decode, encode, toImageData } from '@sythos/js_barcode_universal';

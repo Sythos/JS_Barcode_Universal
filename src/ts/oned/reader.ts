@@ -1195,9 +1195,9 @@ function findCode25Start(row, startPattern, preferLeftmost = false, threshold = 
  * callers can select the terminology used by their data source.
  *
  * @param {Uint8Array} row
- * @param {'standard'|'industrial'|'iata'|'datalogic'} variant
+ * @param {'standard'|'industrial'|'iata'|'datalogic'|'matrix'} variant
  * @param {object} options
- * @returns {{format:'industrial2of5'|'iata2of5'|'datalogic2of5',text:string,checkDigit:boolean}|null}
+ * @returns {{format:'industrial2of5'|'iata2of5'|'datalogic2of5'|'matrix2of5',text:string,checkDigit:boolean}|null}
  */
 function decodeCode25Variant(row, variant, options = {}) {
   const profile = CODE25_VARIANTS[variant];
@@ -1207,7 +1207,8 @@ function decodeCode25Variant(row, variant, options = {}) {
   // acceptance threshold to avoid scoring well against a fragment of the
   // symbol's own data (including when a mirrored retry scans it backwards).
   const threshold = 0.38;
-  const ratioCandidates = variant === 'datalogic' ? CODE25_DATALOGIC_RATIO_CANDIDATES : CODE25_RATIO_CANDIDATES;
+  const isWidthModulated = variant === 'datalogic' || variant === 'matrix';
+  const ratioCandidates = isWidthModulated ? CODE25_DATALOGIC_RATIO_CANDIDATES : CODE25_RATIO_CANDIDATES;
   const start = findCode25Start(row, profile.start, variant === 'datalogic', threshold);
   if (!start) return null;
 
@@ -1217,15 +1218,16 @@ function decodeCode25Variant(row, variant, options = {}) {
   // The IATA and Data Logic start guards are all narrow bars and therefore
   // carry no ratio information. Infer the ratio from the first data digit
   // instead of hard-coding the first candidate (which would make a 3:1
-  // symbol look like a truncated stop pattern).
+  // symbol look like a truncated stop pattern). Matrix 2 of 5's start guard
+  // has a genuine wide element, so its ratio is already known.
   let ratio = variant === 'iata' || variant === 'datalogic' ? undefined : start.ratio;
   const counters = new Array(digitPatterns[0].length).fill(0);
-  // Data Logic's short, low-redundancy digit grammar can make the tail of one
-  // digit plus the head of the next coincidentally match the stop pattern
-  // exactly. A valid digit reading one position further is always the more
-  // trustworthy interpretation there, so check for a digit before accepting
-  // a stop rather than the other way round.
-  const preferDigitOverStop = variant === 'datalogic';
+  // Data Logic and Matrix 2 of 5 share a short, low-redundancy digit grammar
+  // that can make the tail of one digit plus the head of the next
+  // coincidentally match the stop pattern exactly. A valid digit reading one
+  // position further is always the more trustworthy interpretation there, so
+  // check for a digit before accepting a stop rather than the other way round.
+  const preferDigitOverStop = isWidthModulated;
 
   for (let count = 0; count < CODE25_MAX_DIGITS; count++) {
     const matchStop = () => {
@@ -1287,11 +1289,14 @@ function decodeCode25Variant(row, variant, options = {}) {
     offset += counters.reduce((sum, width) => sum + width, 0);
   }
 
-  // Data Logic's guard carries no ratio information and its digit grammar is
-  // shorter than the discrete Industrial table, so a very short body is not
-  // distinctive enough to trust without a check digit (mirrors how other
-  // narrow-guard readers in this suite reject very short ambiguous reads).
-  const minDigits = variant === 'datalogic' ? 5 : 1;
+  // Data Logic and Matrix 2 of 5's digit grammar is shorter than the
+  // discrete Industrial table, so a very short body is not distinctive
+  // enough to trust without a check digit (mirrors how other narrow-guard
+  // readers in this suite reject very short ambiguous reads). Matrix 2 of 5
+  // was found to false-match a fragment of an unrelated Code 128 symbol at
+  // one digit during testing; five digits closes that gap the same way it
+  // already does for Data Logic.
+  const minDigits = isWidthModulated ? 5 : 1;
   if (!stop || digits.length < minDigits) return null;
   const stopEnd = stop.end;
   let nextDark = stopEnd;
@@ -1329,6 +1334,11 @@ export function decodeIATA2of5(row, options = {}) {
 /** Decode Code 2 of 5 Data Logic (also known as China Post). */
 export function decodeDataLogic2of5(row, options = {}) {
   return decodeCode25Variant(row, 'datalogic', options);
+}
+
+/** Decode Matrix 2 of 5. */
+export function decodeMatrix2of5(row, options = {}) {
+  return decodeCode25Variant(row, 'matrix', options);
 }
 
 /** Decode the canonical Standard 2 of 5 frame. */
@@ -1484,6 +1494,7 @@ const DECODERS = [
   ['industrial2of5', decodeIndustrial2of5],
   ['iata2of5', decodeIATA2of5],
   ['datalogic2of5', decodeDataLogic2of5],
+  ['matrix2of5', decodeMatrix2of5],
   ['fim', decodeFIM],
   ['itf', decodeITF],
   ['itf6', decodeITF6],
@@ -1544,7 +1555,8 @@ function checksumStatus(format, options, result = null) {
     return options.profile === 'camera' || options.checkDigit === true ? true : null;
   }
   if (format === 'code32' || format === 'pzn' || format === 'itf6') return true;
-  if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5') {
+  if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5'
+      || format === 'matrix2of5') {
     return result?.checkDigit === true ? true : null;
   }
   if (format === 'telepen' || format === 'telepennumeric') return true;
@@ -1608,6 +1620,7 @@ export function decodeOneD(image, options = {}) {
     if (id === 'datalogic2of5') {
       return enabled.has('data-logic-2-of-5') || enabled.has('chinapost') || enabled.has('china-post');
     }
+    if (id === 'matrix2of5') return enabled.has('matrix-2-of-5');
     if (id === 'fim') return enabled.has('facing-identification-mark');
     if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
       return enabled.has('ean2') || enabled.has('ean5') ||
@@ -1664,7 +1677,7 @@ export function decodeOneD(image, options = {}) {
           // Code 11 and MSI checks are optional in their base standards, but
           // a camera frame cannot safely promote their short unchecked forms.
           const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi'
-            || id === 'industrial2of5' || id === 'iata2of5' || id === 'datalogic2of5')
+            || id === 'industrial2of5' || id === 'iata2of5' || id === 'datalogic2of5' || id === 'matrix2of5')
             ? { ...options, checkDigit: true }
             : options;
           result = decoder(scan, decoderOptions);
@@ -1711,6 +1724,8 @@ export function decodeOneD(image, options = {}) {
           } else if (result.format === 'datalogic2of5') {
             if (!enabled.has('datalogic2of5') && !enabled.has('data-logic-2-of-5')
               && !enabled.has('chinapost') && !enabled.has('china-post')) continue;
+          } else if (result.format === 'matrix2of5') {
+            if (!enabled.has('matrix2of5') && !enabled.has('matrix-2-of-5')) continue;
           } else if (result.format === 'fim') {
             if (!enabled.has('fim') && !enabled.has('facing-identification-mark')) continue;
           } else if (!enabled.has(result.format)) {

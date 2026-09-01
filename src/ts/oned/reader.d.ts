@@ -132,6 +132,14 @@ export declare function decodeDataLogic2of5(row: Uint8Array, options?: {
     text: string;
     checkDigit: boolean;
 } | null;
+export declare function decodeMatrix2of5(row: Uint8Array, options?: {
+    checkDigit?: boolean;
+    profile?: 'camera';
+}): {
+    format: 'matrix2of5';
+    text: string;
+    checkDigit: boolean;
+} | null;
 /** Decode a Facing Identification Mark (USPS FIM). */
 export declare function decodeFIM(row: Uint8Array): {
     format: 'fim';

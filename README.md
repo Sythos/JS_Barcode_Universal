@@ -278,6 +278,7 @@ make that distinction visible.
 | JAN (Japanese Article Number) | `jan` | 1D | Linear | ✅ | ✅ [^1] |
 | Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
 | KIX postal code | `kix` | 1D | Linear | ✅ | ✅ |
+| Matrix 2 of 5 | `matrix2of5` | 1D | Linear | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | Linear | ✅ | — |
 | PZN-7 / PZN-8 | `pzn` | 1D | Linear | ✅ | ✅ |
@@ -307,16 +308,16 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-five listed formats are writable and fifty-four are readable (EAN-2 and EAN-5 are
+Fifty-six listed formats are writable and fifty-five are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
 Code 25 family shares one numeric digit grammar while exposing explicit Standard/Industrial and
-IATA guard profiles; Code 2 of 5 Data Logic (China Post) has its own width-modulated digit grammar
-and rejects the 2:1 wide:narrow ratio, which collides with a different valid reading once the
-symbol is mirrored. Code 32 and PZN validate their pharmaceutical check digits before a read is
-returned. Facing Identification Mark (`fim`) is not a general data carrier: it selects one of five
+IATA guard profiles; Code 2 of 5 Data Logic (China Post) and Matrix 2 of 5 share a different,
+width-modulated digit grammar and both reject the 2:1 wide:narrow ratio, which collides with a
+different valid reading once the symbol is mirrored — they differ only in their guard frame. Code
+32 and PZN validate their pharmaceutical check digits before a read is returned. Facing Identification Mark (`fim`) is not a general data carrier: it selects one of five
 fixed USPS-defined nine-position patterns (`A`-`E`), each a palindrome, so there is no reversed-read
 ambiguity between them. Postal formats use operator-specific four-state alphabets with strict
 framing and checksum validation; KIX deliberately has no check character, while Australia Post
@@ -505,7 +506,7 @@ rejects ambiguous candidates, verifies parity and the modulo-127 check value, an
 returns no partial result. A camera-profile read additionally requires a coherent
 quiet-zone-qualified symbol across repeated scan samples.
 
-### Code 25, Industrial 2 of 5, IATA 2 of 5 and Data Logic 2 of 5
+### Code 25, Industrial 2 of 5, IATA 2 of 5, Data Logic 2 of 5 and Matrix 2 of 5
 
 The Code 25 family is available from both the root dispatcher and the `oned`
 subpath. `standard2of5` (also `code2of5`) and `industrial2of5` use the same
@@ -543,6 +544,12 @@ ratio makes this specific digit table's mirrored reading collide with a
 different valid full-length reading, so both the writer and reader reject it.
 Reads shorter than five digits without a check digit are rejected as not
 distinctive enough to trust.
+
+`format: 'matrix2of5'` (alias: `matrix-2-of-5`) shares that exact
+width-modulated digit grammar with Data Logic 2 of 5 but uses its own,
+longer guard frame — the same `wideRatio: 3..8` restriction and five-digit
+minimum apply, for the same reason (the digit table, not the guard, is what
+creates the mirrored-reading collision at 2:1).
 
 ### Code 32 and PZN
 

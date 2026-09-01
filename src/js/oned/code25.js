@@ -34,9 +34,10 @@
  * Code 25 (also called Standard or Industrial 2 of 5) represents each digit
  * with five alternating bar/space elements, exactly two of the bars being wide.
  * IATA 2 of 5 uses the same digit grammar with a shorter start/stop frame.
- * Data Logic 2 of 5 (also known as China Post) uses a different digit
- * grammar in which both the bars and the spaces carry width information,
- * combined with the same short IATA-style guard frame.
+ * Data Logic 2 of 5 (also known as China Post) and Matrix 2 of 5 both use a
+ * different digit grammar in which both the bars and the spaces carry width
+ * information; Data Logic pairs it with the short IATA-style guard frame,
+ * while Matrix 2 of 5 uses its own longer guard.
  * The width descriptions below are expressed as module counts rather than
  * copied implementation tables and are checked by the focused test suite.
  *
@@ -51,15 +52,16 @@ export const CODE25_DIGIT_PATTERNS = [
     '3111113111', '1131113111',
 ];
 /**
- * The ten Data Logic digit patterns: three bars and three spaces, both
+ * The ten width-modulated digit patterns: three bars and three spaces, both
  * widths carrying information, unlike the discrete grammar above where only
- * the bars vary.
+ * the bars vary. Shared by Data Logic 2 of 5 and Matrix 2 of 5, which differ
+ * only in their guard frame.
  */
 export const CODE25_DATALOGIC_DIGIT_PATTERNS = [
     '113311', '311131', '131131', '331111', '113131',
     '313111', '133111', '111331', '311311', '131311',
 ];
-/** Start/stop run widths for the four public names. */
+/** Start/stop run widths for the five public names. */
 export const CODE25_VARIANTS = {
     // Code 25 and Industrial 2 of 5 share the discrete two-wide-bar grammar
     // and canonical industrial frame. `standard` is the friendly API alias.
@@ -79,6 +81,13 @@ export const CODE25_VARIANTS = {
     // digit grammar (both bars and spaces vary).
     datalogic: {
         id: 'datalogic2of5', label: 'Code 2 of 5 Data Logic', start: '1111', stop: '311',
+        digitPatterns: CODE25_DATALOGIC_DIGIT_PATTERNS,
+    },
+    // Matrix 2 of 5 uses the same width-modulated digit grammar as Data Logic
+    // but its own, longer guard frame (verified against Zint's independent
+    // open-source implementation as a black-box reference, not copied).
+    matrix: {
+        id: 'matrix2of5', label: 'Matrix 2 of 5', start: '311111', stop: '31111',
         digitPatterns: CODE25_DATALOGIC_DIGIT_PATTERNS,
     },
 };
@@ -128,6 +137,8 @@ function resolveVariant(value) {
     if (variant === 'datalogic' || variant === 'datalogic2of5' || variant === 'data-logic-2-of-5'
         || variant === 'chinapost' || variant === 'china-post')
         return 'datalogic';
+    if (variant === 'matrix' || variant === 'matrix2of5' || variant === 'matrix-2-of-5')
+        return 'matrix';
     if (variant === 'standard' || variant === 'code2of5' || variant === 'code-2-of-5' || variant === 'standard2of5' || variant === 'standard-2-of-5')
         return 'standard';
     throw new EncodeError(`Code 25: unknown variant "${value}"`);
@@ -150,11 +161,11 @@ export function encodeCode25(value, options = {}) {
     const profile = CODE25_VARIANTS[variant];
     const label = profile.label;
     const ratio = options.wideRatio ?? 3;
-    // A 2:1 wide:narrow ratio makes the Data Logic digit table's reversed
-    // reading collide with a different valid full-length reading (verified by
-    // exhaustive round-trip testing); 3:1 and up do not exhibit this and are
-    // the ratios documented in practice for this symbology.
-    const minRatio = variant === 'datalogic' ? 3 : 2;
+    // A 2:1 wide:narrow ratio makes the shared width-modulated digit table's
+    // reversed reading collide with a different valid full-length reading
+    // (verified by exhaustive round-trip testing); 3:1 and up do not exhibit
+    // this and are the ratios documented in practice for this symbology.
+    const minRatio = variant === 'datalogic' || variant === 'matrix' ? 3 : 2;
     if (!Number.isInteger(ratio) || ratio < minRatio || ratio > 8) {
         throw new EncodeError(`${label}: wideRatio must be an integer in ${minRatio}..8`);
     }
@@ -182,6 +193,10 @@ export function encodeIATA2of5(value, options = {}) {
 /** Encode Code 2 of 5 Data Logic (also known as China Post). */
 export function encodeDataLogic2of5(value, options = {}) {
     return encodeCode25(value, { ...options, variant: 'datalogic' });
+}
+/** Encode Matrix 2 of 5. */
+export function encodeMatrix2of5(value, options = {}) {
+    return encodeCode25(value, { ...options, variant: 'matrix' });
 }
 /** Internal limit used by the scanline reader and its safety checks. */
 export const CODE25_MAX_DIGITS = MAX_CODE25_DIGITS;

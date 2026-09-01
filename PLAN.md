@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-55 listed formats write, 54 read; PDF417 image reading is now enabled after synthetic, black-box and
+56 listed formats write, 55 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -70,8 +70,8 @@ remain outside the validated robustness envelope.
 |---|---|
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
-| **1D** — EAN-13/8, UPC-A/E, ISBN, JAN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, FIM, ITF-6, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode and the seven postal 4-state formats | ✅ 1D suite |
-| **1D readers** — EAN-13/8, UPC-A/E, ISBN, JAN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, FIM, ITF-6, Codabar, Code 11, MSI, Code 32, PZN, Telepen, POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post, IMb, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
+| **1D** — EAN-13/8, UPC-A/E, ISBN, JAN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, Matrix 2 of 5, FIM, ITF-6, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode and the seven postal 4-state formats | ✅ 1D suite |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, JAN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, Matrix 2 of 5, FIM, ITF-6, Codabar, Code 11, MSI, Code 32, PZN, Telepen, POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post, IMb, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
@@ -162,6 +162,7 @@ format-by-format in `plan_v2.md` at the parent workspace root (outside `git/`).
 | M16 | Facing Identification Mark (FIM) | Fixed enum of five USPS-defined nine-position palindrome patterns (A-E), not a general data carrier; no check digit; a tightened scale-invariant matcher with an absolute-pixel quiet-zone floor to keep a naturally short nine-module pattern from false-matching camera noise | Pattern-table sanity test, full round-trip with the dispatcher alias, and an 800-trial adversarial sweep (random noise and checkerboard textures at multiple sizes/scales) confirming zero false positives, run during implementation after an initial false-positive was caught by the existing noise-rejection suite |
 | M17 | ITF-6 | Not a new symbology: the existing ITF grammar constrained to six digits with a mandatory modulo-10 check digit (the JIS X 0502 add-on for ITF-14/ITF-16), reusing the existing EAN-style check digit routine; kept as its own `itf6` id rather than folding into the base `itf` format, so an unrestricted read legitimately reports both, the same way a Code 32 symbol reports both `code32` and its Code 39 carrier | Encoder length/check-digit validation, full round-trip, dual-report confirmation against the shared grammar, and rejection of a random six-digit ITF fragment whose check digit does not validate |
 | M18 | JAN | Not a new symbology or check digit algorithm: a thin prefix-validating wrapper (45/49 GS1 range) over the existing EAN-13 encoder, following the exact shared-decoder pattern already used for ISBN — a JAN read is reported as `ean13`, with `jan` available as a `formats` filter requiring the assigned prefix | Writer round-trip against `encodeEAN13` for byte-identical output, prefix/length validation, reader test confirming the `jan` filter and rejection of an ordinary out-of-range EAN-13 |
+| M19 | Matrix 2 of 5 | Reuses the width-modulated digit table already implemented for Data Logic 2 of 5 with its own, longer guard frame; the same `wideRatio: 3..8` restriction, five-digit minimum and digit-before-stop preference apply, for the same shared-digit-table collision reason | Round-trip with alias, camera-profile check-digit/damage rejection, cross-format non-collision check against a Data Logic symbol, and re-run of the same adversarial sweep (payloads × scales × ratios, noise) used for Data Logic — plus a real false positive against a Code 128 symbol found and fixed via a five-digit minimum, mirroring the Data Logic fix |
 
 ### Remaining
 

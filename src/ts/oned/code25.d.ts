@@ -10,7 +10,7 @@
  * Original work. No code from any other barcode implementation.
  */
 import { BitMatrix } from '../core/bit-matrix.js';
-export type Code25Variant = 'standard' | 'industrial' | 'iata' | 'datalogic';
+export type Code25Variant = 'standard' | 'industrial' | 'iata' | 'datalogic' | 'matrix';
 export declare const CODE25_DIGIT_PATTERNS: readonly [
     '1111313111', '3111111131', '1131111131', '3131111111', '1111311131',
     '3111311111', '1131311111', '1111113131', '3111113111', '1131113111'
@@ -20,7 +20,7 @@ export declare const CODE25_DATALOGIC_DIGIT_PATTERNS: readonly [
     '313111', '133111', '111331', '311311', '131311'
 ];
 export declare const CODE25_VARIANTS: Readonly<Record<Code25Variant, {
-    readonly id: 'industrial2of5' | 'iata2of5' | 'datalogic2of5';
+    readonly id: 'industrial2of5' | 'iata2of5' | 'datalogic2of5' | 'matrix2of5';
     readonly label: string;
     readonly start: string;
     readonly stop: string;
@@ -46,6 +46,10 @@ export declare function encodeIATA2of5(value: string, options?: {
     wideRatio?: number;
 }): BitMatrix;
 export declare function encodeDataLogic2of5(value: string, options?: {
+    checkDigit?: boolean;
+    wideRatio?: number;
+}): BitMatrix;
+export declare function encodeMatrix2of5(value: string, options?: {
     checkDigit?: boolean;
     wideRatio?: number;
 }): BitMatrix;

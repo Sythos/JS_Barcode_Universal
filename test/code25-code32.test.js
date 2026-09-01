@@ -13,6 +13,7 @@ import {
   encodeDataLogic2of5,
   encodeIATA2of5,
   encodeIndustrial2of5,
+  encodeMatrix2of5,
   encodePZN,
   encodeStandard2of5,
   toImageData,
@@ -100,6 +101,42 @@ test('Data Logic 2 of 5 camera profile requires a valid check digit and quiet zo
   assert.equal(decode(rendered(damaged, { scale: 2 }), { formats: ['datalogic2of5'], profile: 'camera' }).length, 0);
 });
 
+test('Matrix 2 of 5 shares the width-modulated digit table with its own longer guard frame', () => {
+  const payload = '01234567';
+  const matrix = encodeMatrix2of5(payload, { checkDigit: true });
+  const image = rendered(matrix);
+
+  const checked = decode(image, { formats: ['matrix2of5'], checkDigit: true });
+  assert.equal(checked.length, 1);
+  assert.deepEqual(checked[0], { format: 'matrix2of5', text: payload, checkDigit: true });
+
+  const literal = decode(image, { formats: ['matrix2of5'] });
+  assert.equal(literal.length, 1);
+  assert.equal(literal[0].text, `${payload}${code25CheckDigit(payload)}`);
+
+  const aliased = decode(image, { formats: ['matrix-2-of-5'], checkDigit: true });
+  assert.equal(aliased.length, 1);
+  assert.equal(aliased[0].format, 'matrix2of5');
+
+  // A Data Logic symbol using the same digit table must not be misread as
+  // Matrix 2 of 5, and vice versa — only the guard frame differs.
+  const dataLogicImage = rendered(encodeDataLogic2of5(payload, { checkDigit: true }));
+  assert.deepEqual(decode(dataLogicImage, { formats: ['matrix2of5'] }), []);
+});
+
+test('Matrix 2 of 5 camera profile requires a valid check digit and quiet zone', () => {
+  const matrix = encodeMatrix2of5('86420', { checkDigit: true, wideRatio: 4 });
+  const image = rendered(matrix, { scale: 2 });
+  const result = decode(image, { formats: ['matrix2of5'], profile: 'camera' });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].text, '86420');
+  assert.equal(result[0].quality.checksum, true);
+
+  const damaged = matrix.clone();
+  damaged.flip(Math.floor(damaged.width / 2), 0);
+  assert.equal(decode(rendered(damaged, { scale: 2 }), { formats: ['matrix2of5'], profile: 'camera' }).length, 0);
+});
+
 test('IATA 2 of 5 supports the same digit grammar with its own frame', () => {
   const payload = '31415926';
   const matrix = encodeIATA2of5(payload, { checkDigit: true, wideRatio: 4 });
@@ -163,7 +200,7 @@ test('PZN-7 and PZN-8 preserve their variant and check digit', () => {
 test('new aliases are exposed by the top-level writer dispatcher', () => {
   for (const format of ['code32', 'italian-pharmacode', 'pzn', 'pzn7', 'pzn8',
     'code2of5', 'standard2of5', 'standard-2-of-5', 'industrial2of5',
-    'industrial-2-of-5', 'iata2of5', 'iata-2-of-5', 'datalogic2of5']) {
+    'industrial-2-of-5', 'iata2of5', 'iata-2-of-5', 'datalogic2of5', 'matrix2of5']) {
     assert.doesNotThrow(() => encode(format === 'code32' || format === 'italian-pharmacode'
       ? '01234567' : format.startsWith('pzn') ? (format === 'pzn8' ? '1234567' : '123456') : '1234', { format }));
   }
