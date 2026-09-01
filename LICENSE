@@ -271,6 +271,15 @@ status too unclear to redistribute an implementation with confidence:
                                found published anywhere; no major
                                open-source library implements it either
                                                          [TO VERIFY]
+    Code 49 ................... founding patent expired and the
+                               ANSI/AIM BC6-2000 spec is genuinely
+                               public, but its own Appendix F -- the
+                               2401-entry symbol-character bar-pattern
+                               table -- prints only a 260-row sample and
+                               states the complete table AND the
+                               generation program are a paid/request-only
+                               AIM deliverable, not publicly derivable
+                                                         [TO VERIFY]
     Ultracode ............... status unresolved            [TO VERIFY]
     DENSO FrameQR ........... proprietary format; this project implements
                               only a separate FrameQR Code profile

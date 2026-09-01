@@ -68,6 +68,25 @@ not sufficiently clear to redistribute with confidence:
   oversight. Secondary sources describe only high-level parameters (row
   count, mod-43 checksum), not the row-indicator bit encoding or full
   checksum construction needed to implement it without guessing.
+- Code 49: the originating patent (US 4,794,239) is expired and the
+  normative ANSI/AIM BC6-2000 specification is genuinely public — its row
+  structure, checksum formulas (weighted sums modulo 2401) and character
+  set were fully verified from the spec's own pages. The blocker is
+  narrower and unusual: the spec's own Appendix F, which maps each of the
+  2401 possible symbol-character values to its physical bar/space
+  pattern, prints only a 260-row sample and states plainly that "a
+  reference diskette containing this table, and the programs necessary to
+  generate it, is available from AIM USA" — meaning even the *generation
+  algorithm*, not just the complete data, is a paid/request-only
+  deliverable, not something derivable from the public specification.
+  Reverse-engineering an exact rule from the 260-row sample was attempted
+  and did not yield one reproducible with confidence across the full
+  range. Zint hardcodes a complete 2401-entry table without documenting
+  how it was obtained; this project only ever uses independent
+  implementations as black-box verification oracles, never as a source
+  to copy code or data tables from (see `NOTICE.md`), and the fact that
+  even Zint's own author needed to hardcode rather than compute the table
+  is itself evidence no simple closed-form generator exists publicly.
 - Ultracode
 
 The list is maintained together with the legal-review notes in
