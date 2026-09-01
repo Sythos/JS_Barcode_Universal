@@ -15,6 +15,7 @@ docs_dir: docs
 # is reviewed and promoted into the public documentation set.
 exclude_docs: |
   DOCS_ARCHITECTURE.md
+  COLOR_PIPELINE_NOTES.md
 
 theme:
   name: material
