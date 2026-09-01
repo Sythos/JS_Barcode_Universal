@@ -50,7 +50,7 @@ console.log(found[0].text);   // 'https://example.com'
 
 There are four ways in, and none of them needs a build step.
 
-> Full documentation lives at [sythos.github.io](https://sythos.github.io/).
+> Full documentation lives at [sythos.github.io/JS_Barcode_Universal](https://sythos.github.io/JS_Barcode_Universal/).
 
 ### 1. npm
 
