@@ -1795,6 +1795,28 @@ function encodeITF14(value) {
     }
     return encodeITF(digits);
 }
+/**
+ * ITF-6, the JIS X 0502 add-on for ITF-14/ITF-16: five significant digits
+ * plus a mandatory modulo-10 check digit, using the same alternating 3/1
+ * weighting as ITF-14 and EAN.
+ *
+ * @param {string} value 5 or 6 digits.
+ * @returns {BitMatrix}
+ */
+function encodeITF6(value) {
+    requireDigits(value, 'ITF-6');
+    let digits = value;
+    if (digits.length === 5) {
+        digits += String(ean13CheckDigit(digits));
+    }
+    else if (digits.length !== 6) {
+        throw new EncodeError(`ITF-6: needs 5 or 6 digits, got ${digits.length}`);
+    }
+    else if (ean13CheckDigit(digits.slice(0, 5)) !== Number(digits[5])) {
+        throw new EncodeError('ITF-6: invalid check digit');
+    }
+    return encodeITF(digits);
+}
 /* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
@@ -1967,6 +1989,7 @@ __exports.code128DataCodewords = code128DataCodewords;
 __exports.encodeCode128 = encodeCode128;
 __exports.encodeITF = encodeITF;
 __exports.encodeITF14 = encodeITF14;
+__exports.encodeITF6 = encodeITF6;
 __exports.encodeCodabar = encodeCodabar;
 __exports.encodeCode11 = encodeCode11;
 __exports.encodeMSI = encodeMSI;
@@ -5455,6 +5478,24 @@ function decodeITF(row) {
         return null;
     return { format: 'itf', text: digits.join('') };
 }
+/**
+ * ITF-6: the JIS X 0502 add-on for ITF-14/ITF-16. Same symbology as ITF,
+ * constrained to exactly six digits with a mandatory, validated modulo-10
+ * check digit — the base ITF decoder carries no checksum, so this is the
+ * only thing distinguishing a genuine ITF-6 read from an ordinary six-digit
+ * ITF fragment.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'itf6',text:string}|null}
+ */
+function decodeITF6(row) {
+    const result = decodeITF(row);
+    if (!result || result.text.length !== 6)
+        return null;
+    if (ean13CheckDigit(result.text.slice(0, 5)) !== Number(result.text[5]))
+        return null;
+    return { format: 'itf6', text: result.text };
+}
 /* ------------------------------------------------------------------ *
  * Code 25 family
  * ------------------------------------------------------------------ */
@@ -5837,6 +5878,7 @@ const DECODERS = [
     ['datalogic2of5', decodeDataLogic2of5],
     ['fim', decodeFIM],
     ['itf', decodeITF],
+    ['itf6', decodeITF6],
     ['codabar', decodeCodabar],
 ];
 const EAN_PARENT_FORMATS = new Set(['ean13', 'ean8', 'upca', 'upce', 'isbn']);
@@ -5889,7 +5931,7 @@ function checksumStatus(format, options, result = null) {
     if (format === 'code11' || format === 'msi' || format === 'code39') {
         return options.profile === 'camera' || options.checkDigit === true ? true : null;
     }
-    if (format === 'code32' || format === 'pzn')
+    if (format === 'code32' || format === 'pzn' || format === 'itf6')
         return true;
     if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5') {
         return result?.checkDigit === true ? true : null;
@@ -6181,7 +6223,7 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  *
  * @module oned
  */
-const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
+const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeITF6 = __reexport0.encodeITF6; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_DATALOGIC_DIGIT_PATTERNS = __reexport1.CODE25_DATALOGIC_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5; __exports.encodeDataLogic2of5 = __reexport1.encodeDataLogic2of5;
 const __reexport2 = __require("js/oned/fim.js"); __exports.FIM_PATTERNS = __reexport2.FIM_PATTERNS; __exports.encodeFIM = __reexport2.encodeFIM;
 const __reexport3 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport3.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport3.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport3.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport3.telepenPattern; __exports.encodeTelepen = __reexport3.encodeTelepen; __exports.encodeTelepenNumeric = __reexport3.encodeTelepenNumeric; __exports.decodeTelepen = __reexport3.decodeTelepen; __exports.decodeTelepenNumeric = __reexport3.decodeTelepenNumeric;
@@ -6189,7 +6231,7 @@ const __reexport4 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __re
 const __reexport5 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport5.decodeOneD; __exports.decodeOneDStrict = __reexport5.decodeOneDStrict; __exports.decodeCode32 = __reexport5.decodeCode32; __exports.decodePZN = __reexport5.decodePZN; __exports.decodeCode25 = __reexport5.decodeCode25; __exports.decodeStandard2of5 = __reexport5.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport5.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport5.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport5.decodeDataLogic2of5; __exports.decodeFIM = __reexport5.decodeFIM; __exports.decodeCode11 = __reexport5.decodeCode11; __exports.decodeMSI = __reexport5.decodeMSI; __exports.patternVariance = __reexport5.patternVariance; __exports.recordPattern = __reexport5.recordPattern; __exports.toNarrowWidePattern = __reexport5.toNarrowWidePattern;
 const __reexport6 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport6.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport6.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport6.STATE_PROFILES; __exports.encodePostnet = __reexport6.encodePostnet; __exports.encodePlanet = __reexport6.encodePlanet; __exports.encodeRM4SCC = __reexport6.encodeRM4SCC; __exports.encodeKIX = __reexport6.encodeKIX; __exports.encodeAustraliaPost = __reexport6.encodeAustraliaPost; __exports.encodeJapanPost = __reexport6.encodeJapanPost; __exports.encodeIMB = __reexport6.encodeIMB; __exports.decodePostal = __reexport6.decodePostal;
 const __reexport7 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport7.validateTables;
-const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
+const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
 const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } = __require("js/oned/code25.js");
@@ -6221,6 +6263,7 @@ const ONED_FORMATS = {
     code93: { encode: encodeCode93, readable: true, label: 'Code 93' },
     itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
     itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
+    itf6: { encode: encodeITF6, readable: true, label: 'ITF-6' },
     standard2of5: { encode: encodeStandard2of5, readable: true, label: 'Code 25 / Standard 2 of 5' },
     industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
     iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
@@ -28165,6 +28208,7 @@ export const {
   encodeISBN,
   encodeITF,
   encodeITF14,
+  encodeITF6,
   encodeIndustrial2of5,
   encodeJapanPost,
   encodeKIX,

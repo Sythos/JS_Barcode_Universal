@@ -19,6 +19,7 @@ needs to be printed or displayed at a useful height.
 | Code 93 | `code93` | ✅ | ✅ | Checksum and start/stop grammar are validated. |
 | ITF | `itf` | ✅ | ✅ | Interleaved 2 of 5; the generic reader rejects very short ambiguous reads. |
 | ITF-14 | `itf14` | ✅ | ✅ | Fixed-length ITF-14 writer; the shared reader reports the base `itf` format. |
+| ITF-6 | `itf6` | ✅ | ✅ | JIS X 0502 add-on: ITF fixed at six digits with a mandatory check digit; kept as its own `itf6` id, reported alongside `itf` rather than replacing it. |
 | Code 25 / Standard 2 of 5 | `standard2of5` | ✅ | ✅ | Canonical Industrial frame in this SDK; `code2of5` is an alias. |
 | Industrial 2 of 5 | `industrial2of5` | ✅ | ✅ | Two-wide-bar digit grammar with optional modulo-10 check digit. |
 | IATA 2 of 5 | `iata2of5` | ✅ | ✅ | Same digit grammar with the shorter IATA guard frame. |
@@ -60,6 +61,7 @@ import {
   encodeIATA2of5,
   encodeDataLogic2of5,
   encodeFIM,
+  encodeITF6,
   encodeCode32,
   encodePZN,
   encodePharmacode,
@@ -81,6 +83,7 @@ const industrial = encodeIndustrial2of5('01234567', { checkDigit: true });
 const iata = encodeIATA2of5('31415926');
 const dataLogic = encodeDataLogic2of5('86420', { checkDigit: true });
 const fim = encodeFIM('C');
+const itf6 = encodeITF6('12345');
 const code32 = encodeCode32('01234567');
 const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
@@ -160,6 +163,39 @@ just a scale-proportional one) before promoting a match. This was tuned
 against an adversarial sweep of random noise and repeating textures during
 implementation — the initial scale-proportional-only threshold false-matched
 camera noise almost every time.
+
+### ITF-6
+
+`itf6` is not a separate symbology — it is the existing ITF grammar
+constrained to exactly six digits (five significant digits plus a
+mandatory modulo-10 check digit), the JIS X 0502 add-on printed alongside
+ITF-14/ITF-16 for item quantity or container weight. It reuses this
+project's existing ITF encoder and its `ean13CheckDigit` routine, the same
+one already used for ITF-14.
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('12345', { format: 'itf6' }); // check digit appended
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['itf6'],
+});
+console.log(result?.text); // 123457
+```
+
+Unlike ITF-14 (which shares its decoder with `itf` and is never reported
+under its own id), `itf6` keeps a distinct id and its own mandatory
+check-digit validation. Reading a valid ITF-6 symbol without a `formats`
+restriction — or with `formats: ['itf', 'itf6']` — legitimately returns both
+an `itf` result and a validated `itf6` result for the same payload, the same
+way a Code 32 symbol returns both `code32` and its Code 39 carrier. This is
+deliberate, not a duplicate-detection bug: requesting `itf6` alone returns
+nothing unless the check digit actually validates, which a plain `itf`
+request does not require.
 
 ### Code 32 and PZN
 

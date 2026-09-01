@@ -1097,6 +1097,23 @@ function decodeITF(row) {
   return { format: 'itf', text: digits.join('') };
 }
 
+/**
+ * ITF-6: the JIS X 0502 add-on for ITF-14/ITF-16. Same symbology as ITF,
+ * constrained to exactly six digits with a mandatory, validated modulo-10
+ * check digit — the base ITF decoder carries no checksum, so this is the
+ * only thing distinguishing a genuine ITF-6 read from an ordinary six-digit
+ * ITF fragment.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'itf6',text:string}|null}
+ */
+function decodeITF6(row) {
+  const result = decodeITF(row);
+  if (!result || result.text.length !== 6) return null;
+  if (ean13CheckDigit(result.text.slice(0, 5)) !== Number(result.text[5])) return null;
+  return { format: 'itf6', text: result.text };
+}
+
 /* ------------------------------------------------------------------ *
  * Code 25 family
  * ------------------------------------------------------------------ */
@@ -1469,6 +1486,7 @@ const DECODERS = [
   ['datalogic2of5', decodeDataLogic2of5],
   ['fim', decodeFIM],
   ['itf', decodeITF],
+  ['itf6', decodeITF6],
   ['codabar', decodeCodabar],
 ];
 
@@ -1522,7 +1540,7 @@ function checksumStatus(format, options, result = null) {
   if (format === 'code11' || format === 'msi' || format === 'code39') {
     return options.profile === 'camera' || options.checkDigit === true ? true : null;
   }
-  if (format === 'code32' || format === 'pzn') return true;
+  if (format === 'code32' || format === 'pzn' || format === 'itf6') return true;
   if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5') {
     return result?.checkDigit === true ? true : null;
   }

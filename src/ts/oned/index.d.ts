@@ -33,7 +33,7 @@
  *
  * @module oned
  */
-export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, code32CheckDigit, encodeCode32, decodeCode32Payload, encodePZN, decodePZNPayload, ean13CheckDigit, } from './writers.js';
+export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, code32CheckDigit, encodeCode32, decodeCode32Payload, encodePZN, decodePZNPayload, ean13CheckDigit, } from './writers.js';
 export { CODE25_DIGIT_PATTERNS, CODE25_DATALOGIC_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, encodeCode25, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5, } from './code25.js';
 export type { Code25Variant } from './code25.js';
 export { FIM_PATTERNS, encodeFIM } from './fim.js';

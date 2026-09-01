@@ -710,6 +710,28 @@ export function encodeITF14(value) {
     }
     return encodeITF(digits);
 }
+/**
+ * ITF-6, the JIS X 0502 add-on for ITF-14/ITF-16: five significant digits
+ * plus a mandatory modulo-10 check digit, using the same alternating 3/1
+ * weighting as ITF-14 and EAN.
+ *
+ * @param {string} value 5 or 6 digits.
+ * @returns {BitMatrix}
+ */
+export function encodeITF6(value) {
+    requireDigits(value, 'ITF-6');
+    let digits = value;
+    if (digits.length === 5) {
+        digits += String(ean13CheckDigit(digits));
+    }
+    else if (digits.length !== 6) {
+        throw new EncodeError(`ITF-6: needs 5 or 6 digits, got ${digits.length}`);
+    }
+    else if (ean13CheckDigit(digits.slice(0, 5)) !== Number(digits[5])) {
+        throw new EncodeError('ITF-6: invalid check digit');
+    }
+    return encodeITF(digits);
+}
 /* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */

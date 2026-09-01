@@ -38,7 +38,7 @@ export {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
   code128DataCodewords,
-  encodeITF, encodeITF14, encodeCodabar, encodeCode11,
+  encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, encodeCode32, encodePZN,
   code32CheckDigit, decodeCode32Payload, decodePZNPayload,
   ean13CheckDigit,
@@ -92,7 +92,7 @@ export { validateTables } from './patterns.js';
 import {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
-  encodeITF, encodeITF14, encodeCodabar, encodeCode11,
+  encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, encodeCode32, encodePZN,
 } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
@@ -130,6 +130,7 @@ export const ONED_FORMATS = {
   code93: { encode: encodeCode93, readable: true, label: 'Code 93' },
   itf: { encode: encodeITF, readable: true, label: 'ITF (Interleaved 2 of 5)' },
   itf14: { encode: encodeITF14, readable: true, label: 'ITF-14' },
+  itf6: { encode: encodeITF6, readable: true, label: 'ITF-6' },
   standard2of5: { encode: encodeStandard2of5, readable: true, label: 'Code 25 / Standard 2 of 5' },
   industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
   iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },

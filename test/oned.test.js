@@ -42,7 +42,7 @@ import { validateTables } from '../src/js/oned/patterns.js';
 import {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN,
   encodeCode39, encodeCode93, encodeCode128,
-  encodeITF, encodeITF14, encodeCodabar, encodeCode11,
+  encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11,
   encodeMSI, encodePharmacode, ean13CheckDigit,
 } from '../src/js/oned/writers.js';
 import { decodeOneD } from '../src/js/oned/reader.js';
@@ -192,6 +192,14 @@ test('ITF-14 accepts 13 or 14 digits', () => {
   assert.throws(() => encodeITF14('123'), EncodeError);
 });
 
+test('ITF-6 accepts 5 or 6 digits and validates the check digit', () => {
+  const a = encodeITF6('12345');
+  const b = encodeITF6('123457');
+  assert.equal(a.width, b.width);
+  assert.throws(() => encodeITF6('123'), EncodeError);
+  assert.throws(() => encodeITF6('123459'), /invalid check digit/);
+});
+
 test('Codabar handles embedded and explicit guards', () => {
   const embedded = encodeCodabar('A12345A');
   const explicit = encodeCodabar('12345', { start: 'A', stop: 'A' });
@@ -318,6 +326,28 @@ test('reader recovers ITF', () => {
   const results = decodeOneD(image, { formats: ['itf'] });
   assert.ok(results.length > 0, 'nothing decoded');
   assert.equal(results[0].text, '12345678');
+});
+
+test('reader recovers ITF-6 and validates its mandatory check digit', () => {
+  const valid = stretch(encodeITF6('12345'));
+  const asITF6 = decodeOneD(valid, { formats: ['itf6'] });
+  assert.equal(asITF6.length, 1);
+  assert.equal(asITF6[0].text, '123457');
+
+  // Unrestricted, the shared ITF grammar legitimately reports both the raw
+  // symbol and the validated ITF-6 reading, the same way a Code 32 symbol
+  // reports both `code32` and its Code 39 carrier.
+  const both = decodeOneD(valid, { formats: ['itf', 'itf6'] });
+  assert.deepEqual(
+    both.map((r) => r.format).sort(),
+    ['itf', 'itf6'],
+  );
+
+  // A random six-digit ITF fragment with no valid check digit is not an
+  // ITF-6, even though it is still a perfectly readable plain ITF symbol.
+  const randomSix = stretch(encodeITF('999999'));
+  assert.deepEqual(decodeOneD(randomSix, { formats: ['itf6'] }), []);
+  assert.equal(decodeOneD(randomSix, { formats: ['itf'] })[0].text, '999999');
 });
 
 test('reader recovers Codabar', () => {

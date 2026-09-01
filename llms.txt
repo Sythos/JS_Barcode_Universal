@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 53 writable entries and 52 readable entries;
+At the current checkout it reports 54 writable entries and 53 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
@@ -59,6 +59,7 @@ remain parent-bound supplements.
 - Code 93 — write and read
 - ITF (Interleaved 2 of 5) — write and read
 - ITF-14 — write and read through the ITF family
+- ITF-6 — write and read; the JIS X 0502 six-digit add-on with a mandatory check digit, kept as its own `itf6` id (reported alongside `itf`, not instead of it)
 - Code 25 / Standard 2 of 5 — write and read as `standard2of5` or `code2of5`
 - Industrial 2 of 5 — write and read with the canonical Industrial frame
 - IATA 2 of 5 — write and read with the shorter IATA guard frame

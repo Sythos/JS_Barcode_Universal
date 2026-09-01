@@ -274,6 +274,7 @@ make that distinction visible.
 | ISBN (Bookland) | `isbn` | 1D | Linear | ✅ | ✅ [^1] |
 | ITF (Interleaved 2 of 5) | `itf` | 1D | Linear | ✅ | ✅ |
 | ITF-14 | `itf14` | 1D | Linear | ✅ | ✅ [^1] |
+| ITF-6 | `itf6` | 1D | Linear | ✅ | ✅ [^5] |
 | Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
 | KIX postal code | `kix` | 1D | Linear | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
@@ -305,7 +306,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-three listed formats are writable and fifty-two are readable (EAN-2 and EAN-5 are
+Fifty-four listed formats are writable and fifty-three are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -454,6 +455,14 @@ the payload is intact, only the reported id differs. IATA 2 of 5 uses its shorte
 is reported under its own `iata2of5` id. Check digits are optional for ordinary reads and are
 required by the strict camera profile.
 
+[^5]: `itf6` is not a separate symbology — it is the same ITF grammar validated as exactly six
+digits with a mandatory check digit. Unlike footnote 1's formats, it keeps its own `itf6` id rather
+than folding into `itf`: requesting `formats: ['itf', 'itf6']` (or leaving `formats` unset) on a
+valid ITF-6 symbol legitimately returns both an `itf` result and a validated `itf6` result for the
+same payload, the same way a Code 32 symbol returns both `code32` and its Code 39 carrier.
+Requesting `itf6` alone returns nothing for a six-digit ITF fragment whose check digit does not
+validate.
+
 ### Code 11 and MSI Plessey image reading
 
 The generic image pipeline now recognizes Code 11 and MSI Plessey through the existing
@@ -585,6 +594,35 @@ match; this was tuned against an adversarial sweep of random noise and
 repeating textures during implementation, since a nine-module pattern is
 short enough that a naive scale-invariant matcher would otherwise false-match
 unrelated camera content.
+
+### ITF-6
+
+ITF-6 is not a separate symbology: it is the existing ITF grammar
+constrained to exactly six digits (five significant digits plus a
+mandatory modulo-10 check digit), the JIS X 0502 add-on printed alongside
+ITF-14/ITF-16 for item quantity or container weight. It reuses the same
+check digit routine already used for ITF-14 and EAN:
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('12345', { format: 'itf6' }); // check digit appended
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['itf6'],
+});
+console.log(result?.text); // 123457
+```
+
+Because ITF-6 shares its grammar with plain ITF, an unrestricted or
+`['itf', 'itf6']` read of a valid ITF-6 symbol legitimately returns both an
+`itf` result and a validated `itf6` result — see footnote 5. Requesting
+`itf6` alone returns nothing unless the check digit is valid, which is the
+only thing distinguishing a genuine ITF-6 read from an ordinary six-digit
+ITF fragment.
 
 ### Postal 4-state formats
 

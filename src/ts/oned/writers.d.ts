@@ -178,6 +178,7 @@ export declare function encodeITF(value: string, options?: {
  * @returns {BitMatrix}
  */
 export declare function encodeITF14(value: string): BitMatrix;
+export declare function encodeITF6(value: string): BitMatrix;
 /**
  * Codabar.
  *

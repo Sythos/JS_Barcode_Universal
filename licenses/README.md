@@ -31,6 +31,7 @@ appendix carries the consolidated inventory these files expand on.
 | Code 25, Industrial 2 of 5 and IATA 2 of 5 | [`code25.license`](code25.license) | 2 |
 | Code 2 of 5 Data Logic (China Post) | [`data-logic-2-of-5.license`](data-logic-2-of-5.license) | 2 |
 | Facing Identification Mark (FIM) | [`facing-identification-mark.license`](facing-identification-mark.license) | 2 |
+| ITF-6 | [`itf-6.license`](itf-6.license) | 4 |
 | Codabar | [`codabar.license`](codabar.license) | 2 |
 | Code 11 | [`code-11.license`](code-11.license) | 2 |
 | MSI Plessey | [`msi-plessey.license`](msi-plessey.license) | 2 |
