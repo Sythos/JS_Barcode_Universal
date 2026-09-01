@@ -1,0 +1,64 @@
+Facing Identification Mark (FIM) — format provenance and usability
+=====================================================================
+
+This file records the engineering provenance and redistribution boundary for
+the Facing Identification Mark (FIM) implemented by Sythos Barcode Universal.
+
+It is an engineering inventory, not legal advice. Patent, copyright and
+trademark conclusions still need independent review for the jurisdiction and
+the intended product. Items marked [TO VERIFY] remain open questions.
+
+
+FORMAT AND IMPLEMENTATION BASIS
+-------------------------------
+
+FIM is not a general-purpose data carrier: it is one of five fixed,
+USPS-defined nine-position bar/no-bar patterns (A, B, C, D, E) printed near
+the upper edge of a mailpiece to indicate mail class/handling to automated
+facing equipment, as published in USPS Publication 25 ("Designing Letter and
+Reply Mail"), chapter 10. Each pattern is a palindrome (reads the same
+forward and backward) and always starts and ends with a bar.
+
+This project already implements the height-coded USPS postal family
+(POSTNET, PLANET, Intelligent Mail) from the same public USPS documentation
+source (see `licenses/postal.license`); FIM is treated at the same trust
+bar, not a new or higher one.
+
+The bar presence/absence pattern is represented as original Sythos data
+(one module per bar position, no third-party lookup table). The reader
+validates a leading and trailing quiet zone before promoting a match. No
+third-party source code, lookup table or binary asset is copied into this
+repository.
+
+The runtime is original Sythos TypeScript with generated JavaScript output
+and is distributed under the MIT License.
+
+
+PATENT AND TRADEMARK REVIEW
+---------------------------
+
+As with the rest of the USPS-published formats already implemented, current
+registrations, jurisdiction-specific terms and any USPS branding/trademark
+position for "Facing Identification Mark" or "FIM" have not been
+independently cleared here. [TO VERIFY] This project makes no unconditional
+patent-free, public-domain or trademark-clearance claim.
+
+
+INDEPENDENT VALIDATION BOUNDARY
+--------------------------------
+
+No third-party barcode library was consulted for this format; the five
+patterns and their palindrome structure come directly from the cited USPS
+publication. An extensive adversarial sweep (random noise, checkerboard
+textures, and other implemented symbologies rendered at multiple scales) was
+run during implementation to confirm the reader does not produce false
+positives — this is an engineering verification step, not a legal opinion.
+
+
+CONCLUSION
+----------
+
+The original Sythos FIM implementation is MIT-licensed. If a rights holder
+or user identifies a conflicting notice about the available material,
+please open a GitHub issue with the reference so it can be reviewed and
+recorded.

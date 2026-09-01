@@ -597,6 +597,7 @@ export function decode(image, options = {}) {
         'code2of5', 'standard2of5', 'standard-2-of-5',
         'industrial-2-of-5', 'iata-2-of-5',
         'data-logic-2-of-5', 'chinapost', 'china-post',
+        'facing-identification-mark',
         'usps-postnet', 'usps-planet', 'royalmail', 'royal-mail',
         'australia-post', 'australiapost', 'japan-post', 'onecode', 'usps-onecode',
     ]);

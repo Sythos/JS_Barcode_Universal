@@ -51,6 +51,9 @@ export {
 } from './code25.js';
 export type { Code25Variant } from './code25.js';
 
+export { FIM_PATTERNS, encodeFIM } from './fim.js';
+export type { FIMType } from './fim.js';
+
 export {
   TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH,
   telepenPattern, encodeTelepen, encodeTelepenNumeric,
@@ -71,7 +74,7 @@ export {
 export {
   decodeOneD, decodeOneDStrict, decodeCode32, decodePZN,
   decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5,
-  decodeDataLogic2of5,
+  decodeDataLogic2of5, decodeFIM,
   decodeCode11, decodeMSI,
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
@@ -95,6 +98,7 @@ import {
 import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
 import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } from './code25.js';
+import { encodeFIM } from './fim.js';
 import {
   encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX,
   encodeAustraliaPost, encodeJapanPost, encodeIMB,
@@ -130,6 +134,7 @@ export const ONED_FORMATS = {
   industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
   iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
   datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
+  fim: { encode: encodeFIM, readable: true, label: 'Facing Identification Mark' },
   codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
   code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
   msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },

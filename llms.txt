@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 52 writable entries and 51 readable entries;
+At the current checkout it reports 53 writable entries and 52 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
@@ -63,6 +63,7 @@ remain parent-bound supplements.
 - Industrial 2 of 5 — write and read with the canonical Industrial frame
 - IATA 2 of 5 — write and read with the shorter IATA guard frame
 - Code 2 of 5 Data Logic (China Post) — write and read with a width-modulated digit grammar and the shorter IATA-style guard; the 2:1 wide:narrow ratio is rejected because it collides with a different valid reading once mirrored
+- Facing Identification Mark (FIM) — write and read one of five fixed USPS-defined nine-position palindrome patterns (A-E); not a general data carrier
 - Codabar — write and read
 - Code 11 — write and scanline/image read
 - MSI Plessey — write and read, with optional check-digit validation

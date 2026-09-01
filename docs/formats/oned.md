@@ -23,6 +23,7 @@ needs to be printed or displayed at a useful height.
 | Industrial 2 of 5 | `industrial2of5` | ✅ | ✅ | Two-wide-bar digit grammar with optional modulo-10 check digit. |
 | IATA 2 of 5 | `iata2of5` | ✅ | ✅ | Same digit grammar with the shorter IATA guard frame. |
 | Code 2 of 5 Data Logic (China Post) | `datalogic2of5` | ✅ | ✅ | Width-modulated digit grammar with the shorter IATA-style guard; `wideRatio` is `3..8`, not `2..8`. |
+| Facing Identification Mark (FIM) | `fim` | ✅ | ✅ | Fixed enum of five USPS-defined nine-position patterns (`A`-`E`), not a general data carrier. |
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
 | MSI Plessey | `msi` | ✅ | ✅ | Optional modulo-10 check digit and scanline reader. |
@@ -58,6 +59,7 @@ import {
   encodeIndustrial2of5,
   encodeIATA2of5,
   encodeDataLogic2of5,
+  encodeFIM,
   encodeCode32,
   encodePZN,
   encodePharmacode,
@@ -78,6 +80,7 @@ const telepenNumeric = encodeTelepenNumeric('00112738999X');
 const industrial = encodeIndustrial2of5('01234567', { checkDigit: true });
 const iata = encodeIATA2of5('31415926');
 const dataLogic = encodeDataLogic2of5('86420', { checkDigit: true });
+const fim = encodeFIM('C');
 const code32 = encodeCode32('01234567');
 const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
@@ -126,6 +129,37 @@ console.log(result?.text); // 01234567
 The scanline reader validates the complete guard/data/stop structure and
 rejects clipped or ambiguous candidates. Camera reads also need a coherent
 quiet zone and a valid check digit.
+
+### Facing Identification Mark (FIM)
+
+`fim` is not a general data carrier. `encodeFIM`/`decodeFIM` select one of
+five fixed, USPS-defined nine-position patterns (`A` through `E`), published
+in USPS Publication 25 ("Designing Letter and Reply Mail"), chapter 10, to
+tell automated facing equipment the mail class. Every pattern is a
+palindrome and always starts and ends with a bar, so a mirrored read cannot
+resolve to a different type — the only real risk is a false match against
+unrelated content, not a wrong type.
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('C', { format: 'fim' });
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['fim'],
+});
+console.log(result?.text); // C
+```
+
+Because a nine-module pattern is short, the reader requires a leading and
+trailing quiet zone of at least eight pixels regardless of render scale (not
+just a scale-proportional one) before promoting a match. This was tuned
+against an adversarial sweep of random noise and repeating textures during
+implementation — the initial scale-proportional-only threshold false-matched
+camera noise almost every time.
 
 ### Code 32 and PZN
 

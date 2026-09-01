@@ -264,6 +264,7 @@ make that distinction visible.
 | EAN-2 supplement | `ean2` | 1D | Linear | ✅ | ✅ [^2] |
 | EAN-5 supplement | `ean5` | 1D | Linear | ✅ | ✅ [^2] |
 | EAN-8 | `ean8` | 1D | Linear | ✅ | ✅ |
+| Facing Identification Mark (FIM) | `fim` | 1D | Linear | ✅ | ✅ |
 | GS1 DataBar Expanded | `gs1databar-expanded` | 1D | Linear | ✅ | ✅ |
 | GS1 DataBar Limited | `gs1databar-limited` | 1D | Linear | ✅ | ✅ |
 | GS1 DataBar Omnidirectional / Truncated | `gs1databar14` | 1D | Linear | ✅ | ✅ |
@@ -304,7 +305,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-two listed formats are writable and fifty-one are readable (EAN-2 and EAN-5 are
+Fifty-three listed formats are writable and fifty-two are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -313,9 +314,12 @@ Code 25 family shares one numeric digit grammar while exposing explicit Standard
 IATA guard profiles; Code 2 of 5 Data Logic (China Post) has its own width-modulated digit grammar
 and rejects the 2:1 wide:narrow ratio, which collides with a different valid reading once the
 symbol is mirrored. Code 32 and PZN validate their pharmaceutical check digits before a read is
-returned. Postal formats use operator-specific four-state alphabets with strict framing and
-checksum validation; KIX deliberately has no check character, while Australia Post supports
-explicit character or numeric customer-data groups and IMb accepts its four legal payload lengths.
+returned. Facing Identification Mark (`fim`) is not a general data carrier: it selects one of five
+fixed USPS-defined nine-position patterns (`A`-`E`), each a palindrome, so there is no reversed-read
+ambiguity between them. Postal formats use operator-specific four-state alphabets with strict
+framing and checksum validation; KIX deliberately has no check character, while Australia Post
+supports explicit character or numeric customer-data groups and IMb accepts its four legal payload
+lengths.
 The
 GS1 DataBar physical variants use
 strict clean-raster readers and variant-specific detectors over the verified GTIN/GS1 element-string
@@ -552,6 +556,35 @@ console.log(result?.format, result?.pznVariant, result?.text);
 Both readers return no value when the carrier or pharmaceutical check digit is
 not valid. The format-specific engineering notes and the independent
 black-box validation boundary are recorded in [`licenses/`](licenses/).
+
+### Facing Identification Mark (FIM)
+
+FIM is not a general-purpose data carrier. It selects one of five fixed,
+USPS-defined nine-position patterns (`A` through `E`) printed near the upper
+edge of a mailpiece to tell automated facing equipment the mail class. Every
+pattern is a palindrome and always starts and ends with a bar, so a mirrored
+read never resolves to a different type:
+
+```js
+import { decode, encode, toImageData } from '@sythos/js_barcode_universal';
+
+const matrix = encode('C', { format: 'fim' });
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['fim'],
+});
+console.log(result?.text); // C
+```
+
+`encodeFIM`/`decodeFIM` are also exported from the `oned` subpath. The reader
+requires a substantial leading and trailing quiet zone before promoting a
+match; this was tuned against an adversarial sweep of random noise and
+repeating textures during implementation, since a nine-module pattern is
+short enough that a naive scale-invariant matcher would otherwise false-match
+unrelated camera content.
 
 ### Postal 4-state formats
 

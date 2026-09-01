@@ -54,6 +54,7 @@ import { decodeDataBar14Scanline } from '../databar/decoder.js';
 import { decodeTelepen } from './telepen.js';
 import { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
 import { decodePostal } from './postal.js';
+import { FIM_PATTERNS } from './fim.js';
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -1319,6 +1320,75 @@ export function decodeCode25(row, options = {}) {
     return decodeCode25Variant(row, 'standard', options);
 }
 /* ------------------------------------------------------------------ *
+ * FIM (USPS Facing Identification Mark)
+ * ------------------------------------------------------------------ */
+/** Run-length representation of each FIM pattern, derived once from FIM_PATTERNS. */
+const FIM_RUNS = Object.fromEntries(Object.entries(FIM_PATTERNS).map(([type, bits]) => {
+    const runs = [];
+    for (const bit of bits) {
+        if (runs.length && (runs[runs.length - 1].bit === bit)) {
+            runs[runs.length - 1].width++;
+        }
+        else {
+            runs.push({ bit, width: 1 });
+        }
+    }
+    return [type, runs.map((run) => run.width)];
+}));
+/**
+ * Decode a FIM scanline. Every pattern starts and ends with a bar and is a
+ * palindrome, so there is no reversed-read ambiguity between the five types;
+ * the only risk is a false match against unrelated content, which the
+ * leading/trailing quiet-zone check below guards against.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'fim',text:'A'|'B'|'C'|'D'|'E'}|null}
+ */
+export function decodeFIM(row) {
+    let best = null;
+    for (let offset = 0; offset < row.length; offset++) {
+        if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
+            continue;
+        for (const [type, runs] of Object.entries(FIM_RUNS)) {
+            const counters = new Array(runs.length).fill(0);
+            if (!recordPattern(row, offset, counters))
+                continue;
+            const score = patternVariance(counters, runs, 0.15);
+            if (!Number.isFinite(score) || score >= 0.06)
+                continue;
+            const totalModules = runs.reduce((sum, width) => sum + width, 0);
+            const totalPixels = counters.reduce((sum, width) => sum + width, 0);
+            const unit = totalPixels / totalModules;
+            const end = offset + totalPixels;
+            if (!best || score < best.score)
+                best = { offset, end, type, score, unit };
+        }
+    }
+    if (!best)
+        return null;
+    // The unit-scaled requirement alone is easy for noise to satisfy (a tiny
+    // self-inferred unit only demands a tiny quiet zone), so an absolute pixel
+    // floor is required in addition to it. Real FIM clear zones are generous.
+    const quietZone = Math.max(8, Math.ceil(best.unit * 3));
+    let before = best.offset;
+    let scanned = 0;
+    while (before > 0 && row[before - 1] === 0 && scanned < quietZone) {
+        before--;
+        scanned++;
+    }
+    if (best.offset > 0 && scanned < quietZone)
+        return null;
+    let after = best.end;
+    scanned = 0;
+    while (after < row.length && row[after] === 0 && scanned < quietZone) {
+        after++;
+        scanned++;
+    }
+    if (after < row.length && scanned < quietZone)
+        return null;
+    return { format: 'fim', text: best.type };
+}
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 /**
@@ -1407,6 +1477,7 @@ const DECODERS = [
     ['industrial2of5', decodeIndustrial2of5],
     ['iata2of5', decodeIATA2of5],
     ['datalogic2of5', decodeDataLogic2of5],
+    ['fim', decodeFIM],
     ['itf', decodeITF],
     ['codabar', decodeCodabar],
 ];
@@ -1533,6 +1604,8 @@ export function decodeOneD(image, options = {}) {
         if (id === 'datalogic2of5') {
             return enabled.has('data-logic-2-of-5') || enabled.has('chinapost') || enabled.has('china-post');
         }
+        if (id === 'fim')
+            return enabled.has('facing-identification-mark');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -1656,6 +1729,10 @@ export function decodeOneD(image, options = {}) {
                     else if (result.format === 'datalogic2of5') {
                         if (!enabled.has('datalogic2of5') && !enabled.has('data-logic-2-of-5')
                             && !enabled.has('chinapost') && !enabled.has('china-post'))
+                            continue;
+                    }
+                    else if (result.format === 'fim') {
+                        if (!enabled.has('fim') && !enabled.has('facing-identification-mark'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {

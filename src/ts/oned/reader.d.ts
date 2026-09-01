@@ -132,6 +132,11 @@ export declare function decodeDataLogic2of5(row: Uint8Array, options?: {
     text: string;
     checkDigit: boolean;
 } | null;
+/** Decode a Facing Identification Mark (USPS FIM). */
+export declare function decodeFIM(row: Uint8Array): {
+    format: 'fim';
+    text: 'A' | 'B' | 'C' | 'D' | 'E';
+} | null;
 /** Decode the canonical Standard 2 of 5 frame. */
 export declare const decodeStandard2of5: typeof decodeIndustrial2of5;
 /** Decode any supported Code 25 family frame. */

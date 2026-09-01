@@ -71,6 +71,7 @@ test/*
 !test/databar-expanded.test.js
 !test/telepen.test.js
 !test/code25-code32.test.js
+!test/fim.test.js
 !test/postal.test.js
 !test/codablockf.test.js
 !test/code16k.test.js

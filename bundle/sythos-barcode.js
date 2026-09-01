@@ -2883,6 +2883,57 @@ __exports.encodeDataLogic2of5 = encodeDataLogic2of5;
 __exports.CODE25_MAX_DIGITS = CODE25_MAX_DIGITS;
 };
 
+__modules["js/oned/fim.js"] = function (__require, __exports) {
+/**
+ * USPS Facing Identification Mark (FIM).
+ *
+ * A FIM is not a general-purpose data carrier: it is one of five fixed,
+ * USPS-defined nine-position patterns (A-E) printed near the upper edge of a
+ * mailpiece to indicate mail class/handling to automated facing equipment.
+ * Each pattern is a palindrome (reads the same forward and backward) and
+ * always starts and ends with a bar, so there is no reversed-read ambiguity
+ * between the five types. The width descriptions below are expressed as
+ * module presence/absence rather than copied implementation tables.
+ *
+ * @module oned/fim
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+/** The five USPS-defined nine-position patterns, bar = '1', blank = '0'. */
+const FIM_PATTERNS = {
+    A: '110010011',
+    B: '101101101',
+    C: '110101011',
+    D: '111010111',
+    E: '101000101',
+};
+function resolveType(value) {
+    const type = String(value ?? '').trim().toUpperCase();
+    if (type === 'A' || type === 'B' || type === 'C' || type === 'D' || type === 'E')
+        return type;
+    throw new EncodeError(`FIM: unknown type "${value}", expected one of A, B, C, D, E`);
+}
+/**
+ * Encode a Facing Identification Mark.
+ *
+ * @param {FIMType|string} value One of 'A'..'E' (case-insensitive).
+ * @returns {BitMatrix} A nine-module-wide, one-row matrix.
+ */
+function encodeFIM(value) {
+    const type = resolveType(value);
+    const pattern = FIM_PATTERNS[type];
+    const matrix = new BitMatrix(pattern.length, 1);
+    for (let x = 0; x < pattern.length; x++) {
+        if (pattern[x] === '1')
+            matrix.set(x, 0);
+    }
+    return matrix;
+}
+
+__exports.FIM_PATTERNS = FIM_PATTERNS;
+__exports.encodeFIM = encodeFIM;
+};
+
 __modules["js/oned/postal.js"] = function (__require, __exports) {
 /**
  * Four-state postal barcode family.
@@ -4362,6 +4413,7 @@ const { decodeDataBar14Scanline } = __require("js/databar/decoder.js");
 const { decodeTelepen } = __require("js/oned/telepen.js");
 const { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit } = __require("js/oned/code25.js");
 const { decodePostal } = __require("js/oned/postal.js");
+const { FIM_PATTERNS } = __require("js/oned/fim.js");
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -5627,6 +5679,75 @@ function decodeCode25(row, options = {}) {
     return decodeCode25Variant(row, 'standard', options);
 }
 /* ------------------------------------------------------------------ *
+ * FIM (USPS Facing Identification Mark)
+ * ------------------------------------------------------------------ */
+/** Run-length representation of each FIM pattern, derived once from FIM_PATTERNS. */
+const FIM_RUNS = Object.fromEntries(Object.entries(FIM_PATTERNS).map(([type, bits]) => {
+    const runs = [];
+    for (const bit of bits) {
+        if (runs.length && (runs[runs.length - 1].bit === bit)) {
+            runs[runs.length - 1].width++;
+        }
+        else {
+            runs.push({ bit, width: 1 });
+        }
+    }
+    return [type, runs.map((run) => run.width)];
+}));
+/**
+ * Decode a FIM scanline. Every pattern starts and ends with a bar and is a
+ * palindrome, so there is no reversed-read ambiguity between the five types;
+ * the only risk is a false match against unrelated content, which the
+ * leading/trailing quiet-zone check below guards against.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'fim',text:'A'|'B'|'C'|'D'|'E'}|null}
+ */
+function decodeFIM(row) {
+    let best = null;
+    for (let offset = 0; offset < row.length; offset++) {
+        if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
+            continue;
+        for (const [type, runs] of Object.entries(FIM_RUNS)) {
+            const counters = new Array(runs.length).fill(0);
+            if (!recordPattern(row, offset, counters))
+                continue;
+            const score = patternVariance(counters, runs, 0.15);
+            if (!Number.isFinite(score) || score >= 0.06)
+                continue;
+            const totalModules = runs.reduce((sum, width) => sum + width, 0);
+            const totalPixels = counters.reduce((sum, width) => sum + width, 0);
+            const unit = totalPixels / totalModules;
+            const end = offset + totalPixels;
+            if (!best || score < best.score)
+                best = { offset, end, type, score, unit };
+        }
+    }
+    if (!best)
+        return null;
+    // The unit-scaled requirement alone is easy for noise to satisfy (a tiny
+    // self-inferred unit only demands a tiny quiet zone), so an absolute pixel
+    // floor is required in addition to it. Real FIM clear zones are generous.
+    const quietZone = Math.max(8, Math.ceil(best.unit * 3));
+    let before = best.offset;
+    let scanned = 0;
+    while (before > 0 && row[before - 1] === 0 && scanned < quietZone) {
+        before--;
+        scanned++;
+    }
+    if (best.offset > 0 && scanned < quietZone)
+        return null;
+    let after = best.end;
+    scanned = 0;
+    while (after < row.length && row[after] === 0 && scanned < quietZone) {
+        after++;
+        scanned++;
+    }
+    if (after < row.length && scanned < quietZone)
+        return null;
+    return { format: 'fim', text: best.type };
+}
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 /**
@@ -5715,6 +5836,7 @@ const DECODERS = [
     ['industrial2of5', decodeIndustrial2of5],
     ['iata2of5', decodeIATA2of5],
     ['datalogic2of5', decodeDataLogic2of5],
+    ['fim', decodeFIM],
     ['itf', decodeITF],
     ['codabar', decodeCodabar],
 ];
@@ -5841,6 +5963,8 @@ function decodeOneD(image, options = {}) {
         if (id === 'datalogic2of5') {
             return enabled.has('data-logic-2-of-5') || enabled.has('chinapost') || enabled.has('china-post');
         }
+        if (id === 'fim')
+            return enabled.has('facing-identification-mark');
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -5966,6 +6090,10 @@ function decodeOneD(image, options = {}) {
                             && !enabled.has('chinapost') && !enabled.has('china-post'))
                             continue;
                     }
+                    else if (result.format === 'fim') {
+                        if (!enabled.has('fim') && !enabled.has('facing-identification-mark'))
+                            continue;
+                    }
                     else if (!enabled.has(result.format)) {
                         continue;
                     }
@@ -6043,6 +6171,7 @@ __exports.decodeIATA2of5 = decodeIATA2of5;
 __exports.decodeDataLogic2of5 = decodeDataLogic2of5;
 __exports.decodeStandard2of5 = decodeStandard2of5;
 __exports.decodeCode25 = decodeCode25;
+__exports.decodeFIM = decodeFIM;
 __exports.decodeOneD = decodeOneD;
 __exports.decodeOneDStrict = decodeOneDStrict;
 };
@@ -6055,15 +6184,17 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  */
 const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_DATALOGIC_DIGIT_PATTERNS = __reexport1.CODE25_DATALOGIC_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5; __exports.encodeDataLogic2of5 = __reexport1.encodeDataLogic2of5;
-const __reexport2 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport2.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport2.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport2.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport2.telepenPattern; __exports.encodeTelepen = __reexport2.encodeTelepen; __exports.encodeTelepenNumeric = __reexport2.encodeTelepenNumeric; __exports.decodeTelepen = __reexport2.decodeTelepen; __exports.decodeTelepenNumeric = __reexport2.decodeTelepenNumeric;
-const __reexport3 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport3.EAN2_PARITY; __exports.EAN5_PARITY = __reexport3.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport3.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport3.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport3.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport3.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport3.ean2Parity; __exports.ean5Checksum = __reexport3.ean5Checksum; __exports.ean5CheckDigit = __reexport3.ean5CheckDigit; __exports.ean5Parity = __reexport3.ean5Parity; __exports.encodeEAN2 = __reexport3.encodeEAN2; __exports.encodeEAN5 = __reexport3.encodeEAN5; __exports.encodeEANAddon = __reexport3.encodeEANAddon; __exports.encodeEANAddOn = __reexport3.encodeEANAddOn; __exports.decodeEAN2 = __reexport3.decodeEAN2; __exports.decodeEAN5 = __reexport3.decodeEAN5; __exports.decodeEANAddon = __reexport3.decodeEANAddon; __exports.decodeEANAddOn = __reexport3.decodeEANAddOn; __exports.composeEANAddon = __reexport3.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport3.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport3.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport3.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport3.encodeUPCEWithAddon;
-const __reexport4 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport4.decodeOneD; __exports.decodeOneDStrict = __reexport4.decodeOneDStrict; __exports.decodeCode32 = __reexport4.decodeCode32; __exports.decodePZN = __reexport4.decodePZN; __exports.decodeCode25 = __reexport4.decodeCode25; __exports.decodeStandard2of5 = __reexport4.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport4.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport4.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport4.decodeDataLogic2of5; __exports.decodeCode11 = __reexport4.decodeCode11; __exports.decodeMSI = __reexport4.decodeMSI; __exports.patternVariance = __reexport4.patternVariance; __exports.recordPattern = __reexport4.recordPattern; __exports.toNarrowWidePattern = __reexport4.toNarrowWidePattern;
-const __reexport5 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport5.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport5.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport5.STATE_PROFILES; __exports.encodePostnet = __reexport5.encodePostnet; __exports.encodePlanet = __reexport5.encodePlanet; __exports.encodeRM4SCC = __reexport5.encodeRM4SCC; __exports.encodeKIX = __reexport5.encodeKIX; __exports.encodeAustraliaPost = __reexport5.encodeAustraliaPost; __exports.encodeJapanPost = __reexport5.encodeJapanPost; __exports.encodeIMB = __reexport5.encodeIMB; __exports.decodePostal = __reexport5.decodePostal;
-const __reexport6 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport6.validateTables;
+const __reexport2 = __require("js/oned/fim.js"); __exports.FIM_PATTERNS = __reexport2.FIM_PATTERNS; __exports.encodeFIM = __reexport2.encodeFIM;
+const __reexport3 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport3.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport3.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport3.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport3.telepenPattern; __exports.encodeTelepen = __reexport3.encodeTelepen; __exports.encodeTelepenNumeric = __reexport3.encodeTelepenNumeric; __exports.decodeTelepen = __reexport3.decodeTelepen; __exports.decodeTelepenNumeric = __reexport3.decodeTelepenNumeric;
+const __reexport4 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport4.EAN2_PARITY; __exports.EAN5_PARITY = __reexport4.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport4.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport4.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport4.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport4.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport4.ean2Parity; __exports.ean5Checksum = __reexport4.ean5Checksum; __exports.ean5CheckDigit = __reexport4.ean5CheckDigit; __exports.ean5Parity = __reexport4.ean5Parity; __exports.encodeEAN2 = __reexport4.encodeEAN2; __exports.encodeEAN5 = __reexport4.encodeEAN5; __exports.encodeEANAddon = __reexport4.encodeEANAddon; __exports.encodeEANAddOn = __reexport4.encodeEANAddOn; __exports.decodeEAN2 = __reexport4.decodeEAN2; __exports.decodeEAN5 = __reexport4.decodeEAN5; __exports.decodeEANAddon = __reexport4.decodeEANAddon; __exports.decodeEANAddOn = __reexport4.decodeEANAddOn; __exports.composeEANAddon = __reexport4.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport4.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport4.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport4.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport4.encodeUPCEWithAddon;
+const __reexport5 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport5.decodeOneD; __exports.decodeOneDStrict = __reexport5.decodeOneDStrict; __exports.decodeCode32 = __reexport5.decodeCode32; __exports.decodePZN = __reexport5.decodePZN; __exports.decodeCode25 = __reexport5.decodeCode25; __exports.decodeStandard2of5 = __reexport5.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport5.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport5.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport5.decodeDataLogic2of5; __exports.decodeFIM = __reexport5.decodeFIM; __exports.decodeCode11 = __reexport5.decodeCode11; __exports.decodeMSI = __reexport5.decodeMSI; __exports.patternVariance = __reexport5.patternVariance; __exports.recordPattern = __reexport5.recordPattern; __exports.toNarrowWidePattern = __reexport5.toNarrowWidePattern;
+const __reexport6 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport6.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport6.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport6.STATE_PROFILES; __exports.encodePostnet = __reexport6.encodePostnet; __exports.encodePlanet = __reexport6.encodePlanet; __exports.encodeRM4SCC = __reexport6.encodeRM4SCC; __exports.encodeKIX = __reexport6.encodeKIX; __exports.encodeAustraliaPost = __reexport6.encodeAustraliaPost; __exports.encodeJapanPost = __reexport6.encodeJapanPost; __exports.encodeIMB = __reexport6.encodeIMB; __exports.decodePostal = __reexport6.decodePostal;
+const __reexport7 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport7.validateTables;
 const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
 const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } = __require("js/oned/code25.js");
+const { encodeFIM } = __require("js/oned/fim.js");
 const { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB } = __require("js/oned/postal.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -6095,6 +6226,7 @@ const ONED_FORMATS = {
     industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
     iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
     datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
+    fim: { encode: encodeFIM, readable: true, label: 'Facing Identification Mark' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
@@ -27254,6 +27386,7 @@ function decode(image, options = {}) {
         'code2of5', 'standard2of5', 'standard-2-of-5',
         'industrial-2-of-5', 'iata-2-of-5',
         'data-logic-2-of-5', 'chinapost', 'china-post',
+        'facing-identification-mark',
         'usps-postnet', 'usps-planet', 'royalmail', 'royal-mail',
         'australia-post', 'australiapost', 'japan-post', 'onecode', 'usps-onecode',
     ]);
