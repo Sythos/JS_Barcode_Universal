@@ -167,7 +167,8 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
     DataBar/GS1    GS1                published for open use       [TO VERIFY]
     Code 128 / 39 /
       93 / Codabar / ITF / MSI /
-      Code 11 / Telepen / Pharmacode  originating patents long expired
+      Plessey / Code 11 / Telepen /
+      Pharmacode                     originating patents long expired
                                                                    [TO VERIFY]
     Code 25 / Industrial 2-of-5 /
       IATA 2-of-5 / Code 32 / PZN     application profiles and

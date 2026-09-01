@@ -75,6 +75,7 @@ import {
 } from './code25.js';
 import { decodePostal } from './postal.js';
 import { FIM_PATTERNS } from './fim.js';
+import { PLESSEY_DIGIT_PATTERNS, PLESSEY_START, PLESSEY_STOP, PLESSEY_MAX_DIGITS, plesseyCheckDigits } from './plessey.js';
 
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -1413,6 +1414,81 @@ export function decodeFIM(row) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Plessey Code
+ * ------------------------------------------------------------------ */
+
+const PLESSEY_RATIO = 3;
+const PLESSEY_THRESHOLD = 0.15;
+/** Sum of PLESSEY_STOP's module widths at the fixed 3:1 ratio. */
+const PLESSEY_STOP_MODULES = 19;
+
+/** @returns {{end:number, score:number}|null} */
+function matchPlesseyRun(row, offset, pattern, threshold) {
+  const counters = new Array(pattern.length).fill(0);
+  if (!recordPattern(row, offset, counters)) return null;
+  const score = patternVariance(counters, code25Widths(pattern, PLESSEY_RATIO), 0.5);
+  if (!Number.isFinite(score) || score >= threshold) return null;
+  const width = counters.reduce((sum, w) => sum + w, 0);
+  return { end: offset + width, score };
+}
+
+/**
+ * Decode a Plessey Code scanline. The two-nibble CRC check is mandatory in
+ * this symbology and is always validated before a result is returned — a
+ * digit-count floor alone would not be enough defence against a false
+ * positive the way it is for the checkless width-modulated Code 25 variants,
+ * but the mandatory CRC is a much stronger filter on its own (roughly a
+ * 1-in-256 chance of a coincidental match), so both are applied.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'plessey',text:string,checkDigit:true}|null}
+ */
+export function decodePlessey(row) {
+  let start = null;
+  for (let offset = 0; offset < row.length; offset++) {
+    if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1)) continue;
+    const found = matchPlesseyRun(row, offset, PLESSEY_START, PLESSEY_THRESHOLD);
+    if (found) { start = { offset, ...found }; break; }
+  }
+  if (!start) return null;
+
+  let offset = start.end;
+  const digits = [];
+  for (let count = 0; count < PLESSEY_MAX_DIGITS + 2; count++) {
+    const counters = new Array(8).fill(0);
+    if (!recordPattern(row, offset, counters)) break;
+    let bestDigit = null;
+    for (let digit = 0; digit < 16; digit++) {
+      const score = patternVariance(counters, code25Widths(PLESSEY_DIGIT_PATTERNS[digit], PLESSEY_RATIO), 0.5);
+      if (!Number.isFinite(score)) continue;
+      if (!bestDigit || score < bestDigit.score) bestDigit = { digit, score };
+    }
+    if (!bestDigit || bestDigit.score >= PLESSEY_THRESHOLD) break;
+    digits.push(bestDigit.digit);
+    offset += counters.reduce((sum, w) => sum + w, 0);
+  }
+  // At least one data digit plus the two mandatory CRC check nibbles.
+  if (digits.length < 3) return null;
+
+  const stop = matchPlesseyRun(row, offset, PLESSEY_STOP, PLESSEY_THRESHOLD);
+  if (!stop) return null;
+
+  const unit = (stop.end - offset) / PLESSEY_STOP_MODULES;
+  const quietZone = Math.max(8, Math.ceil(unit * 3));
+  let nextDark = stop.end;
+  while (nextDark < row.length && row[nextDark] === 0) nextDark++;
+  if (nextDark !== row.length && nextDark - stop.end < quietZone) return null;
+
+  const data = digits.slice(0, -2);
+  const [c1, c2] = digits.slice(-2);
+  const [expectedC1, expectedC2] = plesseyCheckDigits(data);
+  if (c1 !== expectedC1 || c2 !== expectedC2) return null;
+
+  const text = data.map((d) => d.toString(16).toUpperCase()).join('');
+  return { format: 'plessey', text, checkDigit: true };
+}
+
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 
@@ -1496,6 +1572,7 @@ const DECODERS = [
   ['datalogic2of5', decodeDataLogic2of5],
   ['matrix2of5', decodeMatrix2of5],
   ['fim', decodeFIM],
+  ['plessey', decodePlessey],
   ['itf', decodeITF],
   ['itf6', decodeITF6],
   ['codabar', decodeCodabar],
@@ -1554,7 +1631,7 @@ function checksumStatus(format, options, result = null) {
   if (format === 'code11' || format === 'msi' || format === 'code39') {
     return options.profile === 'camera' || options.checkDigit === true ? true : null;
   }
-  if (format === 'code32' || format === 'pzn' || format === 'itf6') return true;
+  if (format === 'code32' || format === 'pzn' || format === 'itf6' || format === 'plessey') return true;
   if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5'
       || format === 'matrix2of5') {
     return result?.checkDigit === true ? true : null;

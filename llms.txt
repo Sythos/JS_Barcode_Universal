@@ -44,7 +44,7 @@ packages.
 
 The public `listFormats()` API reports writing and reading separately. A format
 marked `write-only` is intentionally not treated as a generic image reader.
-At the current checkout it reports 56 writable entries and 55 readable entries;
+At the current checkout it reports 57 writable entries and 56 readable entries;
 Pharmacode is the sole intentionally write-only entry, while EAN-2 and EAN-5
 remain parent-bound supplements.
 
@@ -70,6 +70,7 @@ remain parent-bound supplements.
 - Codabar — write and read
 - Code 11 — write and scanline/image read
 - MSI Plessey — write and read, with optional check-digit validation
+- Plessey Code — write and read; the original format MSI descends from, sixteen-value hex alphabet with a mandatory CRC-8 check (no unchecked mode)
 - Code 32 (Italian Pharmacode) — write and read with validated pharmaceutical check digit
 - PZN-7 and PZN-8 — write and read; the decoder exposes `pznVariant`
 - Telepen — write and read in full seven-bit ASCII mode; explicit Telepen Numeric

@@ -2993,6 +2993,126 @@ __exports.FIM_PATTERNS = FIM_PATTERNS;
 __exports.encodeFIM = encodeFIM;
 };
 
+__modules["js/oned/plessey.js"] = function (__require, __exports) {
+/**
+ * Plessey Code (the original 1971 Plessey Company symbology, distinct from
+ * its later Modified Plessey/MSI descendant already implemented in this
+ * SDK as `msi`).
+ *
+ * Each of the sixteen hexadecimal values (0-9, A-F) is a reversed-BCD
+ * nibble: bit 0 first, each bit drawn as a narrow-bar/wide-space pair for 0
+ * or a wide-bar/narrow-space pair for 1. A mandatory two-character
+ * hexadecimal check is appended, computed as an 8-bit CRC over the data
+ * bits (generator polynomial x^8+x^7+x^6+x^5+x^3+1) — the check nibbles are
+ * themselves ordinary reversed-BCD characters, so encoding them reuses the
+ * same digit table rather than needing a separate code path. The width
+ * descriptions below are expressed as module counts rather than copied
+ * implementation tables and are checked by the focused test suite.
+ *
+ * @module oned/plessey
+ */
+const { BitMatrix } = __require("js/core/bit-matrix.js");
+const { EncodeError } = __require("js/core/errors.js");
+/**
+ * The sixteen reversed-BCD digit patterns (hex 0-F), each four bit-pairs
+ * (narrow-then-wide for 0, wide-then-narrow for 1), least-significant bit
+ * first.
+ */
+const PLESSEY_DIGIT_PATTERNS = [
+    '13131313', '31131313', '13311313', '31311313',
+    '13133113', '31133113', '13313113', '31313113',
+    '13131331', '31131331', '13311331', '31311331',
+    '13133131', '31133131', '13313131', '31313131',
+];
+/** Forward start guard: bits 1,1,0,1 as narrow/wide bar-space pairs. */
+const PLESSEY_START = '31311331';
+/** Stop guard: the reverse start code plus a full-pitch termination bar. */
+const PLESSEY_STOP = '331311313';
+/** CRC-8 generator polynomial bits (x^8+x^7+x^6+x^5+x^3+1), MSB first. */
+const PLESSEY_CRC_POLYNOMIAL = [1, 1, 1, 1, 0, 1, 0, 0, 1];
+const MAX_PLESSEY_DIGITS = 200;
+function parseHexDigits(value) {
+    const text = String(value).toUpperCase();
+    if (!/^[0-9A-F]+$/u.test(text)) {
+        throw new EncodeError(`Plessey: payload must be hex digits (0-9, A-F), got "${value}"`);
+    }
+    if (text.length === 0 || text.length > MAX_PLESSEY_DIGITS) {
+        throw new EncodeError(`Plessey: payload length must be in 1..${MAX_PLESSEY_DIGITS}`);
+    }
+    return [...text].map((ch) => parseInt(ch, 16));
+}
+/**
+ * Compute the two-nibble Plessey CRC check for a sequence of hex digit
+ * values, via bitwise polynomial division over the reversed-BCD bit stream
+ * (least-significant bit of each digit first).
+ *
+ * @param {number[]} digits Hex values 0-15.
+ * @returns {[number, number]} The low then high check nibble (0-15 each).
+ */
+function plesseyCheckDigits(digits) {
+    const bits = [];
+    for (const value of digits) {
+        for (let b = 0; b < 4; b++)
+            bits.push((value >> b) & 1);
+    }
+    const poly = PLESSEY_CRC_POLYNOMIAL;
+    const buffer = bits.concat(new Array(poly.length - 1).fill(0));
+    for (let i = 0; i < bits.length; i++) {
+        if (buffer[i]) {
+            for (let j = 0; j < poly.length; j++)
+                buffer[i + j] ^= poly[j];
+        }
+    }
+    let checkBits = 0;
+    for (let i = 0; i < 8; i++)
+        checkBits |= buffer[bits.length + i] << i;
+    return [checkBits & 0xF, (checkBits >> 4) & 0xF];
+}
+function expandWidths(widths) {
+    let modules = '';
+    for (let i = 0; i < widths.length; i++) {
+        const count = widths[i] === '3' ? 3 : 1;
+        modules += (i % 2 === 0 ? '1' : '0').repeat(count);
+    }
+    return modules;
+}
+function toMatrix(modules) {
+    const matrix = new BitMatrix(modules.length, 1);
+    for (let x = 0; x < modules.length; x++) {
+        if (modules[x] === '1')
+            matrix.set(x, 0);
+    }
+    return matrix;
+}
+/**
+ * Encode Plessey Code. The two-character hexadecimal CRC check is always
+ * computed and appended — it is mandatory in this symbology, unlike the
+ * optional check digits used elsewhere in the Code 25/MSI families.
+ *
+ * @param {string} value Hexadecimal payload (0-9, A-F), case-insensitive.
+ * @returns {BitMatrix}
+ */
+function encodePlessey(value) {
+    const digits = parseHexDigits(value);
+    const [c1, c2] = plesseyCheckDigits(digits);
+    let modules = expandWidths(PLESSEY_START);
+    for (const digit of [...digits, c1, c2])
+        modules += expandWidths(PLESSEY_DIGIT_PATTERNS[digit]);
+    modules += expandWidths(PLESSEY_STOP);
+    return toMatrix(modules);
+}
+/** Internal limit used by the scanline reader and its safety checks. */
+const PLESSEY_MAX_DIGITS = MAX_PLESSEY_DIGITS;
+
+__exports.PLESSEY_DIGIT_PATTERNS = PLESSEY_DIGIT_PATTERNS;
+__exports.PLESSEY_START = PLESSEY_START;
+__exports.PLESSEY_STOP = PLESSEY_STOP;
+__exports.PLESSEY_CRC_POLYNOMIAL = PLESSEY_CRC_POLYNOMIAL;
+__exports.plesseyCheckDigits = plesseyCheckDigits;
+__exports.encodePlessey = encodePlessey;
+__exports.PLESSEY_MAX_DIGITS = PLESSEY_MAX_DIGITS;
+};
+
 __modules["js/oned/postal.js"] = function (__require, __exports) {
 /**
  * Four-state postal barcode family.
@@ -4473,6 +4593,7 @@ const { decodeTelepen } = __require("js/oned/telepen.js");
 const { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit } = __require("js/oned/code25.js");
 const { decodePostal } = __require("js/oned/postal.js");
 const { FIM_PATTERNS } = __require("js/oned/fim.js");
+const { PLESSEY_DIGIT_PATTERNS, PLESSEY_START, PLESSEY_STOP, PLESSEY_MAX_DIGITS, plesseyCheckDigits } = __require("js/oned/plessey.js");
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
  * ------------------------------------------------------------------ */
@@ -5834,6 +5955,88 @@ function decodeFIM(row) {
     return { format: 'fim', text: best.type };
 }
 /* ------------------------------------------------------------------ *
+ * Plessey Code
+ * ------------------------------------------------------------------ */
+const PLESSEY_RATIO = 3;
+const PLESSEY_THRESHOLD = 0.15;
+/** Sum of PLESSEY_STOP's module widths at the fixed 3:1 ratio. */
+const PLESSEY_STOP_MODULES = 19;
+/** @returns {{end:number, score:number}|null} */
+function matchPlesseyRun(row, offset, pattern, threshold) {
+    const counters = new Array(pattern.length).fill(0);
+    if (!recordPattern(row, offset, counters))
+        return null;
+    const score = patternVariance(counters, code25Widths(pattern, PLESSEY_RATIO), 0.5);
+    if (!Number.isFinite(score) || score >= threshold)
+        return null;
+    const width = counters.reduce((sum, w) => sum + w, 0);
+    return { end: offset + width, score };
+}
+/**
+ * Decode a Plessey Code scanline. The two-nibble CRC check is mandatory in
+ * this symbology and is always validated before a result is returned — a
+ * digit-count floor alone would not be enough defence against a false
+ * positive the way it is for the checkless width-modulated Code 25 variants,
+ * but the mandatory CRC is a much stronger filter on its own (roughly a
+ * 1-in-256 chance of a coincidental match), so both are applied.
+ *
+ * @param {Uint8Array} row
+ * @returns {{format:'plessey',text:string,checkDigit:true}|null}
+ */
+function decodePlessey(row) {
+    let start = null;
+    for (let offset = 0; offset < row.length; offset++) {
+        if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
+            continue;
+        const found = matchPlesseyRun(row, offset, PLESSEY_START, PLESSEY_THRESHOLD);
+        if (found) {
+            start = { offset, ...found };
+            break;
+        }
+    }
+    if (!start)
+        return null;
+    let offset = start.end;
+    const digits = [];
+    for (let count = 0; count < PLESSEY_MAX_DIGITS + 2; count++) {
+        const counters = new Array(8).fill(0);
+        if (!recordPattern(row, offset, counters))
+            break;
+        let bestDigit = null;
+        for (let digit = 0; digit < 16; digit++) {
+            const score = patternVariance(counters, code25Widths(PLESSEY_DIGIT_PATTERNS[digit], PLESSEY_RATIO), 0.5);
+            if (!Number.isFinite(score))
+                continue;
+            if (!bestDigit || score < bestDigit.score)
+                bestDigit = { digit, score };
+        }
+        if (!bestDigit || bestDigit.score >= PLESSEY_THRESHOLD)
+            break;
+        digits.push(bestDigit.digit);
+        offset += counters.reduce((sum, w) => sum + w, 0);
+    }
+    // At least one data digit plus the two mandatory CRC check nibbles.
+    if (digits.length < 3)
+        return null;
+    const stop = matchPlesseyRun(row, offset, PLESSEY_STOP, PLESSEY_THRESHOLD);
+    if (!stop)
+        return null;
+    const unit = (stop.end - offset) / PLESSEY_STOP_MODULES;
+    const quietZone = Math.max(8, Math.ceil(unit * 3));
+    let nextDark = stop.end;
+    while (nextDark < row.length && row[nextDark] === 0)
+        nextDark++;
+    if (nextDark !== row.length && nextDark - stop.end < quietZone)
+        return null;
+    const data = digits.slice(0, -2);
+    const [c1, c2] = digits.slice(-2);
+    const [expectedC1, expectedC2] = plesseyCheckDigits(data);
+    if (c1 !== expectedC1 || c2 !== expectedC2)
+        return null;
+    const text = data.map((d) => d.toString(16).toUpperCase()).join('');
+    return { format: 'plessey', text, checkDigit: true };
+}
+/* ------------------------------------------------------------------ *
  * Codabar
  * ------------------------------------------------------------------ */
 /**
@@ -5924,6 +6127,7 @@ const DECODERS = [
     ['datalogic2of5', decodeDataLogic2of5],
     ['matrix2of5', decodeMatrix2of5],
     ['fim', decodeFIM],
+    ['plessey', decodePlessey],
     ['itf', decodeITF],
     ['itf6', decodeITF6],
     ['codabar', decodeCodabar],
@@ -5984,7 +6188,7 @@ function checksumStatus(format, options, result = null) {
     if (format === 'code11' || format === 'msi' || format === 'code39') {
         return options.profile === 'camera' || options.checkDigit === true ? true : null;
     }
-    if (format === 'code32' || format === 'pzn' || format === 'itf6')
+    if (format === 'code32' || format === 'pzn' || format === 'itf6' || format === 'plessey')
         return true;
     if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5'
         || format === 'matrix2of5') {
@@ -6274,6 +6478,7 @@ __exports.decodeMatrix2of5 = decodeMatrix2of5;
 __exports.decodeStandard2of5 = decodeStandard2of5;
 __exports.decodeCode25 = decodeCode25;
 __exports.decodeFIM = decodeFIM;
+__exports.decodePlessey = decodePlessey;
 __exports.decodeOneD = decodeOneD;
 __exports.decodeOneDStrict = decodeOneDStrict;
 };
@@ -6287,16 +6492,18 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
 const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeJAN = __reexport0.encodeJAN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeITF6 = __reexport0.encodeITF6; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
 const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_DATALOGIC_DIGIT_PATTERNS = __reexport1.CODE25_DATALOGIC_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5; __exports.encodeDataLogic2of5 = __reexport1.encodeDataLogic2of5; __exports.encodeMatrix2of5 = __reexport1.encodeMatrix2of5;
 const __reexport2 = __require("js/oned/fim.js"); __exports.FIM_PATTERNS = __reexport2.FIM_PATTERNS; __exports.encodeFIM = __reexport2.encodeFIM;
-const __reexport3 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport3.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport3.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport3.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport3.telepenPattern; __exports.encodeTelepen = __reexport3.encodeTelepen; __exports.encodeTelepenNumeric = __reexport3.encodeTelepenNumeric; __exports.decodeTelepen = __reexport3.decodeTelepen; __exports.decodeTelepenNumeric = __reexport3.decodeTelepenNumeric;
-const __reexport4 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport4.EAN2_PARITY; __exports.EAN5_PARITY = __reexport4.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport4.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport4.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport4.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport4.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport4.ean2Parity; __exports.ean5Checksum = __reexport4.ean5Checksum; __exports.ean5CheckDigit = __reexport4.ean5CheckDigit; __exports.ean5Parity = __reexport4.ean5Parity; __exports.encodeEAN2 = __reexport4.encodeEAN2; __exports.encodeEAN5 = __reexport4.encodeEAN5; __exports.encodeEANAddon = __reexport4.encodeEANAddon; __exports.encodeEANAddOn = __reexport4.encodeEANAddOn; __exports.decodeEAN2 = __reexport4.decodeEAN2; __exports.decodeEAN5 = __reexport4.decodeEAN5; __exports.decodeEANAddon = __reexport4.decodeEANAddon; __exports.decodeEANAddOn = __reexport4.decodeEANAddOn; __exports.composeEANAddon = __reexport4.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport4.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport4.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport4.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport4.encodeUPCEWithAddon;
-const __reexport5 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport5.decodeOneD; __exports.decodeOneDStrict = __reexport5.decodeOneDStrict; __exports.decodeCode32 = __reexport5.decodeCode32; __exports.decodePZN = __reexport5.decodePZN; __exports.decodeCode25 = __reexport5.decodeCode25; __exports.decodeStandard2of5 = __reexport5.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport5.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport5.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport5.decodeDataLogic2of5; __exports.decodeMatrix2of5 = __reexport5.decodeMatrix2of5; __exports.decodeFIM = __reexport5.decodeFIM; __exports.decodeCode11 = __reexport5.decodeCode11; __exports.decodeMSI = __reexport5.decodeMSI; __exports.patternVariance = __reexport5.patternVariance; __exports.recordPattern = __reexport5.recordPattern; __exports.toNarrowWidePattern = __reexport5.toNarrowWidePattern;
-const __reexport6 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport6.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport6.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport6.STATE_PROFILES; __exports.encodePostnet = __reexport6.encodePostnet; __exports.encodePlanet = __reexport6.encodePlanet; __exports.encodeRM4SCC = __reexport6.encodeRM4SCC; __exports.encodeKIX = __reexport6.encodeKIX; __exports.encodeAustraliaPost = __reexport6.encodeAustraliaPost; __exports.encodeJapanPost = __reexport6.encodeJapanPost; __exports.encodeIMB = __reexport6.encodeIMB; __exports.decodePostal = __reexport6.decodePostal;
-const __reexport7 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport7.validateTables;
+const __reexport3 = __require("js/oned/plessey.js"); __exports.PLESSEY_DIGIT_PATTERNS = __reexport3.PLESSEY_DIGIT_PATTERNS; __exports.PLESSEY_START = __reexport3.PLESSEY_START; __exports.PLESSEY_STOP = __reexport3.PLESSEY_STOP; __exports.PLESSEY_CRC_POLYNOMIAL = __reexport3.PLESSEY_CRC_POLYNOMIAL; __exports.PLESSEY_MAX_DIGITS = __reexport3.PLESSEY_MAX_DIGITS; __exports.plesseyCheckDigits = __reexport3.plesseyCheckDigits; __exports.encodePlessey = __reexport3.encodePlessey;
+const __reexport4 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport4.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport4.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport4.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport4.telepenPattern; __exports.encodeTelepen = __reexport4.encodeTelepen; __exports.encodeTelepenNumeric = __reexport4.encodeTelepenNumeric; __exports.decodeTelepen = __reexport4.decodeTelepen; __exports.decodeTelepenNumeric = __reexport4.decodeTelepenNumeric;
+const __reexport5 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport5.EAN2_PARITY; __exports.EAN5_PARITY = __reexport5.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport5.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport5.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport5.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport5.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport5.ean2Parity; __exports.ean5Checksum = __reexport5.ean5Checksum; __exports.ean5CheckDigit = __reexport5.ean5CheckDigit; __exports.ean5Parity = __reexport5.ean5Parity; __exports.encodeEAN2 = __reexport5.encodeEAN2; __exports.encodeEAN5 = __reexport5.encodeEAN5; __exports.encodeEANAddon = __reexport5.encodeEANAddon; __exports.encodeEANAddOn = __reexport5.encodeEANAddOn; __exports.decodeEAN2 = __reexport5.decodeEAN2; __exports.decodeEAN5 = __reexport5.decodeEAN5; __exports.decodeEANAddon = __reexport5.decodeEANAddon; __exports.decodeEANAddOn = __reexport5.decodeEANAddOn; __exports.composeEANAddon = __reexport5.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport5.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport5.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport5.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport5.encodeUPCEWithAddon;
+const __reexport6 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport6.decodeOneD; __exports.decodeOneDStrict = __reexport6.decodeOneDStrict; __exports.decodeCode32 = __reexport6.decodeCode32; __exports.decodePZN = __reexport6.decodePZN; __exports.decodeCode25 = __reexport6.decodeCode25; __exports.decodeStandard2of5 = __reexport6.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport6.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport6.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport6.decodeDataLogic2of5; __exports.decodeMatrix2of5 = __reexport6.decodeMatrix2of5; __exports.decodeFIM = __reexport6.decodeFIM; __exports.decodePlessey = __reexport6.decodePlessey; __exports.decodeCode11 = __reexport6.decodeCode11; __exports.decodeMSI = __reexport6.decodeMSI; __exports.patternVariance = __reexport6.patternVariance; __exports.recordPattern = __reexport6.recordPattern; __exports.toNarrowWidePattern = __reexport6.toNarrowWidePattern;
+const __reexport7 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport7.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport7.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport7.STATE_PROFILES; __exports.encodePostnet = __reexport7.encodePostnet; __exports.encodePlanet = __reexport7.encodePlanet; __exports.encodeRM4SCC = __reexport7.encodeRM4SCC; __exports.encodeKIX = __reexport7.encodeKIX; __exports.encodeAustraliaPost = __reexport7.encodeAustraliaPost; __exports.encodeJapanPost = __reexport7.encodeJapanPost; __exports.encodeIMB = __reexport7.encodeIMB; __exports.decodePostal = __reexport7.decodePostal;
+const __reexport8 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport8.validateTables;
 const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
 const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5, encodeMatrix2of5 } = __require("js/oned/code25.js");
 const { encodeFIM } = __require("js/oned/fim.js");
+const { encodePlessey } = __require("js/oned/plessey.js");
 const { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB } = __require("js/oned/postal.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -6332,6 +6539,7 @@ const ONED_FORMATS = {
     datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
     matrix2of5: { encode: encodeMatrix2of5, readable: true, label: 'Matrix 2 of 5' },
     fim: { encode: encodeFIM, readable: true, label: 'Facing Identification Mark' },
+    plessey: { encode: encodePlessey, readable: true, label: 'Plessey Code' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
@@ -28081,6 +28289,11 @@ export const {
   LuminanceSource,
   NotFoundError,
   ONED_FORMATS,
+  PLESSEY_CRC_POLYNOMIAL,
+  PLESSEY_DIGIT_PATTERNS,
+  PLESSEY_MAX_DIGITS,
+  PLESSEY_START,
+  PLESSEY_STOP,
   POSTAL_ALIASES,
   POSTAL_FORMATS,
   STATE_PROFILES,
@@ -28157,6 +28370,7 @@ export const {
   decodePDF417,
   decodePZN,
   decodePZNPayload,
+  decodePlessey,
   decodePostal,
   decodeQR,
   decodeRMQR,
@@ -28287,6 +28501,7 @@ export const {
   encodePZN,
   encodePharmacode,
   encodePlanet,
+  encodePlessey,
   encodePostnet,
   encodeQR,
   encodeRM4SCC,
@@ -28309,6 +28524,7 @@ export const {
   normalizeGTIN,
   parseGS1ElementString,
   patternVariance,
+  plesseyCheckDigits,
   recordPattern,
   renderToCanvasAuto,
   renderToCanvasAutoAsync,

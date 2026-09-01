@@ -281,6 +281,7 @@ make that distinction visible.
 | Matrix 2 of 5 | `matrix2of5` | 1D | Linear | ✅ | ✅ |
 | MSI Plessey | `msi` | 1D | Linear | ✅ | ✅ |
 | Pharmacode | `pharmacode` | 1D | Linear | ✅ | — |
+| Plessey Code | `plessey` | 1D | Linear | ✅ | ✅ |
 | PZN-7 / PZN-8 | `pzn` | 1D | Linear | ✅ | ✅ |
 | Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | Linear | ✅ | ✅ |
 | Telepen (ASCII and Numeric) | `telepen` | 1D | Linear | ✅ | ✅ [^3] |
@@ -308,7 +309,7 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-six listed formats are writable and fifty-five are readable (EAN-2 and EAN-5 are
+Fifty-seven listed formats are writable and fifty-six are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
@@ -317,7 +318,10 @@ Code 25 family shares one numeric digit grammar while exposing explicit Standard
 IATA guard profiles; Code 2 of 5 Data Logic (China Post) and Matrix 2 of 5 share a different,
 width-modulated digit grammar and both reject the 2:1 wide:narrow ratio, which collides with a
 different valid reading once the symbol is mirrored — they differ only in their guard frame. Code
-32 and PZN validate their pharmaceutical check digits before a read is returned. Facing Identification Mark (`fim`) is not a general data carrier: it selects one of five
+32 and PZN validate their pharmaceutical check digits before a read is returned. Plessey Code
+(`plessey`), the format MSI Plessey descends from, encodes hexadecimal payloads and always
+validates a mandatory two-nibble CRC-8 check — unlike MSI's optional check digit, an unchecked
+Plessey read does not exist. Facing Identification Mark (`fim`) is not a general data carrier: it selects one of five
 fixed USPS-defined nine-position patterns (`A`-`E`), each a palindrome, so there is no reversed-read
 ambiguity between them. Postal formats use operator-specific four-state alphabets with strict
 framing and checksum validation; KIX deliberately has no check character, while Australia Post
@@ -631,6 +635,33 @@ Because ITF-6 shares its grammar with plain ITF, an unrestricted or
 `itf6` alone returns nothing unless the check digit is valid, which is the
 only thing distinguishing a genuine ITF-6 read from an ordinary six-digit
 ITF fragment.
+
+### Plessey Code
+
+Plessey Code (1971, Plessey Company) is the original format that Modified
+Plessey/MSI Plessey (already shipped here as `msi`) is a variant of. It
+encodes hexadecimal payloads (`0`-`9`, `A`-`F`) and always appends a
+mandatory two-nibble CRC-8 check — there is no unchecked mode, unlike MSI's
+optional check digit:
+
+```js
+import { decode, encode, plesseyCheckDigits, toImageData } from '@sythos/js_barcode_universal';
+
+console.log(plesseyCheckDigits([1, 2, 3, 4, 5])); // [6, 14] -> "6E"
+
+const matrix = encode('12345', { format: 'plessey' });
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['plessey'],
+});
+console.log(result?.text); // 12345
+```
+
+The reader validates the CRC before returning a value; a damaged symbol or
+one with an incorrect check simply does not decode as Plessey.
 
 ### Postal 4-state formats
 

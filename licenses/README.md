@@ -34,6 +34,7 @@ appendix carries the consolidated inventory these files expand on.
 | ITF-6 | [`itf-6.license`](itf-6.license) | 4 |
 | JAN (Japanese Article Number) | [`jan.license`](jan.license) | 4 |
 | Matrix 2 of 5 | [`matrix-2-of-5.license`](matrix-2-of-5.license) | 2 |
+| Plessey Code | [`plessey.license`](plessey.license) | 6 |
 | Codabar | [`codabar.license`](codabar.license) | 2 |
 | Code 11 | [`code-11.license`](code-11.license) | 2 |
 | MSI Plessey | [`msi-plessey.license`](msi-plessey.license) | 2 |

@@ -1,0 +1,88 @@
+Plessey Code — format provenance and usability
+==========================================================================
+
+This file records where the Plessey Code symbology comes from, what
+governs it, and the basis on which this project implements and
+redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Developed in 1971 by the Plessey Company of England. Its Modified Plessey
+descendant, developed by the MSI Data Corporation, is already implemented
+in this SDK as `msi` (`licenses/msi-plessey.license`) — this is the
+originating format that MSI is a variant of, from the same era and company
+lineage this project already treats as freely implementable. [TO VERIFY]
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+No ISO/IEC standard exists for Plessey, the same as its MSI descendant. It
+is documented through vendor and industry publications rather than a
+formal standard. [TO VERIFY]
+
+Specification TEXT is copyrighted by its publisher. The SYMBOLOGY it
+describes is not — an encoding scheme is a system, not a work of
+authorship. This project implements the symbology; it does not reproduce,
+redistribute or excerpt any specification document.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+The originating patents date from 1971 and are understood to have expired,
+the same basis already relied on for MSI. [TO VERIFY]
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+No live trademark restriction on implementing Plessey is known to the
+author. [TO VERIFY] That is a statement about the author's knowledge, not
+a finding that no mark subsists: no trademark search was carried out. The
+Plessey Company was absorbed into other businesses in the 1980s-90s and is
+understood no longer to exist as an independent entity. [TO VERIFY]
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+Plessey Code is implemented here from published descriptions of the
+format, which are systems and facts rather than works of authorship. The
+sixteen-value reversed-BCD digit table and guard frame are original Sythos
+data, cross-checked against Zint (libzint, BSD-3-Clause) as an independent
+black-box reference and against a second, independent technical
+description before being written — not copied. The mandatory CRC-8 check
+(generator polynomial x^8+x^7+x^6+x^5+x^3+1) is computed with an original
+Sythos bitwise implementation of the standard polynomial-division
+algorithm; the polynomial itself is a published, public technical fact,
+cross-verified across two independent sources plus Zint's own generator
+constant. No source code or constant table from any other barcode
+implementation is copied or shipped.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, and consistent with the trust bar
+already applied to its MSI descendant in this SDK, Plessey Code is
+understood to be freely implementable and redistributable. This project's
+implementation of it is distributed under the MIT License with no
+additional restriction.
+
+References relied upon:
+  - Published descriptions of the Plessey symbology [TO VERIFY]
+  - The CRC-8 generator polynomial, cross-verified across two independent
+    public technical descriptions
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

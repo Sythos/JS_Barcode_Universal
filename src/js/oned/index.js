@@ -35,9 +35,10 @@
 export { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, code128DataCodewords, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, code32CheckDigit, decodeCode32Payload, decodePZNPayload, ean13CheckDigit, } from './writers.js';
 export { CODE25_DIGIT_PATTERNS, CODE25_DATALOGIC_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, encodeCode25, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5, encodeMatrix2of5, } from './code25.js';
 export { FIM_PATTERNS, encodeFIM } from './fim.js';
+export { PLESSEY_DIGIT_PATTERNS, PLESSEY_START, PLESSEY_STOP, PLESSEY_CRC_POLYNOMIAL, PLESSEY_MAX_DIGITS, plesseyCheckDigits, encodePlessey, } from './plessey.js';
 export { TELEPEN_START_VALUE, TELEPEN_STOP_VALUE, TELEPEN_MAX_LENGTH, telepenPattern, encodeTelepen, encodeTelepenNumeric, decodeTelepen, decodeTelepenNumeric, } from './telepen.js';
 export { EAN2_PARITY, EAN5_PARITY, EAN2_WIDTH, EAN5_WIDTH, EAN_ADDON_START, EAN_ADDON_SEPARATOR, ean2Parity, ean5Checksum, ean5CheckDigit, ean5Parity, encodeEAN2, encodeEAN5, encodeEANAddon, encodeEANAddOn, decodeEAN2, decodeEAN5, decodeEANAddon, decodeEANAddOn, composeEANAddon, encodeEAN13WithAddon, encodeEAN8WithAddon, encodeUPCAWithAddon, encodeUPCEWithAddon, } from './addons.js';
-export { decodeOneD, decodeOneDStrict, decodeCode32, decodePZN, decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5, decodeDataLogic2of5, decodeMatrix2of5, decodeFIM, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
+export { decodeOneD, decodeOneDStrict, decodeCode32, decodePZN, decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5, decodeDataLogic2of5, decodeMatrix2of5, decodeFIM, decodePlessey, decodeCode11, decodeMSI, patternVariance, recordPattern, toNarrowWidePattern, } from './reader.js';
 export { POSTAL_FORMATS, POSTAL_ALIASES, STATE_PROFILES, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, decodePostal, } from './postal.js';
 export { validateTables } from './patterns.js';
 import { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeITF6, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN, } from './writers.js';
@@ -45,6 +46,7 @@ import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
 import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5, encodeMatrix2of5 } from './code25.js';
 import { encodeFIM } from './fim.js';
+import { encodePlessey } from './plessey.js';
 import { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB, } from './postal.js';
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -80,6 +82,7 @@ export const ONED_FORMATS = {
     datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
     matrix2of5: { encode: encodeMatrix2of5, readable: true, label: 'Matrix 2 of 5' },
     fim: { encode: encodeFIM, readable: true, label: 'Facing Identification Mark' },
+    plessey: { encode: encodePlessey, readable: true, label: 'Plessey Code' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },

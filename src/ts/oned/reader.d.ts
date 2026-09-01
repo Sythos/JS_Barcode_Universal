@@ -145,6 +145,12 @@ export declare function decodeFIM(row: Uint8Array): {
     format: 'fim';
     text: 'A' | 'B' | 'C' | 'D' | 'E';
 } | null;
+/** Decode Plessey Code, validating its mandatory CRC check. */
+export declare function decodePlessey(row: Uint8Array): {
+    format: 'plessey';
+    text: string;
+    checkDigit: true;
+} | null;
 /** Decode the canonical Standard 2 of 5 frame. */
 export declare const decodeStandard2of5: typeof decodeIndustrial2of5;
 /** Decode any supported Code 25 family frame. */

@@ -30,6 +30,7 @@ needs to be printed or displayed at a useful height.
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
 | MSI Plessey | `msi` | ✅ | ✅ | Optional modulo-10 check digit and scanline reader. |
+| Plessey Code | `plessey` | ✅ | ✅ | The original format MSI descends from; sixteen-value hex alphabet with a mandatory CRC-8 check, no unchecked mode. |
 | Code 32 (Italian Pharmacode) | `code32` | ✅ | ✅ | Eight-digit pharmaceutical body rendered through a validated Code 39 carrier. |
 | PZN-7 / PZN-8 | `pzn` | ✅ | ✅ | PZN-7 is the default; `pzn8` selects the eight-digit profile. |
 | Telepen (ASCII and Numeric) | `telepen` | ✅ | ✅ | ASCII is the default; Numeric is an explicit pair-compaction mode. |
@@ -68,6 +69,7 @@ import {
   encodeMatrix2of5,
   encodeFIM,
   encodeITF6,
+  encodePlessey,
   encodeCode32,
   encodePZN,
   encodePharmacode,
@@ -92,6 +94,7 @@ const dataLogic = encodeDataLogic2of5('86420', { checkDigit: true });
 const matrix2of5 = encodeMatrix2of5('86420', { checkDigit: true });
 const fim = encodeFIM('C');
 const itf6 = encodeITF6('12345');
+const plessey = encodePlessey('12345'); // CRC check appended
 const code32 = encodeCode32('01234567');
 const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
@@ -210,6 +213,34 @@ way a Code 32 symbol returns both `code32` and its Code 39 carrier. This is
 deliberate, not a duplicate-detection bug: requesting `itf6` alone returns
 nothing unless the check digit actually validates, which a plain `itf`
 request does not require.
+
+### Plessey Code
+
+`plessey` is the original 1971 Plessey Company format that Modified
+Plessey/MSI (already shipped here as `msi`) is a variant of. Each of the
+sixteen hexadecimal values (`0`-`9`, `A`-`F`) is a reversed-BCD nibble, and
+a mandatory two-nibble CRC-8 check (generator polynomial
+x^8+x^7+x^6+x^5+x^3+1) is always computed and appended — there is no
+unchecked mode, unlike MSI's optional check digit.
+
+```js
+import { decode, encode, plesseyCheckDigits, toImageData } from '@sythos/js_barcode_universal';
+
+console.log(plesseyCheckDigits([1, 2, 3, 4, 5])); // [6, 14] -> "6E"
+
+const matrix = encode('12345', { format: 'plessey' });
+const [result] = decode(toImageData(matrix, {
+  scale: 3,
+  margin: 20,
+  barHeight: 40,
+}), {
+  formats: ['plessey'],
+});
+console.log(result?.text); // 12345
+```
+
+The reader always validates the CRC before promoting a result; a damaged
+symbol or an invalid check simply fails to decode as `plessey`.
 
 ### Code 32 and PZN
 
