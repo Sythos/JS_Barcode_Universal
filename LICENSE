@@ -109,6 +109,8 @@ excerpt the specification documents.
     ISO/IEC 16388    (Code 39)        ISO/IEC — copyrighted, paywalled
     ISO/IEC 16390    (ITF)            ISO/IEC — copyrighted, paywalled
     AIM USS Code 25 / 2-of-5 family  AIM Inc. — terms vary    [TO VERIFY]
+    Data Logic 2 of 5 (China Post)   vendor/operator-associated public
+                                      descriptions; terms vary  [TO VERIFY]
     ISO/IEC 15420    (EAN/UPC)        ISO/IEC — copyrighted, paywalled
     ISO/IEC 23941    (rMQR)           ISO/IEC — copyrighted, paywalled
     ISO/IEC 24724    (GS1 DataBar)    ISO/IEC — copyrighted, paywalled
@@ -166,6 +168,10 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
       IATA 2-of-5 / Code 32 / PZN     application profiles and
                                       originating patents require current
                                       status review                  [TO VERIFY]
+    Data Logic 2 of 5 (China Post)    same 2-of-5-family era; vendor
+                                      (Datalogic) and operator (China Post)
+                                      association requires current status
+                                      review                         [TO VERIFY]
     Postal 4-state family             operator-specific rights and
                                       indicia/certification terms require
                                       jurisdictional review           [TO VERIFY]
@@ -195,6 +201,7 @@ names and presents itself.
       GS1 DataMatrix, GS1-128  GS1 AISBL
     Data Matrix              [status TO VERIFY]
     Telepen                  SB Electronic Systems Ltd   [TO VERIFY]
+    Data Logic, China Post   Datalogic S.p.A.; China Post Group  [TO VERIFY]
     Code 32 / PZN             descriptive pharmaceutical identifiers;
                               no proprietary mark asserted here       [TO VERIFY]
 
@@ -239,4 +246,4 @@ change to the dependency set, the oracle tools, or the implemented format list
 MUST update this file in the same commit. A "[TO VERIFY]" marker may only be
 removed together with a citation recorded in NOTICE.md.
 
-Last reviewed: 2026-08-31
+Last reviewed: 2026-09-01

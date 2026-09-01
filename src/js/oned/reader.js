@@ -52,7 +52,7 @@ import { ean13CheckDigit, upceToUpcaBody, decodeCode32Payload, decodePZNPayload,
 import { EAN2_PARITY, EAN5_PARITY, ean5Checksum, } from './addons.js';
 import { decodeDataBar14Scanline } from '../databar/decoder.js';
 import { decodeTelepen } from './telepen.js';
-import { CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
+import { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit, } from './code25.js';
 import { decodePostal } from './postal.js';
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -1103,6 +1103,12 @@ function decodeITF(row) {
 function code25Widths(pattern, ratio) {
     return [...pattern].map((width) => Number(width) > 1 ? ratio : 1);
 }
+const CODE25_RATIO_CANDIDATES = [2, 3, 4, 5, 6, 7, 8];
+// A 2:1 ratio makes the Data Logic digit table's reversed reading collide
+// with a different valid full-length reading; the writer already refuses to
+// produce it (see code25.ts), and the reader excludes it here too so a
+// foreign 2:1 Data Logic image is not treated as unambiguous.
+const CODE25_DATALOGIC_RATIO_CANDIDATES = [3, 4, 5, 6, 7, 8];
 /**
  * Match a Code 25 guard or digit at an exact offset. The writer permits a
  * configurable wide-bar ratio, so a small bounded set of ratios is considered
@@ -1112,15 +1118,17 @@ function code25Widths(pattern, ratio) {
  * @param {number} start
  * @param {string} pattern
  * @param {number|undefined} preferredRatio
+ * @param {number} [threshold] Maximum accepted variance score.
+ * @param {readonly number[]} [ratioCandidates] Ratios to try when `preferredRatio` is not set.
  * @returns {{end:number, score:number, ratio:number}|null}
  */
-function matchCode25(row, start, pattern, preferredRatio) {
+function matchCode25(row, start, pattern, preferredRatio, threshold = 0.38, ratioCandidates = CODE25_RATIO_CANDIDATES) {
     const counters = new Array(pattern.length).fill(0);
     if (!recordPattern(row, start, counters))
         return null;
     const candidates = preferredRatio
         ? [preferredRatio]
-        : [2, 3, 4, 5, 6, 7, 8];
+        : ratioCandidates;
     let best = null;
     for (const ratio of candidates) {
         const score = patternVariance(counters, code25Widths(pattern, ratio), 0.75);
@@ -1129,7 +1137,7 @@ function matchCode25(row, start, pattern, preferredRatio) {
         if (!best || score < best.score)
             best = { score, ratio };
     }
-    if (!best || best.score >= 0.38)
+    if (!best || best.score >= threshold)
         return null;
     return {
         end: start + counters.reduce((sum, width) => sum + width, 0),
@@ -1137,14 +1145,27 @@ function matchCode25(row, start, pattern, preferredRatio) {
         ratio: best.ratio,
     };
 }
-/** Find the strongest Code 25 start guard in a scanline. */
-function findCode25Start(row, startPattern) {
+/**
+ * Find a Code 25 start guard in a scanline.
+ *
+ * The Data Logic digit grammar is shorter and less distinctive than the
+ * discrete Industrial table (three bar/space pairs instead of five), so its
+ * generic, ratio-less "1111" guard can accidentally score well against a
+ * fragment of the symbol's own data. `preferLeftmost` returns the first
+ * accepted match instead of the best-scoring one across the whole row,
+ * which is the correct guard in a clean, quiet-zone-delimited symbol.
+ */
+function findCode25Start(row, startPattern, preferLeftmost = false, threshold = 0.38) {
     let best = null;
     for (let offset = 0; offset < row.length; offset++) {
         if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
             continue;
-        const found = matchCode25(row, offset, startPattern);
-        if (found && (!best || found.score < best.score)) {
+        const found = matchCode25(row, offset, startPattern, undefined, threshold);
+        if (!found)
+            continue;
+        if (preferLeftmost)
+            return { start: offset, ...found };
+        if (!best || found.score < best.score) {
             best = { start: offset, ...found };
         }
     }
@@ -1158,59 +1179,101 @@ function findCode25Start(row, startPattern) {
  * callers can select the terminology used by their data source.
  *
  * @param {Uint8Array} row
- * @param {'standard'|'industrial'|'iata'} variant
+ * @param {'standard'|'industrial'|'iata'|'datalogic'} variant
  * @param {object} options
- * @returns {{format:'industrial2of5'|'iata2of5',text:string,checkDigit:boolean}|null}
+ * @returns {{format:'industrial2of5'|'iata2of5'|'datalogic2of5',text:string,checkDigit:boolean}|null}
  */
 function decodeCode25Variant(row, variant, options = {}) {
     const profile = CODE25_VARIANTS[variant];
-    const start = findCode25Start(row, profile.start);
+    const digitPatterns = profile.digitPatterns;
+    // The Data Logic digit grammar is shorter and less self-checking than the
+    // discrete Industrial table, so its generic "1111" guard needs a tighter
+    // acceptance threshold to avoid scoring well against a fragment of the
+    // symbol's own data (including when a mirrored retry scans it backwards).
+    const threshold = 0.38;
+    const ratioCandidates = variant === 'datalogic' ? CODE25_DATALOGIC_RATIO_CANDIDATES : CODE25_RATIO_CANDIDATES;
+    const start = findCode25Start(row, profile.start, variant === 'datalogic', threshold);
     if (!start)
         return null;
     let offset = start.end;
     let digits = '';
     let stop = null;
-    // The IATA start guard is all narrow bars and therefore carries no ratio
-    // information. Infer its ratio from the first data digit instead of
-    // hard-coding the first candidate (which would make a 3:1 symbol look like
-    // a truncated stop pattern).
-    let ratio = variant === 'iata' ? undefined : start.ratio;
-    const counters = new Array(10).fill(0);
+    // The IATA and Data Logic start guards are all narrow bars and therefore
+    // carry no ratio information. Infer the ratio from the first data digit
+    // instead of hard-coding the first candidate (which would make a 3:1
+    // symbol look like a truncated stop pattern).
+    let ratio = variant === 'iata' || variant === 'datalogic' ? undefined : start.ratio;
+    const counters = new Array(digitPatterns[0].length).fill(0);
+    // Data Logic's short, low-redundancy digit grammar can make the tail of one
+    // digit plus the head of the next coincidentally match the stop pattern
+    // exactly. A valid digit reading one position further is always the more
+    // trustworthy interpretation there, so check for a digit before accepting
+    // a stop rather than the other way round.
+    const preferDigitOverStop = variant === 'datalogic';
     for (let count = 0; count < CODE25_MAX_DIGITS; count++) {
-        const candidateStop = matchCode25(row, offset, profile.stop, ratio);
-        const stopGap = candidateStop
-            ? (() => {
-                let nextDark = candidateStop.end;
-                while (nextDark < row.length && row[nextDark] === 0)
-                    nextDark++;
-                return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
-            })()
-            : 0;
-        if (candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))) {
+        const matchStop = () => {
+            const candidateStop = matchCode25(row, offset, profile.stop, ratio, threshold, ratioCandidates);
+            const stopGap = candidateStop
+                ? (() => {
+                    let nextDark = candidateStop.end;
+                    while (nextDark < row.length && row[nextDark] === 0)
+                        nextDark++;
+                    return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
+                })()
+                : 0;
+            return candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))
+                ? candidateStop
+                : null;
+        };
+        const matchDigit = () => {
+            if (!recordPattern(row, offset, counters))
+                return null;
+            let bestDigit = null;
+            for (let digit = 0; digit < digitPatterns.length; digit++) {
+                const candidates = ratio ? [ratio] : ratioCandidates;
+                for (const candidateRatio of candidates) {
+                    const score = patternVariance(counters, code25Widths(digitPatterns[digit], candidateRatio), 0.75);
+                    if (!Number.isFinite(score))
+                        continue;
+                    if (!bestDigit || score < bestDigit.score) {
+                        bestDigit = { digit, score, ratio: candidateRatio };
+                    }
+                }
+            }
+            return bestDigit && bestDigit.score < threshold ? bestDigit : null;
+        };
+        if (preferDigitOverStop) {
+            const bestDigit = matchDigit();
+            if (bestDigit) {
+                ratio ?? (ratio = bestDigit.ratio);
+                digits += String(bestDigit.digit);
+                offset += counters.reduce((sum, width) => sum + width, 0);
+                continue;
+            }
+            const candidateStop = matchStop();
+            if (!candidateStop)
+                return null;
             stop = candidateStop;
             break;
         }
-        if (!recordPattern(row, offset, counters))
-            return null;
-        let bestDigit = null;
-        for (let digit = 0; digit < CODE25_DIGIT_PATTERNS.length; digit++) {
-            const candidates = ratio ? [ratio] : [2, 3, 4, 5, 6, 7, 8];
-            for (const candidateRatio of candidates) {
-                const score = patternVariance(counters, code25Widths(CODE25_DIGIT_PATTERNS[digit], candidateRatio), 0.75);
-                if (!Number.isFinite(score))
-                    continue;
-                if (!bestDigit || score < bestDigit.score) {
-                    bestDigit = { digit, score, ratio: candidateRatio };
-                }
-            }
+        const candidateStop = matchStop();
+        if (candidateStop) {
+            stop = candidateStop;
+            break;
         }
-        if (!bestDigit || bestDigit.score >= 0.38)
+        const bestDigit = matchDigit();
+        if (!bestDigit)
             return null;
         ratio ?? (ratio = bestDigit.ratio);
         digits += String(bestDigit.digit);
         offset += counters.reduce((sum, width) => sum + width, 0);
     }
-    if (!stop || digits.length === 0)
+    // Data Logic's guard carries no ratio information and its digit grammar is
+    // shorter than the discrete Industrial table, so a very short body is not
+    // distinctive enough to trust without a check digit (mirrors how other
+    // narrow-guard readers in this suite reject very short ambiguous reads).
+    const minDigits = variant === 'datalogic' ? 5 : 1;
+    if (!stop || digits.length < minDigits)
         return null;
     const stopEnd = stop.end;
     let nextDark = stopEnd;
@@ -1242,6 +1305,10 @@ export function decodeIndustrial2of5(row, options = {}) {
 /** Decode IATA 2 of 5 with its shorter guard frame. */
 export function decodeIATA2of5(row, options = {}) {
     return decodeCode25Variant(row, 'iata', options);
+}
+/** Decode Code 2 of 5 Data Logic (also known as China Post). */
+export function decodeDataLogic2of5(row, options = {}) {
+    return decodeCode25Variant(row, 'datalogic', options);
 }
 /** Decode the canonical Standard 2 of 5 frame. */
 export function decodeStandard2of5(row, options = {}) {
@@ -1339,6 +1406,7 @@ const DECODERS = [
     ['code93', decodeCode93],
     ['industrial2of5', decodeIndustrial2of5],
     ['iata2of5', decodeIATA2of5],
+    ['datalogic2of5', decodeDataLogic2of5],
     ['itf', decodeITF],
     ['codabar', decodeCodabar],
 ];
@@ -1394,7 +1462,7 @@ function checksumStatus(format, options, result = null) {
     }
     if (format === 'code32' || format === 'pzn')
         return true;
-    if (format === 'industrial2of5' || format === 'iata2of5') {
+    if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5') {
         return result?.checkDigit === true ? true : null;
     }
     if (format === 'telepen' || format === 'telepennumeric')
@@ -1462,6 +1530,9 @@ export function decodeOneD(image, options = {}) {
         }
         if (id === 'iata2of5')
             return enabled.has('iata-2-of-5');
+        if (id === 'datalogic2of5') {
+            return enabled.has('data-logic-2-of-5') || enabled.has('chinapost') || enabled.has('china-post');
+        }
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -1515,7 +1586,7 @@ export function decodeOneD(image, options = {}) {
                     // Code 11 and MSI checks are optional in their base standards, but
                     // a camera frame cannot safely promote their short unchecked forms.
                     const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi'
-                        || id === 'industrial2of5' || id === 'iata2of5')
+                        || id === 'industrial2of5' || id === 'iata2of5' || id === 'datalogic2of5')
                         ? { ...options, checkDigit: true }
                         : options;
                     result = decoder(scan, decoderOptions);
@@ -1580,6 +1651,11 @@ export function decodeOneD(image, options = {}) {
                     }
                     else if (result.format === 'iata2of5') {
                         if (!enabled.has('iata2of5') && !enabled.has('iata-2-of-5'))
+                            continue;
+                    }
+                    else if (result.format === 'datalogic2of5') {
+                        if (!enabled.has('datalogic2of5') && !enabled.has('data-logic-2-of-5')
+                            && !enabled.has('chinapost') && !enabled.has('china-post'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {

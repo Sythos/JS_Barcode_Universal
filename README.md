@@ -255,6 +255,7 @@ make that distinction visible.
 | Codabar | `codabar` | 1D | Linear | ✅ | ✅ |
 | Code 11 | `code11` | 1D | Linear | ✅ | ✅ |
 | Code 128 | `code128` | 1D | Linear | ✅ | ✅ |
+| Code 2 of 5 Data Logic (China Post) | `datalogic2of5` | 1D | Linear | ✅ | ✅ |
 | Code 25 / Standard 2 of 5 | `standard2of5` | 1D | Linear | ✅ | ✅ [^4] |
 | Code 32 (Italian Pharmacode) | `code32` | 1D | Linear | ✅ | ✅ |
 | Code 39 | `code39` | 1D | Linear | ✅ | ✅ |
@@ -303,13 +304,15 @@ make that distinction visible.
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
-Fifty-one listed formats are writable and fifty are readable (EAN-2 and EAN-5 are
+Fifty-two listed formats are writable and fifty-one are readable (EAN-2 and EAN-5 are
 parent-bound supplements). **Pharmacode remains intentionally write-only in the generic image
 pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
 Code 25 family shares one numeric digit grammar while exposing explicit Standard/Industrial and
-IATA guard profiles; Code 32 and PZN validate their pharmaceutical check digits before a read is
+IATA guard profiles; Code 2 of 5 Data Logic (China Post) has its own width-modulated digit grammar
+and rejects the 2:1 wide:narrow ratio, which collides with a different valid reading once the
+symbol is mirrored. Code 32 and PZN validate their pharmaceutical check digits before a read is
 returned. Postal formats use operator-specific four-state alphabets with strict framing and
 checksum validation; KIX deliberately has no check character, while Australia Post supports
 explicit character or numeric customer-data groups and IMb accepts its four legal payload lengths.
@@ -488,7 +491,7 @@ rejects ambiguous candidates, verifies parity and the modulo-127 check value, an
 returns no partial result. A camera-profile read additionally requires a coherent
 quiet-zone-qualified symbol across repeated scan samples.
 
-### Code 25, Industrial 2 of 5 and IATA 2 of 5
+### Code 25, Industrial 2 of 5, IATA 2 of 5 and Data Logic 2 of 5
 
 The Code 25 family is available from both the root dispatcher and the `oned`
 subpath. `standard2of5` (also `code2of5`) and `industrial2of5` use the same
@@ -518,6 +521,14 @@ console.log(hit?.text); // 01234567
 Use `format: 'iata2of5'` for IATA framing. The reader validates the complete
 start/data/stop structure and rejects clipped or ambiguous candidates; a camera
 read additionally requires a quiet zone and a valid check digit.
+
+`format: 'datalogic2of5'` (aliases: `data-logic-2-of-5`, `chinapost`,
+`china-post`) uses a different, width-modulated digit grammar and the shorter
+IATA-style guard. Its `wideRatio` accepts `3..8`, not `2..8`: a 2:1 wide:narrow
+ratio makes this specific digit table's mirrored reading collide with a
+different valid full-length reading, so both the writer and reader reject it.
+Reads shorter than five digits without a check digit are rejected as not
+distinctive enough to trust.
 
 ### Code 32 and PZN
 

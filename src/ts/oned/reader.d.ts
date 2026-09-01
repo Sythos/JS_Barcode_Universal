@@ -123,6 +123,15 @@ export declare function decodeIATA2of5(row: Uint8Array, options?: {
     text: string;
     checkDigit: boolean;
 } | null;
+/** Decode Code 2 of 5 Data Logic (also known as China Post). */
+export declare function decodeDataLogic2of5(row: Uint8Array, options?: {
+    checkDigit?: boolean;
+    profile?: 'camera';
+}): {
+    format: 'datalogic2of5';
+    text: string;
+    checkDigit: boolean;
+} | null;
 /** Decode the canonical Standard 2 of 5 frame. */
 export declare const decodeStandard2of5: typeof decodeIndustrial2of5;
 /** Decode any supported Code 25 family frame. */

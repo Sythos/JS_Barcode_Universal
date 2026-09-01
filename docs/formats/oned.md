@@ -22,6 +22,7 @@ needs to be printed or displayed at a useful height.
 | Code 25 / Standard 2 of 5 | `standard2of5` | ✅ | ✅ | Canonical Industrial frame in this SDK; `code2of5` is an alias. |
 | Industrial 2 of 5 | `industrial2of5` | ✅ | ✅ | Two-wide-bar digit grammar with optional modulo-10 check digit. |
 | IATA 2 of 5 | `iata2of5` | ✅ | ✅ | Same digit grammar with the shorter IATA guard frame. |
+| Code 2 of 5 Data Logic (China Post) | `datalogic2of5` | ✅ | ✅ | Width-modulated digit grammar with the shorter IATA-style guard; `wideRatio` is `3..8`, not `2..8`. |
 | Codabar | `codabar` | ✅ | ✅ | Optional A/B/C/D start and stop characters. |
 | Code 11 | `code11` | ✅ | ✅ | Optional check-digit validation, enabled by default in the writer. |
 | MSI Plessey | `msi` | ✅ | ✅ | Optional modulo-10 check digit and scanline reader. |
@@ -56,6 +57,7 @@ import {
   encodeTelepenNumeric,
   encodeIndustrial2of5,
   encodeIATA2of5,
+  encodeDataLogic2of5,
   encodeCode32,
   encodePZN,
   encodePharmacode,
@@ -75,6 +77,7 @@ const telepen = encodeTelepen('TELEPEN-ASCII');
 const telepenNumeric = encodeTelepenNumeric('00112738999X');
 const industrial = encodeIndustrial2of5('01234567', { checkDigit: true });
 const iata = encodeIATA2of5('31415926');
+const dataLogic = encodeDataLogic2of5('86420', { checkDigit: true });
 const code32 = encodeCode32('01234567');
 const pzn = encodePZN('123456');
 const pharmacode = encodePharmacode(12345);
@@ -93,6 +96,14 @@ const imb = encodeIMB('01234567094987654321');
 Industrial 2 of 5 frame in this SDK. `iata2of5` uses its shorter IATA guard.
 The optional modulo-10 check digit is accepted by every writer and can be
 required by `decode(..., { checkDigit: true })` or the strict camera profile.
+
+`datalogic2of5` (China Post Barcode; aliases `data-logic-2-of-5`,
+`chinapost`, `china-post`) is a related but distinct grammar: both bars and
+spaces carry width information, combined with the shorter IATA-style guard.
+Its `wideRatio` accepts `3..8`, not `2..8` — a 2:1 ratio makes this digit
+table's mirrored reading collide with a different valid full-length reading,
+so both the writer and reader reject it. An unchecked read shorter than five
+digits is also rejected as not distinctive enough to trust.
 
 ```js
 import { decode, encode, toImageData } from '@sythos/js_barcode_universal';

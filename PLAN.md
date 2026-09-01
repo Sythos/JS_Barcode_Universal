@@ -62,7 +62,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 ### Shipped and tested
 
 **Aztec Code is implemented for writing and reading, including Compact and Full symbols.**
-51 listed formats write, 50 read; PDF417 image reading is now enabled after synthetic, black-box and
+52 listed formats write, 51 read; PDF417 image reading is now enabled after synthetic, black-box and
 real-device validation. Extreme glare, severe occlusion, curved media and multi-symbol scenes
 remain outside the validated robustness envelope.
 
@@ -70,8 +70,8 @@ remain outside the validated robustness envelope.
 |---|---|
 | **Core** — `BitMatrix`, `BitWriter`/`BitReader`, generic `GaloisField`, Reed–Solomon | ✅ 15 tests |
 | **Image** — `LuminanceSource`, global + hybrid binarizers, `PerspectiveTransform`, grid samplers | ✅ 15 tests |
-| **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode and the seven postal 4-state formats | ✅ 1D suite |
-| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post, IMb, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
+| **1D** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, Pharmacode and the seven postal 4-state formats | ✅ 1D suite |
+| **1D readers** — EAN-13/8, UPC-A/E, ISBN, Code 128, GS1-128, Code 39, Code 93, ITF, ITF-14, Code 25, Industrial/IATA 2 of 5, Data Logic 2 of 5, Codabar, Code 11, MSI, Code 32, PZN, Telepen, POSTNET, PLANET, RM4SCC, KIX, Australia Post, Japan Post, IMb, EAN-2/5 parent-bound supplements and GS1 DataBar physical variants | ✅ phantom-free |
 | **QR** — versions 1–40, L/M/Q/H, four modes, mask scoring, ECI; encoder, decoder and detector | ✅ 22 tests |
 | **Data Matrix ECC 200** — classic square + rectangular symbols, ASCII/Base256, GS1 FNC1, Reed–Solomon, detector | ✅ 13 tests |
 | **Aztec Code** — Compact 1–4, Full 1–32, text tables, UTF-8 byte payloads via Binary Shift, Reed–Solomon, bull's-eye detector | ✅ write + read |
@@ -149,6 +149,16 @@ together. The grouped CI gate runs `test:formats`, TypeScript checks, lint,
 package/export validation, the foundation suite, fuzz properties and the
 zero-runtime-dependency guard. Arbitrary perspective and multi-symbol photographic
 scenes remain outside this group.
+
+### M15 format group — license-gated follow-up backlog
+
+Milestone-based work against a reviewed backlog of formats not yet in scope,
+each gated by a license/free-use check before any code is written. Tracked
+format-by-format in `plan_v2.md` at the parent workspace root (outside `git/`).
+
+| Milestone | Format | Scope delivered | Focused evidence |
+|---|---|---|---|
+| M15 | Code 2 of 5 Data Logic (China Post) | Width-modulated six-element digit grammar with the shorter IATA-style guard frame; optional modulo-10 check digit; 2:1 wide:narrow ratio rejected by both writer and reader because it collides with a different valid reading once mirrored; short unchecked reads (under five digits) rejected as not distinctive enough to trust | Digit-table sanity test, round-trip with aliases, camera-profile check-digit/damage rejection, and an exhaustive adversarial sweep across payloads, render scales and wide ratios during implementation |
 
 ### Remaining
 

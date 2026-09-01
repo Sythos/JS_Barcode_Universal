@@ -45,9 +45,9 @@ export {
 } from './writers.js';
 
 export {
-  CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS,
+  CODE25_DIGIT_PATTERNS, CODE25_DATALOGIC_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS,
   code25CheckDigit, encodeCode25, encodeStandard2of5,
-  encodeIndustrial2of5, encodeIATA2of5,
+  encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5,
 } from './code25.js';
 export type { Code25Variant } from './code25.js';
 
@@ -71,6 +71,7 @@ export {
 export {
   decodeOneD, decodeOneDStrict, decodeCode32, decodePZN,
   decodeCode25, decodeStandard2of5, decodeIndustrial2of5, decodeIATA2of5,
+  decodeDataLogic2of5,
   decodeCode11, decodeMSI,
   patternVariance, recordPattern, toNarrowWidePattern,
 } from './reader.js';
@@ -93,7 +94,7 @@ import {
 } from './writers.js';
 import { encodeEAN2, encodeEAN5 } from './addons.js';
 import { encodeTelepen } from './telepen.js';
-import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5 } from './code25.js';
+import { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } from './code25.js';
 import {
   encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX,
   encodeAustraliaPost, encodeJapanPost, encodeIMB,
@@ -128,6 +129,7 @@ export const ONED_FORMATS = {
   standard2of5: { encode: encodeStandard2of5, readable: true, label: 'Code 25 / Standard 2 of 5' },
   industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
   iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
+  datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
   codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
   code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
   msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },

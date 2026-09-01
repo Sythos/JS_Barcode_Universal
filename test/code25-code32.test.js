@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  CODE25_DATALOGIC_DIGIT_PATTERNS,
   CODE25_DIGIT_PATTERNS,
   code25CheckDigit,
   decode,
@@ -9,6 +10,7 @@ import {
   decodePZN,
   encode,
   encodeCode32,
+  encodeDataLogic2of5,
   encodeIATA2of5,
   encodeIndustrial2of5,
   encodePZN,
@@ -53,6 +55,49 @@ test('Standard and Industrial 2 of 5 round-trip with optional check digits', () 
     assert.equal(literal.length, 1, format);
     assert.equal(literal[0].text, `${payload}0`);
   }
+});
+
+test('Data Logic 2 of 5 table retains ten unique digits with exactly two wide elements', () => {
+  assert.equal(CODE25_DATALOGIC_DIGIT_PATTERNS.length, 10);
+  assert.equal(new Set(CODE25_DATALOGIC_DIGIT_PATTERNS).size, 10);
+  for (const pattern of CODE25_DATALOGIC_DIGIT_PATTERNS) {
+    assert.equal(pattern.length, 6);
+    assert.equal([...pattern].reduce((sum, width) => sum + Number(width), 0), 10);
+    assert.equal([...pattern].filter((width) => width === '3').length, 2);
+  }
+});
+
+test('Data Logic 2 of 5 round-trips with the width-modulated digit grammar and its own frame', () => {
+  const payload = '01234567';
+  const matrix = encodeDataLogic2of5(payload, { checkDigit: true });
+  const image = rendered(matrix);
+
+  const checked = decode(image, { formats: ['datalogic2of5'], checkDigit: true });
+  assert.equal(checked.length, 1);
+  assert.deepEqual(checked[0], { format: 'datalogic2of5', text: payload, checkDigit: true });
+
+  const literal = decode(image, { formats: ['datalogic2of5'] });
+  assert.equal(literal.length, 1);
+  assert.equal(literal[0].text, `${payload}${code25CheckDigit(payload)}`);
+
+  for (const alias of ['data-logic-2-of-5', 'chinapost', 'china-post']) {
+    const aliased = decode(image, { formats: [alias], checkDigit: true });
+    assert.equal(aliased.length, 1, alias);
+    assert.equal(aliased[0].format, 'datalogic2of5');
+  }
+});
+
+test('Data Logic 2 of 5 camera profile requires a valid check digit and quiet zone', () => {
+  const matrix = encodeDataLogic2of5('86420', { checkDigit: true, wideRatio: 4 });
+  const image = rendered(matrix, { scale: 2 });
+  const result = decode(image, { formats: ['datalogic2of5'], profile: 'camera' });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].text, '86420');
+  assert.equal(result[0].quality.checksum, true);
+
+  const damaged = matrix.clone();
+  damaged.flip(Math.floor(damaged.width / 2), 0);
+  assert.equal(decode(rendered(damaged, { scale: 2 }), { formats: ['datalogic2of5'], profile: 'camera' }).length, 0);
 });
 
 test('IATA 2 of 5 supports the same digit grammar with its own frame', () => {
@@ -118,7 +163,7 @@ test('PZN-7 and PZN-8 preserve their variant and check digit', () => {
 test('new aliases are exposed by the top-level writer dispatcher', () => {
   for (const format of ['code32', 'italian-pharmacode', 'pzn', 'pzn7', 'pzn8',
     'code2of5', 'standard2of5', 'standard-2-of-5', 'industrial2of5',
-    'industrial-2-of-5', 'iata2of5', 'iata-2-of-5']) {
+    'industrial-2-of-5', 'iata2of5', 'iata-2-of-5', 'datalogic2of5']) {
     assert.doesNotThrow(() => encode(format === 'code32' || format === 'italian-pharmacode'
       ? '01234567' : format.startsWith('pzn') ? (format === 'pzn8' ? '1234567' : '123456') : '1234', { format }));
   }

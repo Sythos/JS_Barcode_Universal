@@ -2719,6 +2719,9 @@ __modules["js/oned/code25.js"] = function (__require, __exports) {
  * Code 25 (also called Standard or Industrial 2 of 5) represents each digit
  * with five alternating bar/space elements, exactly two of the bars being wide.
  * IATA 2 of 5 uses the same digit grammar with a shorter start/stop frame.
+ * Data Logic 2 of 5 (also known as China Post) uses a different digit
+ * grammar in which both the bars and the spaces carry width information,
+ * combined with the same short IATA-style guard frame.
  * The width descriptions below are expressed as module counts rather than
  * copied implementation tables and are checked by the focused test suite.
  *
@@ -2732,13 +2735,37 @@ const CODE25_DIGIT_PATTERNS = [
     '1111311131', '3111311111', '1131311111', '1111113131',
     '3111113111', '1131113111',
 ];
-/** Start/stop run widths for the three public names. */
+/**
+ * The ten Data Logic digit patterns: three bars and three spaces, both
+ * widths carrying information, unlike the discrete grammar above where only
+ * the bars vary.
+ */
+const CODE25_DATALOGIC_DIGIT_PATTERNS = [
+    '113311', '311131', '131131', '331111', '113131',
+    '313111', '133111', '111331', '311311', '131311',
+];
+/** Start/stop run widths for the four public names. */
 const CODE25_VARIANTS = {
     // Code 25 and Industrial 2 of 5 share the discrete two-wide-bar grammar
     // and canonical industrial frame. `standard` is the friendly API alias.
-    standard: { id: 'industrial2of5', label: 'Standard 2 of 5 (Code 25)', start: '313111', stop: '31113' },
-    industrial: { id: 'industrial2of5', label: 'Industrial 2 of 5', start: '313111', stop: '31113' },
-    iata: { id: 'iata2of5', label: 'IATA 2 of 5', start: '1111', stop: '311' },
+    standard: {
+        id: 'industrial2of5', label: 'Standard 2 of 5 (Code 25)', start: '313111', stop: '31113',
+        digitPatterns: CODE25_DIGIT_PATTERNS,
+    },
+    industrial: {
+        id: 'industrial2of5', label: 'Industrial 2 of 5', start: '313111', stop: '31113',
+        digitPatterns: CODE25_DIGIT_PATTERNS,
+    },
+    iata: {
+        id: 'iata2of5', label: 'IATA 2 of 5', start: '1111', stop: '311',
+        digitPatterns: CODE25_DIGIT_PATTERNS,
+    },
+    // Data Logic reuses the IATA guard frame but switches to the width-modulated
+    // digit grammar (both bars and spaces vary).
+    datalogic: {
+        id: 'datalogic2of5', label: 'Code 2 of 5 Data Logic', start: '1111', stop: '311',
+        digitPatterns: CODE25_DATALOGIC_DIGIT_PATTERNS,
+    },
 };
 const MAX_CODE25_DIGITS = 500;
 function requireDigits(value, label) {
@@ -2783,6 +2810,9 @@ function resolveVariant(value) {
         return 'industrial';
     if (variant === 'iata' || variant === 'iata2of5' || variant === 'iata-2-of-5')
         return 'iata';
+    if (variant === 'datalogic' || variant === 'datalogic2of5' || variant === 'data-logic-2-of-5'
+        || variant === 'chinapost' || variant === 'china-post')
+        return 'datalogic';
     if (variant === 'standard' || variant === 'code2of5' || variant === 'code-2-of-5' || variant === 'standard2of5' || variant === 'standard-2-of-5')
         return 'standard';
     throw new EncodeError(`Code 25: unknown variant "${value}"`);
@@ -2805,15 +2835,20 @@ function encodeCode25(value, options = {}) {
     const profile = CODE25_VARIANTS[variant];
     const label = profile.label;
     const ratio = options.wideRatio ?? 3;
-    if (!Number.isInteger(ratio) || ratio < 2 || ratio > 8) {
-        throw new EncodeError(`${label}: wideRatio must be an integer in 2..8`);
+    // A 2:1 wide:narrow ratio makes the Data Logic digit table's reversed
+    // reading collide with a different valid full-length reading (verified by
+    // exhaustive round-trip testing); 3:1 and up do not exhibit this and are
+    // the ratios documented in practice for this symbology.
+    const minRatio = variant === 'datalogic' ? 3 : 2;
+    if (!Number.isInteger(ratio) || ratio < minRatio || ratio > 8) {
+        throw new EncodeError(`${label}: wideRatio must be an integer in ${minRatio}..8`);
     }
     let digits = requireDigits(value, label);
     if (options.checkDigit === true)
         digits += String(code25CheckDigit(digits));
     let modules = expandWidths(profile.start, ratio);
     for (const digit of digits)
-        modules += expandWidths(CODE25_DIGIT_PATTERNS[Number(digit)], ratio);
+        modules += expandWidths(profile.digitPatterns[Number(digit)], ratio);
     modules += expandWidths(profile.stop, ratio);
     return toMatrix(modules);
 }
@@ -2829,16 +2864,22 @@ function encodeIndustrial2of5(value, options = {}) {
 function encodeIATA2of5(value, options = {}) {
     return encodeCode25(value, { ...options, variant: 'iata' });
 }
+/** Encode Code 2 of 5 Data Logic (also known as China Post). */
+function encodeDataLogic2of5(value, options = {}) {
+    return encodeCode25(value, { ...options, variant: 'datalogic' });
+}
 /** Internal limit used by the scanline reader and its safety checks. */
 const CODE25_MAX_DIGITS = MAX_CODE25_DIGITS;
 
 __exports.CODE25_DIGIT_PATTERNS = CODE25_DIGIT_PATTERNS;
+__exports.CODE25_DATALOGIC_DIGIT_PATTERNS = CODE25_DATALOGIC_DIGIT_PATTERNS;
 __exports.CODE25_VARIANTS = CODE25_VARIANTS;
 __exports.code25CheckDigit = code25CheckDigit;
 __exports.encodeCode25 = encodeCode25;
 __exports.encodeStandard2of5 = encodeStandard2of5;
 __exports.encodeIndustrial2of5 = encodeIndustrial2of5;
 __exports.encodeIATA2of5 = encodeIATA2of5;
+__exports.encodeDataLogic2of5 = encodeDataLogic2of5;
 __exports.CODE25_MAX_DIGITS = CODE25_MAX_DIGITS;
 };
 
@@ -4319,7 +4360,7 @@ const { ean13CheckDigit, upceToUpcaBody, decodeCode32Payload, decodePZNPayload }
 const { EAN2_PARITY, EAN5_PARITY, ean5Checksum } = __require("js/oned/addons.js");
 const { decodeDataBar14Scanline } = __require("js/databar/decoder.js");
 const { decodeTelepen } = __require("js/oned/telepen.js");
-const { CODE25_DIGIT_PATTERNS, CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit } = __require("js/oned/code25.js");
+const { CODE25_VARIANTS, CODE25_MAX_DIGITS, code25CheckDigit } = __require("js/oned/code25.js");
 const { decodePostal } = __require("js/oned/postal.js");
 /* ------------------------------------------------------------------ *
  * Pattern matching primitives
@@ -5370,6 +5411,12 @@ function decodeITF(row) {
 function code25Widths(pattern, ratio) {
     return [...pattern].map((width) => Number(width) > 1 ? ratio : 1);
 }
+const CODE25_RATIO_CANDIDATES = [2, 3, 4, 5, 6, 7, 8];
+// A 2:1 ratio makes the Data Logic digit table's reversed reading collide
+// with a different valid full-length reading; the writer already refuses to
+// produce it (see code25.ts), and the reader excludes it here too so a
+// foreign 2:1 Data Logic image is not treated as unambiguous.
+const CODE25_DATALOGIC_RATIO_CANDIDATES = [3, 4, 5, 6, 7, 8];
 /**
  * Match a Code 25 guard or digit at an exact offset. The writer permits a
  * configurable wide-bar ratio, so a small bounded set of ratios is considered
@@ -5379,15 +5426,17 @@ function code25Widths(pattern, ratio) {
  * @param {number} start
  * @param {string} pattern
  * @param {number|undefined} preferredRatio
+ * @param {number} [threshold] Maximum accepted variance score.
+ * @param {readonly number[]} [ratioCandidates] Ratios to try when `preferredRatio` is not set.
  * @returns {{end:number, score:number, ratio:number}|null}
  */
-function matchCode25(row, start, pattern, preferredRatio) {
+function matchCode25(row, start, pattern, preferredRatio, threshold = 0.38, ratioCandidates = CODE25_RATIO_CANDIDATES) {
     const counters = new Array(pattern.length).fill(0);
     if (!recordPattern(row, start, counters))
         return null;
     const candidates = preferredRatio
         ? [preferredRatio]
-        : [2, 3, 4, 5, 6, 7, 8];
+        : ratioCandidates;
     let best = null;
     for (const ratio of candidates) {
         const score = patternVariance(counters, code25Widths(pattern, ratio), 0.75);
@@ -5396,7 +5445,7 @@ function matchCode25(row, start, pattern, preferredRatio) {
         if (!best || score < best.score)
             best = { score, ratio };
     }
-    if (!best || best.score >= 0.38)
+    if (!best || best.score >= threshold)
         return null;
     return {
         end: start + counters.reduce((sum, width) => sum + width, 0),
@@ -5404,14 +5453,27 @@ function matchCode25(row, start, pattern, preferredRatio) {
         ratio: best.ratio,
     };
 }
-/** Find the strongest Code 25 start guard in a scanline. */
-function findCode25Start(row, startPattern) {
+/**
+ * Find a Code 25 start guard in a scanline.
+ *
+ * The Data Logic digit grammar is shorter and less distinctive than the
+ * discrete Industrial table (three bar/space pairs instead of five), so its
+ * generic, ratio-less "1111" guard can accidentally score well against a
+ * fragment of the symbol's own data. `preferLeftmost` returns the first
+ * accepted match instead of the best-scoring one across the whole row,
+ * which is the correct guard in a clean, quiet-zone-delimited symbol.
+ */
+function findCode25Start(row, startPattern, preferLeftmost = false, threshold = 0.38) {
     let best = null;
     for (let offset = 0; offset < row.length; offset++) {
         if (row[offset] !== 1 || (offset > 0 && row[offset - 1] === 1))
             continue;
-        const found = matchCode25(row, offset, startPattern);
-        if (found && (!best || found.score < best.score)) {
+        const found = matchCode25(row, offset, startPattern, undefined, threshold);
+        if (!found)
+            continue;
+        if (preferLeftmost)
+            return { start: offset, ...found };
+        if (!best || found.score < best.score) {
             best = { start: offset, ...found };
         }
     }
@@ -5425,59 +5487,101 @@ function findCode25Start(row, startPattern) {
  * callers can select the terminology used by their data source.
  *
  * @param {Uint8Array} row
- * @param {'standard'|'industrial'|'iata'} variant
+ * @param {'standard'|'industrial'|'iata'|'datalogic'} variant
  * @param {object} options
- * @returns {{format:'industrial2of5'|'iata2of5',text:string,checkDigit:boolean}|null}
+ * @returns {{format:'industrial2of5'|'iata2of5'|'datalogic2of5',text:string,checkDigit:boolean}|null}
  */
 function decodeCode25Variant(row, variant, options = {}) {
     const profile = CODE25_VARIANTS[variant];
-    const start = findCode25Start(row, profile.start);
+    const digitPatterns = profile.digitPatterns;
+    // The Data Logic digit grammar is shorter and less self-checking than the
+    // discrete Industrial table, so its generic "1111" guard needs a tighter
+    // acceptance threshold to avoid scoring well against a fragment of the
+    // symbol's own data (including when a mirrored retry scans it backwards).
+    const threshold = 0.38;
+    const ratioCandidates = variant === 'datalogic' ? CODE25_DATALOGIC_RATIO_CANDIDATES : CODE25_RATIO_CANDIDATES;
+    const start = findCode25Start(row, profile.start, variant === 'datalogic', threshold);
     if (!start)
         return null;
     let offset = start.end;
     let digits = '';
     let stop = null;
-    // The IATA start guard is all narrow bars and therefore carries no ratio
-    // information. Infer its ratio from the first data digit instead of
-    // hard-coding the first candidate (which would make a 3:1 symbol look like
-    // a truncated stop pattern).
-    let ratio = variant === 'iata' ? undefined : start.ratio;
-    const counters = new Array(10).fill(0);
+    // The IATA and Data Logic start guards are all narrow bars and therefore
+    // carry no ratio information. Infer the ratio from the first data digit
+    // instead of hard-coding the first candidate (which would make a 3:1
+    // symbol look like a truncated stop pattern).
+    let ratio = variant === 'iata' || variant === 'datalogic' ? undefined : start.ratio;
+    const counters = new Array(digitPatterns[0].length).fill(0);
+    // Data Logic's short, low-redundancy digit grammar can make the tail of one
+    // digit plus the head of the next coincidentally match the stop pattern
+    // exactly. A valid digit reading one position further is always the more
+    // trustworthy interpretation there, so check for a digit before accepting
+    // a stop rather than the other way round.
+    const preferDigitOverStop = variant === 'datalogic';
     for (let count = 0; count < CODE25_MAX_DIGITS; count++) {
-        const candidateStop = matchCode25(row, offset, profile.stop, ratio);
-        const stopGap = candidateStop
-            ? (() => {
-                let nextDark = candidateStop.end;
-                while (nextDark < row.length && row[nextDark] === 0)
-                    nextDark++;
-                return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
-            })()
-            : 0;
-        if (candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))) {
+        const matchStop = () => {
+            const candidateStop = matchCode25(row, offset, profile.stop, ratio, threshold, ratioCandidates);
+            const stopGap = candidateStop
+                ? (() => {
+                    let nextDark = candidateStop.end;
+                    while (nextDark < row.length && row[nextDark] === 0)
+                        nextDark++;
+                    return nextDark === row.length ? Infinity : nextDark - candidateStop.end;
+                })()
+                : 0;
+            return candidateStop && stopGap >= Math.max(3, Math.ceil((ratio ?? candidateStop.ratio) * 3))
+                ? candidateStop
+                : null;
+        };
+        const matchDigit = () => {
+            if (!recordPattern(row, offset, counters))
+                return null;
+            let bestDigit = null;
+            for (let digit = 0; digit < digitPatterns.length; digit++) {
+                const candidates = ratio ? [ratio] : ratioCandidates;
+                for (const candidateRatio of candidates) {
+                    const score = patternVariance(counters, code25Widths(digitPatterns[digit], candidateRatio), 0.75);
+                    if (!Number.isFinite(score))
+                        continue;
+                    if (!bestDigit || score < bestDigit.score) {
+                        bestDigit = { digit, score, ratio: candidateRatio };
+                    }
+                }
+            }
+            return bestDigit && bestDigit.score < threshold ? bestDigit : null;
+        };
+        if (preferDigitOverStop) {
+            const bestDigit = matchDigit();
+            if (bestDigit) {
+                ratio ?? (ratio = bestDigit.ratio);
+                digits += String(bestDigit.digit);
+                offset += counters.reduce((sum, width) => sum + width, 0);
+                continue;
+            }
+            const candidateStop = matchStop();
+            if (!candidateStop)
+                return null;
             stop = candidateStop;
             break;
         }
-        if (!recordPattern(row, offset, counters))
-            return null;
-        let bestDigit = null;
-        for (let digit = 0; digit < CODE25_DIGIT_PATTERNS.length; digit++) {
-            const candidates = ratio ? [ratio] : [2, 3, 4, 5, 6, 7, 8];
-            for (const candidateRatio of candidates) {
-                const score = patternVariance(counters, code25Widths(CODE25_DIGIT_PATTERNS[digit], candidateRatio), 0.75);
-                if (!Number.isFinite(score))
-                    continue;
-                if (!bestDigit || score < bestDigit.score) {
-                    bestDigit = { digit, score, ratio: candidateRatio };
-                }
-            }
+        const candidateStop = matchStop();
+        if (candidateStop) {
+            stop = candidateStop;
+            break;
         }
-        if (!bestDigit || bestDigit.score >= 0.38)
+        const bestDigit = matchDigit();
+        if (!bestDigit)
             return null;
         ratio ?? (ratio = bestDigit.ratio);
         digits += String(bestDigit.digit);
         offset += counters.reduce((sum, width) => sum + width, 0);
     }
-    if (!stop || digits.length === 0)
+    // Data Logic's guard carries no ratio information and its digit grammar is
+    // shorter than the discrete Industrial table, so a very short body is not
+    // distinctive enough to trust without a check digit (mirrors how other
+    // narrow-guard readers in this suite reject very short ambiguous reads).
+    const minDigits = variant === 'datalogic' ? 5 : 1;
+    if (!stop || digits.length < minDigits)
         return null;
     const stopEnd = stop.end;
     let nextDark = stopEnd;
@@ -5509,6 +5613,10 @@ function decodeIndustrial2of5(row, options = {}) {
 /** Decode IATA 2 of 5 with its shorter guard frame. */
 function decodeIATA2of5(row, options = {}) {
     return decodeCode25Variant(row, 'iata', options);
+}
+/** Decode Code 2 of 5 Data Logic (also known as China Post). */
+function decodeDataLogic2of5(row, options = {}) {
+    return decodeCode25Variant(row, 'datalogic', options);
 }
 /** Decode the canonical Standard 2 of 5 frame. */
 function decodeStandard2of5(row, options = {}) {
@@ -5606,6 +5714,7 @@ const DECODERS = [
     ['code93', decodeCode93],
     ['industrial2of5', decodeIndustrial2of5],
     ['iata2of5', decodeIATA2of5],
+    ['datalogic2of5', decodeDataLogic2of5],
     ['itf', decodeITF],
     ['codabar', decodeCodabar],
 ];
@@ -5661,7 +5770,7 @@ function checksumStatus(format, options, result = null) {
     }
     if (format === 'code32' || format === 'pzn')
         return true;
-    if (format === 'industrial2of5' || format === 'iata2of5') {
+    if (format === 'industrial2of5' || format === 'iata2of5' || format === 'datalogic2of5') {
         return result?.checkDigit === true ? true : null;
     }
     if (format === 'telepen' || format === 'telepennumeric')
@@ -5729,6 +5838,9 @@ function decodeOneD(image, options = {}) {
         }
         if (id === 'iata2of5')
             return enabled.has('iata-2-of-5');
+        if (id === 'datalogic2of5') {
+            return enabled.has('data-logic-2-of-5') || enabled.has('chinapost') || enabled.has('china-post');
+        }
         if (id === 'ean13' || id === 'ean8' || id === 'upca' || id === 'upce') {
             return enabled.has('ean2') || enabled.has('ean5') ||
                 (id === 'ean13' && enabled.has('isbn'));
@@ -5782,7 +5894,7 @@ function decodeOneD(image, options = {}) {
                     // Code 11 and MSI checks are optional in their base standards, but
                     // a camera frame cannot safely promote their short unchecked forms.
                     const decoderOptions = cameraProfile && (id === 'code11' || id === 'msi'
-                        || id === 'industrial2of5' || id === 'iata2of5')
+                        || id === 'industrial2of5' || id === 'iata2of5' || id === 'datalogic2of5')
                         ? { ...options, checkDigit: true }
                         : options;
                     result = decoder(scan, decoderOptions);
@@ -5847,6 +5959,11 @@ function decodeOneD(image, options = {}) {
                     }
                     else if (result.format === 'iata2of5') {
                         if (!enabled.has('iata2of5') && !enabled.has('iata-2-of-5'))
+                            continue;
+                    }
+                    else if (result.format === 'datalogic2of5') {
+                        if (!enabled.has('datalogic2of5') && !enabled.has('data-logic-2-of-5')
+                            && !enabled.has('chinapost') && !enabled.has('china-post'))
                             continue;
                     }
                     else if (!enabled.has(result.format)) {
@@ -5923,6 +6040,7 @@ __exports.decodeCode32 = decodeCode32;
 __exports.decodePZN = decodePZN;
 __exports.decodeIndustrial2of5 = decodeIndustrial2of5;
 __exports.decodeIATA2of5 = decodeIATA2of5;
+__exports.decodeDataLogic2of5 = decodeDataLogic2of5;
 __exports.decodeStandard2of5 = decodeStandard2of5;
 __exports.decodeCode25 = decodeCode25;
 __exports.decodeOneD = decodeOneD;
@@ -5936,16 +6054,16 @@ __modules["js/oned/index.js"] = function (__require, __exports) {
  * @module oned
  */
 const __reexport0 = __require("js/oned/writers.js"); __exports.encodeEAN13 = __reexport0.encodeEAN13; __exports.encodeEAN8 = __reexport0.encodeEAN8; __exports.encodeUPCA = __reexport0.encodeUPCA; __exports.encodeUPCE = __reexport0.encodeUPCE; __exports.encodeISBN = __reexport0.encodeISBN; __exports.encodeCode39 = __reexport0.encodeCode39; __exports.encodeCode93 = __reexport0.encodeCode93; __exports.encodeCode128 = __reexport0.encodeCode128; __exports.code128DataCodewords = __reexport0.code128DataCodewords; __exports.encodeITF = __reexport0.encodeITF; __exports.encodeITF14 = __reexport0.encodeITF14; __exports.encodeCodabar = __reexport0.encodeCodabar; __exports.encodeCode11 = __reexport0.encodeCode11; __exports.encodeMSI = __reexport0.encodeMSI; __exports.encodePharmacode = __reexport0.encodePharmacode; __exports.encodeCode32 = __reexport0.encodeCode32; __exports.encodePZN = __reexport0.encodePZN; __exports.code32CheckDigit = __reexport0.code32CheckDigit; __exports.decodeCode32Payload = __reexport0.decodeCode32Payload; __exports.decodePZNPayload = __reexport0.decodePZNPayload; __exports.ean13CheckDigit = __reexport0.ean13CheckDigit;
-const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5;
+const __reexport1 = __require("js/oned/code25.js"); __exports.CODE25_DIGIT_PATTERNS = __reexport1.CODE25_DIGIT_PATTERNS; __exports.CODE25_DATALOGIC_DIGIT_PATTERNS = __reexport1.CODE25_DATALOGIC_DIGIT_PATTERNS; __exports.CODE25_VARIANTS = __reexport1.CODE25_VARIANTS; __exports.CODE25_MAX_DIGITS = __reexport1.CODE25_MAX_DIGITS; __exports.code25CheckDigit = __reexport1.code25CheckDigit; __exports.encodeCode25 = __reexport1.encodeCode25; __exports.encodeStandard2of5 = __reexport1.encodeStandard2of5; __exports.encodeIndustrial2of5 = __reexport1.encodeIndustrial2of5; __exports.encodeIATA2of5 = __reexport1.encodeIATA2of5; __exports.encodeDataLogic2of5 = __reexport1.encodeDataLogic2of5;
 const __reexport2 = __require("js/oned/telepen.js"); __exports.TELEPEN_START_VALUE = __reexport2.TELEPEN_START_VALUE; __exports.TELEPEN_STOP_VALUE = __reexport2.TELEPEN_STOP_VALUE; __exports.TELEPEN_MAX_LENGTH = __reexport2.TELEPEN_MAX_LENGTH; __exports.telepenPattern = __reexport2.telepenPattern; __exports.encodeTelepen = __reexport2.encodeTelepen; __exports.encodeTelepenNumeric = __reexport2.encodeTelepenNumeric; __exports.decodeTelepen = __reexport2.decodeTelepen; __exports.decodeTelepenNumeric = __reexport2.decodeTelepenNumeric;
 const __reexport3 = __require("js/oned/addons.js"); __exports.EAN2_PARITY = __reexport3.EAN2_PARITY; __exports.EAN5_PARITY = __reexport3.EAN5_PARITY; __exports.EAN2_WIDTH = __reexport3.EAN2_WIDTH; __exports.EAN5_WIDTH = __reexport3.EAN5_WIDTH; __exports.EAN_ADDON_START = __reexport3.EAN_ADDON_START; __exports.EAN_ADDON_SEPARATOR = __reexport3.EAN_ADDON_SEPARATOR; __exports.ean2Parity = __reexport3.ean2Parity; __exports.ean5Checksum = __reexport3.ean5Checksum; __exports.ean5CheckDigit = __reexport3.ean5CheckDigit; __exports.ean5Parity = __reexport3.ean5Parity; __exports.encodeEAN2 = __reexport3.encodeEAN2; __exports.encodeEAN5 = __reexport3.encodeEAN5; __exports.encodeEANAddon = __reexport3.encodeEANAddon; __exports.encodeEANAddOn = __reexport3.encodeEANAddOn; __exports.decodeEAN2 = __reexport3.decodeEAN2; __exports.decodeEAN5 = __reexport3.decodeEAN5; __exports.decodeEANAddon = __reexport3.decodeEANAddon; __exports.decodeEANAddOn = __reexport3.decodeEANAddOn; __exports.composeEANAddon = __reexport3.composeEANAddon; __exports.encodeEAN13WithAddon = __reexport3.encodeEAN13WithAddon; __exports.encodeEAN8WithAddon = __reexport3.encodeEAN8WithAddon; __exports.encodeUPCAWithAddon = __reexport3.encodeUPCAWithAddon; __exports.encodeUPCEWithAddon = __reexport3.encodeUPCEWithAddon;
-const __reexport4 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport4.decodeOneD; __exports.decodeOneDStrict = __reexport4.decodeOneDStrict; __exports.decodeCode32 = __reexport4.decodeCode32; __exports.decodePZN = __reexport4.decodePZN; __exports.decodeCode25 = __reexport4.decodeCode25; __exports.decodeStandard2of5 = __reexport4.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport4.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport4.decodeIATA2of5; __exports.decodeCode11 = __reexport4.decodeCode11; __exports.decodeMSI = __reexport4.decodeMSI; __exports.patternVariance = __reexport4.patternVariance; __exports.recordPattern = __reexport4.recordPattern; __exports.toNarrowWidePattern = __reexport4.toNarrowWidePattern;
+const __reexport4 = __require("js/oned/reader.js"); __exports.decodeOneD = __reexport4.decodeOneD; __exports.decodeOneDStrict = __reexport4.decodeOneDStrict; __exports.decodeCode32 = __reexport4.decodeCode32; __exports.decodePZN = __reexport4.decodePZN; __exports.decodeCode25 = __reexport4.decodeCode25; __exports.decodeStandard2of5 = __reexport4.decodeStandard2of5; __exports.decodeIndustrial2of5 = __reexport4.decodeIndustrial2of5; __exports.decodeIATA2of5 = __reexport4.decodeIATA2of5; __exports.decodeDataLogic2of5 = __reexport4.decodeDataLogic2of5; __exports.decodeCode11 = __reexport4.decodeCode11; __exports.decodeMSI = __reexport4.decodeMSI; __exports.patternVariance = __reexport4.patternVariance; __exports.recordPattern = __reexport4.recordPattern; __exports.toNarrowWidePattern = __reexport4.toNarrowWidePattern;
 const __reexport5 = __require("js/oned/postal.js"); __exports.POSTAL_FORMATS = __reexport5.POSTAL_FORMATS; __exports.POSTAL_ALIASES = __reexport5.POSTAL_ALIASES; __exports.STATE_PROFILES = __reexport5.STATE_PROFILES; __exports.encodePostnet = __reexport5.encodePostnet; __exports.encodePlanet = __reexport5.encodePlanet; __exports.encodeRM4SCC = __reexport5.encodeRM4SCC; __exports.encodeKIX = __reexport5.encodeKIX; __exports.encodeAustraliaPost = __reexport5.encodeAustraliaPost; __exports.encodeJapanPost = __reexport5.encodeJapanPost; __exports.encodeIMB = __reexport5.encodeIMB; __exports.decodePostal = __reexport5.decodePostal;
 const __reexport6 = __require("js/oned/patterns.js"); __exports.validateTables = __reexport6.validateTables;
 const { encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeCode39, encodeCode93, encodeCode128, encodeITF, encodeITF14, encodeCodabar, encodeCode11, encodeMSI, encodePharmacode, encodeCode32, encodePZN } = __require("js/oned/writers.js");
 const { encodeEAN2, encodeEAN5 } = __require("js/oned/addons.js");
 const { encodeTelepen } = __require("js/oned/telepen.js");
-const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5 } = __require("js/oned/code25.js");
+const { encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodeDataLogic2of5 } = __require("js/oned/code25.js");
 const { encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB } = __require("js/oned/postal.js");
 /**
  * Writers by format id, for the top-level `encode()` dispatcher.
@@ -5976,6 +6094,7 @@ const ONED_FORMATS = {
     standard2of5: { encode: encodeStandard2of5, readable: true, label: 'Code 25 / Standard 2 of 5' },
     industrial2of5: { encode: encodeIndustrial2of5, readable: true, label: 'Industrial 2 of 5' },
     iata2of5: { encode: encodeIATA2of5, readable: true, label: 'IATA 2 of 5' },
+    datalogic2of5: { encode: encodeDataLogic2of5, readable: true, label: 'Code 2 of 5 Data Logic' },
     codabar: { encode: encodeCodabar, readable: true, label: 'Codabar' },
     code11: { encode: encodeCode11, readable: true, label: 'Code 11' },
     msi: { encode: encodeMSI, readable: true, label: 'MSI Plessey' },
@@ -27134,6 +27253,7 @@ function decode(image, options = {}) {
         'code32', 'italian-pharmacode', 'pzn7', 'pzn8',
         'code2of5', 'standard2of5', 'standard-2-of-5',
         'industrial-2-of-5', 'iata-2-of-5',
+        'data-logic-2-of-5', 'chinapost', 'china-post',
         'usps-postnet', 'usps-planet', 'royalmail', 'royal-mail',
         'australia-post', 'australiapost', 'japan-post', 'onecode', 'usps-onecode',
     ]);

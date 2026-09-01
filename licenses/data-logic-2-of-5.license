@@ -1,0 +1,69 @@
+Code 2 of 5 Data Logic (China Post) — format provenance and usability
+=======================================================================
+
+This file records the engineering provenance and redistribution boundary for
+the Data Logic 2 of 5 format implemented by Sythos Barcode Universal.
+
+It is an engineering inventory, not legal advice. Patent, copyright and
+trademark conclusions still need independent review for the jurisdiction and
+the intended product. Items marked [TO VERIFY] remain open questions.
+
+
+FORMAT AND IMPLEMENTATION BASIS
+-------------------------------
+
+Data Logic 2 of 5 (also documented as China Post Barcode, "2/5 Data Logic")
+is a numeric-only symbology from the same 1968-1972 "2 of 5" family as the
+Code 25/Industrial/IATA profiles already in this SDK, sharing their era and
+public-technical-description basis. It reuses the short IATA-style start/stop
+frame with a distinct digit grammar in which both bars and spaces carry
+width information.
+
+The run-width descriptions are represented as original Sythos data and
+expanded algorithmically for the selected wide-bar ratio. The reader
+validates the full start/data/stop structure, quiet-zone boundary and
+optional check digit before returning a value; the 2:1 wide:narrow ratio is
+intentionally rejected by both the writer and reader because it produces a
+reversed-image ambiguity in this specific digit grammar (verified by
+exhaustive round-trip testing across payloads, scales and ratios during
+implementation). No third-party source code, lookup table or binary asset is
+copied into this repository.
+
+The runtime is original Sythos TypeScript with generated JavaScript output
+and is distributed under the MIT License. The format name is descriptive and
+does not imply certification by China Post, Datalogic S.p.A. or any other
+organisation.
+
+
+PATENT AND TRADEMARK REVIEW
+---------------------------
+
+As with the rest of the Code 25 family, historical patent families,
+jurisdiction-specific licensing statements and current registrations for the
+"Data Logic" and "China Post Barcode" names have not been independently
+cleared here. [TO VERIFY] This project makes no unconditional patent-free,
+public-domain or trademark-clearance claim. The format's association with a
+national postal operator (China Post) and a named vendor (Datalogic) is
+noted but not itself treated as a usability blocker, consistent with how
+this project treats other operator-named postal and logistics formats
+already implemented (see `postal.license`).
+
+
+INDEPENDENT VALIDATION BOUNDARY
+--------------------------------
+
+Zint (libzint, BSD-3-Clause) was used only as a local, independent black-box
+oracle to cross-check the digit width table against a published open-source
+implementation before this SDK's own original data structures were written.
+Its source, tables and runtime are not copied into or shipped by this SDK,
+and it is not a runtime dependency. The comparison is an engineering check,
+not a legal opinion or a conformance certificate.
+
+
+CONCLUSION
+----------
+
+The original Sythos Data Logic 2 of 5 implementation is MIT-licensed. If a
+rights holder or user identifies a conflicting notice about the available
+material, please open a GitHub issue with the reference so it can be
+reviewed and recorded.

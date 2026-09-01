@@ -35,6 +35,9 @@
  * Code 25 (also called Standard or Industrial 2 of 5) represents each digit
  * with five alternating bar/space elements, exactly two of the bars being wide.
  * IATA 2 of 5 uses the same digit grammar with a shorter start/stop frame.
+ * Data Logic 2 of 5 (also known as China Post) uses a different digit
+ * grammar in which both the bars and the spaces carry width information,
+ * combined with the same short IATA-style guard frame.
  * The width descriptions below are expressed as module counts rather than
  * copied implementation tables and are checked by the focused test suite.
  *
@@ -45,7 +48,7 @@ import { BitMatrix } from '../core/bit-matrix.js';
 import { EncodeError } from '../core/errors.js';
 
 /** Supported Code 25 framing profiles. */
-export type Code25Variant = 'standard' | 'industrial' | 'iata';
+export type Code25Variant = 'standard' | 'industrial' | 'iata' | 'datalogic';
 
 /** The ten digit patterns, each with five bars and five spaces. */
 export const CODE25_DIGIT_PATTERNS = [
@@ -54,18 +57,44 @@ export const CODE25_DIGIT_PATTERNS = [
   '3111113111', '1131113111',
 ] as const;
 
-/** Start/stop run widths for the three public names. */
+/**
+ * The ten Data Logic digit patterns: three bars and three spaces, both
+ * widths carrying information, unlike the discrete grammar above where only
+ * the bars vary.
+ */
+export const CODE25_DATALOGIC_DIGIT_PATTERNS = [
+  '113311', '311131', '131131', '331111', '113131',
+  '313111', '133111', '111331', '311311', '131311',
+] as const;
+
+/** Start/stop run widths for the four public names. */
 export const CODE25_VARIANTS: Readonly<Record<Code25Variant, {
-  readonly id: 'industrial2of5' | 'iata2of5';
+  readonly id: 'industrial2of5' | 'iata2of5' | 'datalogic2of5';
   readonly label: string;
   readonly start: string;
   readonly stop: string;
+  readonly digitPatterns: readonly string[];
 }>> = {
   // Code 25 and Industrial 2 of 5 share the discrete two-wide-bar grammar
   // and canonical industrial frame. `standard` is the friendly API alias.
-  standard: { id: 'industrial2of5', label: 'Standard 2 of 5 (Code 25)', start: '313111', stop: '31113' },
-  industrial: { id: 'industrial2of5', label: 'Industrial 2 of 5', start: '313111', stop: '31113' },
-  iata: { id: 'iata2of5', label: 'IATA 2 of 5', start: '1111', stop: '311' },
+  standard: {
+    id: 'industrial2of5', label: 'Standard 2 of 5 (Code 25)', start: '313111', stop: '31113',
+    digitPatterns: CODE25_DIGIT_PATTERNS,
+  },
+  industrial: {
+    id: 'industrial2of5', label: 'Industrial 2 of 5', start: '313111', stop: '31113',
+    digitPatterns: CODE25_DIGIT_PATTERNS,
+  },
+  iata: {
+    id: 'iata2of5', label: 'IATA 2 of 5', start: '1111', stop: '311',
+    digitPatterns: CODE25_DIGIT_PATTERNS,
+  },
+  // Data Logic reuses the IATA guard frame but switches to the width-modulated
+  // digit grammar (both bars and spaces vary).
+  datalogic: {
+    id: 'datalogic2of5', label: 'Code 2 of 5 Data Logic', start: '1111', stop: '311',
+    digitPatterns: CODE25_DATALOGIC_DIGIT_PATTERNS,
+  },
 };
 
 const MAX_CODE25_DIGITS = 500;
@@ -113,6 +142,8 @@ function resolveVariant(value: unknown): Code25Variant {
   const variant = String(value ?? 'standard').toLowerCase();
   if (variant === 'industrial' || variant === 'industrial2of5' || variant === 'industrial-2-of-5') return 'industrial';
   if (variant === 'iata' || variant === 'iata2of5' || variant === 'iata-2-of-5') return 'iata';
+  if (variant === 'datalogic' || variant === 'datalogic2of5' || variant === 'data-logic-2-of-5'
+    || variant === 'chinapost' || variant === 'china-post') return 'datalogic';
   if (variant === 'standard' || variant === 'code2of5' || variant === 'code-2-of-5' || variant === 'standard2of5' || variant === 'standard-2-of-5') return 'standard';
   throw new EncodeError(`Code 25: unknown variant "${value}"`);
 }
@@ -139,14 +170,19 @@ export function encodeCode25(value: string, options: {
   const profile = CODE25_VARIANTS[variant];
   const label = profile.label;
   const ratio = options.wideRatio ?? 3;
-  if (!Number.isInteger(ratio) || ratio < 2 || ratio > 8) {
-    throw new EncodeError(`${label}: wideRatio must be an integer in 2..8`);
+  // A 2:1 wide:narrow ratio makes the Data Logic digit table's reversed
+  // reading collide with a different valid full-length reading (verified by
+  // exhaustive round-trip testing); 3:1 and up do not exhibit this and are
+  // the ratios documented in practice for this symbology.
+  const minRatio = variant === 'datalogic' ? 3 : 2;
+  if (!Number.isInteger(ratio) || ratio < minRatio || ratio > 8) {
+    throw new EncodeError(`${label}: wideRatio must be an integer in ${minRatio}..8`);
   }
   let digits = requireDigits(value, label);
   if (options.checkDigit === true) digits += String(code25CheckDigit(digits));
 
   let modules = expandWidths(profile.start, ratio);
-  for (const digit of digits) modules += expandWidths(CODE25_DIGIT_PATTERNS[Number(digit)], ratio);
+  for (const digit of digits) modules += expandWidths(profile.digitPatterns[Number(digit)], ratio);
   modules += expandWidths(profile.stop, ratio);
   return toMatrix(modules);
 }
@@ -164,6 +200,11 @@ export function encodeIndustrial2of5(value: string, options: Omit<Parameters<typ
 /** Encode IATA 2 of 5. */
 export function encodeIATA2of5(value: string, options: Omit<Parameters<typeof encodeCode25>[1], 'variant'> = {}): BitMatrix {
   return encodeCode25(value, { ...options, variant: 'iata' });
+}
+
+/** Encode Code 2 of 5 Data Logic (also known as China Post). */
+export function encodeDataLogic2of5(value: string, options: Omit<Parameters<typeof encodeCode25>[1], 'variant'> = {}): BitMatrix {
+  return encodeCode25(value, { ...options, variant: 'datalogic' });
 }
 
 /** Internal limit used by the scanline reader and its safety checks. */
