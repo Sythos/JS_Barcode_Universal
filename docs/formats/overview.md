@@ -57,7 +57,7 @@ Omnidirectional are `1D` by kind but physically stacked.
 | PostBar (Canada Post) | `postbarc10`, `postbard22`, `postbarg12` | Linear | 3 | 3 | Height-coded like the postal family, but Reed-Solomon-protected (over GF(64)); implemented from a patent disclosure since Canada Post's own spec is unpublished. |
 | DX Film Edge Barcode | `dxfilmedge` | Linear | 1 | 1 | Kodak's two-track (clock + data) latent-image code on 35mm film; implemented from a patent disclosure cross-checked against real-film-sample literature. |
 | EAN/UPC supplements | `ean2`, `ean5` | Linear | 2 | 2* | `*` means parent-bound, not standalone reading. |
-| QR family | `qr`, `microqr`, `rmqr` | Matrix | 3 | 3 | These are related families with different geometry and feature sets. |
+| QR family | `qr`, `microqr`, `rmqr` | Matrix | 3 | 3 | These are related families with different geometry and feature sets. "SPARQCode" is not a separate format — it is a text-payload convention inside an ordinary `qr` symbol, see `docs/formats/qr-family.md`. |
 | Data Matrix | `datamatrix` | Matrix | 1 | 1 | Classic ECC 200 square and rectangular symbols; DMRE is outside scope. |
 | Aztec family | `aztec`, `aztecrune` | Matrix | 2 | 2 | Aztec Code and Aztec Rune are separate grammars. |
 | PDF417 family | `pdf417`, `compactpdf417`, `micropdf417` | Stacked | 3 | 3 | Full, truncated and Micro geometry are not aliases. |

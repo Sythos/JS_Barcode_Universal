@@ -314,7 +314,7 @@ make that distinction visible.
 | Han Xin Code | `hanxin` | 2D | Matrix | ✅ | ✅ |
 | MaxiCode | `maxicode` | 2D | Matrix | ✅ | ✅ |
 | Micro QR Code | `microqr` | 2D | Matrix | ✅ | ✅ |
-| QR Code | `qr` | 2D | Matrix | ✅ | ✅ |
+| QR Code | `qr` | 2D | Matrix | ✅ | ✅ [^9] |
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 
@@ -512,6 +512,13 @@ corners to already be known, the same "known geometry" boundary as KarTrak (no d
 for this format yet). See `docs/formats/jabcode.md` and `docs/JABCODE_NOTES.md` for the full
 scope, including the PRNG bit-exactness limitation and what real-world validation is still
 outstanding.
+
+[^9]: "SPARQCode" (a MSKYNET/Yahoo-era product name) is not a separate barcode symbology and this
+SDK does not implement or need a dedicated mode for it: it is a text-payload convention (structured
+URLs, phone numbers, WiFi config, vCard-style contacts, and similar) written inside an ordinary,
+unmodified ISO/IEC 18004 QR code — the same physical code `qr` already produces and reads. Any
+payload following such a convention already round-trips through `encodeQR`/`decodeQR` above. See
+`docs/formats/qr-family.md`.
 
 ### Code 11 and MSI Plessey image reading
 

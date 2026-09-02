@@ -120,7 +120,9 @@ linear formats because that is the `kind` the public API reports for them.
 
 ### 2D matrix formats
 
-- QR Code Model 2 — write and read, versions 1–40, standard ECC levels and payload modes
+- QR Code Model 2 — write and read, versions 1–40, standard ECC levels and payload modes.
+  "SPARQCode" is not a separate format: it is a text-payload convention written inside an
+  ordinary QR code, already covered by this format, see docs/formats/qr-family.md
 - Data Matrix ECC 200 — write and read for classic square and rectangular symbols
 - Aztec Code — write and read, including compact and full symbols
 - Aztec Rune — write and read for the fixed 11×11 rune values

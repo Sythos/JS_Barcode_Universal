@@ -54,6 +54,16 @@ the registry because the current evidence set does not contain the complete
 placement figures and fixtures required for a trustworthy writer and reader.
 See [Excluded formats](excluded-formats.md).
 
+"SPARQCode" (a MSKYNET/Yahoo-era product name) is not a separate barcode
+symbology and is not a format this SDK implements or needs to: it is a
+text-payload convention (structured URLs, phone numbers, WiFi config,
+vCard-style contacts, and similar) written inside an ordinary, unmodified
+ISO/IEC 18004 QR code — the same physical code `qr` already produces and
+reads. Any string payload that follows such a convention (SPARQCode's own,
+or a public one like a `mailto:`/`tel:`/`geo:` URI or a `WIFI:` string) can
+already be encoded and decoded with `encodeQR`/`decodeQR` above; this SDK
+does not need, and does not implement, a dedicated "SPARQCode" mode.
+
 ## Micro QR Code
 
 Micro QR uses a different symbol geometry and a much smaller capacity range.

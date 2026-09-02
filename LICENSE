@@ -304,6 +304,19 @@ status too unclear to redistribute an implementation with confidence:
                                AIM deliverable, not publicly derivable
                                                          [TO VERIFY]
     Ultracode ............... status unresolved            [TO VERIFY]
+    WeChat Mini Program Code  genuinely distinct ring-shaped symbology,
+      (a.k.a. "sunflower code")not a skinned QR code; Tencent does not
+                               publish the bit-level format, only
+                               incomplete community reverse-engineering
+                               exists, and the shared ring/dot/arc/
+                               positioning-point/logo architecture is
+                               explicitly claimed by an active patent
+                               (US12204967B2, Alipay.com Co., Ltd.,
+                               active through 2042); also functionally
+                               coupled to Tencent's backend (only
+                               server-side generation, tied to a
+                               registered Mini Program AppID)
+                                                         [TO VERIFY]
     DENSO FrameQR ........... proprietary format; this project implements
                               only a separate FrameQR Code profile
                                                          [LEGAL REVIEW]

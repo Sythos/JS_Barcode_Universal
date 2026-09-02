@@ -88,6 +88,28 @@ not sufficiently clear to redistribute with confidence:
   even Zint's own author needed to hardcode rather than compute the table
   is itself evidence no simple closed-form generator exists publicly.
 - Ultracode
+- WeChat Mini Program Code (小程序码, also called a "sunflower code"): a
+  genuinely distinct 2D symbology, not a skinned QR code — a ring-shaped
+  layout (positioning points plus a radial ray/petal data region, three
+  capacities of 36/54/72 rays) with Reed-Solomon-style error correction
+  and a central logo area. Tencent does not publish the bit-level format
+  anywhere; the most detailed public reverse-engineering effort found
+  explicitly describes its own work as incomplete, with the mapping from
+  mask patterns and ray-count/ECC-level to metadata bits still unresolved.
+  No independent open-source project generates or decodes the actual
+  ray-pattern raster offline (the one plausible-looking GitHub hit turns
+  out to just wrap an ordinary square-QR library for a different purpose).
+  Separately, and decisively on its own: the ring/dot/arc/positioning-
+  point/logo architecture this class of code shares is explicitly claimed
+  by an active, broad patent — US12204967B2 (Alipay.com Co., Ltd.,
+  granted 2025, active through 2042) — plus further active patents from
+  other assignees in the same design space (e.g. CN113487001A). Even
+  setting IP risk aside, the code is functionally coupled to Tencent's
+  backend: the only generation path Tencent itself exposes is a
+  server-side API requiring a registered Mini Program AppID, so an
+  independently-generated code has no legitimate real-world target to
+  launch — closer to a URL-shortener's opaque short code than a
+  self-contained symbology.
 
 The list is maintained together with the legal-review notes in
 [`NOTICE.md`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/NOTICE.md) and the per-format inventory under
