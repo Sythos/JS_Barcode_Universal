@@ -257,7 +257,7 @@ make that distinction visible.
 
 | Format | `id` | Kind | Structure | Write | Read |
 |---|---|:---:|:---:|:---:|:---:|
-| AAMVA DL/ID data (payload convention on PDF417) | — | 2D | Stacked | ✅ | ✅ [^9] |
+| AAMVA DL/ID data (payload convention on PDF417) | variant of `pdf417` | 2D | Stacked | ✅ | ✅ [^9] |
 | Australia Post 4-State | `auspost` | 1D | Linear | ✅ | ✅ |
 | Aztec Code | `aztec` | 2D | Matrix | ✅ | ✅ |
 | Aztec Rune | `aztecrune` | 2D | Matrix | ✅ | ✅ |
@@ -314,9 +314,9 @@ make that distinction visible.
 | QR Code | `qr` | 2D | Matrix | ✅ | ✅ |
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | Linear | ✅ | ✅ |
-| SEPA / EPC QR Code (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
-| SPARQCode (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
-| Swiss QR-bill (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
+| SEPA / EPC QR Code (payload convention on QR) | variant of `qr` | 2D | Matrix | ✅ | ✅ [^9] |
+| SPARQCode (payload convention on QR) | variant of `qr` | 2D | Matrix | ✅ | ✅ [^9] |
+| Swiss QR-bill (payload convention on QR) | variant of `qr` | 2D | Matrix | ✅ | ✅ [^9] |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 | Telepen (ASCII and Numeric) | `telepen` | 1D | Linear | ✅ | ✅ [^3] |
 | UPC-A | `upca` | 1D | Linear | ✅ | ✅ |
@@ -324,19 +324,22 @@ make that distinction visible.
 | USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | Linear | ✅ | ✅ |
 | USPS PLANET | `planet` | 1D | Linear | ✅ | ✅ |
 | USPS POSTNET | `postnet` | 1D | Linear | ✅ | ✅ |
-| vCard (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
-| VIN (Vehicle Identification Number, payload convention on Code 39) | — | 1D | Linear | ✅ | ✅ [^9] |
+| vCard (payload convention on QR) | variant of `qr` | 2D | Matrix | ✅ | ✅ [^9] |
+| VIN (Vehicle Identification Number, payload convention on Code 39) | variant of `code39` | 1D | Linear | ✅ | ✅ [^9] |
 
-Sixty-one listed formats are writable and sixty are readable through the counted
-`listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
-parent-bound supplements). **KarTrak ACI and JAB Code sit outside that count**: both are
-colour-coded, not black/white, so neither can go through `BitMatrix`-based `encode()`/`decode()`
-at all — each ships only as its own subpath (`@sythos/js_barcode_universal/kartrak`,
-`@sythos/js_barcode_universal/jabcode`), listed in the table above for visibility, not counted in
-that total. **The six rows marked `—` for `id` (AAMVA, SEPA/EPC QR, SPARQCode, Swiss QR-bill,
-vCard and VIN) sit outside that count for a different reason**: none is a symbology at all, so
-none has an `id` to register — they are payload-convention helpers on `qr`, `code39` and `pdf417`
-from `@sythos/js_barcode_universal/payloads`, see footnote 9. **Pharmacode remains intentionally
+This table lists sixty-nine formats and variants: sixty-nine are writable and sixty-eight are
+readable. Sixty-one of those go through the counted `listFormats()` registry and the top-level
+`encode()`/`decode()` dispatcher — sixty-one writable, sixty readable there specifically (EAN-2
+and EAN-5 are parent-bound supplements). The remaining eight rows reach that same total two
+different ways. **KarTrak ACI and JAB Code** are colour-coded, not black/white, so neither can go
+through `BitMatrix`-based `encode()`/`decode()` at all — each ships only as its own subpath
+(`@sythos/js_barcode_universal/kartrak`, `@sythos/js_barcode_universal/jabcode`). **The six rows
+marked "variant of `qr`/`code39`/`pdf417`" (AAMVA, SEPA/EPC QR, SPARQCode, Swiss QR-bill, vCard
+and VIN)** are not symbologies at all, so none has an `id` of its own to register — each is a
+payload-convention helper that builds a structured payload string and hands it to the named
+parent format's own encoder, from `@sythos/js_barcode_universal/payloads`, see footnote 9. Neither
+group goes through `listFormats()`, which is why the registry's own count stays sixty-one/sixty
+even as this table grows. **Pharmacode remains intentionally
 write-only in the generic image pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
