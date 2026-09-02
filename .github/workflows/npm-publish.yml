@@ -49,6 +49,13 @@ jobs:
         shell: bash
         run: git diff --exit-code -- src/index.js src/js
 
+      - name: Build browser bundles
+        run: npm run build:bundle
+
+      - name: Ensure browser bundles are synchronized
+        shell: bash
+        run: git diff --exit-code -- bundle
+
       - name: Run focused format tests
         run: npm run test:formats
 

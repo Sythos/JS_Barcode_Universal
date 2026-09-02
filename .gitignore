@@ -84,6 +84,7 @@ test/*
 !test/dxfilmedge.test.js
 !test/jabcode.test.js
 !test/payloads.test.js
+!test/bundle.test.js
 !test/aztec-decoder.test.js
 !test/aztec-tables.test.js
 !test/aztecrune.blackbox.test.js
@@ -143,6 +144,7 @@ tools/*
 !tools/check-public-types.mjs
 !tools/check-zero-deps.mjs
 !tools/check-docs.mjs
+!tools/build-bundle.mjs
 
 # --- Build configuration a consumer never runs ----------------------------
 tsconfig.json
