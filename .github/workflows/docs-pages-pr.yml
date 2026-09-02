@@ -12,6 +12,7 @@ on:
       - tools/check-docs.mjs
       - tools/exact-url.mjs
       - tools/exact-url.test.mjs
+      - .github/workflows/docs-pages-pr.yml
   workflow_dispatch:
 
 permissions:
