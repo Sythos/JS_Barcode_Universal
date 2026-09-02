@@ -1,3 +1,5 @@
+![JS Barcode Universal SDK](assets/branding/barcode_banner_sythos.png)
+
 # Sythos Barcode Universal documentation
 
 Sythos Barcode Universal is an MIT-licensed JavaScript and TypeScript SDK for

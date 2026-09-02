@@ -1,3 +1,5 @@
+![JS Barcode Universal SDK](https://raw.githubusercontent.com/Sythos/JS_Barcode_Universal/main/docs/assets/branding/barcode_banner_sythos.png)
+
 # Sythos Barcode Universal — MIT 1D/2D Barcode SDK
 
 Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK for encoding and decoding 1D linear and 2D matrix barcodes. It has zero runtime dependencies and runs in browsers, Web Workers and Node.js.
