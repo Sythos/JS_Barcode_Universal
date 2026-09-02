@@ -44,8 +44,9 @@
  * @module payloads/sepa-qr
  */
 
-import { EncodeError } from '../core/errors.js';
+import { EncodeError, FormatError } from '../core/errors.js';
 import { encodeQR } from '../qr/encoder.js';
+import { decodeQR } from '../qr/decoder.js';
 
 export interface SEPAQRFields {
   /** '001' (BIC mandatory) or '002' (BIC optional for EEA-internal transfers). Default '002'. */
@@ -125,4 +126,43 @@ export function buildSEPAQR(fields: SEPAQRFields): string {
 /** Builds a SEPA/EPC QR payload and encodes it as a QR code at error-correction level M, per EPC069-12. */
 export function encodeSEPAQR(fields: SEPAQRFields, options: Record<string, unknown> = {}) {
   return encodeQR(buildSEPAQR(fields), { ecc: 'M', ...options });
+}
+
+/**
+ * Parses a SEPA/EPC QR payload (as built by `buildSEPAQR`) back into
+ * structured fields. Missing trailing lines (dropped by `buildSEPAQR`'s
+ * trailing-omission rule) map to `undefined`, not an empty string.
+ */
+export function parseSEPAQR(text: string): SEPAQRFields {
+  const lines = text.split(/\r\n|\n/);
+  if (lines[0] !== 'BCD' || lines[3] !== 'SCT') {
+    throw new FormatError('SEPA QR: not a recognized EPC069-12 payload');
+  }
+
+  const version = lines[1] as '001' | '002';
+  const bic = lines[4];
+  const name = lines[5];
+  const iban = lines[6];
+  const amountText = lines[7];
+  const purpose = lines[8];
+  const structuredReference = lines[9];
+  const unstructuredReference = lines[10];
+  const beneficiaryInfo = lines[11];
+
+  return {
+    version,
+    ...(bic ? { bic } : {}),
+    name,
+    iban,
+    ...(amountText ? { amount: Number(amountText.slice(3)) } : {}),
+    ...(purpose ? { purpose } : {}),
+    ...(structuredReference ? { structuredReference } : {}),
+    ...(unstructuredReference ? { unstructuredReference } : {}),
+    ...(beneficiaryInfo ? { beneficiaryInfo } : {}),
+  };
+}
+
+/** Decodes a QR symbol and parses its SEPA/EPC QR payload back into structured fields. */
+export function decodeSEPAQR(matrix: unknown): SEPAQRFields {
+  return parseSEPAQR(decodeQR(matrix).text);
 }

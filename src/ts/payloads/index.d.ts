@@ -20,6 +20,8 @@ export interface VCardFields {
 }
 export function buildVCard(fields: VCardFields): string;
 export function encodeVCard(fields: VCardFields, options?: Record<string, unknown>): BitMatrix;
+export function parseVCard(text: string): VCardFields;
+export function decodeVCard(matrix: unknown): VCardFields;
 
 export function vinCheckDigit(vin: string): string;
 export function validateVIN(vin: string): boolean;
@@ -29,6 +31,12 @@ export type SPARQCodeType =
   | 'url' | 'email' | 'phone' | 'sms' | 'geo' | 'wifi' | 'bizcard' | 'youtube' | 'googleplay' | 'icalendar';
 export function buildSPARQCodePayload(type: SPARQCodeType, fields: Record<string, unknown>): string;
 export function encodeSPARQCode(type: SPARQCodeType, fields: Record<string, unknown>, options?: Record<string, unknown>): BitMatrix;
+export interface ParsedSPARQCode {
+  type: SPARQCodeType;
+  fields: Record<string, unknown>;
+}
+export function parseSPARQCodePayload(text: string): ParsedSPARQCode;
+export function decodeSPARQCode(matrix: unknown): ParsedSPARQCode;
 
 export interface SwissQRAddress {
   name: string;
@@ -55,6 +63,8 @@ export function validateIBAN(iban: string): boolean;
 export function isQrIban(iban: string): boolean;
 export function buildSwissQR(fields: SwissQRFields): string;
 export function encodeSwissQR(fields: SwissQRFields, options?: Record<string, unknown>): BitMatrix;
+export function parseSwissQR(text: string): SwissQRFields;
+export function decodeSwissQR(matrix: unknown): SwissQRFields;
 
 export interface SEPAQRFields {
   version?: '001' | '002';
@@ -69,6 +79,8 @@ export interface SEPAQRFields {
 }
 export function buildSEPAQR(fields: SEPAQRFields): string;
 export function encodeSEPAQR(fields: SEPAQRFields, options?: Record<string, unknown>): BitMatrix;
+export function parseSEPAQR(text: string): SEPAQRFields;
+export function decodeSEPAQR(matrix: unknown): SEPAQRFields;
 
 export interface AAMVAFields {
   iin: string;
@@ -102,3 +114,5 @@ export interface AAMVAFields {
 }
 export function buildAAMVA(fields: AAMVAFields): string;
 export function encodeAAMVA(fields: AAMVAFields, options?: Record<string, unknown>): BitMatrix;
+export function parseAAMVA(text: string): AAMVAFields;
+export function decodeAAMVA(matrix: unknown): AAMVAFields;

@@ -58,8 +58,9 @@
  * @module payloads/aamva
  */
 
-import { EncodeError } from '../core/errors.js';
+import { EncodeError, FormatError } from '../core/errors.js';
 import { encodePDF417 } from '../pdf417/encoder.js';
+import { decodePDF417 } from '../pdf417/decoder.js';
 
 const DATA_ELEMENT_SEPARATOR = '\n'; // LF, ASCII 0x0A
 const RECORD_SEPARATOR = '\x1e'; // RS, ASCII 0x1E
@@ -185,4 +186,82 @@ export function buildAAMVA(fields: AAMVAFields): string {
 /** Builds an AAMVA payload and encodes it as a PDF417 symbol using byte compaction. */
 export function encodeAAMVA(fields: AAMVAFields, options: Record<string, unknown> = {}) {
   return encodePDF417(buildAAMVA(fields), { compaction: 'byte', ...options });
+}
+
+// '@' + LF + RS + CR + "ANSI " + iin(6) + aamvaVersion(2) + jurisdictionVersion(2) + numberOfEntries(2)
+const HEADER_LENGTH = 21;
+
+/**
+ * Parses an AAMVA DL/ID payload (as built by `buildAAMVA`) back into
+ * structured fields, using the same fixed header/designator/subfile
+ * layout. Scoped to a single-subfile ("DL"/"ID" only) symbol, matching
+ * what `buildAAMVA` itself produces.
+ */
+export function parseAAMVA(text: string): AAMVAFields {
+  if (
+    text[0] !== COMPLIANCE_INDICATOR
+    || text.slice(1, 4) !== `${DATA_ELEMENT_SEPARATOR}${RECORD_SEPARATOR}${SEGMENT_TERMINATOR}`
+    || text.slice(4, 9) !== 'ANSI '
+  ) {
+    throw new FormatError('AAMVA: not a recognized DL/ID payload');
+  }
+
+  const iin = text.slice(9, 15);
+  const aamvaVersion = text.slice(15, 17);
+  const jurisdictionVersion = text.slice(17, 19);
+
+  const documentType = text.slice(HEADER_LENGTH, HEADER_LENGTH + 2) as 'DL' | 'ID';
+  const offset = Number(text.slice(HEADER_LENGTH + 2, HEADER_LENGTH + 6));
+  const length = Number(text.slice(HEADER_LENGTH + 6, HEADER_LENGTH + 10));
+  const subfileBody = text.slice(offset, offset + length);
+  if (subfileBody.slice(0, 2) !== documentType || subfileBody[subfileBody.length - 1] !== SEGMENT_TERMINATOR) {
+    throw new FormatError('AAMVA: malformed subfile');
+  }
+
+  const elements: Record<string, string> = {};
+  for (const line of subfileBody.slice(2, -1).split(DATA_ELEMENT_SEPARATOR)) {
+    if (line.length < 3) continue;
+    elements[line.slice(0, 3)] = line.slice(3);
+  }
+  const get = (id: string, name: string): string => {
+    const value = elements[id];
+    if (value === undefined) throw new FormatError(`AAMVA: missing mandatory element ${id} (${name})`);
+    return value;
+  };
+
+  return {
+    iin,
+    aamvaVersion,
+    jurisdictionVersion,
+    documentType,
+    vehicleClass: get('DCA', 'vehicleClass'),
+    restrictions: get('DCB', 'restrictions'),
+    endorsements: get('DCD', 'endorsements'),
+    expirationDate: get('DBA', 'expirationDate'),
+    lastName: get('DCS', 'lastName'),
+    firstName: get('DAC', 'firstName'),
+    ...(elements.DAD && elements.DAD !== 'NONE' ? { middleName: elements.DAD } : {}),
+    issueDate: get('DBD', 'issueDate'),
+    dateOfBirth: get('DBB', 'dateOfBirth'),
+    sex: get('DBC', 'sex') as '1' | '2' | '9',
+    eyeColor: get('DAY', 'eyeColor'),
+    height: get('DAU', 'height'),
+    street1: get('DAG', 'street1'),
+    ...(elements.DAH ? { street2: elements.DAH } : {}),
+    city: get('DAI', 'city'),
+    state: get('DAJ', 'state'),
+    postalCode: get('DAK', 'postalCode'),
+    customerId: get('DAQ', 'customerId'),
+    documentDiscriminator: get('DCF', 'documentDiscriminator'),
+    country: get('DCG', 'country') as 'USA' | 'CAN',
+    ...(elements.DDE ? { familyNameTruncation: elements.DDE as 'T' | 'N' | 'U' } : {}),
+    ...(elements.DDF ? { firstNameTruncation: elements.DDF as 'T' | 'N' | 'U' } : {}),
+    ...(elements.DDG ? { middleNameTruncation: elements.DDG as 'T' | 'N' | 'U' } : {}),
+    ...(elements.DCU ? { suffix: elements.DCU } : {}),
+  };
+}
+
+/** Decodes a PDF417 symbol and parses its AAMVA DL/ID payload back into structured fields. */
+export function decodeAAMVA(matrix: unknown): AAMVAFields {
+  return parseAAMVA(decodePDF417(matrix).text);
 }

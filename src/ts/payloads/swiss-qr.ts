@@ -49,8 +49,9 @@
  * @module payloads/swiss-qr
  */
 
-import { EncodeError } from '../core/errors.js';
+import { EncodeError, FormatError } from '../core/errors.js';
 import { encodeQR } from '../qr/encoder.js';
+import { decodeQR } from '../qr/decoder.js';
 
 // Annex B, "Modulo 10 recursive": carry = TABLE[(carry + digit) % 10] per
 // digit, left to right, starting carry = 0; check digit = (10 - carry) % 10.
@@ -199,4 +200,71 @@ export function buildSwissQR(fields: SwissQRFields): string {
 /** Builds a Swiss QR-bill payload and encodes it as a QR code at error-correction level M. */
 export function encodeSwissQR(fields: SwissQRFields, options: Record<string, unknown> = {}) {
   return encodeQR(buildSwissQR(fields), { ecc: 'M', ...options });
+}
+
+/** Reverses `addressLines`: `undefined` when the address-type line isn't 'S' (an omitted debtor). */
+function parseAddressLines(lines: string[]): SwissQRAddress | undefined {
+  const [type, name, street, buildingNumber, postalCode, city, country] = lines;
+  if (type !== 'S') return undefined;
+  return {
+    name,
+    ...(street ? { street } : {}),
+    ...(buildingNumber ? { buildingNumber } : {}),
+    postalCode,
+    city,
+    country,
+  };
+}
+
+/**
+ * Parses a Swiss QR-bill payload (as built by `buildSwissQR`) back into
+ * structured fields, using the same fixed-line-index layout. For a 'QRR'
+ * reference, strips the trailing check digit `buildSwissQR` appended, so
+ * the result's `reference` is the same 26-digit body a caller would pass
+ * back into `buildSwissQR`.
+ */
+export function parseSwissQR(text: string): SwissQRFields {
+  const lines = text.split(/\r\n|\n/);
+  if (lines[0] !== 'SPC' || lines[1] !== '0200' || lines[2] !== '1') {
+    throw new FormatError('Swiss QR-bill: not a recognized QR-bill payload');
+  }
+  if (lines[30] !== 'EPD') {
+    throw new FormatError('Swiss QR-bill: missing EPD trailer');
+  }
+
+  const iban = lines[3];
+  const creditor = parseAddressLines(lines.slice(4, 11));
+  if (!creditor) throw new FormatError('Swiss QR-bill: missing creditor address');
+  const amountText = lines[18];
+  const currency = lines[19] as 'CHF' | 'EUR';
+  const debtor = parseAddressLines(lines.slice(20, 27));
+  const referenceType = lines[27] as 'QRR' | 'SCOR' | 'NON';
+  const referenceLine = lines[28];
+  const unstructuredMessage = lines[29];
+
+  const reference = referenceType === 'QRR'
+    ? referenceLine.slice(0, -1)
+    : referenceType === 'SCOR' ? referenceLine : undefined;
+
+  const trailing = lines.slice(31);
+  const billingInformation = trailing[0];
+  const alternativeProcedures = trailing.slice(1).filter((line) => line !== '');
+
+  return {
+    iban,
+    creditor,
+    ...(debtor ? { debtor } : {}),
+    ...(amountText ? { amount: Number(amountText) } : {}),
+    currency,
+    referenceType,
+    ...(reference ? { reference } : {}),
+    ...(unstructuredMessage ? { unstructuredMessage } : {}),
+    ...(billingInformation ? { billingInformation } : {}),
+    ...(alternativeProcedures.length ? { alternativeProcedures } : {}),
+  };
+}
+
+/** Decodes a QR symbol and parses its Swiss QR-bill payload back into structured fields. */
+export function decodeSwissQR(matrix: unknown): SwissQRFields {
+  return parseSwissQR(decodeQR(matrix).text);
 }

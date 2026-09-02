@@ -62,11 +62,11 @@ QR code payload and read back through the same `encodeQR`/`decodeQR`
 above. They live at the `@sythos/js_barcode_universal/payloads` subpath
 (shared with the Code 39- and PDF417-based conventions documented on
 [Linear 1D](oned.md) and [PDF417 family](pdf417-family.md)), each
-exporting a `build*` function (returns the payload string) and an
-`encode*` function (builds the string and calls `encodeQR` with it).
-Reading one back means decoding the QR symbol as usual and, if you need
-structured fields rather than raw text, parsing that text yourself — none
-of these ship a dedicated structured decoder.
+exporting a `build*` function (returns the payload string), an `encode*`
+function (builds the string and calls `encodeQR` with it), a `parse*`
+function (turns the payload string back into structured fields) and a
+`decode*` function (decodes the QR symbol and parses its text in one
+call).
 
 **"SPARQCode"** (a MSKYNET/Yahoo-era product name, see
 [`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/)
@@ -75,34 +75,44 @@ already-public payload conventions, not a bit-level format of its own.
 `encodeSPARQCode` implements those same public conventions directly:
 
 ```js
-import { encodeSPARQCode } from '@sythos/js_barcode_universal/payloads';
+import { encodeSPARQCode, decodeSPARQCode } from '@sythos/js_barcode_universal/payloads';
 
 const url = encodeSPARQCode('url', { url: 'https://www.sythos.net/' });
 const wifi = encodeSPARQCode('wifi', { ssid: 'Guest', password: 'letmein' });
 const contact = encodeSPARQCode('bizcard', { firstName: 'Mario', lastName: 'Rossi', organization: 'Sythos' });
+
+const read = decodeSPARQCode(wifi); // { type: 'wifi', fields: { ssid: 'Guest', ... } }
 ```
 
 Supported `type` values: `'url'`, `'email'`, `'phone'`, `'sms'`, `'geo'`,
 `'wifi'`, `'bizcard'`, `'youtube'`, `'googleplay'`, `'icalendar'`.
+`decodeSPARQCode` (and its text-only counterpart `parseSPARQCodePayload`)
+detects which of these ten conventions a payload follows and returns its
+`type` alongside the same structured `fields` shape the matching
+`encodeSPARQCode` call accepted.
 
-**vCard** (RFC 6350) builds a correctly escaped vCard 3.0 contact card:
+**vCard** (RFC 6350) builds a correctly escaped vCard 3.0 contact card,
+and reads one back with `decodeVCard`:
 
 ```js
-import { encodeVCard } from '@sythos/js_barcode_universal/payloads';
+import { encodeVCard, decodeVCard } from '@sythos/js_barcode_universal/payloads';
 
 const matrix = encodeVCard({
   firstName: 'Mario', lastName: 'Rossi', organization: 'Sythos',
   phones: ['+39 02 1234567'], emails: ['mario@example.com'],
 });
+
+const fields = decodeVCard(matrix); // { firstName: 'Mario', lastName: 'Rossi', ... }
 ```
 
 **Swiss QR-bill** (SIX Interbank Clearing's payment-slip QR payload)
 builds and validates the fixed-line payload, including the IBAN/QR-IBAN
 distinction and the Annex B "Modulo 10 recursive" QR-reference check
-digit:
+digit; `decodeSwissQR` reverses it, restoring the same 26-digit `QRR`
+reference body a caller would pass back into `buildSwissQR`:
 
 ```js
-import { encodeSwissQR } from '@sythos/js_barcode_universal/payloads';
+import { encodeSwissQR, decodeSwissQR } from '@sythos/js_barcode_universal/payloads';
 
 const matrix = encodeSwissQR({
   iban: 'CH9300762011623852957',
@@ -112,19 +122,23 @@ const matrix = encodeSwissQR({
   referenceType: 'NON',
   unstructuredMessage: 'Invoice 42',
 });
+
+const fields = decodeSwissQR(matrix); // { iban: 'CH9300762011623852957', creditor: { ... }, ... }
 ```
 
 **SEPA / EPC QR Code** ("GiroCode", the European Payments Council's
 EPC069-12 payload for initiating a SEPA Credit Transfer):
 
 ```js
-import { encodeSEPAQR } from '@sythos/js_barcode_universal/payloads';
+import { encodeSEPAQR, decodeSEPAQR } from '@sythos/js_barcode_universal/payloads';
 
 const matrix = encodeSEPAQR({
   name: 'Sythos SARL',
   iban: 'DE89370400440532013000',
   unstructuredReference: 'Invoice 42',
 });
+
+const fields = decodeSEPAQR(matrix); // { version: '002', name: 'Sythos SARL', iban: '...', ... }
 ```
 
 Field lengths, the mandatory/optional-BIC rule and the trailing-empty-

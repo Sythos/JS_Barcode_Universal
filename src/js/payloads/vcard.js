@@ -39,6 +39,7 @@
  */
 import { EncodeError } from '../core/errors.js';
 import { encodeQR } from '../qr/encoder.js';
+import { decodeQR } from '../qr/decoder.js';
 /** Escapes a vCard text value per RFC 6350 §3.4: backslash, comma, semicolon and newline. */
 function escapeText(value) {
     return value.replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
@@ -77,4 +78,118 @@ export function buildVCard(fields) {
 /** Builds a vCard and encodes it as a QR code. `options` are passed through to `encodeQR` (e.g. `{ ecc: 'M' }`). */
 export function encodeVCard(fields, options = {}) {
     return encodeQR(buildVCard(fields), options);
+}
+/** Reverses `escapeText`: unescapes `\\`, `\;`, `\,` and `\n`, character by character so an escape sequence is never split mid-way. */
+function unescapeText(value) {
+    let out = '';
+    for (let i = 0; i < value.length; i++) {
+        if (value[i] === '\\' && i + 1 < value.length) {
+            const next = value[i + 1];
+            if (next === 'n') {
+                out += '\n';
+                i++;
+                continue;
+            }
+            if (next === '\\' || next === ',' || next === ';') {
+                out += next;
+                i++;
+                continue;
+            }
+        }
+        out += value[i];
+    }
+    return out;
+}
+/** Splits on an unescaped delimiter only -- an escaped delimiter (`\;`) or an escaped backslash (`\\`) is treated as a single unsplittable unit. */
+function splitUnescaped(value, delimiter) {
+    const parts = [];
+    let current = '';
+    for (let i = 0; i < value.length; i++) {
+        if (value[i] === '\\' && i + 1 < value.length) {
+            current += value[i] + value[i + 1];
+            i++;
+        }
+        else if (value[i] === delimiter) {
+            parts.push(current);
+            current = '';
+        }
+        else {
+            current += value[i];
+        }
+    }
+    parts.push(current);
+    return parts;
+}
+/**
+ * Parses a vCard 3.0 text block (as built by `buildVCard`) back into
+ * structured fields. Scoped to the properties `buildVCard` itself emits --
+ * not a general RFC 6350 parser for arbitrary third-party vCards.
+ */
+export function parseVCard(text) {
+    const fields = {};
+    const phones = [];
+    const emails = [];
+    for (const line of text.split(/\r\n|\n/)) {
+        if (!line)
+            continue;
+        const colonIndex = line.indexOf(':');
+        if (colonIndex === -1)
+            continue;
+        const head = line.slice(0, colonIndex);
+        const value = line.slice(colonIndex + 1);
+        const [property, ...params] = head.split(';');
+        const typeParam = params.find((p) => p.startsWith('TYPE='));
+        const type = typeParam ? typeParam.slice('TYPE='.length) : undefined;
+        switch (property) {
+            case 'N': {
+                const parts = splitUnescaped(value, ';').map(unescapeText);
+                if (parts[0])
+                    fields.lastName = parts[0];
+                if (parts[1])
+                    fields.firstName = parts[1];
+                break;
+            }
+            case 'ORG':
+                fields.organization = unescapeText(value);
+                break;
+            case 'TITLE':
+                fields.title = unescapeText(value);
+                break;
+            case 'TEL':
+                phones.push(type ? { number: unescapeText(value), type } : { number: unescapeText(value) });
+                break;
+            case 'EMAIL':
+                emails.push(unescapeText(value));
+                break;
+            case 'URL':
+                fields.url = unescapeText(value);
+                break;
+            case 'ADR': {
+                const parts = splitUnescaped(value, ';').map(unescapeText);
+                fields.address = {
+                    ...(type ? { type } : {}),
+                    ...(parts[2] ? { street: parts[2] } : {}),
+                    ...(parts[3] ? { city: parts[3] } : {}),
+                    ...(parts[4] ? { state: parts[4] } : {}),
+                    ...(parts[5] ? { zip: parts[5] } : {}),
+                    ...(parts[6] ? { country: parts[6] } : {}),
+                };
+                break;
+            }
+            case 'NOTE':
+                fields.note = unescapeText(value);
+                break;
+            default:
+                break; // BEGIN, VERSION, FN and END are structural/derived, not part of VCardFields
+        }
+    }
+    if (phones.length)
+        fields.phones = phones;
+    if (emails.length)
+        fields.emails = emails;
+    return fields;
+}
+/** Decodes a QR symbol and parses its vCard payload back into structured fields. */
+export function decodeVCard(matrix) {
+    return parseVCard(decodeQR(matrix).text);
 }

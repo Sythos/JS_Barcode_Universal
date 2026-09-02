@@ -102,6 +102,28 @@ examples:
 - [Sythos Canvas QR profile](frameqr-profile.md)
 - [Excluded and intentionally out-of-scope formats](excluded-formats.md)
 
+## Outside the registry: colour formats and payload conventions
+
+These eight rows are not part of the 61-entry `listFormats()` registry (see
+above), so they are absent from the family table's Write/Read counts —
+they bring the SDK's actual total to 69 writable, 68 readable. Each reaches
+that outcome through its own subpath instead of `encode()`/`decode()`.
+
+| Format | Subpath | Kind | Structure | Write | Read | Note |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| KarTrak ACI (experimental) | `@sythos/js_barcode_universal/kartrak` | 1D | Linear | ✅ | ✅ | Colour-coded — produces `PolychromeMatrix`, not `BitMatrix`. See [kartrak.md](kartrak.md). |
+| JAB Code (experimental) | `@sythos/js_barcode_universal/jabcode` | 2D | Matrix | ✅ | ✅ | Colour-coded, same reason as KarTrak. See [jabcode.md](jabcode.md). |
+| vCard | `@sythos/js_barcode_universal/payloads` | 2D | Matrix | ✅ | ✅ | Payload convention on `qr` (RFC 6350). See [qr-family.md](qr-family.md). |
+| SPARQCode | `@sythos/js_barcode_universal/payloads` | 2D | Matrix | ✅ | ✅ | Payload convention on `qr`. See [qr-family.md](qr-family.md). |
+| Swiss QR-bill | `@sythos/js_barcode_universal/payloads` | 2D | Matrix | ✅ | ✅ | Payload convention on `qr`. See [qr-family.md](qr-family.md). |
+| SEPA / EPC QR Code | `@sythos/js_barcode_universal/payloads` | 2D | Matrix | ✅ | ✅ | Payload convention on `qr`. See [qr-family.md](qr-family.md). |
+| VIN (Vehicle Identification Number) | `@sythos/js_barcode_universal/payloads` | 1D | Linear | ✅ | ✅ | Payload convention on `code39`. See [oned.md](oned.md). |
+| AAMVA DL/ID data | `@sythos/js_barcode_universal/payloads` | 2D | Stacked | ✅ | ✅ | Payload convention on `pdf417`. See [pdf417-family.md](pdf417-family.md). |
+
+Every row above pairs an `encode*` function with a matching `decode*` that
+returns the same structured fields shape, not just raw text — see each
+family page for the exact function names.
+
 ## The common pipeline
 
 The root API keeps the three operations explicit:

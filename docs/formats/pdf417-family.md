@@ -111,7 +111,7 @@ compaction, since the format embeds raw control characters).
 designator and the Table D.3 mandatory data elements:
 
 ```js
-import { encodeAAMVA } from '@sythos/js_barcode_universal/payloads';
+import { encodeAAMVA, decodeAAMVA } from '@sythos/js_barcode_universal/payloads';
 
 const matrix = encodeAAMVA({
   iin: '999999', // your jurisdiction's own AAMVA-assigned IIN — never defaulted
@@ -121,7 +121,14 @@ const matrix = encodeAAMVA({
   street1: 'VIA ROMA 1', city: 'ROMA', state: 'RM', postalCode: '00100',
   customerId: 'X1234567', documentDiscriminator: 'DOC0001', country: 'USA',
 });
+
+const fields = decodeAAMVA(matrix); // { iin: '999999', lastName: 'ROSSI', ... }
 ```
+
+`decodeAAMVA` (and its text-only counterpart `parseAAMVA`) reverses the
+fixed header, subfile designator and Table D.3 elements back into the
+same structured fields `encodeAAMVA` accepted, including the version and
+truncation-code defaults `buildAAMVA` fills in when they're omitted.
 
 This is a structured-data builder — the same kind of tool a real issuing
 authority's own card-personalization system, or a business testing its

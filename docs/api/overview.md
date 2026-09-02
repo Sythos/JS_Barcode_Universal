@@ -95,6 +95,21 @@ console.log(writeOnly.map((item) => item.id));
 // Pharmacode is currently the notable write-only entry.
 ```
 
+**`listFormats()` is specifically the `encode()`/`decode()` dispatcher's own registry — it is not a
+complete inventory of everything this SDK ships.** Eight formats and variants exist outside it,
+for two different reasons, and neither goes through `listFormats()`, `encode()` or `decode()`:
+
+- **KarTrak ACI and JAB Code** are colour-coded: they produce a `PolychromeMatrix`, not a
+  `BitMatrix`, so they cannot go through the `BitMatrix`-based dispatcher at all. Use
+  `@sythos/js_barcode_universal/kartrak` and `@sythos/js_barcode_universal/jabcode` directly.
+- **vCard, VIN, SPARQCode, Swiss QR-bill, SEPA/EPC QR and AAMVA DL/ID data** are not symbologies —
+  each is a structured payload convention built on an already-registered format (`qr`, `code39` or
+  `pdf417`), so none has an `id` of its own to register. Use
+  `@sythos/js_barcode_universal/payloads` directly.
+
+See the full row-by-row list, including which subpath each one lives at, in the
+[format catalogue](https://sythos.github.io/JS_Barcode_Universal/formats/overview/).
+
 EAN-2 and EAN-5 are marked as supplements. They are not standalone EAN/UPC
 parents in a retail layout; use the dedicated add-on helpers when composing a
 complete symbol. The registry is the release-time authority, so an application

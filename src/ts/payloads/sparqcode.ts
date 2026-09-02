@@ -45,7 +45,8 @@
 
 import { EncodeError } from '../core/errors.js';
 import { encodeQR } from '../qr/encoder.js';
-import { buildVCard, VCardFields } from './vcard.js';
+import { decodeQR } from '../qr/decoder.js';
+import { buildVCard, parseVCard, VCardFields } from './vcard.js';
 
 function escapeWifi(value: string): string {
   return value.replace(/([\\;,:"])/g, '\\$1');
@@ -159,4 +160,119 @@ export function buildSPARQCodePayload(type: SPARQCodeType, fields: Record<string
 /** Builds a SPARQCode-convention payload for `type` and encodes it as a QR code. */
 export function encodeSPARQCode(type: SPARQCodeType, fields: Record<string, unknown>, options: Record<string, unknown> = {}) {
   return encodeQR(buildSPARQCodePayload(type as never, fields as never), options);
+}
+
+function unescapeWifi(value: string): string {
+  return value.replace(/\\([\\;,:"])/g, '$1');
+}
+
+export interface ParsedSPARQCode {
+  type: SPARQCodeType;
+  fields: Record<string, unknown>;
+}
+
+/**
+ * Detects which SPARQCode convention `text` follows and parses it back into
+ * fields. Detection is by prefix/shape, in the same order each convention's
+ * own scheme is unambiguous; a payload matching none of them is treated as
+ * a plain `'url'`.
+ */
+export function parseSPARQCodePayload(text: string): ParsedSPARQCode {
+  if (text.startsWith('BEGIN:VCARD')) {
+    return { type: 'bizcard', fields: parseVCard(text) };
+  }
+  if (text.startsWith('BEGIN:VCALENDAR')) {
+    const lines = text.split(/\r\n|\n/);
+    const get = (key: string) => lines.find((l) => l.startsWith(`${key}:`))?.slice(key.length + 1);
+    const parseICalDate = (value: string) => new Date(
+      `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T${value.slice(9, 11)}:${value.slice(11, 13)}:${value.slice(13, 15)}Z`,
+    );
+    const summary = get('SUMMARY');
+    const start = get('DTSTART');
+    const end = get('DTEND');
+    const location = get('LOCATION');
+    const description = get('DESCRIPTION');
+    return {
+      type: 'icalendar',
+      fields: {
+        ...(summary !== undefined ? { summary } : {}),
+        ...(start !== undefined ? { start: parseICalDate(start) } : {}),
+        ...(end !== undefined ? { end: parseICalDate(end) } : {}),
+        ...(location !== undefined ? { location } : {}),
+        ...(description !== undefined ? { description } : {}),
+      },
+    };
+  }
+  if (text.startsWith('WIFI:')) {
+    const fields: Record<string, unknown> = {};
+    for (const segment of splitWifiSegments(text.slice('WIFI:'.length))) {
+      const separatorIndex = segment.indexOf(':');
+      if (separatorIndex === -1) continue;
+      const key = segment.slice(0, separatorIndex);
+      const value = unescapeWifi(segment.slice(separatorIndex + 1));
+      if (key === 'T') fields.encryption = value;
+      else if (key === 'S') fields.ssid = value;
+      else if (key === 'P') fields.password = value;
+      else if (key === 'H') fields.hidden = value === 'true';
+    }
+    return { type: 'wifi', fields };
+  }
+  if (text.startsWith('mailto:')) {
+    const [address, query] = text.slice('mailto:'.length).split('?');
+    const params = new URLSearchParams(query ?? '');
+    return {
+      type: 'email',
+      fields: {
+        address,
+        ...(params.has('subject') ? { subject: params.get('subject') } : {}),
+        ...(params.has('body') ? { body: params.get('body') } : {}),
+      },
+    };
+  }
+  if (text.startsWith('tel:')) {
+    return { type: 'phone', fields: { number: text.slice('tel:'.length) } };
+  }
+  if (text.startsWith('sms:')) {
+    const [number, query] = text.slice('sms:'.length).split('?');
+    const params = new URLSearchParams(query ?? '');
+    return {
+      type: 'sms',
+      fields: { number, ...(params.has('body') ? { message: decodeURIComponent(params.get('body')!) } : {}) },
+    };
+  }
+  if (text.startsWith('geo:')) {
+    const [latitude, longitude] = text.slice('geo:'.length).split(',').map(Number);
+    return { type: 'geo', fields: { latitude, longitude } };
+  }
+  if (text.startsWith('https://www.youtube.com/watch?v=')) {
+    return { type: 'youtube', fields: { videoId: text.slice('https://www.youtube.com/watch?v='.length) } };
+  }
+  if (text.startsWith('https://play.google.com/store/apps/details?id=')) {
+    return { type: 'googleplay', fields: { packageName: text.slice('https://play.google.com/store/apps/details?id='.length) } };
+  }
+  return { type: 'url', fields: { url: text } };
+}
+
+/** Splits a `WIFI:` payload's `key:value;` segments on unescaped semicolons, matching `escapeWifi`'s escaping. */
+function splitWifiSegments(value: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] === '\\' && i + 1 < value.length) {
+      current += value[i] + value[i + 1];
+      i++;
+    } else if (value[i] === ';') {
+      if (current) parts.push(current);
+      current = '';
+    } else {
+      current += value[i];
+    }
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
+/** Decodes a QR symbol and parses its SPARQCode-convention payload back into fields. */
+export function decodeSPARQCode(matrix: unknown): ParsedSPARQCode {
+  return parseSPARQCodePayload(decodeQR(matrix).text);
 }

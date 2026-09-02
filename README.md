@@ -532,8 +532,11 @@ outstanding.
 goes through `encode()`/`decode()`/`listFormats()` — each is a structured text/data convention
 written as the payload of an already-listed symbology (`qr`, `code39` or `pdf417`) and read back
 through that symbology's own decoder. Use them from `@sythos/js_barcode_universal/payloads`:
-`encodeVCard`/`encodeSwissQR`/`encodeSEPAQR`/`encodeSPARQCode` build a QR payload,
-`encodeVIN` a Code 39 payload, `encodeAAMVA` a PDF417 payload. "SPARQCode" (a MSKYNET/Yahoo-era
+`encodeVCard`/`encodeSwissQR`/`encodeSEPAQR`/`encodeSPARQCode` build a QR payload (with
+`decodeVCard`/`decodeSwissQR`/`decodeSEPAQR`/`decodeSPARQCode` reading each back into the same
+structured fields), `encodeVIN` a Code 39 payload (read back with `validateVIN` plus the existing
+Code 39 decoder — there is no separate `decodeVIN`), `encodeAAMVA` a PDF417 payload (with
+`decodeAAMVA` reading it back). "SPARQCode" (a MSKYNET/Yahoo-era
 product name) named a curated set of already-public conventions (structured URLs, phone numbers,
 WiFi config, vCard-style contacts, and similar), not a bit-level format of its own — `encodeSPARQCode`
 implements those same public conventions directly. See `docs/formats/qr-family.md`,

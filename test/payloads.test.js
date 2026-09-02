@@ -30,12 +30,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildVCard, encodeVCard,
+  buildVCard, encodeVCard, parseVCard, decodeVCard,
   vinCheckDigit, validateVIN, encodeVIN,
-  buildSPARQCodePayload, encodeSPARQCode,
-  buildSwissQR, encodeSwissQR, qrReferenceCheckDigit, validateIBAN, isQrIban,
-  buildSEPAQR, encodeSEPAQR,
-  buildAAMVA, encodeAAMVA,
+  buildSPARQCodePayload, encodeSPARQCode, parseSPARQCodePayload, decodeSPARQCode,
+  buildSwissQR, encodeSwissQR, parseSwissQR, decodeSwissQR, qrReferenceCheckDigit, validateIBAN, isQrIban,
+  buildSEPAQR, encodeSEPAQR, parseSEPAQR, decodeSEPAQR,
+  buildAAMVA, encodeAAMVA, parseAAMVA, decodeAAMVA,
 } from '../src/js/payloads/index.js';
 import { decodeQR } from '../src/js/qr/index.js';
 import { decodeOneD } from '../src/js/oned/reader.js';
@@ -78,6 +78,22 @@ test('vCard: builds a correctly escaped RFC 6350 block and round-trips through Q
 
 test('vCard: requires at least a name or organization', () => {
   assert.throws(() => buildVCard({}), EncodeError);
+});
+
+test('vCard: parseVCard reverses buildVCard, decodeVCard round-trips through QR', () => {
+  const fields = {
+    firstName: 'Mario', lastName: 'Rossi, Jr;\\', organization: 'Sythos', title: 'CEO',
+    phones: [{ number: '+391234567890', type: 'CELL' }, { number: '+390612345', type: 'WORK' }],
+    emails: ['mario@example.com', 'mario2@example.com'],
+    url: 'https://example.com',
+    address: { type: 'WORK', street: 'Via Roma 1', city: 'Roma', state: 'RM', zip: '00100', country: 'IT' },
+    note: 'line1\nline2',
+  };
+  const text = buildVCard(fields);
+  assert.deepEqual(parseVCard(text), fields);
+
+  const matrix = encodeVCard(fields);
+  assert.deepEqual(decodeVCard(matrix), fields);
 });
 
 test('VIN: check digit matches a known-good reference VIN', () => {
@@ -132,6 +148,43 @@ test('SPARQCode: every data type builds the expected public-convention payload',
 test('SPARQCode: encodeSPARQCode round-trips through QR', () => {
   const matrix = encodeSPARQCode('url', { url: 'https://sythos.net/' });
   assert.equal(decodeQR(matrix).text, 'https://sythos.net/');
+});
+
+test('SPARQCode: parseSPARQCodePayload reverses each convention, decodeSPARQCode round-trips', () => {
+  assert.deepEqual(parseSPARQCodePayload('https://sythos.net/'), { type: 'url', fields: { url: 'https://sythos.net/' } });
+  assert.deepEqual(parseSPARQCodePayload('tel:+123'), { type: 'phone', fields: { number: '+123' } });
+  assert.deepEqual(parseSPARQCodePayload('sms:+123?body=hi'), { type: 'sms', fields: { number: '+123', message: 'hi' } });
+  assert.deepEqual(parseSPARQCodePayload('geo:45.1,7.2'), { type: 'geo', fields: { latitude: 45.1, longitude: 7.2 } });
+  assert.deepEqual(
+    parseSPARQCodePayload('mailto:a@b.com?subject=Hi'),
+    { type: 'email', fields: { address: 'a@b.com', subject: 'Hi' } },
+  );
+  assert.deepEqual(
+    parseSPARQCodePayload('https://www.youtube.com/watch?v=abc123'),
+    { type: 'youtube', fields: { videoId: 'abc123' } },
+  );
+  assert.deepEqual(
+    parseSPARQCodePayload('https://play.google.com/store/apps/details?id=com.example.app'),
+    { type: 'googleplay', fields: { packageName: 'com.example.app' } },
+  );
+  assert.deepEqual(
+    parseSPARQCodePayload('WIFI:T:WPA;S:Guest\\;Net;P:p\\:w;;'),
+    { type: 'wifi', fields: { encryption: 'WPA', ssid: 'Guest;Net', password: 'p:w' } },
+  );
+
+  const icalPayload = buildSPARQCodePayload('icalendar', {
+    summary: 'Meet', start: new Date('2026-01-01T10:00:00Z'), end: new Date('2026-01-01T11:00:00Z'),
+  });
+  assert.deepEqual(parseSPARQCodePayload(icalPayload), {
+    type: 'icalendar',
+    fields: { summary: 'Meet', start: new Date('2026-01-01T10:00:00Z'), end: new Date('2026-01-01T11:00:00Z') },
+  });
+
+  const bizPayload = buildSPARQCodePayload('bizcard', { firstName: 'Mario', lastName: 'Rossi' });
+  assert.deepEqual(parseSPARQCodePayload(bizPayload), { type: 'bizcard', fields: { firstName: 'Mario', lastName: 'Rossi' } });
+
+  const matrix = encodeSPARQCode('phone', { number: '+123' });
+  assert.deepEqual(decodeSPARQCode(matrix), { type: 'phone', fields: { number: '+123' } });
 });
 
 test('Swiss QR-bill: Annex B check digit matches the specification\'s own worked example', () => {
@@ -201,6 +254,37 @@ test('Swiss QR-bill: NON and SCOR reject a QR-IBAN', () => {
   assert.throws(() => buildSwissQR({ ...base, referenceType: 'SCOR', reference: 'RF18539007547034' }), EncodeError);
 });
 
+test('Swiss QR-bill: parseSwissQR reverses buildSwissQR, decodeSwissQR round-trips', () => {
+  const fields = {
+    iban: 'CH9300762011623852957',
+    creditor: { name: 'Sythos SA', street: 'Musterstrasse', buildingNumber: '1', postalCode: '8000', city: 'Zurich', country: 'CH' },
+    amount: 199.95,
+    currency: 'CHF',
+    referenceType: 'NON',
+    unstructuredMessage: 'Test invoice',
+  };
+  const text = buildSwissQR(fields);
+  assert.deepEqual(parseSwissQR(text), fields);
+
+  const matrix = encodeSwissQR(fields);
+  assert.deepEqual(decodeSwissQR(matrix), fields);
+});
+
+test('Swiss QR-bill: parseSwissQR strips the QRR check digit and restores debtor, billing and AP lines', () => {
+  const fields = {
+    iban: 'CH4431999123000889012',
+    creditor: { name: 'X', postalCode: '1', city: 'Y', country: 'CH' },
+    debtor: { name: 'Debtor Name', street: 'Debtor Street', buildingNumber: '2', postalCode: '2000', city: 'Geneva', country: 'CH' },
+    currency: 'CHF',
+    referenceType: 'QRR',
+    reference: '21000000000313947143000901',
+    billingInformation: 'Billing info',
+    alternativeProcedures: ['AP1 line', 'AP2 line'],
+  };
+  const text = buildSwissQR(fields);
+  assert.deepEqual(parseSwissQR(text), fields);
+});
+
 test('SEPA QR: builds the EPC069-12 field order and omits trailing empty fields', () => {
   const text = buildSEPAQR({ name: 'Sythos SARL', iban: 'DE89370400440532013000', unstructuredReference: 'Invoice 42' });
   const lines = text.split('\n');
@@ -225,6 +309,24 @@ test('SEPA QR: round-trips through QR at error-correction level M', () => {
   assert.equal(decodeQR(matrix).text, 'BCD\n002\n1\nSCT\n\nSythos SARL\nDE89370400440532013000');
 });
 
+test('SEPA QR: parseSEPAQR reverses buildSEPAQR, decodeSEPAQR round-trips', () => {
+  const fields = { name: 'Sythos SARL', iban: 'DE89370400440532013000', unstructuredReference: 'Invoice 42' };
+  const text = buildSEPAQR(fields);
+  assert.deepEqual(parseSEPAQR(text), { version: '002', ...fields });
+
+  const matrix = encodeSEPAQR(fields);
+  assert.deepEqual(decodeSEPAQR(matrix), { version: '002', ...fields });
+});
+
+test('SEPA QR: parseSEPAQR restores bic, amount, purpose and structuredReference', () => {
+  const fields = {
+    version: '001', bic: 'DEUTDEFF', name: 'Sythos SARL', iban: 'DE89370400440532013000',
+    amount: 12.3, purpose: 'GDDS', structuredReference: 'RF18539007547034', beneficiaryInfo: 'Thanks',
+  };
+  const text = buildSEPAQR(fields);
+  assert.deepEqual(parseSEPAQR(text), fields);
+});
+
 test('AAMVA: builds the fixed header, subfile designator and mandatory elements, round-trips through PDF417', () => {
   const fields = {
     iin: '999999', vehicleClass: 'D', restrictions: 'NONE', endorsements: 'NONE',
@@ -247,6 +349,39 @@ test('AAMVA: builds the fixed header, subfile designator and mandatory elements,
   const matrix = encodeAAMVA(fields);
   const decoded = decodePDF417(matrix).text;
   assert.equal(decoded, text);
+});
+
+test('AAMVA: parseAAMVA reverses buildAAMVA, decodeAAMVA round-trips through PDF417', () => {
+  const fields = {
+    iin: '999999', vehicleClass: 'D', restrictions: 'NONE', endorsements: 'NONE',
+    expirationDate: '01012030', lastName: 'ROSSI', firstName: 'MARIO',
+    issueDate: '01012024', dateOfBirth: '01011990', sex: '1', eyeColor: 'BRO', height: '178 cm',
+    street1: 'VIA ROMA 1', city: 'ROMA', state: 'RM', postalCode: '00100',
+    customerId: 'X1234567', documentDiscriminator: 'DOC0001', country: 'USA',
+  };
+  const text = buildAAMVA(fields);
+  const expected = {
+    ...fields,
+    aamvaVersion: '10', jurisdictionVersion: '00', documentType: 'DL',
+    familyNameTruncation: 'N', firstNameTruncation: 'N', middleNameTruncation: 'N',
+  };
+  assert.deepEqual(parseAAMVA(text), expected);
+
+  const matrix = encodeAAMVA(fields);
+  assert.deepEqual(decodeAAMVA(matrix), expected);
+});
+
+test('AAMVA: parseAAMVA restores optional fields and drops the "NONE" middleName default', () => {
+  const fields = {
+    iin: '999999', vehicleClass: 'D', restrictions: 'NONE', endorsements: 'NONE',
+    expirationDate: '01012030', lastName: 'ROSSI', firstName: 'MARIO', middleName: 'LUIGI',
+    issueDate: '01012024', dateOfBirth: '01011990', sex: '1', eyeColor: 'BRO', height: '178 cm',
+    street1: 'VIA ROMA 1', street2: 'APT 2', city: 'ROMA', state: 'RM', postalCode: '00100',
+    customerId: 'X1234567', documentDiscriminator: 'DOC0001', country: 'USA',
+    familyNameTruncation: 'N', firstNameTruncation: 'N', middleNameTruncation: 'N', suffix: 'JR',
+  };
+  const text = buildAAMVA(fields);
+  assert.deepEqual(parseAAMVA(text), { ...fields, aamvaVersion: '10', jurisdictionVersion: '00', documentType: 'DL' });
 });
 
 test('AAMVA: rejects a malformed IIN and missing mandatory fields', () => {

@@ -42,9 +42,12 @@
  * @module payloads
  */
 
-export { buildVCard, encodeVCard } from './vcard.js';
+export { buildVCard, encodeVCard, parseVCard, decodeVCard } from './vcard.js';
 export { vinCheckDigit, validateVIN, encodeVIN } from './vin.js';
-export { buildSPARQCodePayload, encodeSPARQCode } from './sparqcode.js';
-export { buildSwissQR, encodeSwissQR, qrReferenceCheckDigit, validateIBAN, isQrIban } from './swiss-qr.js';
-export { buildSEPAQR, encodeSEPAQR } from './sepa-qr.js';
-export { buildAAMVA, encodeAAMVA } from './aamva.js';
+export { buildSPARQCodePayload, encodeSPARQCode, parseSPARQCodePayload, decodeSPARQCode } from './sparqcode.js';
+export {
+  buildSwissQR, encodeSwissQR, parseSwissQR, decodeSwissQR,
+  qrReferenceCheckDigit, validateIBAN, isQrIban,
+} from './swiss-qr.js';
+export { buildSEPAQR, encodeSEPAQR, parseSEPAQR, decodeSEPAQR } from './sepa-qr.js';
+export { buildAAMVA, encodeAAMVA, parseAAMVA, decodeAAMVA } from './aamva.js';
