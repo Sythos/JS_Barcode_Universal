@@ -152,11 +152,17 @@ package/export validation, the foundation suite, fuzz properties and the
 zero-runtime-dependency guard. Arbitrary perspective and multi-symbol photographic
 scenes remain outside this group.
 
-### M15+ format group — license-gated follow-up backlog
+### M15+ format group — license-gated follow-up backlog (closed)
 
-Milestone-based work against a reviewed backlog of formats not yet in scope,
-each gated by a license/free-use check before any code is written. Tracked
-format-by-format in `plan_v2.md` at the parent workspace root (outside `git/`).
+Milestone-based work against a reviewed 16-format backlog, each gated by a
+license/free-use check before any code is written. Tracked format-by-format
+in `plan_v2.md` at the parent workspace root (outside `git/`) while active;
+the backlog is now fully worked through (every format either shipped,
+found NO-GO, or found not to be a real distinct symbology), so that
+tracking file has been removed. The M20-M24 rows below are its shipped
+results; NO-GO and not-a-format findings (Codablock A, Code 49, AR Code,
+SPARQCode, WeChat Mini Program Code) are recorded in the "Not implemented,
+deliberately" note after this table instead, since they added no code.
 
 | Milestone | Format | Scope delivered | Focused evidence |
 |---|---|---|---|
@@ -182,7 +188,7 @@ format-by-format in `plan_v2.md` at the parent workspace root (outside `git/`).
   to the documented Sythos bounded profile; external certified layouts remain
   outside scope.
 
-**Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Codablock A, Code 49, Ultracode, WeChat Mini Program Code. Listed with reasons in `LICENSE` §6. Code 49 is an unusual case: its patent is expired and its ANSI/AIM spec is genuinely public, but the spec's own Appendix F (the 2401-entry bar-pattern table) prints only a 260-row sample and states the complete table and its generation program are a paid AIM deliverable, not publicly derivable — reverse-engineering a rule from the sample was attempted and did not succeed with confidence. (PostBar was on this list; see the M22 entry below — Canada Post's own spec is still unpublished, but a US patent disclosure of C10/D22/G12 was found and independently verified, so those three profiles are implemented after all. Codablock A is genuinely distinct from the already-implemented Codablock-F, not a duplicate entry, but its only known standard citation — AIM's 1994 TSC052 — could not be found published anywhere, and no major open-source library implements it either.) WeChat Mini Program Code is a genuinely distinct ring-shaped symbology (unlike "AR Code" and SPARQCode, which both turned out not to be real formats at all, see the M12 entry below and `plan_v2.md`); it fails on three independent grounds — no published bit-level spec, an active broad patent on the shared ring/dot/positioning-point/logo architecture (US12204967B2), and functional coupling to Tencent's own backend for any real-world use.
+**Not implemented, deliberately** — proprietary, or status too unclear to redistribute an implementation with confidence: Digimarc Barcode, VeriCode, DataGlyphs, Snowflake, ShotCode, Microsoft Tag, Bokode, Softstrip, Codablock A, Code 49, Ultracode, WeChat Mini Program Code. Listed with reasons in `LICENSE` §6. Code 49 is an unusual case: its patent is expired and its ANSI/AIM spec is genuinely public, but the spec's own Appendix F (the 2401-entry bar-pattern table) prints only a 260-row sample and states the complete table and its generation program are a paid AIM deliverable, not publicly derivable — reverse-engineering a rule from the sample was attempted and did not succeed with confidence. (PostBar was on this list; see the M22 entry below — Canada Post's own spec is still unpublished, but a US patent disclosure of C10/D22/G12 was found and independently verified, so those three profiles are implemented after all. Codablock A is genuinely distinct from the already-implemented Codablock-F, not a duplicate entry, but its only known standard citation — AIM's 1994 TSC052 — could not be found published anywhere, and no major open-source library implements it either.) WeChat Mini Program Code is a genuinely distinct ring-shaped symbology (unlike "AR Code" and SPARQCode, which both turned out not to be real formats at all, see the M12 entry below); it fails on three independent grounds — no published bit-level spec, an active broad patent on the shared ring/dot/positioning-point/logo architecture (US12204967B2), and functional coupling to Tencent's own backend for any real-world use.
 
 **Implemented outside the counted 57/56 registry — KarTrak ACI (experimental)** — colour-coded (blue/checkerboard/red/black stripe pairs, not bar width), so it cannot go through `BitMatrix`-based `encode()`/`decode()`/`listFormats()`. Ships instead as its own `@sythos/js_barcode_universal/kartrak` subpath on top of the new `PolychromeMatrix`/`toColorImageData`/`classifyGrid` colour primitives (`src/ts/color/`). Encoding and matrix decoding are complete and checksum-validated; image detection is scoped to one axis-aligned plate against a roughly uniform background, no rotation/perspective search. See `docs/formats/kartrak.md` and `docs/COLOR_PIPELINE_NOTES.md`.
 
@@ -297,7 +303,7 @@ and release validation workflows use `npm ci --ignore-scripts`. These measures m
 toolchain reproducible without adding a runtime dependency to the SDK.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.5.15`.
+or increment versions by itself. The current release is `1.6.0`.
 
 ---
 
