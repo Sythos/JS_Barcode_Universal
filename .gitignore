@@ -83,6 +83,7 @@ test/*
 !test/postbar.test.js
 !test/dxfilmedge.test.js
 !test/jabcode.test.js
+!test/payloads.test.js
 !test/aztec-decoder.test.js
 !test/aztec-tables.test.js
 !test/aztecrune.blackbox.test.js

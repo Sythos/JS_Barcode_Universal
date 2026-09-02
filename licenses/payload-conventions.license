@@ -1,0 +1,148 @@
+Payload conventions (vCard, VIN, SPARQCode, Swiss QR-bill, SEPA/EPC QR, AAMVA)
+==========================================================================
+
+This file records where the six payload conventions implemented under
+`src/ts/payloads/` come from and the basis on which this project builds
+and redistributes helpers for them. None of these are barcode
+symbologies of their own -- each is a structured text/data convention
+carried as the payload of an existing, already-implemented symbology
+(`qr`, `code39` or `pdf417`). Since no new bit-level encoding is
+involved, there is no "symbology" patent or specification-copyright
+question the way there is for the rest of this project's `licenses/`
+inventory; each entry below instead records the payload standard's own
+publisher and public-availability basis.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+vCard (src/ts/payloads/vcard.ts)
+--------------------------------------------------------------------------
+RFC 6350, "vCard Format Specification," IETF, published by the IETF Trust
+under IETF's standard royalty-free terms for implementing the protocols
+it defines. Publicly available at datatracker.ietf.org/doc/html/rfc6350.
+Field structure, escaping rules (§3.4) and the VERSION 3.0 dialect (the
+one most broadly recognized by QR-reading phone camera apps) were read
+directly from the RFC. No proprietary "smart QR" product's conventions
+are involved.
+
+
+VIN -- Vehicle Identification Number (src/ts/payloads/vin.ts)
+--------------------------------------------------------------------------
+ISO 3779 defines the 17-character structure; the check-digit algorithm
+implemented here (position 9, transliteration table, weighted sum mod 11)
+is the North American scheme mandated by US federal regulation, 49 CFR
+571.115 (FMVSS 115) / SAE J853 -- a US government regulation and an SAE
+standard, both publicly describable; the transliteration table and
+weights are widely published (e.g. in NHTSA's own VIN decoder
+documentation) and were verified against a known-good reference VIN
+during testing. Not every VIN-issuing jurisdiction outside North America
+requires this exact check digit; `validateVIN` reports agreement with
+this specific scheme, not universal VIN validity. Carried on a Code 39
+label, this project's own already-implemented, publicly-specified
+(ISO/IEC 16388) symbology -- no separate barcode symbology work involved.
+
+
+SPARQCode conventions (src/ts/payloads/sparqcode.ts)
+--------------------------------------------------------------------------
+See `docs/formats/qr-family.md`: "SPARQCode" (MSKYNET, Inc.,
+~2010, later Yahoo/Verizon-linked) was found to name a curated set of
+already-public, non-proprietary conventions -- `mailto:`/`tel:`/`sms:`
+URI schemes, RFC 5870 `geo:`, the widely-deployed `WIFI:` configuration
+string, RFC 6350 vCard, and plain URLs -- not a bit-level format MSKYNET
+invented. This module implements those same public conventions directly
+from their own specifications, not from any MSKYNET material. Wikipedia's
+own "SPARQCode" article states MSKYNET released the name itself "free of
+any license"; this project's use of the name is descriptive (identifying
+which curated convention set is being reproduced), not a product-branding
+claim, mirroring the reasoning in `licenses/kartrak-aci.license` for
+historical product names used descriptively.
+
+
+Swiss QR-bill (src/ts/payloads/swiss-qr.ts)
+--------------------------------------------------------------------------
+"Swiss Implementation Guidelines for the QR-bill," Version 2.3
+(20.11.2023), published by SIX Interbank Clearing Ltd and freely
+downloadable from six-group.com for implementing the standard --
+six-group.com/dam/download/banking-services/standardization/qr-bill/
+ig-qr-bill-v2.3-en.pdf. Read directly from that PDF: the fixed
+4.2.2 data-element structure (§4.2.2 -- including that v2.3 removed the
+"combined address" option, so only structured addresses are
+implemented), the §4.1.4 separator/omission rule, and the Annex B
+"Modulo 10 recursive" QR-reference check-digit algorithm. The Annex B
+table itself is rendered as a diagram image in the PDF, not extractable
+as text; the table and algorithm implemented here were independently
+verified by reproducing the document's own Annex B worked example
+byte-for-byte (input `21 00000 00003 13947 14300 0901` must produce
+check digit `7`) before being accepted. IBAN/QR-IBAN validation uses the
+public ISO 13616 MOD-97-10 algorithm (shared with every IBAN, not
+Swiss-specific) and the publicly documented QR-IBAN IID range
+(30000-31999). This is a national banking-industry data-interchange
+format, not a barcode symbology; it is not a DENSO/Fraunhofer/AIM-style
+symbology-copyright case.
+
+
+SEPA / EPC QR Code (src/ts/payloads/sepa-qr.ts)
+--------------------------------------------------------------------------
+EPC069-12, "Quick Response Code -- Guidelines to Enable the Data Capture
+for the Initiation of an SCT," Version 3.1 (19 March 2024), published by
+the European Payments Council and freely downloadable from
+europeanpaymentscouncil.eu for implementing the standard. Read directly
+from that PDF: the ordered field list (§2.2), the line-separator and
+trailing-empty-field-omission rule (verified against both of the
+document's own worked examples by counting line feeds), the BIC
+mandatory-in-v001/optional-in-v002 distinction (tied by the document's
+own revision history to EU Regulation 260/2012, Article 5(7)), and the
+331-byte/QR-version-13/ECC-level-M payload cap. Not a barcode symbology;
+a European banking-industry payment-initiation data format.
+
+
+AAMVA DL/ID Card Design Standard (src/ts/payloads/aamva.ts)
+--------------------------------------------------------------------------
+"AAMVA DL/ID Card Design Standard," 2020 edition (the standard's own bar
+codes are designated AAMVA Version "10"), published by the American
+Association of Motor Vehicle Administrators and freely downloadable from
+aamva.org for implementing the standard. Read directly from that PDF:
+the fixed header structure (D.12.3: Compliance Indicator `@`, Data
+Element Separator LF, Record Separator RS, Segment Terminator CR, File
+Type `ANSI `, IIN, AAMVA/jurisdiction version, entry count), the Subfile
+Designator format (D.12.4: type, offset, length), and the Table D.3
+mandatory data elements (the 22 fields this module builds). The header
+and offset/length computation were independently verified against the
+document's own D.13 worked example (a Virginia sample: DL subfile at
+offset 41 length 278, second subfile at offset 319 = 41 + 278).
+
+This module only produces the structured *data* format defined by an
+openly published industry standard -- the same kind of structured-text
+builder several existing open-source PDF417 tools already provide for
+legitimate uses (an issuing authority's own card-personalization
+pipeline, or a business testing its own age-verification/ID scanner
+against the standard). It carries no jurisdiction's real Issuer
+Identification Number by default -- `iin` is a required field a caller
+must supply, never defaulted to any specific real jurisdiction -- and
+produces only a data structure, nothing resembling a physical card,
+security laminate, or any other feature of an actual issued credential.
+
+
+AADHAAR: deliberately not implemented
+--------------------------------------------------------------------------
+India's Aadhaar Secure QR Code was researched for the same "payload
+convention" treatment as the six formats above and found NOT to fit it,
+for a reason distinct from every exclusion in this project's main
+`LICENSE` §6 inventory: a "valid," verifiable Aadhaar QR code is
+cryptographically signed with a private key held exclusively by UIDAI
+(India's Unique Identification Authority), the sole legitimate issuer.
+No third party can produce a code that verifies as authentic without
+that key, unlike every format in this file (and every symbology this
+project implements), which are freely constructible by any implementer
+from a public specification. A structured-data builder that reproduces
+only the unsigned data layout would be functionally inert for the
+format's actual purpose while looking like a genuine government identity
+credential -- a materially different, and materially worse, risk profile
+than AAMVA's openly-specified, freely-issuable driver's-license data
+format. See `docs/guides/legal-exclusions.md` for the full reasoning.
+
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

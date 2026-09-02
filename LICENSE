@@ -284,7 +284,10 @@ status too unclear to redistribute an implementation with confidence:
     Snowflake Code .......... proprietary, Marconi Data Systems
     ShotCode ................ proprietary
     Microsoft Tag ........... proprietary, discontinued
-    Bokode .................. research project, unclear status
+    Bokode .................. research project, unclear implementable
+                               spec; also an active MIT patent,
+                               US8366003B2, through 2030 -- see
+                               docs/guides/legal-exclusions.md
     Softstrip ............... obsolete, unclear status
     Codablock A .............. real, structurally distinct from the
                                already-implemented Codablock-F (Code

@@ -100,6 +100,41 @@ and multi-symbol scenes remain outside the validated guarantee. MicroPDF417 is
 not a general-purpose replacement for full PDF417 when a scanner expects the
 full row/indicator structure.
 
+## Payload convention: AAMVA DL/ID data
+
+The data structure carried in the PDF417 barcode on the back of North
+American driver's licenses and ID cards is not a symbology of its own —
+it is a structured text payload defined by the AAMVA DL/ID Card Design
+Standard, encoded here through the existing `pdf417` writer (byte
+compaction, since the format embeds raw control characters).
+`@sythos/js_barcode_universal/payloads` builds the fixed header, subfile
+designator and the Table D.3 mandatory data elements:
+
+```js
+import { encodeAAMVA } from '@sythos/js_barcode_universal/payloads';
+
+const matrix = encodeAAMVA({
+  iin: '999999', // your jurisdiction's own AAMVA-assigned IIN — never defaulted
+  vehicleClass: 'D', restrictions: 'NONE', endorsements: 'NONE',
+  issueDate: '01012024', dateOfBirth: '01011990', expirationDate: '01012030',
+  lastName: 'ROSSI', firstName: 'MARIO', sex: '1', eyeColor: 'BRO', height: '178 cm',
+  street1: 'VIA ROMA 1', city: 'ROMA', state: 'RM', postalCode: '00100',
+  customerId: 'X1234567', documentDiscriminator: 'DOC0001', country: 'USA',
+});
+```
+
+This is a structured-data builder — the same kind of tool a real issuing
+authority's own card-personalization system, or a business testing its
+own age-verification/barcode scanner against the standard, needs. It
+carries no jurisdiction's real Issuer Identification Number by default
+(`iin` is a required field) and produces only the data structure, nothing
+resembling a physical card or its security features. See
+[`licenses/payload-conventions.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/payload-conventions.license)
+for exactly which parts of the standard were verified, and
+[`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/)
+for why the similarly-requested AADHAAR format was deliberately left out
+instead.
+
 ## Byte payloads and interoperation
 
 For binary data, use the format-specific byte/ECI options and preserve the

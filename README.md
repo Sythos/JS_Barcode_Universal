@@ -110,6 +110,7 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/kartrak` | `encodeKarTrak`, `decodeKarTrak`, `decodeKarTrakMatrix`, `detectKarTrak` — experimental, colour-coded, not part of `encode()`/`decode()` |
 | `@sythos/js_barcode_universal/jabcode` | `encodeJABCode`, `decodeJABCode`, `decodeJABCodeMatrix` — experimental, colour-coded, not part of `encode()`/`decode()` |
 | `@sythos/js_barcode_universal/color` | `PolychromeMatrix`, `toColorImageData`, `classifyGrid` — the experimental colour primitives KarTrak and JAB Code are built on; not registered in `listFormats()`, no stability guarantee yet |
+| `@sythos/js_barcode_universal/payloads` | `encodeVCard`, `encodeVIN`, `encodeSPARQCode`, `encodeSwissQR`, `encodeSEPAQR`, `encodeAAMVA` (plus each `build*` counterpart) — structured payload conventions on top of `qr`, `code39` and `pdf417`, not separate symbologies, not part of `encode()`/`decode()` |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -254,6 +255,7 @@ make that distinction visible.
 
 | Format | `id` | Kind | Structure | Write | Read |
 |---|---|:---:|:---:|:---:|:---:|
+| AAMVA DL/ID data (payload convention on PDF417) | — | 2D | Stacked | ✅ | ✅ [^9] |
 | Australia Post 4-State | `auspost` | 1D | Linear | ✅ | ✅ |
 | Aztec Code | `aztec` | 2D | Matrix | ✅ | ✅ |
 | Aztec Rune | `aztecrune` | 2D | Matrix | ✅ | ✅ |
@@ -307,9 +309,12 @@ make that distinction visible.
 | PostBar.D22 (Canada Post, domestic) | `postbard22` | 1D | Linear | ✅ | ✅ [^7] |
 | PostBar.G12 (Canada Post, international) | `postbarg12` | 1D | Linear | ✅ | ✅ [^7] |
 | PZN-7 / PZN-8 | `pzn` | 1D | Linear | ✅ | ✅ |
-| QR Code | `qr` | 2D | Matrix | ✅ | ✅ [^9] |
+| QR Code | `qr` | 2D | Matrix | ✅ | ✅ |
 | rMQR Code | `rmqr` | 2D | Matrix | ✅ | ✅ |
 | Royal Mail 4-State (RM4SCC) | `rm4scc` | 1D | Linear | ✅ | ✅ |
+| SEPA / EPC QR Code (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
+| SPARQCode (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
+| Swiss QR-bill (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
 | Sythos Canvas QR profile — not DENSO FrameQR® compatible | `frameqr` | 2D | Matrix | ✅ | ✅ |
 | Telepen (ASCII and Numeric) | `telepen` | 1D | Linear | ✅ | ✅ [^3] |
 | UPC-A | `upca` | 1D | Linear | ✅ | ✅ |
@@ -317,6 +322,8 @@ make that distinction visible.
 | USPS Intelligent Mail (IMb / OneCode) | `imb` | 1D | Linear | ✅ | ✅ |
 | USPS PLANET | `planet` | 1D | Linear | ✅ | ✅ |
 | USPS POSTNET | `postnet` | 1D | Linear | ✅ | ✅ |
+| vCard (payload convention on QR) | — | 2D | Matrix | ✅ | ✅ [^9] |
+| VIN (Vehicle Identification Number, payload convention on Code 39) | — | 1D | Linear | ✅ | ✅ [^9] |
 
 Sixty-one listed formats are writable and sixty are readable through the counted
 `listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
@@ -324,7 +331,10 @@ parent-bound supplements). **KarTrak ACI and JAB Code sit outside that count**: 
 colour-coded, not black/white, so neither can go through `BitMatrix`-based `encode()`/`decode()`
 at all — each ships only as its own subpath (`@sythos/js_barcode_universal/kartrak`,
 `@sythos/js_barcode_universal/jabcode`), listed in the table above for visibility, not counted in
-that total. **Pharmacode remains intentionally
+that total. **The six rows marked `—` for `id` (AAMVA, SEPA/EPC QR, SPARQCode, Swiss QR-bill,
+vCard and VIN) sit outside that count for a different reason**: none is a symbology at all, so
+none has an `id` to register — they are payload-convention helpers on `qr`, `code39` and `pdf417`
+from `@sythos/js_barcode_universal/payloads`, see footnote 9. **Pharmacode remains intentionally
 write-only in the generic image pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
@@ -513,12 +523,21 @@ for this format yet). See `docs/formats/jabcode.md` and `docs/JABCODE_NOTES.md` 
 scope, including the PRNG bit-exactness limitation and what real-world validation is still
 outstanding.
 
-[^9]: "SPARQCode" (a MSKYNET/Yahoo-era product name) is not a separate barcode symbology and this
-SDK does not implement or need a dedicated mode for it: it is a text-payload convention (structured
-URLs, phone numbers, WiFi config, vCard-style contacts, and similar) written inside an ordinary,
-unmodified ISO/IEC 18004 QR code — the same physical code `qr` already produces and reads. Any
-payload following such a convention already round-trips through `encodeQR`/`decodeQR` above. See
-`docs/formats/qr-family.md`.
+[^9]: None of these six rows is a barcode symbology of its own, and none has a registry `id` or
+goes through `encode()`/`decode()`/`listFormats()` — each is a structured text/data convention
+written as the payload of an already-listed symbology (`qr`, `code39` or `pdf417`) and read back
+through that symbology's own decoder. Use them from `@sythos/js_barcode_universal/payloads`:
+`encodeVCard`/`encodeSwissQR`/`encodeSEPAQR`/`encodeSPARQCode` build a QR payload,
+`encodeVIN` a Code 39 payload, `encodeAAMVA` a PDF417 payload. "SPARQCode" (a MSKYNET/Yahoo-era
+product name) named a curated set of already-public conventions (structured URLs, phone numbers,
+WiFi config, vCard-style contacts, and similar), not a bit-level format of its own — `encodeSPARQCode`
+implements those same public conventions directly. See `docs/formats/qr-family.md`,
+`docs/formats/oned.md` and `docs/formats/pdf417-family.md` for each convention's own documentation,
+and [`licenses/payload-conventions.license`](licenses/payload-conventions.license) for provenance
+and what was verified for each (including a real worked-example cross-check for the Swiss QR-bill
+and AAMVA check-digit/offset algorithms, whose reference tables are undocumented as text in their
+own source PDFs). AADHAAR was investigated for the same treatment and deliberately left out — see
+[`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/).
 
 ### Code 11 and MSI Plessey image reading
 
@@ -1350,6 +1369,11 @@ Micro QR and rMQR provenance and scoped legal-review notes are recorded in
 specification copyrights, patent history and trademarks that surround these symbologies. None of
 them is resolved by this file; the appendix is an engineering inventory, not legal advice.
 [`NOTICE.md`](NOTICE.md) records the origin of the code and how its correctness is verified.
+
+Formats not implemented specifically for a licensing, patent, trademark or issuing-authority
+reason — as opposed to a specification simply being unavailable — are collected in one place,
+with the reasoning for each, at
+[`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/).
 
 ## AI / LLM Usage & Attribution
 

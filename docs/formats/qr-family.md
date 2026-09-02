@@ -54,15 +54,84 @@ the registry because the current evidence set does not contain the complete
 placement figures and fixtures required for a trustworthy writer and reader.
 See [Excluded formats](excluded-formats.md).
 
-"SPARQCode" (a MSKYNET/Yahoo-era product name) is not a separate barcode
-symbology and is not a format this SDK implements or needs to: it is a
-text-payload convention (structured URLs, phone numbers, WiFi config,
-vCard-style contacts, and similar) written inside an ordinary, unmodified
-ISO/IEC 18004 QR code — the same physical code `qr` already produces and
-reads. Any string payload that follows such a convention (SPARQCode's own,
-or a public one like a `mailto:`/`tel:`/`geo:` URI or a `WIFI:` string) can
-already be encoded and decoded with `encodeQR`/`decodeQR` above; this SDK
-does not need, and does not implement, a dedicated "SPARQCode" mode.
+## Payload conventions (not separate symbologies)
+
+None of the following are barcode symbologies — each is a structured
+text/data convention that gets written *inside* an ordinary, unmodified
+QR code payload and read back through the same `encodeQR`/`decodeQR`
+above. They live at the `@sythos/js_barcode_universal/payloads` subpath
+(shared with the Code 39- and PDF417-based conventions documented on
+[Linear 1D](oned.md) and [PDF417 family](pdf417-family.md)), each
+exporting a `build*` function (returns the payload string) and an
+`encode*` function (builds the string and calls `encodeQR` with it).
+Reading one back means decoding the QR symbol as usual and, if you need
+structured fields rather than raw text, parsing that text yourself — none
+of these ship a dedicated structured decoder.
+
+**"SPARQCode"** (a MSKYNET/Yahoo-era product name, see
+[`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/)
+for why it needed no license decision) named a curated set of
+already-public payload conventions, not a bit-level format of its own.
+`encodeSPARQCode` implements those same public conventions directly:
+
+```js
+import { encodeSPARQCode } from '@sythos/js_barcode_universal/payloads';
+
+const url = encodeSPARQCode('url', { url: 'https://www.sythos.net/' });
+const wifi = encodeSPARQCode('wifi', { ssid: 'Guest', password: 'letmein' });
+const contact = encodeSPARQCode('bizcard', { firstName: 'Mario', lastName: 'Rossi', organization: 'Sythos' });
+```
+
+Supported `type` values: `'url'`, `'email'`, `'phone'`, `'sms'`, `'geo'`,
+`'wifi'`, `'bizcard'`, `'youtube'`, `'googleplay'`, `'icalendar'`.
+
+**vCard** (RFC 6350) builds a correctly escaped vCard 3.0 contact card:
+
+```js
+import { encodeVCard } from '@sythos/js_barcode_universal/payloads';
+
+const matrix = encodeVCard({
+  firstName: 'Mario', lastName: 'Rossi', organization: 'Sythos',
+  phones: ['+39 02 1234567'], emails: ['mario@example.com'],
+});
+```
+
+**Swiss QR-bill** (SIX Interbank Clearing's payment-slip QR payload)
+builds and validates the fixed-line payload, including the IBAN/QR-IBAN
+distinction and the Annex B "Modulo 10 recursive" QR-reference check
+digit:
+
+```js
+import { encodeSwissQR } from '@sythos/js_barcode_universal/payloads';
+
+const matrix = encodeSwissQR({
+  iban: 'CH9300762011623852957',
+  creditor: { name: 'Sythos SA', street: 'Musterstrasse', buildingNumber: '1', postalCode: '8000', city: 'Zürich', country: 'CH' },
+  amount: 199.95,
+  currency: 'CHF',
+  referenceType: 'NON',
+  unstructuredMessage: 'Invoice 42',
+});
+```
+
+**SEPA / EPC QR Code** ("GiroCode", the European Payments Council's
+EPC069-12 payload for initiating a SEPA Credit Transfer):
+
+```js
+import { encodeSEPAQR } from '@sythos/js_barcode_universal/payloads';
+
+const matrix = encodeSEPAQR({
+  name: 'Sythos SARL',
+  iban: 'DE89370400440532013000',
+  unstructuredReference: 'Invoice 42',
+});
+```
+
+Field lengths, the mandatory/optional-BIC rule and the trailing-empty-
+field omission rule all follow EPC069-12 v3.1 exactly; see
+[`licenses/payload-conventions.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/payload-conventions.license)
+for how each of the four QR-based conventions above, plus the VIN and
+AAMVA conventions documented on their own format pages, was verified.
 
 ## Micro QR Code
 

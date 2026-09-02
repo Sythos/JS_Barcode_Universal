@@ -55,7 +55,7 @@ not sufficiently clear to redistribute with confidence:
 - Snowflake Code
 - ShotCode
 - Microsoft Tag
-- Bokode
+- Bokode: a live MIT patent ([US8366003B2](https://patents.google.com/patent/US8366003B2), active through 2030) was later confirmed for this one — see [`docs/guides/legal-exclusions.md`](https://sythos.github.io/JS_Barcode_Universal/guides/legal-exclusions/) for the licensing-side detail; kept in this list too since the same "no complete implementable spec" gap that put it here originally still applies independently.
 - Softstrip
 - Codablock A (the Code-39-based stacked sibling of the already-implemented
   Codablock-F): a real, structurally distinct symbology — different row

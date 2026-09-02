@@ -111,6 +111,7 @@ nav:
       - Performance: guides/performance.md
       - Security: guides/security.md
       - Licensing and provenance: guides/licensing.md
+      - Formats excluded for legal reasons: guides/legal-exclusions.md
       - Release verification: release-verification.md
   - Recipes:
       - Create a barcode: examples/create-barcode.md

@@ -378,6 +378,29 @@ const svg = toSVG(matrix, { scale: 4, margin: 10, barHeight: 80 });
 This document does not suggest that a downstream OCR or scanner result should
 be fed back into the generic decoder without its own validation boundary.
 
+## Payload convention: VIN (Vehicle Identification Number)
+
+A VIN is not a barcode symbology — it is a fixed 17-character identifier
+(ISO 3779) commonly printed as a `code39` label. `@sythos/js_barcode_universal/payloads`
+implements the North American (FMVSS 115 / SAE J853) position-9 check
+digit alongside the encoder:
+
+```js
+import { encodeVIN, validateVIN, vinCheckDigit } from '@sythos/js_barcode_universal/payloads';
+
+const matrix = encodeVIN('1M8GDM9AXKP042788'); // check digit already present and valid
+validateVIN('1M8GDM9AXKP042788'); // true
+
+// Or let it compute and insert the check digit at position 9:
+const withComputed = encodeVIN('1M8GDM9A_KP042788', { computeCheckDigit: true });
+```
+
+`encodeVIN` renders through the existing `code39` writer with no extra
+Code 39 check character (real VIN labels carry only the VIN's own
+built-in check digit). `validateVIN` reports agreement with the North
+American scheme specifically — a VIN issued elsewhere may legitimately
+not follow it. See [`licenses/payload-conventions.license`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/licenses/payload-conventions.license).
+
 ## Licensing and naming
 
 The runtime code is MIT-licensed original Sythos work. The format names are
