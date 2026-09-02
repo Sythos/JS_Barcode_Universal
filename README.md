@@ -108,7 +108,8 @@ const svg = toSVG(encodeQR('https://example.com', { ecc: 'M' }), { scale: 8 });
 | `@sythos/js_barcode_universal/hanxin` | `encodeHanXin`, `encodeHanXinBytes`, `decodeHanXin`, `detectHanXin`, `detectAndDecodeHanXin` |
 | `@sythos/js_barcode_universal/composite` | `encodeGS1Composite`, `decodeGS1Composite`, `detectGS1Composite`, `detectAndDecodeGS1Composite` |
 | `@sythos/js_barcode_universal/kartrak` | `encodeKarTrak`, `decodeKarTrak`, `decodeKarTrakMatrix`, `detectKarTrak` — experimental, colour-coded, not part of `encode()`/`decode()` |
-| `@sythos/js_barcode_universal/color` | `PolychromeMatrix`, `toColorImageData`, `classifyGrid` — the experimental colour primitives KarTrak is built on; not registered in `listFormats()`, no stability guarantee yet |
+| `@sythos/js_barcode_universal/jabcode` | `encodeJABCode`, `decodeJABCode`, `decodeJABCodeMatrix` — experimental, colour-coded, not part of `encode()`/`decode()` |
+| `@sythos/js_barcode_universal/color` | `PolychromeMatrix`, `toColorImageData`, `classifyGrid` — the experimental colour primitives KarTrak and JAB Code are built on; not registered in `listFormats()`, no stability guarantee yet |
 | `@sythos/js_barcode_universal/render` | Every renderer plus `isWebGL2Available` / `isWebGPUAvailable` |
 | `@sythos/js_barcode_universal/render/svg` | `toSVG`, `toSVGDataURI` |
 | `@sythos/js_barcode_universal/render/png` | `toPNG`, `toPNGDataURI` |
@@ -278,6 +279,7 @@ make that distinction visible.
 | ITF (Interleaved 2 of 5) | `itf` | 1D | Linear | ✅ | ✅ |
 | ITF-14 | `itf14` | 1D | Linear | ✅ | ✅ [^1] |
 | ITF-6 | `itf6` | 1D | Linear | ✅ | ✅ [^5] |
+| JAB Code (colour, experimental — default mode profile) | `jabcode` | 2D | Matrix | ✅ | ✅ [^8] |
 | JAN (Japanese Article Number) | `jan` | 1D | Linear | ✅ | ✅ [^1] |
 | Japan Post 4-State | `japanpost` | 1D | Linear | ✅ | ✅ |
 | KarTrak ACI (colour, experimental — bounded Sythos profile) | `kartrak` | 1D | Linear | ✅ | ✅ [^6] |
@@ -318,10 +320,11 @@ make that distinction visible.
 
 Sixty-one listed formats are writable and sixty are readable through the counted
 `listFormats()` registry and the top-level `encode()`/`decode()` dispatcher (EAN-2 and EAN-5 are
-parent-bound supplements). **KarTrak ACI sits outside that count**: it is colour-coded, not
-black/white, so it cannot go through `BitMatrix`-based `encode()`/`decode()` at all — it ships
-only as its own `@sythos/js_barcode_universal/kartrak` subpath, listed in the table above for
-visibility, not as the fifty-eighth entry in that count. **Pharmacode remains intentionally
+parent-bound supplements). **KarTrak ACI and JAB Code sit outside that count**: both are
+colour-coded, not black/white, so neither can go through `BitMatrix`-based `encode()`/`decode()`
+at all — each ships only as its own subpath (`@sythos/js_barcode_universal/kartrak`,
+`@sythos/js_barcode_universal/jabcode`), listed in the table above for visibility, not counted in
+that total. **Pharmacode remains intentionally
 write-only in the generic image pipeline.** Code 11 and MSI Plessey use the scanline reader. Telepen supports both its full
 seven-bit ASCII mode and explicit Numeric pair mode; Numeric reads must request
 `formats: ['telepennumeric']` so digit pairs are never guessed as ASCII control characters. The
@@ -497,6 +500,18 @@ technical disclosure in US Patent 5,602,382A (expired), verified against the pat
 worked examples. `postbard07`/`postbard12`/`postbarg22`/`postbars06`/`postbars11`/`postbars21`
 are documented by the same patent but not implemented — see `docs/formats/postbar.md`. Reading
 corrects errors via the format's own Reed-Solomon check (over GF(64)) before returning a result.
+
+[^8]: JAB Code (ISO/IEC 23634:2022, Fraunhofer SIT) encodes several bits per module as one of
+several module *colours* rather than bar width, so — like KarTrak — it needs `PolychromeMatrix`,
+not `BitMatrix`, and is not reachable through `encode()`/`decode()`, `listFormats()` or the
+`formats:` allow-list. Use `encodeJABCode`/`decodeJABCode`/`decodeJABCodeMatrix` from
+`@sythos/js_barcode_universal/jabcode` directly. This is the reference encoder's own "default
+mode" profile (8 colours, ECC level 3, mask type 7, no metadata Part I/II, byte-mode-only data
+encoding, single symbol) — not the full ISO specification, and reading requires the symbol's
+corners to already be known, the same "known geometry" boundary as KarTrak (no detector exists
+for this format yet). See `docs/formats/jabcode.md` and `docs/JABCODE_NOTES.md` for the full
+scope, including the PRNG bit-exactness limitation and what real-world validation is still
+outstanding.
 
 ### Code 11 and MSI Plessey image reading
 

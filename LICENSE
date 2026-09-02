@@ -147,6 +147,13 @@ excerpt the specification documents.
                                       against real-sample literature, see
                                       licenses/dx-film-edge-barcode.license
                                                                   [TO VERIFY]
+    ISO/IEC 23634     (JAB Code)       ISO/IEC — copyrighted, paywalled; no
+                                      free copy located. Implemented from the
+                                      reference implementation's own source
+                                      (github.com/jabcode/jabcode, MIT since
+                                      April 2026) instead, consulted for
+                                      understanding only, see
+                                      licenses/jab-code.license
 
 
 4. PATENT POSITIONS
@@ -219,6 +226,11 @@ INDEPENDENTLY VERIFIED BY THE AUTHOR. Treat every entry as a research pointer.
                                       (filed 1989, granted 1990) expired
                                       ~2007; extension patent EP0838718B1/
                                       US5872616A expired ~2017      [TO VERIFY]
+    JAB Code                          no known patents identified; the
+                                      reference implementation itself was
+                                      LGPL until re-licensed MIT in April
+                                      2026 — a licensing choice, not evidence
+                                      either way on patents           [TO VERIFY]
 
 Formats whose status could not be established as clearly redistributable are
 NOT IMPLEMENTED by this project. See section 6.

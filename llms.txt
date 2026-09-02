@@ -94,6 +94,17 @@ and read (axis-aligned single-plate detection only, no rotation/perspective
 search) through its own subpath, `@sythos/js_barcode_universal/kartrak`. See
 `docs/formats/kartrak.md` and `docs/COLOR_PIPELINE_NOTES.md`.
 
+**JAB Code (experimental, not in the count above)** — ISO/IEC 23634:2022,
+colour-coded (several bits per module as one of several colours, not bar
+width), so it cannot go through `BitMatrix`-based `encode()`/`decode()`/
+`listFormats()` either. Implements the reference encoder's own "default
+mode" (8 colours, ECC level 3, mask type 7, no metadata Part I/II,
+byte-mode-only data encoding, single symbol) — not the full specification.
+Write and read (known-geometry decoding, no detector) through its own
+subpath, `@sythos/js_barcode_universal/jabcode`. No live reference build was
+available to confirm interop beyond this module's own round trip — see
+`docs/formats/jabcode.md` and `docs/JABCODE_NOTES.md`.
+
 ### 2D stacked formats
 
 Multiple linear-derived rows, not a true grid. GS1 DataBar Stacked and Stacked
@@ -160,7 +171,8 @@ subpaths are available for smaller imports, including:
 - `@sythos/js_barcode_universal/hanxin`
 - `@sythos/js_barcode_universal/composite`
 - `@sythos/js_barcode_universal/kartrak` (experimental, colour-coded, not part of `encode()`/`decode()`)
-- `@sythos/js_barcode_universal/color` (experimental colour primitives KarTrak is built on; no stability guarantee yet)
+- `@sythos/js_barcode_universal/jabcode` (experimental, colour-coded, not part of `encode()`/`decode()`)
+- `@sythos/js_barcode_universal/color` (experimental colour primitives KarTrak and JAB Code are built on; no stability guarantee yet)
 - `@sythos/js_barcode_universal/render`
 
 Typical usage:

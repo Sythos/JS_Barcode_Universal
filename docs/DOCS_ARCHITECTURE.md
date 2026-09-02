@@ -117,6 +117,11 @@ turning the count into marketing copy:
   code, not a scanline format; its bit widths follow real film samples and
   an independent open-source implementation rather than the originating
   patent's own high-level summary, which states a conflicting field width;
+- JAB Code (`jabcode`) implements only the reference encoder's own "default
+  mode" (8 colours, ECC level 3, mask type 7, byte-mode-only data encoding,
+  single symbol) — not the full ISO/IEC 23634:2022 specification — and, like
+  KarTrak, is colour-coded so it sits outside `encode()`/`decode()`/
+  `listFormats()` entirely, see `docs/JABCODE_NOTES.md`;
 - SQRC and Face Authentication SQRC remain excluded because their DENSO
   licensing boundary is documented in `PLAN.md`;
 - any future unsupported variant must be labelled as unsupported, not silently
@@ -165,6 +170,7 @@ docs/
 │   ├── dotcode.md
 │   ├── hanxin.md
 │   ├── frameqr-profile.md
+│   ├── jabcode.md
 │   └── excluded-formats.md
 ├── guides/
 │   ├── browser.md

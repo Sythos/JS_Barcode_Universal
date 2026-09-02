@@ -1,0 +1,168 @@
+JAB Code (Just Another Barcode) — format provenance and usability
+==========================================================================
+
+This file records where the JAB Code symbology comes from, what governs
+it, and the basis on which this project implements and redistributes it.
+
+It is an ENGINEERING INVENTORY, NOT LEGAL ADVICE. Items marked [TO VERIFY]
+have not been independently confirmed by the author.
+
+
+ORIGIN
+--------------------------------------------------------------------------
+
+Developed by Fraunhofer SIT (Huajian Liu, Waldemar Berchtold and
+colleagues) as a full-colour 2D matrix barcode: each module carries one of
+several colours rather than being simply dark or light, so a symbol packs
+several bits per module. Standardized as ISO/IEC 23634:2022. The
+reference implementation, "libjabcode," is published at
+github.com/jabcode/jabcode.
+
+
+SPECIFICATION
+--------------------------------------------------------------------------
+
+ISO/IEC 23634:2022 is a paywalled ISO/IEC standard; no free copy was
+located. This project instead consulted the reference implementation's
+own C source directly — read for understanding, never copied — as the
+authoritative description of the format's actual behaviour (matrix
+construction, LDPC error correction, byte-mode data encoding, module
+placement), which is a materially stronger source than any secondary
+description would be. See IMPLEMENTATION BASIS below for exactly what was
+verified this way, and `docs/JABCODE_NOTES.md` for the honest limits of
+that verification (no compiler was available in this environment to build
+the reference as a decode oracle, so this project's own round trip is
+self-consistent but not confirmed to interoperate with the real jabcode
+library or other real JAB Code readers).
+
+Specification TEXT (both the ISO standard and the reference
+implementation's own source) is copyrighted by its respective rights
+holders. The SYMBOLOGY it describes is not a work of authorship. This
+project implements the symbology from its own original TypeScript, and
+does not reproduce, redistribute or excerpt either the ISO text or the
+reference implementation's source code.
+
+
+LICENSE OF THE REFERENCE IMPLEMENTATION
+--------------------------------------------------------------------------
+
+github.com/jabcode/jabcode was licensed under the GNU Lesser General
+Public License (LGPL) from its initial publication until it was
+re-licensed under the MIT License in April 2026. This project's own
+`src/ts/jabcode/` module was written from understanding of the format's
+behaviour, not by copying or adapting that source, so the reference
+implementation's license (LGPL, historically, or MIT, currently) does not
+attach to this project's code either way — this section records the fact
+for completeness, not because it changes this project's own MIT terms.
+
+
+PATENT STATUS
+--------------------------------------------------------------------------
+
+No patents specifically covering the JAB Code symbology were identified
+during this review. [TO VERIFY] The reference implementation's own
+licensing history (LGPL, then re-licensed MIT in April 2026) is a
+copyright-licensing choice by its authors, not evidence either way about
+patent status — a project's authors relicensing their own code says
+nothing about whether third parties hold patent claims over the
+underlying technique. No independent patent search was carried out beyond
+the review already noted in `LICENSE` (Appendix, Section 4).
+
+
+TRADEMARK
+--------------------------------------------------------------------------
+
+No live trademark restriction on implementing or describing JAB Code is
+known to the author. [TO VERIFY] That is a statement about the author's
+knowledge, not a finding that no mark subsists: no trademark search was
+carried out.
+
+A trademark does not restrict implementing a symbology. It restricts
+branding — how a product names and presents itself. This project's
+`jabcode` module id and documentation use the name descriptively, to
+identify the standardized symbology being implemented, not as a product
+brand, and do not use Fraunhofer SIT's own branding or logos.
+
+
+IMPLEMENTATION BASIS IN THIS PROJECT
+--------------------------------------------------------------------------
+
+This project implements only the reference encoder's own "default mode"
+fast path (`color_number == 8`, ECC level 3), which the reference itself
+special-cases to skip metadata Part I/II encoding entirely and fix the
+mask pattern to type 7 unconditionally — a genuine, real configuration of
+the format, not an invented simplification, chosen specifically because
+it eliminates the two most error-prone subsystems (metadata bit-packing,
+mask-penalty optimisation search) for an initial implementation. Data
+encoding is byte-mode only, skipping the reference's 7-mode text
+compaction — the reference's own source comment notes byte mode can
+always encode any input, so this is a capacity/efficiency gap relative to
+the full format, not a correctness gap in the byte-mode path itself.
+Single master symbol only, no cascaded slave symbols.
+
+The following facts about the format were read directly from the
+reference implementation's own C source (not a secondary description) and
+reproduced as original Sythos TypeScript, index-for-index where the
+underlying algorithm is intricate enough that a faithful port carries
+materially lower risk than an independent restructuring:
+
+  - The default color palette (`jab_default_palette`, `encoder.h`) and
+    finder/alignment-pattern core colour indices for 8-colour symbols.
+  - The alignment-pattern position and count tables for side-versions
+    1-32 (`jab_ap_pos`, `jab_ap_num`, `encoder.h`).
+  - The master-symbol capacity formula and default ECC parameters
+    (`getSymbolCapacity`, `ecclevel2wcwr`, `encoder.c`).
+  - The 64-bit LCG + Mersenne-Twister-style tempering pseudo-random
+    generator and its specific seeds (`pseudo_random.c`, `ldpc.h`), which
+    the encoder and decoder must derive an identical sequence from with no
+    other synchronization mechanism.
+  - The Gallager-construction LDPC parity-check matrix build, Gauss-Jordan
+    elimination and systematic generator-matrix encoding
+    (`createMatrixA`, `GaussJordan`, `createGeneratorMatrix`, `ldpc.c`).
+  - The iterative hard-decision bit-flipping LDPC decoder
+    (`decodeMessage`, `decodeLDPChd`, `ldpc.c`); the soft-decision
+    (log-likelihood/belief-propagation) decoder is not implemented, out of
+    scope along with the arbitrary-photo detection it exists to support.
+  - The byte-mode data segment format: shift-to-byte-mode code, 4/4+13-bit
+    length prefix, raw bytes (`encodeData`/`decodeData`'s byte-mode
+    branch, `encoder.c`/`decoder.c`).
+  - Module placement — finder pattern (3 nested rings x 4 corners),
+    alignment patterns, colour-palette swatch placement (including the
+    `getNextMetadataModuleInMaster` walk, `decoder.c`), and the data-area
+    column-major placement order (`createMatrix`, `encoder.c`).
+  - The type-7 mask XOR formula (`maskSymbols`/`demaskSymbol`, `mask.c`).
+
+`PerspectiveTransform` (`src/ts/image/perspective.ts`) and
+`PolychromeMatrix`/`toColorImageData`/`classifyGrid` (`src/ts/color/`) are
+this project's own pre-existing, independently-built primitives, reused
+here because their algorithms are structurally equivalent to what the
+reference's `transform.c` and bitmap-fill routines do — not copied from
+the reference either. No source code, table or image asset from the
+reference implementation or any other barcode implementation is copied or
+shipped; every file under `src/ts/jabcode/` is original Sythos work,
+written from understanding of the format's behaviour.
+
+
+CONCLUSION
+--------------------------------------------------------------------------
+
+On the basis of the references below, JAB Code is understood to be freely
+implementable: it is a standardized (ISO/IEC 23634:2022), actively
+maintained format whose own reference implementation is openly licensed
+(MIT since April 2026), and no patent specifically covering the symbology
+was identified. This project's implementation of it is distributed under
+the MIT License with no additional restriction — see
+`docs/JABCODE_NOTES.md` for the honest scope and verification limits of
+that implementation itself.
+
+References relied upon:
+  - github.com/jabcode/jabcode, the reference implementation's own C
+    source (`jabcode.h`, `encoder.h`/`.c`, `decoder.h`/`.c`, `ldpc.h`/`.c`,
+    `pseudo_random.c`, `interleave.c`, `mask.c`, `transform.c`,
+    `detector.h`), read directly for the facts and algorithms listed above
+  - ISO/IEC 23634:2022 (JAB Code) — cited for the standard's existence and
+    designation; the text itself was not accessed (paywalled)
+
+This is an engineering assessment, not legal advice. Items marked
+[TO VERIFY] have not been independently confirmed by the author. If your
+use is commercially sensitive, obtain your own legal review.

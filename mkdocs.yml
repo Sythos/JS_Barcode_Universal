@@ -16,6 +16,7 @@ docs_dir: docs
 exclude_docs: |
   DOCS_ARCHITECTURE.md
   COLOR_PIPELINE_NOTES.md
+  JABCODE_NOTES.md
 
 theme:
   name: material
@@ -99,6 +100,7 @@ nav:
           - DotCode: formats/dotcode.md
           - Han Xin Code: formats/hanxin.md
           - Sythos Canvas QR profile: formats/frameqr-profile.md
+          - JAB Code (experimental): formats/jabcode.md
       - Excluded and out-of-scope formats: formats/excluded-formats.md
   - Platform guides:
       - Browser: guides/browser.md
