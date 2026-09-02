@@ -10,6 +10,7 @@ on:
       - docs/requirements.txt
       - docs/requirements.lock
       - mkdocs.yml
+      - llms.txt
       - tools/check-docs.mjs
       - tools/exact-url.mjs
       - tools/exact-url.test.mjs
@@ -59,6 +60,14 @@ jobs:
 
       - name: Build the documentation site
         run: mkdocs build --strict
+
+      - name: Publish llms.txt at the site root
+        # llms.txt lives at the repository root (for direct GitHub/npm
+        # discovery), not under docs_dir, so mkdocs never picks it up on its
+        # own -- copy it into the built site so it is also reachable at
+        # https://sythos.github.io/JS_Barcode_Universal/llms.txt for crawlers
+        # that check the site root, the conventional location for this file.
+        run: cp llms.txt site/llms.txt
 
       - name: Upload the Pages artifact
         if: github.event_name != 'pull_request'

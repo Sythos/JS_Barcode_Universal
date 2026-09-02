@@ -8,6 +8,7 @@ on:
       - docs/requirements.txt
       - docs/requirements.lock
       - mkdocs.yml
+      - llms.txt
       - tools/check-docs.mjs
       - tools/exact-url.mjs
       - tools/exact-url.test.mjs
@@ -56,3 +57,8 @@ jobs:
 
       - name: Build the documentation site
         run: mkdocs build --strict
+
+      - name: Publish llms.txt at the site root
+        # Same copy step as the production deploy workflow (docs-pages.yml),
+        # kept here so a PR that breaks it is caught before merge.
+        run: cp llms.txt site/llms.txt
