@@ -16,8 +16,7 @@ what an `ImageData` is.
 Bun is a lighter, faster alternative to Node.js for running this SDK: it executes the TypeScript
 sources under `src/ts/` natively, with no separate compile step, and its JavaScriptCore-based
 runtime generally uses less memory and starts faster than Node's V8. See the
-[Node.js or Bun guide](docs/guides/bun-node.md) and the
-[`bun-compat.yml`](.github/workflows/bun-compat.yml) workflow that verifies this on every push.
+[Node.js or Bun guide](docs/guides/bun-node.md).
 
 **The code is complete and entirely human-readable.** The full source ships. There is no
 WebAssembly, no native addon, no compiled artefact, no binary blob and no minified file anywhere
