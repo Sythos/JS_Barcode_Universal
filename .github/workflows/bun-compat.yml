@@ -1,0 +1,88 @@
+name: Bun runtime compatibility
+
+# Verifies that the whole build/test toolchain also runs unmodified under
+# Bun, since every npm script here is a plain "node ..." command string.
+# `bun run --bun` is what makes that a real test: it routes those "node"
+# invocations through Bun's own Node-compatible runtime instead of silently
+# falling back to a real Node.js binary, if one happened to be on PATH.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - test-bun-runtime-compat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bun:
+    name: Build and test under Bun
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies with Bun
+        run: bun install
+
+      - name: Run ESLint under Bun
+        run: bun run --bun lint
+
+      - name: Compile TypeScript source and refresh JavaScript output
+        run: bun run --bun build:ts
+
+      - name: Ensure generated JavaScript is synchronized
+        shell: bash
+        run: git diff --exit-code -- src/index.js src/js
+
+      - name: Build browser bundles
+        run: bun run --bun build:bundle
+
+      - name: Ensure browser bundles are synchronized
+        shell: bash
+        run: git diff --exit-code -- bundle
+
+      # These use `bun test <files>` rather than `bun run --bun test:*`: Bun's
+      # node:test compatibility only activates its test-collection registry
+      # when the process itself is launched via the `bun test` subcommand, so
+      # shimming `node --test <files>` through `--bun` fails with "Cannot use
+      # test outside of the test runner" even though the files are unchanged.
+      - name: Run focused format tests
+        run: bun test --timeout 120000 test/maxicode.test.js test/databar-stacked.test.js test/databar-stacked-omnidirectional.test.js test/databar-limited.test.js test/databar-expanded.test.js test/telepen.test.js test/code25-code32.test.js test/fim.test.js test/plessey.test.js test/postal.test.js test/codablockf.test.js test/code16k.test.js test/dotcode.test.js test/hanxin.test.js test/gs1-composite.test.js test/kartrak.test.js test/postbar.test.js test/dxfilmedge.test.js test/jabcode.test.js test/payloads.test.js test/bundle.test.js
+
+      - name: Run core format tests
+        run: bun test --timeout 120000 test/core.test.js test/image.test.js test/render.test.js test/oned.test.js test/oned-image-completion.test.js test/ean-addons.test.js test/binarizer-fallback.test.js test/camera-profile.test.js test/databar.tables.test.js test/databar.encoder.test.js test/databar.codec.test.js test/databar.gs1.test.js test/qr.test.js test/qr-family.integration.test.js test/datamatrix.test.js test/aztec-tables.test.js test/aztec-decoder.test.js test/aztecrune.tables.test.js test/aztecrune.encoder.test.js test/aztecrune.decoder.test.js test/aztecrune.detector.test.js test/aztecrune.blackbox.test.js test/pdf417.tables.test.js test/pdf417.encoder.test.js test/pdf417.compaction.test.js test/pdf417.binary-readiness.test.js test/pdf417.blackbox.test.js test/pdf417.detector.photo.test.js test/pdf417.device-evidence.test.js test/compactpdf417.test.js test/micropdf417.tables.test.js test/micropdf417.encoder.test.js test/micropdf417.compaction.test.js test/micropdf417.decoder.test.js test/micropdf417.detector.test.js test/micropdf417-api.test.js test/microqr.tables.test.js test/microqr.encoder.test.js test/microqr.decoder.test.js test/microqr.detector.test.js test/rmqr.test.js test/frameqr.tables.test.js test/frameqr.encoder.test.js test/frameqr.decoder.test.js test/frameqr.detector.test.js
+
+      - name: Run foundation module tests
+        run: bun test --timeout 120000 test/foundation.test.js
+
+      - name: Run bounded property-based barcode checks
+        run: bun test --timeout 120000 test/fuzz/property.test.js
+
+      - name: Test exact documentation URL assertions
+        run: bun test --timeout 120000 tools/exact-url.test.mjs
+
+      - name: Run TypeScript compiler checks
+        run: bun run --bun types
+
+      - name: Run public TypeScript declaration checks
+        run: bun run --bun types:api
+
+      - name: Validate JavaScript and public package surface
+        run: bun .github/ci/validate-package.mjs
+
+      - name: Verify zero runtime dependencies
+        run: bun tools/check-zero-deps.mjs
+
+      - name: Validate documentation links and capability references
+        run: bun tools/check-docs.mjs
