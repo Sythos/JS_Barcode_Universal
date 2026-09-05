@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sythos.github.io/JS_Barcode_Universal/sitemap.xml
