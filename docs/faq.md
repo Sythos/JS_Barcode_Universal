@@ -16,7 +16,7 @@ than bundling an image codec.
 ## Which Node.js (or Bun) version is supported?
 
 The package declares Node.js 24 or newer; Bun also works as an alternative
-runtime (see the [Node.js (or Bun) guide](guides/node.md)). Browser and
+runtime (see the [Node.js or Bun guide](guides/bun-node.md)). Browser and
 Worker use do not require Node.js or Bun, but the application must still
 provide the platform APIs used by its adapter.
 

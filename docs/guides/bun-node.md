@@ -13,6 +13,29 @@ application rather than a CommonJS `require()` call. TypeScript consumes the
 same JavaScript entry point and receives the matching declarations; do not
 import implementation files from `src/ts/`.
 
+## Node.js or Bun?
+
+Either runs the SDK unmodified — zero runtime dependencies means there is
+nothing extra to install for either one. The practical differences:
+
+- **TypeScript source.** Bun executes `.ts` files natively, with no separate
+  compile step. Node.js does not; a TypeScript application running on Node
+  needs the usual `tsc` (or bundler) build step first. This SDK ships plain
+  compiled JavaScript either way, so the difference mainly matters for your
+  own application code, not for consuming this package.
+- **Runtime characteristics.** Bun runs on JavaScriptCore rather than V8, and
+  is generally reported to start faster and use less memory than Node.js for
+  comparable workloads. That is a general property of the two runtimes, not a
+  benchmark of this SDK specifically — nothing here has been profiled on both
+  and compared.
+- **Maturity and ecosystem.** Node.js is the older, more widely deployed
+  runtime and is what `engines.node` in `package.json` declares as the
+  baseline requirement. Bun compatibility is verified separately by the
+  [`bun-compat.yml`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/.github/workflows/bun-compat.yml)
+  workflow, which runs the full build and test suite under Bun on every push.
+
+Both are reasonable choices; pick whichever your application already uses.
+
 ## A complete Node (or Bun) round trip
 
 Save this as `barcode.mjs` in an application that has installed

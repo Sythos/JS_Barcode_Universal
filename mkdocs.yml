@@ -104,7 +104,7 @@ nav:
       - Excluded and out-of-scope formats: formats/excluded-formats.md
   - Platform guides:
       - Browser: guides/browser.md
-      - Node.js: guides/node.md
+      - Node.js or Bun: guides/bun-node.md
       - Web Workers: guides/web-workers.md
       - Camera reading: guides/camera-reading.md
       - Image pipeline: guides/image-pipeline.md

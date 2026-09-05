@@ -6,7 +6,7 @@ Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode rea
 
 [![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json) [![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Bun](https://img.shields.io/badge/Bun-compatible-000000.svg?logo=bun&logoColor=white)](https://github.com/Sythos/JS_Barcode_Universal/blob/main/.github/workflows/bun-compat.yml)
+[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Bun](https://img.shields.io/badge/Bun-compatible-fbf0df.svg?logo=bun&logoColor=black)](https://github.com/Sythos/JS_Barcode_Universal/blob/main/.github/workflows/bun-compat.yml)
 
 Original Sythos implementation, zero runtime dependencies, MIT. It runs unmodified in Node, in Bun as an alternative runtime, in browsers
 (including Safari on iOS) and in web workers. The core requires no canvas, no filesystem and no
@@ -16,7 +16,7 @@ what an `ImageData` is.
 Bun is a lighter, faster alternative to Node.js for running this SDK: it executes the TypeScript
 sources under `src/ts/` natively, with no separate compile step, and its JavaScriptCore-based
 runtime generally uses less memory and starts faster than Node's V8. See the
-[Node.js (or Bun) guide](docs/guides/node.md) and the
+[Node.js or Bun guide](docs/guides/bun-node.md) and the
 [`bun-compat.yml`](.github/workflows/bun-compat.yml) workflow that verifies this on every push.
 
 **The code is complete and entirely human-readable.** The full source ships. There is no
