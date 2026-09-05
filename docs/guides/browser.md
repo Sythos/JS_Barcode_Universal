@@ -4,7 +4,7 @@ The browser integration is intentionally small: the SDK does not own a DOM,
 an image codec or a camera widget. It accepts ordinary JavaScript values and
 lets the page decide whether the result belongs in an `<img>`, a `<canvas>`, a
 download or a worker. That keeps the same decoder usable in a browser, a
-worker and Node.js.
+worker and Node.js, or Bun as an alternative.
 
 ## Choose a browser entry point
 
@@ -23,7 +23,7 @@ source layouts. The checked-in [create example](https://github.com/Sythos/JS_Bar
 the quickest way to see the IIFE bundle in a plain HTML file.
 
 The package is ESM-first and has no runtime dependencies. A browser does not
-need Node.js, a native addon, WebAssembly or a barcode service to encode or
+need Node.js or Bun, a native addon, WebAssembly or a barcode service to encode or
 decode. The repository's browser syntax floor is iOS Safari 15; optional
 features such as `OffscreenCanvas`, WebGL2 and WebGPU are detected at runtime.
 

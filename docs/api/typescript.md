@@ -85,8 +85,8 @@ configuration such as:
 }
 ```
 
-For a Node.js application that uses native ESM, use the equivalent modern
-Node/ESM module settings provided by your TypeScript version. Keep the
+For a Node.js or Bun application that uses native ESM, use the equivalent
+modern Node/ESM module settings provided by your TypeScript version. Keep the
 application’s `package.json` aligned with ESM (`"type": "module"`) when the
 generated JavaScript uses `import` statements.
 

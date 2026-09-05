@@ -2,16 +2,22 @@
 
 # Sythos Barcode Universal — MIT 1D/2D Barcode SDK
 
-Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK for encoding and decoding 1D linear and 2D matrix barcodes. It has zero runtime dependencies and runs in browsers, Web Workers and Node.js.
+Open-source MIT-licensed JavaScript/TypeScript barcode generator and barcode reader SDK for encoding and decoding 1D linear and 2D matrix barcodes. It has zero runtime dependencies and runs in browsers, Web Workers and Node.js, or Bun as an alternative.
 
 [![npm](https://img.shields.io/npm/v/@sythos/js_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json) [![ESM](https://img.shields.io/badge/ESM-supported-3178C6.svg?logo=javascript&logoColor=white)](https://nodejs.org/api/esm.html) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![GitHub last commit](https://img.shields.io/github/last-commit/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/commits/main/) [![GitHub issues](https://img.shields.io/github/issues/Sythos/JS_Barcode_Universal.svg)](https://github.com/Sythos/JS_Barcode_Universal/issues) [![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal)
+[![npm downloads](https://img.shields.io/npm/dm/%40sythos%2Fjs_barcode_universal.svg?label=npm%20downloads)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Node](https://img.shields.io/node/v/%40sythos%2Fjs_barcode_universal.svg)](https://www.npmjs.com/package/@sythos/js_barcode_universal) [![Bun](https://img.shields.io/badge/Bun-compatible-000000.svg?logo=bun&logoColor=white)](https://github.com/Sythos/JS_Barcode_Universal/blob/main/.github/workflows/bun-compat.yml)
 
-Original Sythos implementation, zero runtime dependencies, MIT. It runs unmodified in Node, in browsers
+Original Sythos implementation, zero runtime dependencies, MIT. It runs unmodified in Node, in Bun as an alternative runtime, in browsers
 (including Safari on iOS) and in web workers. The core requires no canvas, no filesystem and no
 DOM — images go in and come out as plain `{ data, width, height }` RGBA objects, which is exactly
 what an `ImageData` is.
+
+Bun is a lighter, faster alternative to Node.js for running this SDK: it executes the TypeScript
+sources under `src/ts/` natively, with no separate compile step, and its JavaScriptCore-based
+runtime generally uses less memory and starts faster than Node's V8. See the
+[Node.js (or Bun) guide](docs/guides/node.md) and the
+[`bun-compat.yml`](.github/workflows/bun-compat.yml) workflow that verifies this on every push.
 
 **The code is complete and entirely human-readable.** The full source ships. There is no
 WebAssembly, no native addon, no compiled artefact, no binary blob and no minified file anywhere
@@ -62,7 +68,7 @@ npm install @sythos/js_barcode_universal
 
 `yarn add @sythos/js_barcode_universal` and `pnpm add @sythos/js_barcode_universal` do the same thing. Nothing is installed
 alongside it — there are no runtime dependencies, no postinstall script and no native build. The
-package is plain ESM (`"type": "module"`) and asks for Node 24 or newer.
+package is plain ESM (`"type": "module"`) and asks for Node 24 or newer, or Bun as an alternative.
 
 ```js
 import { encode, decode, toSVG, toImageData } from '@sythos/js_barcode_universal';
@@ -124,8 +130,8 @@ The `unpkg` and `jsdelivr` fields point at the IIFE bundle, so a CDN needs no in
 
 ```html
 <script src="https://unpkg.com/@sythos/js_barcode_universal"></script>
-<script src="https://unpkg.com/@sythos/js_barcode_universal@1.6.2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.6.2"></script>
+<script src="https://unpkg.com/@sythos/js_barcode_universal@1.6.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sythos/js_barcode_universal@1.6.3"></script>
 ```
 
 Pin the version for anything you ship; the unpinned form resolves to `latest` and will move under
@@ -156,7 +162,7 @@ disk and it runs.
 ### 3. ESM bundle
 
 [`bundle/sythos-barcode.esm.js`](bundle/sythos-barcode.esm.js) is the same code as a single ES
-module, for `<script type="module">`, a bundler, or Node.
+module, for `<script type="module">`, a bundler, or Node.js or Bun as alternatives.
 
 ```js
 import { encode, toSVG, toPNG } from './bundle/sythos-barcode.esm.js';
@@ -178,8 +184,8 @@ tree. The source layout is deliberately explicit:
 
 - `src/ts/` contains the TypeScript runtime sources and their adjacent machine-readable `.d.ts`
   declarations, including `src/ts/index.ts` and `src/ts/index.d.ts`.
-- `src/js/` contains the compiled JavaScript runtime modules used by Node, browsers and the CDN
-  bundles.
+- `src/js/` contains the compiled JavaScript runtime modules used by Node.js or Bun as alternatives,
+  browsers and the CDN bundles.
 - `src/index.js` and `src/index.d.ts` are the stable package-root facades.
 
 From the development workspace, `npm run build:ts` compiles `src/ts/` into `src/js/` and the
@@ -1331,7 +1337,7 @@ attestation confirms build provenance; it is not an ISO barcode-conformance cert
 clearance, or a guarantee that the implementation is vulnerability-free.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.6.2`.
+or increment versions by itself. The current release is `1.6.3`.
 
 ---
 

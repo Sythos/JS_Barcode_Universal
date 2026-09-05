@@ -4,7 +4,7 @@ This recipe starts with text, creates a symbol matrix and renders it into an
 output that a browser, a file writer or another application can use. The SDK
 does not choose a DOM element, image codec or download policy for you. That
 small boundary is the reason the same recipe works in a browser, a Worker and
-Node.js.
+Node.js, or Bun as an alternative.
 
 ## The shortest round trip
 
@@ -54,7 +54,7 @@ console.log(dataUri.startsWith('data:image/svg+xml'));
 ```
 
 PNG output is asynchronous because the SDK constructs the complete byte
-stream. In Node.js, write those bytes with the platform filesystem API:
+stream. In Node.js or Bun, write those bytes with the platform filesystem API:
 
 ```js
 import { writeFile } from 'node:fs/promises';

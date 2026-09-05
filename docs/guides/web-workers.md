@@ -189,7 +189,9 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
 ```
 
 The worker still needs the application's normal TypeScript-to-JavaScript
-build step; Node.js does not execute `.ts` files natively.
+build step under Node.js, which does not execute `.ts` files natively. Bun
+does execute `.ts` files natively, without a separate compile step, which
+makes it the recommended runtime for a TypeScript worker during development.
 
 ## Message and result design
 

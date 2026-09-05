@@ -11,7 +11,7 @@ npm install @sythos/js_barcode_universal
 npm install --save-dev typescript
 ```
 
-A minimal `tsconfig.json` for a Node.js 24+ ESM application is:
+A minimal `tsconfig.json` for a Node.js 24+ (or Bun) ESM application is:
 
 ```json
 {
@@ -105,8 +105,8 @@ do not replace the consuming application's own `tsc` run.
 ## Common TypeScript mistakes
 
 - Use ESM `import`, not `require()`, because the package is ESM-first.
-- Keep `module` and `moduleResolution` compatible with the bundler or Node.js
-  version used by the application.
+- Keep `module` and `moduleResolution` compatible with the bundler or the
+  Node.js or Bun version used by the application.
 - Import `type DecodeResult` as a type when the compiler is configured for
   verbatim module syntax.
 - Do not assume every `listFormats()` entry has `canRead: true`; keep the two

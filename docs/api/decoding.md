@@ -3,7 +3,7 @@
 The reader accepts pixels, not a browser element. Give it an object with RGBA
 bytes, width and height, and it will locate, validate and decode supported
 symbols. That keeps the API usable with a canvas, an `OffscreenCanvas`, a
-Worker, Node.js image tooling or a test fixture.
+Worker, Node.js or Bun image tooling or a test fixture.
 
 ## The general reader
 

@@ -147,7 +147,7 @@ if (results.length > 0) {
 `encode()` returns a `BitMatrix`, not a DOM element and not a pixel buffer.
 Render it with `toSVG`, `toPNG`, `toImageData` or `toCanvas` before passing an
 image to `decode()`. The reader accepts an RGBA object with `data`, `width` and
-`height`, so browser canvas code, a Worker, and a Node adapter can share the
+`height`, so browser canvas code, a Worker, and a Node or Bun adapter can share the
 same boundary without a runtime image dependency.
 
 An empty result is a normal, useful result: it means the requested image did

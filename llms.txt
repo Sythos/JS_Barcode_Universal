@@ -8,7 +8,7 @@
 - Project: Sythos Barcode Universal
 - Publisher and original author: Sythos — https://www.sythos.net
 - npm package: `@sythos/js_barcode_universal`
-- Current repository release: `1.6.2`
+- Current repository release: `1.6.3`
 - License: MIT; copyright and attribution: Sythos
 - Runtime dependencies: none
 - Development tooling: TypeScript is a development-only dependency
@@ -31,12 +31,13 @@ barcode symbols from matrices or RGBA raster images. It also exposes format
 detectors, strict decode helpers, image preprocessing, SVG/PNG/ImageData
 renderers, and camera-oriented read profiles. The core image interface is a
 plain `{ data, width, height }` RGBA object, so applications can connect it to
-`ImageData`, `OffscreenCanvas`, camera frames, Node image libraries, or their
+`ImageData`, `OffscreenCanvas`, camera frames, Node or Bun image libraries, or their
 own image pipeline without requiring a DOM or canvas in the core.
 
 The package is native ESM and provides source-visible JavaScript, TypeScript
 sources and declarations, a browser IIFE bundle, and an ESM bundle. It runs in
-Node.js 24 or newer, modern browsers, and Web Workers. The published SDK does
+Node.js 24 or newer (Bun also works as an alternative runtime), modern
+browsers, and Web Workers. The published SDK does
 not install native addons, WebAssembly, post-install tools, or runtime
 packages.
 

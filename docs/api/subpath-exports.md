@@ -92,7 +92,7 @@ import { encodeQR } from '../../src/ts/qr/encoder.js';
 ```
 
 They couple an application to the repository layout, bypass the package export
-map and can load TypeScript source that Node.js cannot execute directly. Use
+map and can load TypeScript source that Node.js or Bun cannot execute directly. Use
 the documented package specifier instead:
 
 ```js

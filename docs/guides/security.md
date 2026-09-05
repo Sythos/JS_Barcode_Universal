@@ -13,7 +13,8 @@ input. The SDK validates its own format and resource boundaries, but it cannot
 know whether a decoded URL, account number, GS1 field or free-form string is
 safe for the application that receives it.
 
-The SDK runs inside the browser, Web Worker or Node.js process that imports it.
+The SDK runs inside the browser, Web Worker or Node.js (or Bun as an
+alternative) process that imports it.
 It is not a sandbox, a malware scanner or a policy engine. A successful decode
 does not mean that the payload is safe to display, open, execute or forward.
 
@@ -26,7 +27,7 @@ does not mean that the payload is safe to display, open, execute or forward.
 | Image input | Camera frames, uploaded files, canvas pixels and decoded image objects | Requires safe dimensions and byte-valued channels; rejects unsafe rasters | Resize and schedule frames sensibly; do not let an untrusted producer allocate unlimited work |
 | Decoder result | result.text, format metadata, bounds and confidence | Returns only a structurally validated result; returns an empty array when no valid symbol is found | Validate the meaning, destination and permissions before taking an action |
 | Browser integration | Camera permission, DOM, storage and navigation | Provides a decoder and camera-facing profile, not browser policy | Use HTTPS or localhost, request only the required permission and keep DOM output as text |
-| Node.js integration | Files, streams and process configuration around the SDK | Does not open files, spawn processes or contact a service for decoding | Validate paths, isolate jobs and apply time/memory limits in the host application |
+| Node.js or Bun integration | Files, streams and process configuration around the SDK | Does not open files, spawn processes or contact a service for decoding | Validate paths, isolate jobs and apply time/memory limits in the host application |
 
 The most important distinction is **decoded is not trusted**. A barcode can be
 perfectly valid and still contain a phishing URL, an unexpected GS1 value or a
@@ -51,7 +52,7 @@ every frame at that size. An application processing remote files or a live
 camera should normally use a much smaller working budget.
 
 These checks reduce accidental and hostile allocation pressure. They do not
-turn a browser tab or a Node.js process into an unlimited service. Add request
+turn a browser tab or a Node.js or Bun process into an unlimited service. Add request
 timeouts, queue limits, cancellation and application-level memory controls
 around workloads that can be supplied by other users.
 
@@ -203,7 +204,7 @@ Use the private channel first whenever security impact is possible:
 | --- | --- |
 | Wrong decode, ordinary rendering or documentation bug, or a performance regression after security impact has been ruled out | Public GitHub Issue |
 | Denial of service or memory abuse from attacker-controlled input, even without code execution | GitHub Private Vulnerability Reporting; notify `devsec@sythos.net` for High or Critical impact |
-| Code execution in the browser, Node.js process or consuming application; data or secret exposure; package/CI compromise; or runner/host compromise | GitHub Private Vulnerability Reporting and, for High or Critical impact, `devsec@sythos.net` |
+| Code execution in the browser, Node.js or Bun process or consuming application; data or secret exposure; package/CI compromise; or runner/host compromise | GitHub Private Vulnerability Reporting and, for High or Critical impact, `devsec@sythos.net` |
 
 If the private channel is unavailable, email `devsec@sythos.net` and do not put
 the details in a public Issue. A public Issue is appropriate for an ordinary
@@ -212,7 +213,7 @@ non-sensitive public tracking.
 
 Notify devsec@sythos.net as well for High or Critical impact, including:
 
-- arbitrary code execution in the browser, Node.js process or consuming app;
+- arbitrary code execution in the browser, Node.js or Bun process or consuming app;
 - exposure or exfiltration of application data, tokens or secrets;
 - CI, release, npm, GitHub Actions or package-integrity compromise;
 - runner or host compromise, persistence or lateral movement;

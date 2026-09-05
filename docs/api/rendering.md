@@ -74,7 +74,7 @@ link.download = 'barcode.png';
 link.click();
 ```
 
-In Node.js, the SDK still does not write files for you; pair the returned bytes
+In Node.js or Bun as an alternative, the SDK still does not write files for you; pair the returned bytes
 with the built-in filesystem API:
 
 ```js
@@ -95,7 +95,7 @@ server without a DOM.
 ## ImageData-shaped output
 
 `toImageData()` returns a plain object with `Uint8ClampedArray` data, width and
-height. It is deliberately usable in Node and Workers without constructing a
+height. It is deliberately usable in Node, Bun and Workers without constructing a
 DOM `ImageData` instance:
 
 ```js

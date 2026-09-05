@@ -4,7 +4,8 @@
 
 Sythos Barcode Universal is an MIT-licensed JavaScript and TypeScript SDK for
 writing and reading 1D and 2D barcodes. It has zero runtime dependencies and
-works in browsers, Web Workers and Node.js 24 or newer.
+works in browsers, Web Workers and Node.js 24 or newer, with Bun working as
+an alternative runtime.
 
 The short version is simple: give the SDK text when you want a symbol, or an
 image-shaped object when you want a read. Everything in between stays plain,
@@ -29,7 +30,7 @@ your application.
 
 This complete ESM example creates a QR symbol, renders it into the plain image
 shape accepted by the reader, and reads it back. The same flow works with a
-real camera frame or an image decoded by your own browser/Node adapter.
+real camera frame or an image decoded by your own browser/Node/Bun adapter.
 
 ```js
 import {
@@ -144,7 +145,7 @@ An input image must have this shape:
 ```
 
 The data is RGBA, four values per pixel, row-major. A browser canvas can supply
-it with `ctx.getImageData(0, 0, width, height)`. A Worker or Node adapter can
+it with `ctx.getImageData(0, 0, width, height)`. A Worker or a Node or Bun adapter can
 provide the same shape without constructing a DOM `ImageData` object.
 
 For a runnable browser reference, see the repository’s [create example](https://github.com/Sythos/JS_Barcode_Universal/blob/main/examples/create.html)

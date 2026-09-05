@@ -13,7 +13,8 @@ From an application directory:
 npm install @sythos/js_barcode_universal
 ```
 
-The package declares Node.js 24 or newer for Node consumers. In a browser, use
+The package declares Node.js 24 or newer for Node consumers, with Bun working
+as an alternative runtime. In a browser, use
 the IIFE bundle or the ESM bundle described in [Installation](installation.md).
 TypeScript declarations are included in the package; add TypeScript to your
 own development toolchain only if your application compiles `.ts` files.
@@ -27,7 +28,7 @@ The core flow has three explicit steps:
    object used by the reader.
 3. `decode()` validates the image and returns zero or more results.
 
-Here is a complete Node.js or ESM application example:
+Here is a complete Node.js (or Bun) or ESM application example:
 
 ```js
 import {
@@ -84,7 +85,7 @@ console.log(results[0].text);
 
 TypeScript is a development-time compiler and type-checker. It does not add a
 runtime dependency to the published SDK and it does not replace the JavaScript
-modules consumed by Node or a browser.
+modules consumed by Node, Bun or a browser.
 
 ## Let the registry describe the release
 
@@ -121,7 +122,7 @@ const hits = decode(image, { formats: ['qr', 'datamatrix'] });
 
 `data` must contain four channel values per pixel in row-major order. Browser
 code can pass the `ImageData` values returned by
-`CanvasRenderingContext2D.getImageData()`. A Worker or Node adapter can create
+`CanvasRenderingContext2D.getImageData()`. A Worker or a Node or Bun adapter can create
 the same shape without creating a DOM object.
 
 An empty array is a normal result: it means the image did not produce a

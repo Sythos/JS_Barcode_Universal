@@ -11,8 +11,8 @@ The reader's platform boundary is one deliberately boring object:
 ```
 
 `data` is **RGBA**, four channel values per pixel, row-major, in the order
-`red, green, blue, alpha`. A browser `ImageData` already has this shape. Node,
-a Web Worker, a canvas, `OffscreenCanvas` or an application-owned image adapter
+`red, green, blue, alpha`. A browser `ImageData` already has this shape. Node
+or Bun, a Web Worker, a canvas, `OffscreenCanvas` or an application-owned image adapter
 can all provide the same value without an SDK-specific wrapper.
 
 ## Validate the image before decoding

@@ -13,11 +13,12 @@ application still needs its own image adapter when it starts from PNG, JPEG,
 WebP or camera data, because the SDK intentionally accepts RGBA pixels rather
 than bundling an image codec.
 
-## Which Node.js version is supported?
+## Which Node.js (or Bun) version is supported?
 
-The package declares Node.js 24 or newer. Browser and Worker use do not require
-Node.js, but the application must still provide the platform APIs used by its
-adapter.
+The package declares Node.js 24 or newer; Bun also works as an alternative
+runtime (see the [Node.js (or Bun) guide](guides/node.md)). Browser and
+Worker use do not require Node.js or Bun, but the application must still
+provide the platform APIs used by its adapter.
 
 ## Why did `decode()` return an empty array?
 

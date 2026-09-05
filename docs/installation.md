@@ -11,8 +11,8 @@ npm install @sythos/js_barcode_universal
 ```
 
 The package is native ESM (`"type": "module"`) and declares Node.js 24 or
-newer. In a Node application, import the package root or one of its public
-subpaths:
+newer; Bun also works as an alternative runtime. In a Node or Bun application,
+import the package root or one of its public subpaths:
 
 ```js
 import { encode, toSVG } from '@sythos/js_barcode_universal';

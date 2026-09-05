@@ -1,9 +1,11 @@
-# Node.js guide
+# Node.js (or Bun) guide
 
-The package is native ESM and declares Node.js **24 or newer**. It has zero
-runtime dependencies, so Node provides the module loader and file primitives;
-the SDK provides barcode encoding, decoding and rendering. There is no hidden
-image codec, filesystem scan or native addon.
+The package is native ESM and declares Node.js **24 or newer**; Bun also
+works as an alternative runtime — see the [`bun-compat.yml`](https://github.com/Sythos/JS_Barcode_Universal/blob/main/.github/workflows/bun-compat.yml)
+workflow that verifies this on every push. It has zero runtime dependencies,
+so Node or Bun provides the module loader and file primitives; the SDK
+provides barcode encoding, decoding and rendering. There is no hidden image
+codec, filesystem scan or native addon.
 
 Use the package root or a public subpath from `package.json` in both JavaScript
 and TypeScript applications. The package is ESM-only: use `import` in an ESM
@@ -11,7 +13,7 @@ application rather than a CommonJS `require()` call. TypeScript consumes the
 same JavaScript entry point and receives the matching declarations; do not
 import implementation files from `src/ts/`.
 
-## A complete Node round trip
+## A complete Node (or Bun) round trip
 
 Save this as `barcode.mjs` in an application that has installed
 `@sythos/js_barcode_universal`:
@@ -49,14 +51,20 @@ Run it with:
 node barcode.mjs
 ```
 
+or, using Bun as an alternative:
+
+```sh
+bun barcode.mjs
+```
+
 Expected output:
 
 ```text
 { format: 'qr', text: 'Greetings My Lord Sythos' }
 ```
 
-The bytes written to `barcode.png` come from the SDK's `Uint8Array` and Node's
-built-in filesystem API. `toPNG()` is asynchronous because it produces a
+The bytes written to `barcode.png` come from the SDK's `Uint8Array` and
+Node's (or Bun's) built-in filesystem API. `toPNG()` is asynchronous because it produces a
 complete PNG byte stream; `toSVG()` is synchronous and returns a string.
 
 The same flow can use focused public exports when the application only needs a
@@ -72,7 +80,7 @@ const svg = toSVG(encodeQR('NODE-SUBPATH', { ecc: 'M' }), {
 });
 ```
 
-For a typed Node application, keep the import specifier unchanged and let the
+For a typed Node (or Bun) application, keep the import specifier unchanged and let the
 application's TypeScript toolchain check the declarations:
 
 ```ts
@@ -183,16 +191,16 @@ format name alone.
   frames processed in parallel is a memory problem before it is a barcode
   problem.
 
-The same resource limits apply in Node as in a browser: positive safe-integer
+The same resource limits apply in Node or Bun as in a browser: positive safe-integer
 dimensions, no more than 16,384 pixels on either side and no more than
 16,777,216 pixels in total. Render options are bounded too. These checks are
 part of the input boundary and should be allowed to fail loudly enough for the
 caller to reject an untrusted job.
 
-## What Node does not provide
+## What Node (or Bun) does not provide
 
-Node has no `navigator.mediaDevices`, DOM canvas or browser camera permission
-flow. A camera service must capture frames itself and hand the SDK RGBA data.
+Neither Node nor Bun has `navigator.mediaDevices`, DOM canvas or browser
+camera permission flow. A camera service must capture frames itself and hand the SDK RGBA data.
 Likewise, rendering to SVG or PNG does not create a browser `<img>` or write a
 file automatically; the application chooses the destination. For browser
 capture and permission rules, read [Camera reading](camera-reading.md).

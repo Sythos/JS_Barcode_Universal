@@ -8,8 +8,9 @@ three clear stages:
    `ImageData`-shaped object;
 3. a decoder validates an image and returns zero or more decoded results.
 
-That separation keeps the barcode code independent from the browser, Node.js,
-Workers and whatever image adapter your application already uses. The package
+That separation keeps the barcode code independent from the browser, Node.js
+(or Bun as an alternative), Workers and whatever image adapter your
+application already uses. The package
 is ESM-first, ships JavaScript and TypeScript declarations, and has no runtime
 dependencies.
 
@@ -50,7 +51,7 @@ application should import the package root or one of the documented exports.
 
 ## A complete round trip
 
-This example runs in Node.js or any ESM-capable browser. It creates a QR Code,
+This example runs in Node.js, Bun as an alternative, or any ESM-capable browser. It creates a QR Code,
 renders it into the plain image shape accepted by the reader, and reads it
 back:
 

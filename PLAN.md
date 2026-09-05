@@ -45,7 +45,7 @@ The decisive mechanism is still the last one: **a format is not finished until a
 
 - **TypeScript source plus compiled JavaScript runtime (ESM).** `src/ts/` is the runtime source of
   truth; each implementation module sits beside its `.d.ts` declaration. The compiler emits
-  `src/js/` and the stable `src/index.js` facade consumed by Node, browsers and the bundles.
+  `src/js/` and the stable `src/index.js` facade consumed by Node or Bun as alternatives, browsers and the bundles.
   TypeScript tooling remains development-only and adds no runtime dependency.
 - **Syntax floor: iOS Safari 15.** No `Array.prototype.at`, no top-level `await`, no `Object.groupBy`. `OffscreenCanvas`, WebGL2 and WebGPU are feature-detected, never assumed — the 2D canvas path always exists, so nothing is unreachable on an older device.
 - **Every `.ts` source file and emitted `.js` file carries the full MIT licence text**, naming Sythos as sole copyright holder. No third-party source code is copied into or shipped by the project. Public or normative format values may be represented in original Sythos data structures with provenance recorded in `NOTICE.md`; the header tool reads the licence body from `LICENSE` so the two cannot drift and never overwrites a foreign header.
@@ -303,7 +303,7 @@ and release validation workflows use `npm ci --ignore-scripts`. These measures m
 toolchain reproducible without adding a runtime dependency to the SDK.
 
 Release automation validates the package version against the selected Git tag; it does not invent
-or increment versions by itself. The current release is `1.6.2`.
+or increment versions by itself. The current release is `1.6.3`.
 
 ---
 

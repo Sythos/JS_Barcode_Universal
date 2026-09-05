@@ -13,7 +13,8 @@ node --version
 npm --version
 ```
 
-The package requires Node.js 24 or newer for Node applications. In a browser,
+The package requires Node.js 24 or newer for Node applications, with Bun
+working as an alternative runtime. In a browser,
 use the package's ESM entry or the committed browser bundle. Do not work around
 an engine error by importing internal source files.
 
