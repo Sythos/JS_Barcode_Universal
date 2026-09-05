@@ -1,0 +1,83 @@
+name: Bun runtime compatibility
+
+# Verifies that the whole build/test toolchain also runs unmodified under
+# Bun, since every npm script here is a plain "node ..." command string.
+# `bun run --bun` is what makes that a real test: it routes those "node"
+# invocations through Bun's own Node-compatible runtime instead of silently
+# falling back to a real Node.js binary, if one happened to be on PATH.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - test-bun-runtime-compat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bun:
+    name: Build and test under Bun
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+
+      - name: Install dependencies with Bun
+        run: bun install
+
+      - name: Run ESLint under Bun
+        run: bun run --bun lint
+
+      - name: Compile TypeScript source and refresh JavaScript output
+        run: bun run --bun build:ts
+
+      - name: Ensure generated JavaScript is synchronized
+        shell: bash
+        run: git diff --exit-code -- src/index.js src/js
+
+      - name: Build browser bundles
+        run: bun run --bun build:bundle
+
+      - name: Ensure browser bundles are synchronized
+        shell: bash
+        run: git diff --exit-code -- bundle
+
+      - name: Run focused format tests
+        run: bun run --bun test:formats
+
+      - name: Run core format tests
+        run: bun run --bun test:core
+
+      - name: Run foundation module tests
+        run: bun run --bun test:foundations
+
+      - name: Run bounded property-based barcode checks
+        run: bun run --bun test:fuzz
+
+      - name: Test exact documentation URL assertions
+        run: bun run --bun test:docs
+
+      - name: Run TypeScript compiler checks
+        run: bun run --bun types
+
+      - name: Run public TypeScript declaration checks
+        run: bun run --bun types:api
+
+      - name: Validate JavaScript and public package surface
+        run: bun .github/ci/validate-package.mjs
+
+      - name: Verify zero runtime dependencies
+        run: bun tools/check-zero-deps.mjs
+
+      - name: Validate documentation links and capability references
+        run: bun tools/check-docs.mjs
