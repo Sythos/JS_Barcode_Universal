@@ -145,6 +145,7 @@ tools/*
 !tools/check-zero-deps.mjs
 !tools/check-docs.mjs
 !tools/build-bundle.mjs
+!tools/sync-wiki.mjs
 
 # --- Build configuration a consumer never runs ----------------------------
 tsconfig.json
