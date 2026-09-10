@@ -1,0 +1,61 @@
+name: Synchronize documentation Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - tools/sync-wiki.mjs
+      - .github/workflows/wiki-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki-sync-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Synchronize GitHub Wiki
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+
+      - name: Prepare Wiki content from docs/
+        run: node tools/sync-wiki.mjs --output "$RUNNER_TEMP/wiki-content"
+
+      - name: Clone and update the Wiki repository
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+          WIKI_REPOSITORY: ${{ github.repository }}.wiki.git
+        run: |
+          set -euo pipefail
+          auth_header="$(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic ${auth_header}" clone --depth 1 "https://github.com/${WIKI_REPOSITORY}" "$RUNNER_TEMP/wiki-repository"
+          wiki_branch="$(git -C "$RUNNER_TEMP/wiki-repository" symbolic-ref --short HEAD)"
+          node tools/sync-wiki.mjs --merge "$RUNNER_TEMP/wiki-repository" --content "$RUNNER_TEMP/wiki-content"
+          git -C "$RUNNER_TEMP/wiki-repository" diff --check
+          if git -C "$RUNNER_TEMP/wiki-repository" diff --quiet; then
+            echo "Wiki is already synchronized."
+            exit 0
+          fi
+          git -C "$RUNNER_TEMP/wiki-repository" config user.name "Sythos"
+          git -C "$RUNNER_TEMP/wiki-repository" config user.email "sythos@users.noreply.github.com"
+          git -C "$RUNNER_TEMP/wiki-repository" add --all
+          git -C "$RUNNER_TEMP/wiki-repository" commit -m "docs: synchronize MkDocs documentation to Wiki"
+          git -C "$RUNNER_TEMP/wiki-repository" -c "http.extraheader=AUTHORIZATION: basic ${auth_header}" push origin "$wiki_branch"
