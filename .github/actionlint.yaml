@@ -1,0 +1,6 @@
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      # actionlint's hosted-runner list can lag behind GitHub's newly available images.
+      # Keep this exception exact so every other runner label remains linted.
+      - '^label "ubuntu-26\.04" is unknown\.'

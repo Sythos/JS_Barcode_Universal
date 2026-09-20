@@ -19,7 +19,7 @@ permissions:
 jobs:
   bun:
     name: Build and test under Bun
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository

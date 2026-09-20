@@ -14,7 +14,7 @@ permissions:
 jobs:
   javascript:
     name: JavaScript package validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
@@ -44,7 +44,7 @@ jobs:
 
   typescript:
     name: TypeScript source and declaration validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
@@ -82,7 +82,7 @@ jobs:
 
   package:
     name: npm package contents
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
@@ -109,7 +109,7 @@ jobs:
 
   documentation:
     name: Documentation consistency
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
