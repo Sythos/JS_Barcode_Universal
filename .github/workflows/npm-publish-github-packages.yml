@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     name: Validate JavaScript, TypeScript and package exports
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
@@ -63,7 +63,7 @@ jobs:
   check-version:
     name: Check package version
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     outputs:
       should_publish: ${{ steps.version.outputs.should_publish }}
@@ -167,7 +167,7 @@ jobs:
     name: Publish GitHub Package
     needs: [validate, check-version]
     if: needs.check-version.outputs.should_publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
