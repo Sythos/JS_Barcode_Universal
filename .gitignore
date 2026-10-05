@@ -146,6 +146,7 @@ tools/*
 !tools/check-docs.mjs
 !tools/build-bundle.mjs
 !tools/sync-wiki.mjs
+!.github/ci/validate-lockfile-security.test.mjs
 
 # --- Build configuration a consumer never runs ----------------------------
 tsconfig.json
