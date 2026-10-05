@@ -9,7 +9,7 @@ consumer application, please treat it as security-sensitive.
 
 | Release line | Security support | Notes |
 | --- | --- | --- |
-| Latest `1.5.x` stable release | Supported | Upgrade to the latest patch before reporting a regression. |
+| Latest `1.6.x` stable release | Supported | Upgrade to the latest patch before reporting a regression. |
 | `main` | Supported for triage | Development changes may move quickly, but security reports are welcome. |
 | Older release lines | Not supported | Please reproduce on the latest stable release first. |
 
