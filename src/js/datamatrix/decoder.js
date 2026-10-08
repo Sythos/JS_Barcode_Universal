@@ -220,6 +220,7 @@ function parseData(data) {
     const bytes = [];
     let upperShift = false;
     let gs1 = false;
+    let eci = null;
     for (let i = 0; i < data.length;) {
         const cw = data[i++];
         if (cw === CW_PAD)
@@ -251,6 +252,12 @@ function parseData(data) {
             upperShift = true;
             continue;
         }
+        if (cw === 241) {
+            if (i >= data.length || data[i++] !== 27)
+                throw new FormatError('Data Matrix: unsupported or missing ECI assignment');
+            eci = 26;
+            continue;
+        }
         if (cw === CW_BASE256) {
             if (i >= data.length)
                 throw new FormatError('Data Matrix: Base 256 length is missing');
@@ -270,8 +277,18 @@ function parseData(data) {
             for (let n = 0; n < length; n++, i++)
                 segment[n] = unrandomize(data[i], i + 1);
             bytes.push(...segment);
-            for (let n = 0; n < segment.length; n++)
-                text += String.fromCharCode(segment[n]);
+            if (eci === 26) {
+                try {
+                    text += new TextDecoder('utf-8', { fatal: true }).decode(segment);
+                }
+                catch {
+                    throw new FormatError('Data Matrix: invalid UTF-8 under ECI 26');
+                }
+            }
+            else {
+                for (let n = 0; n < segment.length; n++)
+                    text += String.fromCharCode(segment[n]);
+            }
             continue;
         }
         throw new FormatError(`Data Matrix: unsupported encoding codeword ${cw}`);

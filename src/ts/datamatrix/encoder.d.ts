@@ -30,7 +30,12 @@
  */
 /** Data Matrix ECC 200 encoder: ASCII/Base256, RS interleaving and Annex F placement. */
 import { BitMatrix } from '../core/bit-matrix.js';
-/** Encode a string (ASCII mode) or byte payload (Base256) into Data Matrix ECC 200. */
-export declare function encodeDataMatrix(value: any, options?: {}): BitMatrix;
+/** Base256 strings use UTF-8 ECI 26; byte arrays remain unlabelled binary. */
+export type DataMatrixEncodeOptions = {
+    encoding?: 'ascii' | 'base256';
+    shape?: 'any' | 'square' | 'rectangular';
+    gs1?: boolean;
+};
+export declare function encodeDataMatrix(value: string | Uint8Array, options?: DataMatrixEncodeOptions): BitMatrix;
 /** Encode already compacted ASCII/Base256 codewords, primarily for conformance tests. */
 export declare function encodeDataMatrixCodewords(codewords: any, options?: {}): BitMatrix;

@@ -20,6 +20,7 @@ FNC1 option:
 ```js
 import {
   encodeDataMatrix,
+  decodeDataMatrix,
 } from '@sythos/js_barcode_universal/datamatrix';
 
 const retail = encodeDataMatrix('0101234567890128', {
@@ -31,7 +32,16 @@ const binary = encodeDataMatrix(new Uint8Array([0x00, 0xff, 0x7f]), {
   encoding: 'base256',
   shape: 'rectangular',
 });
+
+const utf8Text = encodeDataMatrix('Caffè 😀', { encoding: 'base256' });
+console.log(decodeDataMatrix(utf8Text).text); // Caffè 😀
 ```
+
+Base256 string input is encoded as UTF-8 with ECI 26, so `text` round-trips
+accented characters and emoji. `Uint8Array` input is binary and has no implied
+character set; read `result.bytes` for the exact payload. For binary input,
+`text` is a one-character-per-byte Latin-1 view, not automatic UTF-8 decoding.
+ASCII mode keeps its existing ISO-8859-1 behavior.
 
 The exact capacity depends on the selected symbol size and encoding. With
 `shape: 'any'` (the default family behavior), the encoder can choose a fitting

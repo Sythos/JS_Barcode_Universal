@@ -128,6 +128,28 @@ test('data matrix: Base256 preserves arbitrary bytes without text normalization'
   assert.deepEqual([...result.bytes], [...bytes]);
 });
 
+test('data matrix: Base256 strings declare UTF-8 and preserve accented text and emoji', () => {
+  for (const value of ['é', 'Caffè ☕', 'A😀B']) {
+    const result = decodeDataMatrix(encodeDataMatrix(value, { encoding: 'base256' }));
+    assert.equal(result.text, value);
+    assert.deepEqual([...result.bytes], [...new TextEncoder().encode(value)]);
+  }
+  assert.equal(decodeDataMatrix(encodeDataMatrix('ASCII', { encoding: 'base256' })).text, 'ASCII');
+  const gs1 = decodeDataMatrix(encodeDataMatrix('Café', { encoding: 'base256', gs1: true }));
+  assert.equal(gs1.text, 'Café');
+  assert.equal(gs1.gs1, true);
+});
+
+test('data matrix: Base256 binary remains byte-exact without UTF-8 interpretation', () => {
+  const binary = Uint8Array.from([0xc3, 0x28, 0xff, 0, 0xf0, 0x9f]);
+  const result = decodeDataMatrix(encodeDataMatrix(binary, { encoding: 'base256' }));
+  assert.deepEqual([...result.bytes], [...binary]);
+  assert.equal(result.text.length, binary.length);
+  const validUtf8Bytes = decodeDataMatrix(encodeDataMatrix(Uint8Array.from([0xc3, 0xa9]), { encoding: 'base256' }));
+  assert.deepEqual([...validUtf8Bytes.bytes], [0xc3, 0xa9]);
+  assert.equal(validUtf8Bytes.text, 'Ã©');
+});
+
 test('data matrix: GS1 shifts Base256 randomization to absolute codeword positions', () => {
   const bytes = Uint8Array.from([0, 1, 127, 128, 254, 255]);
   const result = decodeDataMatrix(encodeDataMatrix(bytes, { encoding: 'base256', gs1: true }));
