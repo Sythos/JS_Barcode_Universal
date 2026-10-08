@@ -41,6 +41,7 @@
  * @module datamatrix/decoder
  */
 import { ChecksumError } from '../core/errors.js';
+/** `text` follows ECI 26 for UTF-8 Base256, otherwise Base256 bytes have a Latin-1 view. */
 export type DecodeResult = {
     text: string;
     bytes: Uint8Array;

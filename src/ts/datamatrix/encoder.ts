@@ -163,14 +163,23 @@ function buildMatrix(codewords, symbol) {
   return matrix;
 }
 
-/** Encode a string (ASCII mode) or byte payload (Base256) into Data Matrix ECC 200. */
+/**
+ * Encode text or bytes into Data Matrix ECC 200. Base256 strings use UTF-8 ECI 26;
+ * byte arrays remain unlabelled binary payloads.
+ * @param {string | Uint8Array} value
+ * @param {{encoding?: 'ascii' | 'base256', shape?: 'any' | 'square' | 'rectangular', gs1?: boolean}} [options]
+ */
 export function encodeDataMatrix(value, options = {}) {
   const encoding = options.encoding ?? (value instanceof Uint8Array ? 'base256' : 'ascii');
   let raw;
   if (encoding === 'ascii') {
     if (typeof value !== 'string') throw new EncodeError('Data Matrix ASCII: value must be a string');
     raw = asciiCodewords(value);
-  } else if (encoding === 'base256') raw = base256Codewords(value, options.gs1 === true ? 1 : 0);
+  } else if (encoding === 'base256') {
+    const utf8 = typeof value === 'string';
+    raw = base256Codewords(value, (options.gs1 === true ? 1 : 0) + (utf8 ? 2 : 0));
+    if (utf8) raw.unshift(241, 27); // ECI 26 (UTF-8); assignment is stored as value + 1.
+  }
   else throw new EncodeError(`Data Matrix: unsupported encoding "${encoding}"`);
   // GS1 DataMatrix is ECC 200 with FNC1 in the first codeword position.
   if (options.gs1 === true) raw.unshift(232);

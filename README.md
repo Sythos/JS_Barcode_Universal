@@ -801,7 +801,10 @@ const result = decodeDataMatrix(symbol);
 console.log(result.text, result.gs1); // 0101234567890128 true
 ```
 
-Binary content is accepted as a `Uint8Array` with `encoding: 'base256'`. The current high-level
+Binary content is accepted as a `Uint8Array` with `encoding: 'base256'`.
+Base256 string input uses UTF-8 with ECI 26; the returned `text` preserves accented characters
+and emoji. `Uint8Array` input remains binary: use returned `bytes` for its exact payload, while
+`text` is a one-character-per-byte Latin-1 view without charset guessing. The current high-level
 decoder handles ASCII and Base256 codewords; C40, Text, X12 and EDIFACT input symbols are not yet
 decoded. The current detector accepts axis-aligned square or rectangular symbols; with
 `profile: 'camera'`, the decode pipeline evaluates the eight fixed in-plane orientations at 45°
