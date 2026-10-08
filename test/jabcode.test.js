@@ -111,3 +111,26 @@ test('round-trips through a rendered raster via known-geometry corners, at a rea
     assert.deepEqual(Array.from(decoded), Array.from(payload));
   }
 });
+
+test('toColorImageData checks the output size before allocating the margin', () => {
+  const matrix = new PolychromeMatrix(1, 1, [[255, 255, 255], [0, 0, 0]]);
+  let marginCalls = 0;
+  const realWithMargin = matrix.withMargin.bind(matrix);
+  matrix.withMargin = (size) => {
+    marginCalls++;
+    return realWithMargin(size);
+  };
+
+  assert.throws(() => toColorImageData(matrix, { scale: 1, margin: 8192 }), RangeError);
+  assert.throws(() => toColorImageData(matrix, { scale: 16384, margin: 1 }), RangeError);
+  assert.throws(() => toColorImageData(matrix, { scale: 1.5 }), RangeError);
+  assert.throws(() => toColorImageData(matrix, { margin: Number.NaN }), RangeError);
+  assert.throws(() => toColorImageData({ width: 0, height: 1 }), RangeError);
+  assert.throws(() => toColorImageData({ width: 1.5, height: 1 }), RangeError);
+  assert.throws(() => toColorImageData({ width: 20000, height: 1 }), RangeError);
+  assert.equal(marginCalls, 0);
+
+  const ok = toColorImageData(matrix, { scale: 1, margin: 2 });
+  assert.equal(ok.width, 5);
+  assert.equal(marginCalls, 1);
+});

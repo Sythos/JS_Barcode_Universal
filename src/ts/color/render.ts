@@ -59,17 +59,24 @@ function boundedInteger(value, name, defaultValue, minimum, maximum) {
  * @returns {{data: Uint8ClampedArray, width: number, height: number}}
  */
 export function toColorImageData(matrix, options = {}) {
+  if (!matrix || !Number.isSafeInteger(matrix.width) || !Number.isSafeInteger(matrix.height)
+    || matrix.width < 1 || matrix.height < 1
+    || matrix.width > MAX_RENDER_DIMENSION || matrix.height > MAX_RENDER_DIMENSION) {
+    throw new RangeError(`Render matrix dimensions must be positive safe integers no larger than ${MAX_RENDER_DIMENSION}`);
+  }
   const scale = boundedInteger(options.scale, 'scale', 8, 1, MAX_RENDER_DIMENSION);
-  const margin = boundedInteger(options.margin, 'margin', 4, 0, MAX_RENDER_DIMENSION >> 1);
+  const margin = boundedInteger(options.margin, 'margin', 4, 0, (MAX_RENDER_DIMENSION - 1) >> 1);
 
-  const source = margin > 0 ? matrix.withMargin(margin) : matrix;
-  const pixelWidth = source.width * scale;
-  const pixelHeight = source.height * scale;
+  // Check the final size before withMargin() or the pixel buffers allocate anything.
+  const pixelWidth = (matrix.width + margin * 2) * scale;
+  const pixelHeight = (matrix.height + margin * 2) * scale;
   const pixels = pixelWidth * pixelHeight;
   if (!Number.isSafeInteger(pixels) || pixels > MAX_RENDER_PIXELS
     || pixelWidth > MAX_RENDER_DIMENSION || pixelHeight > MAX_RENDER_DIMENSION) {
     throw new RangeError(`Render image contains too many pixels: ${pixels} (maximum ${MAX_RENDER_PIXELS})`);
   }
+
+  const source = margin > 0 ? matrix.withMargin(margin) : matrix;
 
   const data = new Uint8ClampedArray(pixelWidth * pixelHeight * 4);
   const line = new Uint8ClampedArray(pixelWidth * 4);
