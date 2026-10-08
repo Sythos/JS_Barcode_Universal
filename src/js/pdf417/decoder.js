@@ -75,11 +75,6 @@ export function decodePDF417(matrix, options = {}) {
         }
     }
     let level = -1;
-    for (let candidate = 0; candidate <= 8; candidate++)
-        if (all.length > pdf417EccLength(candidate)) {
-            level = candidate;
-            break;
-        }
     // The row indicators determine the level uniquely across the symbol.
     for (let candidate = 0; candidate <= 8; candidate++) {
         let ok = true;
