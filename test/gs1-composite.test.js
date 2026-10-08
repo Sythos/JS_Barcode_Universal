@@ -106,6 +106,44 @@ test('GS1 Composite rejects standalone components, missing linkage and damaged s
   assert.equal(detectGS1Composite(damaged), null);
 });
 
+test('GS1 Composite metadata path validates the separator and layout', () => {
+  const composite = encodeGS1Composite(input('databar14'));
+  const gapRow = composite.gs1composite.linearY - 1;
+
+  // Unchanged writer output decodes with and without metadata.
+  assert.equal(decodeGS1Composite(composite).text, '010950600013435217260101');
+  const bare = composite.clone();
+  assert.equal(bare.gs1composite, undefined);
+  assert.equal(decodeGS1Composite(bare).text, '010950600013435217260101');
+
+  // A dirty separator is rejected with metadata kept and removed.
+  const dirty = composite.clone();
+  dirty.gs1composite = composite.gs1composite;
+  dirty.flip(10, gapRow);
+  assert.throws(() => decodeGS1Composite(dirty), /separator|geometry/);
+  assert.equal(detectGS1Composite(dirty), null);
+  const dirtyBare = composite.clone();
+  dirtyBare.flip(10, gapRow);
+  assert.throws(() => decodeGS1Composite(dirtyBare), /geometry/);
+  assert.equal(detectGS1Composite(dirtyBare), null);
+
+  // Invalid metadata fails cleanly.
+  for (const patch of [
+    { componentX: -1 },
+    { linearY: composite.height },
+    { moduleScale: 0 },
+    { moduleScale: 99 },
+    { separatorGap: 2 },
+    { width: composite.width + 1 },
+    { componentWidth: 54 },
+    { linearFormat: 'unknown' },
+  ]) {
+    const stale = composite.clone();
+    stale.gs1composite = { ...composite.gs1composite, ...patch };
+    assert.throws(() => decodeGS1Composite(stale), Error, JSON.stringify(patch));
+  }
+});
+
 test('root API exposes strict GS1 Composite encode, decode and format registry', () => {
   const listed = listFormats().find(({ id }) => id === 'gs1composite');
   assert.deepEqual(listed, {
