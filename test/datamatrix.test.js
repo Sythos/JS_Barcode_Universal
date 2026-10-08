@@ -40,7 +40,7 @@ import {
   symbolForDataCodewords,
   validateTables,
 } from '../src/js/datamatrix/tables.js';
-import { encodeDataMatrix } from '../src/js/datamatrix/encoder.js';
+import { encodeDataMatrix, encodeDataMatrixCodewords } from '../src/js/datamatrix/encoder.js';
 import { decodeDataMatrix } from '../src/js/datamatrix/decoder.js';
 import { detectDataMatrix, detectAndDecodeDataMatrix } from '../src/js/datamatrix/detector.js';
 
@@ -148,6 +148,20 @@ test('data matrix: Base256 binary remains byte-exact without UTF-8 interpretatio
   const validUtf8Bytes = decodeDataMatrix(encodeDataMatrix(Uint8Array.from([0xc3, 0xa9]), { encoding: 'base256' }));
   assert.deepEqual([...validUtf8Bytes.bytes], [0xc3, 0xa9]);
   assert.equal(validUtf8Bytes.text, 'Ã©');
+});
+
+test('data matrix: ECI 26 decodes UTF-8 across Base256 and ASCII segments', () => {
+  // Two individually incomplete Base256 segments contain the UTF-8 bytes for é.
+  const splitBase256 = encodeDataMatrixCodewords([241, 27, 231, 88, 175, 231, 25, 86]);
+  const splitResult = decodeDataMatrix(splitBase256);
+  assert.equal(splitResult.text, 'é');
+  assert.deepEqual([...splitResult.bytes], [0xc3, 0xa9]);
+
+  // ASCII upper-shift codewords carry the same bytes under the active ECI.
+  const ascii = encodeDataMatrixCodewords([241, 27, 235, 68, 235, 42]);
+  const asciiResult = decodeDataMatrix(ascii);
+  assert.equal(asciiResult.text, 'é');
+  assert.deepEqual([...asciiResult.bytes], [0xc3, 0xa9]);
 });
 
 test('data matrix: GS1 shifts Base256 randomization to absolute codeword positions', () => {

@@ -207,26 +207,39 @@ function parseData(data) {
   let upperShift = false;
   let gs1 = false;
   let eci = null;
+  let utf8Bytes = [];
+  const flushUtf8 = () => {
+    if (utf8Bytes.length === 0) return;
+    try { text += new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(utf8Bytes)); }
+    catch { throw new FormatError('Data Matrix: invalid UTF-8 under ECI 26'); }
+    utf8Bytes = [];
+  };
+  const appendByte = (value) => {
+    bytes.push(value);
+    if (eci === 26) utf8Bytes.push(value);
+    else text += String.fromCharCode(value);
+  };
   for (let i = 0; i < data.length;) {
     const cw = data[i++];
     if (cw === CW_PAD) break;
     if (cw <= 128) {
       const value = cw - 1 + (upperShift ? 128 : 0);
       upperShift = false;
-      text += String.fromCharCode(value); bytes.push(value); continue;
+      appendByte(value); continue;
     }
     if (cw <= 229) {
       const pair = cw - 130;
-      const digits = String(pair).padStart(2, '0'); text += digits; bytes.push(digits.charCodeAt(0), digits.charCodeAt(1)); continue;
+      const digits = String(pair).padStart(2, '0'); appendByte(digits.charCodeAt(0)); appendByte(digits.charCodeAt(1)); continue;
     }
     if (cw === 232) {
       if (i === 1) gs1 = true;
-      else { text += '\x1d'; bytes.push(29); }
+      else appendByte(29);
       continue;
     }
     if (cw === 235) { upperShift = true; continue; }
     if (cw === 241) {
       if (i >= data.length || data[i++] !== 27) throw new FormatError('Data Matrix: unsupported or missing ECI assignment');
+      flushUtf8();
       eci = 26;
       continue;
     }
@@ -241,17 +254,12 @@ function parseData(data) {
       if (i + length > data.length) throw new FormatError('Data Matrix: Base 256 segment exceeds data capacity');
       const segment = new Uint8Array(length);
       for (let n = 0; n < length; n++, i++) segment[n] = unrandomize(data[i], i + 1);
-      bytes.push(...segment);
-      if (eci === 26) {
-        try { text += new TextDecoder('utf-8', { fatal: true }).decode(segment); }
-        catch { throw new FormatError('Data Matrix: invalid UTF-8 under ECI 26'); }
-      } else {
-        for (let n = 0; n < segment.length; n++) text += String.fromCharCode(segment[n]);
-      }
+      for (const value of segment) appendByte(value);
       continue;
     }
     throw new FormatError(`Data Matrix: unsupported encoding codeword ${cw}`);
   }
+  flushUtf8();
   return { text, bytes: Uint8Array.from(bytes), gs1 };
 }
 
