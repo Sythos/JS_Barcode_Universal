@@ -61,7 +61,7 @@ export function decodePDF417(matrix, options = {}) {
       }
     }
   }
-  let level = -1; for (let candidate = 0; candidate <= 8; candidate++) if (all.length > pdf417EccLength(candidate)) { level = candidate; break; }
+  let level = -1;
   // The row indicators determine the level uniquely across the symbol.
   for (let candidate = 0; candidate <= 8; candidate++) {
     let ok = true; for (let row = 0; row < rows; row++) { const y = row * rowHeight, cluster = (row % 3) * 3, expected = indicators(row, rows, cols, candidate); const left = pdf417CodewordForPattern(bits(matrix, y, 17, 17)); const right = pdf417CodewordForPattern(bits(matrix, y, 34 + cols * 17, 17)); if (!left || !right || left.cluster !== cluster || right.cluster !== cluster || left.codeword !== expected[0] || right.codeword !== expected[1]) { ok = false; break; } } if (ok) { level = candidate; break; }

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { encodePDF417 } from '../src/js/pdf417/encoder.js';
 import { decodePDF417 } from '../src/js/pdf417/decoder.js';
 import { detectAndDecodePDF417 } from '../src/js/pdf417/detector.js';
+import { pdf417PatternForCodeword } from '../src/js/pdf417/tables.js';
 
 function copyInto(source, target, offsetX, offsetY, shiftForRow = () => 0) {
   for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) {
@@ -23,6 +24,15 @@ test('PDF417 encodes every standard ECC level', () => {
     const matrix = encodePDF417('A', { compaction: 'text', eccLevel });
     assert.equal(decodePDF417(matrix).eccLevel, eccLevel);
   }
+});
+
+test('PDF417 rejects individually valid but conflicting ECC row indicators', () => {
+  const changed = encodePDF417('HELLO', { eccLevel: 0, rows: 3, columns: 3 }).clone();
+  const pattern = pdf417PatternForCodeword(5, 3);
+  for (let y = 3; y < 6; y++) for (let x = 0; x < 17; x++) {
+    changed.setValue(17 + x, y, Boolean((pattern >>> (16 - x)) & 1));
+  }
+  assert.throws(() => decodePDF417(changed), { name: 'FormatError' });
 });
 
 test('PDF417 preserves UTF-8 byte text with ECI and stored row height', () => {
