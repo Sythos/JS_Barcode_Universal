@@ -104,6 +104,28 @@ test('GS1 Composite rejects standalone components, missing linkage and damaged s
   const damaged = composite.clone();
   damaged.flip(10, composite.gs1composite.linearY - 1);
   assert.equal(detectGS1Composite(damaged), null);
+  const withMetadata = encodeGS1Composite(input('databar14'));
+  withMetadata.flip(10, withMetadata.gs1composite.linearY - 1);
+  assert.throws(() => decodeGS1Composite(withMetadata), { name: 'FormatError' });
+  assert.equal(detectGS1Composite(withMetadata), null);
+});
+
+test('GS1 Composite validates metadata bounds, layout and common scale', () => {
+  const matrix = encodeGS1Composite({ ...input('databar14'), moduleScale: 2 });
+  assert.equal(decodeGS1Composite(matrix).linearFormat, 'databar14');
+  assert.equal(decodeGS1Composite(matrix.clone()).linearFormat, 'databar14');
+  for (const patch of [
+    { componentX: -1 },
+    { linearY: matrix.gs1composite.linearY - 1 },
+    { separatorGap: 0 },
+    { moduleScale: 3 },
+    { linearHeight: matrix.gs1composite.linearHeight + 1 },
+  ]) {
+    const changed = matrix.clone();
+    changed.gs1composite = { ...matrix.gs1composite, ...patch };
+    assert.throws(() => decodeGS1Composite(changed), { name: 'FormatError' });
+    assert.doesNotThrow(() => detectGS1Composite(changed));
+  }
 });
 
 test('root API exposes strict GS1 Composite encode, decode and format registry', () => {

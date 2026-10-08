@@ -303,6 +303,14 @@ function hasDark(source, x, y, width, height) {
   return false;
 }
 
+function cleanSeparator(source, x, y, width, height) {
+  return Number.isSafeInteger(x) && Number.isSafeInteger(y)
+    && Number.isSafeInteger(width) && Number.isSafeInteger(height)
+    && width > 0 && height > 0 && x >= 0 && y >= 0
+    && x + width <= source.width && y + height <= source.height
+    && !hasDark(source, x, y, width, height);
+}
+
 function payloadFromComponent(decoded, kind) {
   const prefix = COMPONENT_PREFIX[kind];
   if (!decoded || typeof decoded.text !== 'string' || !decoded.text.startsWith(prefix)) {
@@ -342,14 +350,32 @@ function compositeResult(host, linear, component, kind, raw, elements, geometry 
 function decodeFromMetadata(matrix) {
   const meta = matrix.gs1composite;
   if (!isRecord(meta) || meta.profile !== GS1_COMPOSITE_PROFILE) return null;
+  const scale = meta.moduleScale;
+  const gap = meta.separatorGap;
+  const host = normalizeHost(meta.linearFormat);
+  const hostModules = hostWidth(host);
+  if (!Number.isSafeInteger(scale) || scale < 1 || scale > MAX_SCALE
+      || !Number.isSafeInteger(gap) || gap < scale || gap > 3 * scale || gap % scale
+      || meta.width !== matrix.width || meta.height !== matrix.height
+      || meta.componentY !== 0 || meta.linearY !== meta.componentHeight + gap
+      || meta.linearY + meta.linearHeight !== matrix.height
+      || meta.componentWidth !== COMPONENT_WIDTH * scale
+      || (hostModules !== null && meta.linearWidth !== hostModules * scale)
+      || !Number.isSafeInteger(meta.componentX) || !Number.isSafeInteger(meta.linearX)
+      || meta.componentX < 0 || meta.linearX < 0
+      || meta.componentX % scale || meta.linearX % scale
+      || meta.componentX !== Math.floor((matrix.width / scale - COMPONENT_WIDTH) / 2) * scale
+      || meta.linearX !== Math.floor((matrix.width - meta.linearWidth) / (2 * scale)) * scale
+      || !cleanSeparator(matrix, 0, meta.componentHeight, matrix.width, gap)) {
+    throw new FormatError('GS1 Composite metadata geometry or separator is invalid');
+  }
   const componentMatrix = crop(matrix, meta.componentX, meta.componentY, meta.componentWidth, meta.componentHeight);
   const linearMatrix = crop(matrix, meta.linearX, meta.linearY, meta.linearWidth, meta.linearHeight);
   if (!componentMatrix || !linearMatrix) throw new FormatError('GS1 Composite metadata points outside the matrix');
-  const logicalComponent = collapseScale(componentMatrix, meta.moduleScale ?? 1);
-  if (!logicalComponent) throw new FormatError('GS1 Composite component is not integer-scaled');
+  const logicalComponent = collapseScale(componentMatrix, scale);
+  if (!logicalComponent || !collapseScale(linearMatrix, scale)) throw new FormatError('GS1 Composite components are not integer-scaled');
   const component = micropdf417.decodeMicroPDF417(logicalComponent, { variant: meta.componentVariant });
   const payload = payloadFromComponent(component, meta.component);
-  const host = normalizeHost(meta.linearFormat);
   const linear = decodeHost(host, linearMatrix);
   return compositeResult(host, linear, component, meta.component, payload.raw, payload.elements, {
     moduleScale: meta.moduleScale,
@@ -379,7 +405,7 @@ function attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY,
   // image metadata has been discarded.
   if (host === 'databar14' && linearHeight < 33 * scale) return null;
   if (host === 'databar-truncated' && linearHeight >= 33 * scale) return null;
-  if (hasDark(image, canvasX, topY + componentHeight, canvasWidth, gap * scale)) return null;
+  if (!cleanSeparator(image, canvasX, topY + componentHeight, canvasWidth, gap * scale)) return null;
   const componentMatrix = crop(image, componentX, topY, componentWidth, componentHeight);
   const linearMatrix = crop(image, linearX, linearY, linearWidth, linearHeight);
   if (!componentMatrix || !linearMatrix) return null;
