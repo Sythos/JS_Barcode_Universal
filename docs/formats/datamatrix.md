@@ -33,8 +33,8 @@ const binary = encodeDataMatrix(new Uint8Array([0x00, 0xff, 0x7f]), {
   shape: 'rectangular',
 });
 
-const utf8Text = encodeDataMatrix('Caffè 😀', { encoding: 'base256' });
-console.log(decodeDataMatrix(utf8Text).text); // Caffè 😀
+const utf8Text = encodeDataMatrix('Café 😀', { encoding: 'base256' });
+console.log(decodeDataMatrix(utf8Text).text); // Café 😀
 ```
 
 Base256 string input is encoded as UTF-8 with ECI 26, so `text` round-trips
