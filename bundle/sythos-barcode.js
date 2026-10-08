@@ -8226,7 +8226,7 @@ function parseData(data) {
         if (utf8Bytes.length === 0)
             return;
         try {
-            text += new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(utf8Bytes));
+            text += new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(Uint8Array.from(utf8Bytes));
         }
         catch {
             throw new FormatError('Data Matrix: invalid UTF-8 under ECI 26');

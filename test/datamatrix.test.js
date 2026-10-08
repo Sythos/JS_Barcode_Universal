@@ -129,7 +129,7 @@ test('data matrix: Base256 preserves arbitrary bytes without text normalization'
 });
 
 test('data matrix: Base256 strings declare UTF-8 and preserve accented text and emoji', () => {
-  for (const value of ['é', 'Caffè ☕', 'A😀B']) {
+  for (const value of ['é', 'Caffè ☕', 'A😀B', '\uFEFFABC']) {
     const result = decodeDataMatrix(encodeDataMatrix(value, { encoding: 'base256' }));
     assert.equal(result.text, value);
     assert.deepEqual([...result.bytes], [...new TextEncoder().encode(value)]);
