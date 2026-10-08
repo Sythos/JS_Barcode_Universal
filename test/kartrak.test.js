@@ -11,6 +11,30 @@ import {
   kartrakCheckDigit,
   toColorImageData,
 } from '../src/js/kartrak/index.js';
+import { classifyGrid } from '../src/js/color/classify.js';
+import { PerspectiveTransform } from '../src/js/image/perspective.js';
+
+const CLASSIFY_PALETTE = [[0, 0, 0], [255, 255, 255], [128, 128, 128]];
+const IDENTITY = new PerspectiveTransform(1, 0, 0, 0, 1, 0, 0, 0, 1);
+
+function classifySolid(pixel) {
+  const data = new Uint8ClampedArray(3 * 3 * 4);
+  for (let i = 0; i < data.length; i += 4) data.set(pixel, i);
+  return classifyGrid({ data, width: 3, height: 3 }, 1, 1, IDENTITY, CLASSIFY_PALETTE).get(0, 0);
+}
+
+test('color grid classification composites transparent and partial alpha over white', () => {
+  assert.equal(classifySolid([0, 0, 0, 0]), classifySolid([255, 255, 255, 255]));
+  assert.equal(classifySolid([0, 0, 0, 0]), 1);
+  assert.equal(classifySolid([0, 0, 0, 128]), classifySolid([127, 127, 127, 255]));
+  assert.equal(classifySolid([0, 0, 0, 128]), 2);
+});
+
+test('color grid classification preserves opaque palette colors', () => {
+  assert.equal(classifySolid([0, 0, 0, 255]), 0);
+  assert.equal(classifySolid([255, 255, 255, 255]), 1);
+  assert.equal(classifySolid([128, 128, 128, 255]), 2);
+});
 
 // The worked example from Wikipedia's "KarTrak" article, decoded from the
 // photograph shown at the top of that page: "Start 8350199918 Stop 5".

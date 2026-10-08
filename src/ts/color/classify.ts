@@ -47,7 +47,7 @@
  * yet. This module only classifies a grid whose corners are already known
  * (e.g. supplied by a caller, or a future detector).
  *
- * The classifier itself is a first pass: average RGB over a sampling
+ * The classifier itself is a first pass: composite RGBA over white, average RGB over a sampling
  * window per module, nearest-colour match in plain Euclidean RGB space.
  * That is a real, working starting point, not a finished algorithm —
  * lighting colour temperature, print dye variation and camera white
@@ -89,7 +89,7 @@ function nearestPaletteIndex(sample, palette) {
 /**
  * Sample and classify a `width` x `height` grid.
  *
- * @param {{data: Uint8ClampedArray, width: number, height: number}} image Raw RGBA, NOT binarized.
+ * @param {{data: Uint8ClampedArray, width: number, height: number}} image Raw RGBA, NOT binarized. Transparent pixels are composited over white.
  * @param {number} width Modules across.
  * @param {number} height Modules down.
  * @param {import('../image/perspective.js').PerspectiveTransform} transform Grid space -> image space.
@@ -126,15 +126,15 @@ export function classifyGrid(image, width, height, transform, palette) {
           const sy = cy + dy;
           if (sx < 0 || sy < 0 || sx >= image.width || sy >= image.height) continue;
           const p = (sy * image.width + sx) * 4;
-          sumR += image.data[p];
-          sumG += image.data[p + 1];
-          sumB += image.data[p + 2];
+          const alpha = image.data[p + 3] / 255;
+          const background = 255 * (1 - alpha);
+          sumR += image.data[p] * alpha + background;
+          sumG += image.data[p + 1] * alpha + background;
+          sumB += image.data[p + 2] * alpha + background;
           count++;
         }
       }
-      const sample = count > 0
-        ? [sumR / count, sumG / count, sumB / count]
-        : [image.data[(cy * image.width + cx) * 4], image.data[(cy * image.width + cx) * 4 + 1], image.data[(cy * image.width + cx) * 4 + 2]];
+      const sample = [sumR / count, sumG / count, sumB / count];
 
       out.set(x, y, nearestPaletteIndex(sample, palette));
     }

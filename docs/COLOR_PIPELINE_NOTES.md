@@ -49,7 +49,9 @@ retrofit of it:
   geometry (a `PerspectiveTransform`, the same primitive every other
   format's detector already produces), samples an averaging window per
   module in the **raw, not binarized** RGBA image and nearest-colour
-  matches it against the palette in plain Euclidean RGB space.
+  matches it against the palette in plain Euclidean RGB space. Each pixel
+  is composited over white before averaging, matching the monochrome
+  image pipeline's transparent-background convention.
 
 ## What was measured (synthetic testing only — see the gap below)
 
