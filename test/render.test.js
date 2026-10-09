@@ -374,6 +374,32 @@ test('parseColor: an unrecognised colour falls back instead of throwing', () => 
   }
 });
 
+test('parseColor: out-of-range channels are clamped', () => {
+  assert.deepEqual(parseColor('rgb(300,-5,0)'), [255, 0, 0, 255]);
+  assert.deepEqual(parseColor('rgb(150%, -10%, 50%)'), [255, 0, 128, 255]);
+  assert.deepEqual(parseColor('rgba(1, 2, 3, 2)'), [1, 2, 3, 255]);
+  assert.deepEqual(parseColor('rgba(1, 2, 3, -1)'), [1, 2, 3, 0]);
+});
+
+test('parseColor: malformed input never yields NaN or undefined', () => {
+  for (const input of ['rgb(a,b,c)', 'rgb(1,2)', 'rgb(1,2,3,x)', 'rgb(1e999,0,0)', '#zzz', '#zzzzzz', undefined]) {
+    const value = parseColor(input);
+    assert.equal(value.length, 4, `wrong shape for ${String(input)}`);
+    assert.ok(value.every(Number.isInteger), `non-integer channel for ${String(input)}`);
+  }
+  assert.deepEqual(parseColor('rgb(a,b,c)'), [0, 0, 0, 255]);
+});
+
+test('PNG palette matches raster output for out-of-range colours', async () => {
+  const matrix = new BitMatrix(1, 2);
+  matrix.set(0, 0);
+  const options = { scale: 1, margin: 0, dark: 'rgb(300,-5,0)' };
+  const raster = [...toImageData(matrix, options).data.slice(0, 3)];
+  const png = await toPNG(matrix, options);
+  const at = png.findIndex((_, i) => String.fromCharCode(...png.slice(i, i + 4)) === 'PLTE');
+  assert.deepEqual([...png.slice(at + 7, at + 10)], raster);
+});
+
 /* ------------------------------------------------------------------ *
  * ImageData
  * ------------------------------------------------------------------ */
