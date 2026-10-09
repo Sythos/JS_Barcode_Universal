@@ -62,16 +62,30 @@ function toPixel(v, limit) {
  * @throws {NotFoundError}
  */
 function assertUsable(t) {
-    // A homography is defined up to scale: normalize first so a huge or tiny
-    // uniform scale cannot overflow or underflow the determinant.
-    const s = Math.max(Math.abs(t.a11), Math.abs(t.a21), Math.abs(t.a31), Math.abs(t.a12), Math.abs(t.a22), Math.abs(t.a32), Math.abs(t.a13), Math.abs(t.a23), Math.abs(t.a33));
-    if (!Number.isFinite(s) || s === 0) {
-        throw new NotFoundError('Sampling transform is degenerate');
+    // Scaling rows or columns does not change whether a matrix is singular, and
+    // a homography is defined up to scale anyway. Scale every column and then
+    // every row to unit length, so the determinant is neither swamped by large
+    // coefficients nor lost to rounding, then compare it with a tolerance
+    // instead of exact zero. Zero or non-finite lines turn into NaN and fail.
+    const m = [
+        [t.a11, t.a21, t.a31],
+        [t.a12, t.a22, t.a32],
+        [t.a13, t.a23, t.a33],
+    ];
+    for (let c = 0; c < 3; c++) {
+        const n = Math.hypot(m[0][c], m[1][c], m[2][c]);
+        for (let r = 0; r < 3; r++)
+            m[r][c] /= n;
     }
-    const det = (t.a11 / s) * ((t.a22 / s) * (t.a33 / s) - (t.a23 / s) * (t.a32 / s))
-        - (t.a21 / s) * ((t.a12 / s) * (t.a33 / s) - (t.a13 / s) * (t.a32 / s))
-        + (t.a31 / s) * ((t.a12 / s) * (t.a23 / s) - (t.a13 / s) * (t.a22 / s));
-    if (!Number.isFinite(det) || det === 0) {
+    for (let r = 0; r < 3; r++) {
+        const n = Math.hypot(m[r][0], m[r][1], m[r][2]);
+        for (let c = 0; c < 3; c++)
+            m[r][c] /= n;
+    }
+    const det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+        - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+        + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    if (!(Math.abs(det) > 1e-12)) {
         throw new NotFoundError('Sampling transform is degenerate');
     }
 }

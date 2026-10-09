@@ -257,6 +257,14 @@ test('grid sampler: accepts a valid transform at any uniform scale', () => {
   }
 });
 
+test('grid sampler: rejects a rank-deficient transform despite rounding', () => {
+  // Third row is the sum of the first two, so the matrix is singular.
+  const t = new PerspectiveTransform(5, 97, 102, 60, 98, 158, 54, 70, 124);
+  const image = new BitMatrix(500, 500);
+  assert.throws(() => sampleGrid(image, 2, 2, t), NotFoundError);
+  assert.throws(() => sampleGridVoting(image, 2, 2, t), NotFoundError);
+});
+
 test('grid sampler: rejects infinite coordinates', () => {
   const image = new BitMatrix(4, 4);
   image.set(0, 0);
