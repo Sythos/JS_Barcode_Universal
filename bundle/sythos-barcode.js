@@ -27816,11 +27816,93 @@ const { toCanvas } = __require("js/render/image-data.js");
 const { isWebGL2Available, renderToCanvasWebGL } = __require("js/render/webgl.js");
 const { isWebGPUAvailable, renderToCanvasWebGPU } = __require("js/render/webgpu.js");
 /**
+ * A throwaway canvas for a GPU backend to draw on.
+ *
+ * @returns {HTMLCanvasElement | OffscreenCanvas | null}
+ */
+function createScratchCanvas() {
+    try {
+        if (typeof document !== 'undefined')
+            return document.createElement('canvas');
+        if (typeof OffscreenCanvas !== 'undefined')
+            return new OffscreenCanvas(1, 1);
+    }
+    catch {
+        /* no usable surface */
+    }
+    return null;
+}
+/**
+ * Copy a finished scratch canvas onto the destination through its 2D context.
+ *
+ * @param {HTMLCanvasElement | OffscreenCanvas} scratch
+ * @param {HTMLCanvasElement | OffscreenCanvas} canvas
+ * @returns {boolean}
+ */
+function transferToCanvas(scratch, canvas) {
+    try {
+        const ctx = canvas.getContext('2d');
+        if (!ctx)
+            return false;
+        canvas.width = scratch.width;
+        canvas.height = scratch.height;
+        ctx.drawImage(scratch, 0, 0);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Draw with a GPU backend on a scratch canvas, then copy the result over.
+ *
+ * Whatever the GPU backend does — take a context, fail halfway through shader,
+ * pipeline or configure steps — only the scratch canvas is affected, so the
+ * destination can still be drawn on by the next backend.
+ *
+ * @param {HTMLCanvasElement | OffscreenCanvas} canvas
+ * @param {(scratch: HTMLCanvasElement | OffscreenCanvas) => boolean} draw
+ * @returns {boolean}
+ */
+function drawViaScratch(canvas, draw) {
+    const scratch = createScratchCanvas();
+    if (!scratch)
+        return false;
+    try {
+        return draw(scratch) && transferToCanvas(scratch, canvas);
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Async counterpart of `drawViaScratch`.
+ *
+ * @param {HTMLCanvasElement | OffscreenCanvas} canvas
+ * @param {(scratch: HTMLCanvasElement | OffscreenCanvas) => Promise<boolean>} draw
+ * @returns {Promise<boolean>}
+ */
+async function drawViaScratchAsync(canvas, draw) {
+    const scratch = createScratchCanvas();
+    if (!scratch)
+        return false;
+    try {
+        return (await draw(scratch)) && transferToCanvas(scratch, canvas);
+    }
+    catch {
+        return false;
+    }
+}
+/**
  * Draw into a canvas using the best backend available.
  *
  * Tries WebGL2, then the 2D context. The 2D path is always available, so this
  * never fails on a browser that can run the library at all — including every
  * version of Safari on iOS.
+ *
+ * WebGL2 draws on a scratch canvas that is then copied onto `canvas` with 2D
+ * `drawImage`, so a failure inside the GPU path leaves `canvas` free for the
+ * 2D fallback. The returned backend is the one that drew the symbol.
  *
  * WebGPU is not reachable from here, and cannot be: obtaining an adapter is
  * asynchronous, so a synchronous function can never wait for one. Use
@@ -27836,8 +27918,9 @@ const { isWebGPUAvailable, renderToCanvasWebGPU } = __require("js/render/webgpu.
 function renderToCanvasAuto(matrix, canvas, options = {}) {
     const preferred = options.backend ?? 'auto';
     if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
-        if (renderToCanvasWebGL(matrix, canvas, options))
+        if (drawViaScratch(canvas, (scratch) => renderToCanvasWebGL(matrix, scratch, options))) {
             return { backend: 'webgl2' };
+        }
     }
     if (toCanvas(matrix, canvas, options))
         return { backend: '2d' };
@@ -27849,11 +27932,11 @@ function renderToCanvasAuto(matrix, canvas, options = {}) {
  * Tries WebGPU, then WebGL2, then the 2D context, and returns the name of the
  * one that drew.
  *
- * Each backend is *probed* before the canvas is handed to it. That ordering is
- * deliberate: a canvas can only ever have one kind of context, so committing it
- * to WebGPU and failing afterwards would leave it unable to fall back to
- * WebGL2 or 2D. The probes use throwaway objects of their own, so the caller's
- * canvas is only touched by a backend that is already known to work.
+ * Each backend is *probed* before it is used, and the GPU backends draw on a
+ * scratch canvas that is copied onto `canvas` with 2D `drawImage`. That
+ * ordering is deliberate: a canvas can only ever have one kind of context, so
+ * handing it to WebGPU and failing afterwards would leave it unable to fall
+ * back to WebGL2 or 2D. The caller's canvas only ever gets a 2D context.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  * @param {HTMLCanvasElement | OffscreenCanvas} canvas
@@ -27864,13 +27947,15 @@ async function renderToCanvasAutoAsync(matrix, canvas, options = {}) {
     const preferred = options.backend ?? 'auto';
     if (preferred === 'auto' || preferred === 'webgpu') {
         if (await isWebGPUAvailable()) {
-            if (await renderToCanvasWebGPU(matrix, canvas, options))
+            if (await drawViaScratchAsync(canvas, (scratch) => renderToCanvasWebGPU(matrix, scratch, options))) {
                 return { backend: 'webgpu' };
+            }
         }
     }
     if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
-        if (renderToCanvasWebGL(matrix, canvas, options))
+        if (drawViaScratch(canvas, (scratch) => renderToCanvasWebGL(matrix, scratch, options))) {
             return { backend: 'webgl2' };
+        }
     }
     if (toCanvas(matrix, canvas, options))
         return { backend: '2d' };

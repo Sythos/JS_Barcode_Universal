@@ -698,3 +698,137 @@ test('backends agree on the pixel dimensions of a symbol', async () => {
     assert.ok(svg.includes(`height="${opts.pixelHeight}"`));
   }
 });
+
+/* ------------------------------------------------------------------ *
+ * Automatic backend selection: the destination canvas stays usable
+ * ------------------------------------------------------------------ */
+
+/**
+ * A canvas that, like a real one, hands out a single kind of context.
+ *
+ * @param {(type: string) => any} make
+ */
+function mockCanvas(make) {
+  const canvas = {
+    width: 0,
+    height: 0,
+    kind: null,
+    log: [],
+    getContext(type) {
+      canvas.log.push(type);
+      if (canvas.kind && canvas.kind !== type) return null;
+      const ctx = make(type);
+      if (ctx) canvas.kind = type;
+      return ctx;
+    },
+  };
+  return canvas;
+}
+
+/** A 2D context that records what was drawn. */
+function mockContext2d() {
+  const calls = [];
+  return {
+    calls,
+    fillRect: () => calls.push('fillRect'),
+    clearRect: () => calls.push('clearRect'),
+    drawImage: () => calls.push('drawImage'),
+  };
+}
+
+/** A WebGL2 context where every call succeeds, or where shaders cannot be created. */
+function mockGl({ broken }) {
+  return new Proxy({}, {
+    get(_, name) {
+      if (name === 'createShader' && broken) return () => null;
+      if (name === 'getExtension') return () => null;
+      if (typeof name === 'string' && /^[A-Z0-9_]+$/.test(name)) return 1;
+      return () => ({});
+    },
+  });
+}
+
+/** Install browser-like globals for the duration of `body`. */
+async function withBrowserGlobals(globals, body) {
+  const saved = new Map();
+  for (const [key, value] of Object.entries(globals)) {
+    saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  }
+  try {
+    return await body();
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  }
+}
+
+function webglGlobals(broken) {
+  return {
+    WebGL2RenderingContext: class {},
+    document: {
+      createElement: () => mockCanvas((type) => (type === 'webgl2' ? mockGl({ broken }) : null)),
+    },
+  };
+}
+
+test('auto: a WebGL2 failure after the probe still falls back to 2D', async () => {
+  const { renderToCanvasAuto } = await import('../src/js/render/index.js');
+  const ctx = mockContext2d();
+  const dest = mockCanvas((type) => (type === '2d' ? ctx : null));
+
+  const result = await withBrowserGlobals(webglGlobals(true), () => renderToCanvasAuto(SAMPLE, dest));
+
+  assert.deepEqual(result, { backend: '2d' });
+  assert.equal(dest.kind, '2d');
+  assert.ok(ctx.calls.includes('fillRect'));
+  assert.ok(!ctx.calls.includes('drawImage'));
+});
+
+test('auto: a working WebGL2 scratch canvas is copied onto the destination', async () => {
+  const { renderToCanvasAuto } = await import('../src/js/render/index.js');
+  const ctx = mockContext2d();
+  const dest = mockCanvas((type) => (type === '2d' ? ctx : null));
+
+  const result = await withBrowserGlobals(webglGlobals(false), () => renderToCanvasAuto(SAMPLE, dest));
+
+  assert.deepEqual(result, { backend: 'webgl2' });
+  assert.equal(dest.kind, '2d');
+  assert.deepEqual(ctx.calls, ['drawImage']);
+  assert.ok(dest.log.every((type) => type === '2d'), 'destination only ever gets a 2D context');
+});
+
+test('auto async: a WebGPU configure failure falls back to WebGL2, then to 2D', async () => {
+  const { renderToCanvasAutoAsync } = await import('../src/js/render/index.js');
+  const scratchCanvases = [];
+  const gpu = {
+    requestAdapter: async () => ({ requestDevice: async () => ({ limits: {}, lost: new Promise(() => {}) }) }),
+    getPreferredCanvasFormat: () => 'bgra8unorm',
+  };
+  const makeGlobals = (broken) => ({
+    WebGL2RenderingContext: class {},
+    navigator: { gpu },
+    document: {
+      createElement: () => {
+        const canvas = mockCanvas((type) => {
+          if (type === 'webgpu') return { configure() { throw new Error('configure failed'); } };
+          return type === 'webgl2' ? mockGl({ broken }) : null;
+        });
+        scratchCanvases.push(canvas);
+        return canvas;
+      },
+    },
+  });
+
+  for (const [broken, expected] of [[false, 'webgl2'], [true, '2d']]) {
+    const ctx = mockContext2d();
+    const dest = mockCanvas((type) => (type === '2d' ? ctx : null));
+    const result = await withBrowserGlobals(makeGlobals(broken), () => renderToCanvasAutoAsync(SAMPLE, dest));
+    assert.deepEqual(result, { backend: expected });
+    assert.equal(dest.kind, '2d');
+    assert.ok(dest.log.every((type) => type === '2d'));
+  }
+  assert.ok(scratchCanvases.some((c) => c.log.includes('webgpu')), 'WebGPU was attempted on a scratch canvas');
+});

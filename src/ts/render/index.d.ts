@@ -70,6 +70,10 @@ export { normalizeOptions, parseColor } from './options.js';
  * never fails on a browser that can run the library at all — including every
  * version of Safari on iOS.
  *
+ * WebGL2 draws on a scratch canvas that is then copied onto `canvas` with 2D
+ * `drawImage`, so a failure inside the GPU path leaves `canvas` free for the
+ * 2D fallback. The returned backend is the one that drew the symbol.
+ *
  * WebGPU is not reachable from here, and cannot be: obtaining an adapter is
  * asynchronous, so a synchronous function can never wait for one. Use
  * `renderToCanvasAutoAsync` to include it. This one stays synchronous because
@@ -92,11 +96,11 @@ export declare function renderToCanvasAuto(matrix: import('../core/bit-matrix.js
  * Tries WebGPU, then WebGL2, then the 2D context, and returns the name of the
  * one that drew.
  *
- * Each backend is *probed* before the canvas is handed to it. That ordering is
- * deliberate: a canvas can only ever have one kind of context, so committing it
- * to WebGPU and failing afterwards would leave it unable to fall back to
- * WebGL2 or 2D. The probes use throwaway objects of their own, so the caller's
- * canvas is only touched by a backend that is already known to work.
+ * Each backend is *probed* before it is used, and the GPU backends draw on a
+ * scratch canvas that is copied onto `canvas` with 2D `drawImage`. That
+ * ordering is deliberate: a canvas can only ever have one kind of context, so
+ * handing it to WebGPU and failing afterwards would leave it unable to fall
+ * back to WebGL2 or 2D. The caller's canvas only ever gets a 2D context.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  * @param {HTMLCanvasElement | OffscreenCanvas} canvas
