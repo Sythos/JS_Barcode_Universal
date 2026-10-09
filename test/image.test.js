@@ -246,6 +246,17 @@ test('grid sampler: rejects a degenerate transform instead of sampling the origi
   }
 });
 
+test('grid sampler: accepts a valid transform at any uniform scale', () => {
+  const image = new BitMatrix(2, 2);
+  image.set(0, 0);
+  for (const k of [1e200, 1e-200]) {
+    const t = new PerspectiveTransform(k, 0, 0, 0, k, 0, 0, 0, k);
+    assert.equal(sampleGrid(image, 2, 2, t).toString('1', '0'), '10\n00');
+    // The vote outweighs the lone dark pixel, so only check that it does not throw.
+    assert.doesNotThrow(() => sampleGridVoting(image, 2, 2, t));
+  }
+});
+
 test('grid sampler: rejects infinite coordinates', () => {
   const image = new BitMatrix(4, 4);
   image.set(0, 0);

@@ -66,9 +66,19 @@ function toPixel(v, limit) {
  * @throws {NotFoundError}
  */
 function assertUsable(t) {
-  const det = t.a11 * (t.a22 * t.a33 - t.a23 * t.a32)
-    - t.a21 * (t.a12 * t.a33 - t.a13 * t.a32)
-    + t.a31 * (t.a12 * t.a23 - t.a13 * t.a22);
+  // A homography is defined up to scale: normalize first so a huge or tiny
+  // uniform scale cannot overflow or underflow the determinant.
+  const s = Math.max(
+    Math.abs(t.a11), Math.abs(t.a21), Math.abs(t.a31),
+    Math.abs(t.a12), Math.abs(t.a22), Math.abs(t.a32),
+    Math.abs(t.a13), Math.abs(t.a23), Math.abs(t.a33)
+  );
+  if (!Number.isFinite(s) || s === 0) {
+    throw new NotFoundError('Sampling transform is degenerate');
+  }
+  const det = (t.a11 / s) * ((t.a22 / s) * (t.a33 / s) - (t.a23 / s) * (t.a32 / s))
+    - (t.a21 / s) * ((t.a12 / s) * (t.a33 / s) - (t.a13 / s) * (t.a32 / s))
+    + (t.a31 / s) * ((t.a12 / s) * (t.a23 / s) - (t.a13 / s) * (t.a22 / s));
   if (!Number.isFinite(det) || det === 0) {
     throw new NotFoundError('Sampling transform is degenerate');
   }
