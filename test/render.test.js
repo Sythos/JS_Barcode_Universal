@@ -800,6 +800,17 @@ test('auto: a working WebGL2 scratch canvas is copied onto the destination', asy
   assert.ok(dest.log.every((type) => type === '2d'), 'destination only ever gets a 2D context');
 });
 
+test('auto: a destination already holding a WebGL2 context is drawn on directly', async () => {
+  const { renderToCanvasAuto } = await import('../src/js/render/index.js');
+  const dest = mockCanvas((type) => (type === 'webgl2' ? mockGl({ broken: false }) : null));
+  dest.getContext('webgl2');
+
+  const result = await withBrowserGlobals(webglGlobals(false), () => renderToCanvasAuto(SAMPLE, dest));
+
+  assert.deepEqual(result, { backend: 'webgl2' });
+  assert.equal(dest.kind, 'webgl2');
+});
+
 test('auto async: a WebGPU configure failure falls back to WebGL2, then to 2D', async () => {
   const { renderToCanvasAutoAsync } = await import('../src/js/render/index.js');
   const scratchCanvases = [];

@@ -104,17 +104,37 @@ function transferToCanvas(scratch, canvas) {
     }
 }
 /**
+ * Can the destination still hand out a 2D context?
+ *
+ * It cannot if the caller already initialised it for WebGL or WebGPU. Such a
+ * canvas cannot receive a copy, so the GPU backend has to draw on it directly.
+ *
+ * @param {HTMLCanvasElement | OffscreenCanvas} canvas
+ * @returns {boolean}
+ */
+function hasCanvas2d(canvas) {
+    try {
+        return Boolean(canvas.getContext('2d'));
+    }
+    catch {
+        return false;
+    }
+}
+/**
  * Draw with a GPU backend on a scratch canvas, then copy the result over.
  *
  * Whatever the GPU backend does — take a context, fail halfway through shader,
  * pipeline or configure steps — only the scratch canvas is affected, so the
- * destination can still be drawn on by the next backend.
+ * destination can still be drawn on by the next backend. A destination that
+ * already holds a GPU context is drawn on directly instead.
  *
  * @param {HTMLCanvasElement | OffscreenCanvas} canvas
  * @param {(scratch: HTMLCanvasElement | OffscreenCanvas) => boolean} draw
  * @returns {boolean}
  */
 function drawViaScratch(canvas, draw) {
+    if (!hasCanvas2d(canvas))
+        return draw(canvas);
     const scratch = createScratchCanvas();
     if (!scratch)
         return false;
@@ -133,6 +153,8 @@ function drawViaScratch(canvas, draw) {
  * @returns {Promise<boolean>}
  */
 async function drawViaScratchAsync(canvas, draw) {
+    if (!hasCanvas2d(canvas))
+        return draw(canvas);
     const scratch = createScratchCanvas();
     if (!scratch)
         return false;
