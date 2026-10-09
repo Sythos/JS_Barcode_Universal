@@ -156,10 +156,21 @@ export function normalizeOptions(matrix, options = {}) {
  * Supports the forms a barcode actually needs: #rgb, #rgba, #rrggbb,
  * #rrggbbaa, rgb(), rgba(), plus 'none' and 'transparent'.
  *
+ * Channels and alpha are rounded and clamped to 0-255, so every output
+ * backend sees the same bytes. Anything unrecognised, incomplete or
+ * non-numeric falls back to opaque black rather than throwing, so an unusual
+ * colour never costs someone a barcode.
+ *
  * @param {string} colour
  * @returns {[number, number, number, number]}
  */
 export function parseColor(colour) {
+  const rgba = parseRawColor(colour);
+  if (!rgba || !rgba.every(Number.isFinite)) return [0, 0, 0, 255];
+  return rgba.map((c) => Math.min(255, Math.max(0, Math.round(c))));
+}
+
+function parseRawColor(colour) {
   const value = String(colour).trim().toLowerCase();
 
   if (value === 'none' || value === 'transparent') return [0, 0, 0, 0];
@@ -196,6 +207,7 @@ export function parseColor(colour) {
   const fn = value.match(/^rgba?\(([^)]+)\)$/);
   if (fn) {
     const parts = fn[1].split(/[,/\s]+/).filter(Boolean);
+    if (parts.length < 3) return null;
     const channel = (s) => (s.endsWith('%')
       ? Math.round((parseFloat(s) / 100) * 255)
       : Math.round(parseFloat(s)));
@@ -211,7 +223,5 @@ export function parseColor(colour) {
     return [r, g, b, a];
   }
 
-  // Unrecognised: fall back to opaque black rather than throwing, so an
-  // unusual colour never costs someone a barcode.
-  return [0, 0, 0, 255];
+  return null;
 }
