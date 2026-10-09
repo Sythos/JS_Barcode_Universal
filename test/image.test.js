@@ -40,8 +40,9 @@ import assert from 'node:assert/strict';
 import { LuminanceSource } from '../src/js/image/luminance.js';
 import { binarizeGlobal, binarizeHybrid, binarize } from '../src/js/image/binarizer.js';
 import { PerspectiveTransform } from '../src/js/image/perspective.js';
-import { sampleGrid, sampleQuad } from '../src/js/image/grid-sampler.js';
+import { sampleGrid, sampleGridVoting, sampleQuad } from '../src/js/image/grid-sampler.js';
 import { BitMatrix } from '../src/js/core/bit-matrix.js';
+import { NotFoundError } from '../src/js/core/errors.js';
 
 /**
  * Render a BitMatrix to RGBA at a given scale, optionally over a lighting
@@ -233,4 +234,70 @@ test('grid sampler: reports escape instead of reading out of bounds', () => {
   assert.throws(() => sampleQuad(bits, 4, [
     { x: 0, y: 0 }, { x: 500, y: 0 }, { x: 500, y: 500 }, { x: 0, y: 500 },
   ]));
+});
+
+test('grid sampler: rejects a degenerate transform instead of sampling the origin', () => {
+  const zero = new PerspectiveTransform(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  for (const originDark of [true, false]) {
+    const image = new BitMatrix(2, 2);
+    if (originDark) image.set(0, 0);
+    assert.throws(() => sampleGrid(image, 2, 2, zero), NotFoundError);
+    assert.throws(() => sampleGridVoting(image, 2, 2, zero), NotFoundError);
+  }
+});
+
+test('grid sampler: accepts a valid transform at any uniform scale', () => {
+  const image = new BitMatrix(2, 2);
+  image.set(0, 0);
+  for (const k of [1e200, 1e-200]) {
+    const t = new PerspectiveTransform(k, 0, 0, 0, k, 0, 0, 0, k);
+    assert.equal(sampleGrid(image, 2, 2, t).toString('1', '0'), '10\n00');
+    // The vote outweighs the lone dark pixel, so only check that it does not throw.
+    assert.doesNotThrow(() => sampleGridVoting(image, 2, 2, t));
+  }
+});
+
+test('grid sampler: rejects a rank-deficient transform despite rounding', () => {
+  // Third row is the sum of the first two, so the matrix is singular.
+  const t = new PerspectiveTransform(5, 97, 102, 60, 98, 158, 54, 70, 124);
+  const image = new BitMatrix(500, 500);
+  assert.throws(() => sampleGrid(image, 2, 2, t), NotFoundError);
+  assert.throws(() => sampleGridVoting(image, 2, 2, t), NotFoundError);
+});
+
+test('grid sampler: rejects infinite coordinates', () => {
+  const image = new BitMatrix(4, 4);
+  image.set(0, 0);
+  for (const v of [Infinity, -Infinity]) {
+    const t = new PerspectiveTransform(1, 0, v, 0, 1, v, 0, 0, 1);
+    assert.throws(() => sampleGrid(image, 2, 2, t), NotFoundError);
+    assert.throws(() => sampleGridVoting(image, 2, 2, t), NotFoundError);
+  }
+});
+
+test('grid sampler: coordinates that wrap through a 32-bit cast are rejected', () => {
+  const image = new BitMatrix(4, 4);
+  const t = new PerspectiveTransform(1, 0, 2 ** 32, 0, 1, 2 ** 32, 0, 0, 1);
+  assert.throws(() => sampleGrid(image, 1, 1, t), NotFoundError);
+  assert.throws(() => sampleGridVoting(image, 1, 1, t), NotFoundError);
+});
+
+test('grid sampler: only coordinates within one pixel outside the image are nudged', () => {
+  const image = new BitMatrix(4, 4);
+  image.set(0, 0);
+  // Translation: the single module centre (0.5, 0.5) lands on (x + 0.5, y + 0.5).
+  const at = (x, y) => new PerspectiveTransform(1, 0, x, 0, 1, y, 0, 0, 1);
+  assert.equal(sampleGrid(image, 1, 1, at(-1, -1)).get(0, 0), true);
+  assert.throws(() => sampleGrid(image, 1, 1, at(-1.5, 0)), NotFoundError);
+  assert.throws(() => sampleGrid(image, 1, 1, at(3.5, 0)), NotFoundError);
+});
+
+test('grid sampler: collinear or repeated corners fail cleanly', () => {
+  const image = new BitMatrix(10, 10);
+  image.set(0, 0);
+  const same = { x: 3, y: 3 };
+  assert.throws(() => sampleQuad(image, 4, [same, same, same, same]), NotFoundError);
+  assert.throws(() => sampleQuad(image, 4, [same, same, same, same], true), NotFoundError);
+  const line = [{ x: 0, y: 0 }, { x: 3, y: 3 }, { x: 6, y: 6 }, { x: 9, y: 9 }];
+  assert.throws(() => sampleQuad(image, 4, line), NotFoundError);
 });

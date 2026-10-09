@@ -44,6 +44,55 @@ import { NotFoundError } from '../core/errors.js';
 import { PerspectiveTransform } from './perspective.js';
 
 /**
+ * Truncate an image coordinate to a pixel index, or return -1 if it is unusable.
+ *
+ * NaN and infinities are rejected before any integer conversion: `| 0` would
+ * turn them into 0 and silently sample the origin. Values in (-1, 0) are
+ * deliberately truncated to pixel 0; anything further outside is rejected.
+ *
+ * @param {number} v
+ * @param {number} limit Image size along this axis.
+ * @returns {number}
+ */
+function toPixel(v, limit) {
+  return v > -1 && v < limit ? v | 0 : -1;
+}
+
+/**
+ * Reject transforms that cannot map a grid onto an image: non-finite or
+ * singular matrices (e.g. all four quad corners on one point).
+ *
+ * @param {PerspectiveTransform} t
+ * @throws {NotFoundError}
+ */
+function assertUsable(t) {
+  // Scaling rows or columns does not change whether a matrix is singular, and
+  // a homography is defined up to scale anyway. Scale every column and then
+  // every row to unit length, so the determinant is neither swamped by large
+  // coefficients nor lost to rounding, then compare it with a tolerance
+  // instead of exact zero. Zero or non-finite lines turn into NaN and fail.
+  const m = [
+    [t.a11, t.a21, t.a31],
+    [t.a12, t.a22, t.a32],
+    [t.a13, t.a23, t.a33],
+  ];
+  for (let c = 0; c < 3; c++) {
+    const n = Math.hypot(m[0][c], m[1][c], m[2][c]);
+    for (let r = 0; r < 3; r++) m[r][c] /= n;
+  }
+  for (let r = 0; r < 3; r++) {
+    const n = Math.hypot(m[r][0], m[r][1], m[r][2]);
+    for (let c = 0; c < 3; c++) m[r][c] /= n;
+  }
+  const det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+    - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+    + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (!(Math.abs(det) > 1e-12)) {
+    throw new NotFoundError('Sampling transform is degenerate');
+  }
+}
+
+/**
  * Sample a `dimension` x `dimension` grid (or `width` x `height`).
  *
  * @param {BitMatrix} image Binarized source image.
@@ -54,6 +103,7 @@ import { PerspectiveTransform } from './perspective.js';
  * @throws {NotFoundError} If the grid falls outside the image.
  */
 export function sampleGrid(image, width, height, transform) {
+  assertUsable(transform);
   const out = new BitMatrix(width, height);
   const points = new Float32Array(width * 2);
 
@@ -67,9 +117,9 @@ export function sampleGrid(image, width, height, transform) {
     transform.transform(points);
 
     for (let x = 0; x < width; x++) {
-      const px = points[x * 2] | 0;
-      const py = points[x * 2 + 1] | 0;
-      if (px < 0 || py < 0 || px >= image.width || py >= image.height) {
+      const px = toPixel(points[x * 2], image.width);
+      const py = toPixel(points[x * 2 + 1], image.height);
+      if (px < 0 || py < 0) {
         throw new NotFoundError(
           `Sampling grid escapes the image at module (${x}, ${y})`
         );
@@ -95,6 +145,7 @@ export function sampleGrid(image, width, height, transform) {
  * @returns {BitMatrix}
  */
 export function sampleGridVoting(image, width, height, transform) {
+  assertUsable(transform);
   const out = new BitMatrix(width, height);
 
   // Spacing between module centres, measured in image pixels, so the vote
@@ -105,15 +156,18 @@ export function sampleGridVoting(image, width, height, transform) {
   const p2 = transform.transformPoint(0.5, 1.5);
   const stepX = Math.hypot(p1.x - p0.x, p1.y - p0.y);
   const stepY = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+  if (!Number.isFinite(stepX) || !Number.isFinite(stepY)) {
+    throw new NotFoundError('Sampling transform is degenerate');
+  }
   const rx = Math.max(1, Math.round(stepX / 4));
   const ry = Math.max(1, Math.round(stepY / 4));
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const c = transform.transformPoint(x + 0.5, y + 0.5);
-      const cx = c.x | 0;
-      const cy = c.y | 0;
-      if (cx < 0 || cy < 0 || cx >= image.width || cy >= image.height) {
+      const cx = toPixel(c.x, image.width);
+      const cy = toPixel(c.y, image.height);
+      if (cx < 0 || cy < 0) {
         throw new NotFoundError(
           `Sampling grid escapes the image at module (${x}, ${y})`
         );
