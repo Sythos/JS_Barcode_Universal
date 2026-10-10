@@ -36,6 +36,25 @@ const decoded = decodeQR(matrix);
 console.log(decoded.text);
 ```
 
+### FNC1 separators when reading
+
+The reader retains the FNC1 mode from the symbol. With FNC1 active, a single
+`%` in an Alphanumeric segment becomes the group separator, character code 29
+(`\u001D`). An escaped pair `%%` becomes one literal `%`. Without FNC1, percent
+characters remain unchanged. The reader does not infer FNC1 from the payload.
+
+Escapes apply within each Alphanumeric segment. A percent at the end of one
+segment and a percent at the start of the next are two separate separators,
+not an escaped pair. Byte segments retain their text and raw bytes; the FNC1
+rule does not replace their percent characters. Numeric and Kanji decoding
+also keep their existing behavior. ECI changes do not clear the FNC1 state.
+
+FNC1 first position activates the GS1 separator rule. FNC1 second position
+also activates the rule, and the reader consumes its eight-bit application
+indicator. The indicator is not appended to `text` and is not exposed as
+metadata. This fix does not validate GS1 Application Identifiers or add a
+GS1 QR writer option. `encodeQR()` still creates ordinary QR payloads.
+
 ### Byte text and ECI
 
 The writer uses ECI 3 for non-ASCII ISO-8859-1 byte text and ECI 26 for UTF-8

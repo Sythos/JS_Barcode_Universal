@@ -432,6 +432,7 @@ function parseSegments(data, version, charset) {
   const rawBytes = [];
   /** @type {number | null} */
   let eci = null;
+  let fnc1 = false;
 
   // A symbol whose payload ends exactly on a codeword boundary has no room for
   // a terminator, so running out of bits is a normal end, not an error.
@@ -444,9 +445,13 @@ function parseSegments(data, version, charset) {
       continue;
     }
 
-    if (mode === MODE.FNC1_FIRST) continue;
+    if (mode === MODE.FNC1_FIRST) {
+      fnc1 = true;
+      continue;
+    }
     if (mode === MODE.FNC1_SECOND) {
       reader.read(8); // application indicator
+      fnc1 = true;
       continue;
     }
     if (mode === MODE.STRUCTURED_APPEND) {
@@ -482,18 +487,21 @@ function parseSegments(data, version, charset) {
       }
 
       case MODE.ALPHANUMERIC: {
+        let segment = '';
         let i = 0;
         while (i + 2 <= count) {
           const pair = reader.read(11);
           if (pair >= 45 * 45) throw new FormatError(`QR: alphanumeric pair ${pair} out of range`);
-          text += ALPHANUMERIC_CHARS[Math.floor(pair / 45)] + ALPHANUMERIC_CHARS[pair % 45];
+          segment += ALPHANUMERIC_CHARS[Math.floor(pair / 45)] + ALPHANUMERIC_CHARS[pair % 45];
           i += 2;
         }
         if (i < count) {
           const single = reader.read(6);
           if (single >= 45) throw new FormatError(`QR: alphanumeric value ${single} out of range`);
-          text += ALPHANUMERIC_CHARS[single];
+          segment += ALPHANUMERIC_CHARS[single];
         }
+        // Percent escapes apply within this segment, never to earlier data.
+        text += fnc1 ? segment.replace(/%%|%/g, (value) => value === '%%' ? '%' : '\x1d') : segment;
         break;
       }
 

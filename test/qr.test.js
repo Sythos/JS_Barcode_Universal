@@ -456,6 +456,113 @@ test('qr: no-ECI compatibility is explicit and does not change raw bytes', () =>
   }
 });
 
+function fnc1Fixture(parts, position = 'first', applicationIndicator = 0) {
+  const writer = new BitWriter();
+  if (position === 'first') writer.put(5, 4);
+  if (position === 'second') { writer.put(9, 4); writer.put(applicationIndicator, 8); }
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+  for (const { mode, text } of parts) {
+    if (mode === 'eci') { writer.put(7, 4); writer.put(Number(text), 8); continue; }
+    if (mode === 'byte') {
+      writer.put(4, 4);
+      writer.put(text.length, 8);
+      writer.putBytes(Uint8Array.from(text, (char) => char.charCodeAt(0)));
+    } else if (mode === 'numeric') {
+      writer.put(1, 4);
+      writer.put(text.length, 10);
+      for (let i = 0; i < text.length; i += 3) {
+        const group = text.slice(i, i + 3);
+        writer.put(Number(group), group.length === 3 ? 10 : group.length === 2 ? 7 : 4);
+      }
+    } else {
+      writer.put(2, 4);
+      writer.put(text.length, 9);
+      for (let i = 0; i < text.length; i += 2) {
+        const first = alphabet.indexOf(text[i]);
+        if (i + 1 < text.length) writer.put(first * 45 + alphabet.indexOf(text[i + 1]), 11);
+        else writer.put(first, 6);
+      }
+    }
+  }
+  assert.ok(writer.length <= 268, 'fixture must leave four terminator bits');
+  writer.put(0, 4);
+  writer.padToByte();
+  const raw = writer.toBytes();
+  // V2-L has one block: 34 data codewords and 10 error-correction codewords.
+  const data = new Uint8Array(34);
+  data.set(raw);
+  for (let i = raw.length; i < data.length; i++) data[i] = (i - raw.length) % 2 ? 0x11 : 0xec;
+  const codewords = [...data, ...rsEncode(data, 10, GF256_QR)];
+  const matrix = encodeQR('FIXTURE', { version: 2, ecc: 'L', mask: 0 });
+  const order = dataModuleOrder(2);
+  for (let bit = 0; bit < order.length / 2; bit++) {
+    const x = order[bit * 2], y = order[bit * 2 + 1];
+    const dark = bit < codewords.length * 8 && Boolean((codewords[bit >> 3] >> (7 - (bit & 7))) & 1);
+    matrix.setValue(x, y, dark !== maskBit(0, x, y));
+  }
+  return matrix;
+}
+
+test('qr: FNC1 interprets only alphanumeric percent escapes', () => {
+  for (const position of ['first', 'second']) {
+    for (const [input, expected] of [
+      ['ABC%DEF', 'ABC\x1dDEF'], ['%', '\x1d'], ['%%', '%'],
+      ['%%%', '%\x1d'], ['%%%%', '%%'], ['%%%%%', '%%\x1d'],
+      ['%A%', '\x1dA\x1d'], ['A%%B%C', 'A%B\x1dC'],
+    ]) {
+      const result = decodeQR(fnc1Fixture([{ mode: 'alphanumeric', text: input }], position, 165));
+      assert.equal(result.text, expected, `${position}: ${input}`);
+      assert.equal(result.corrections, 0);
+      assert.equal(result.bytes.length, 0);
+      assert.equal(decodeQR(fnc1Fixture([{ mode: 'alphanumeric', text: input }], 'none')).text, input);
+    }
+  }
+});
+
+test('qr: FNC1 state persists across modes but percent pairs stay within segments', () => {
+  for (const position of ['first', 'second']) {
+    const split = decodeQR(fnc1Fixture([
+      { mode: 'alphanumeric', text: 'A%' },
+      { mode: 'alphanumeric', text: '%B' },
+    ], position));
+    assert.equal(split.text, 'A\x1d\x1dB');
+    const mixed = decodeQR(fnc1Fixture([
+      { mode: 'alphanumeric', text: 'ABC%' },
+      { mode: 'eci', text: '3' },
+      { mode: 'byte', text: '%\x1d' },
+      { mode: 'numeric', text: '123' },
+      { mode: 'alphanumeric', text: '%%Z%' },
+    ], position));
+    assert.equal(mixed.text, 'ABC\x1d%\x1d123%Z\x1d');
+    assert.deepEqual([...mixed.bytes], [37, 29]);
+    assert.equal(mixed.corrections, 0);
+  }
+});
+
+test('qr: FNC1 second-position application indicator is consumed, not payload text', () => {
+  for (const indicator of [0, 1, 99, 165, 255]) {
+    const matrix = fnc1Fixture([{ mode: 'alphanumeric', text: 'ABC%DEF' }], 'second', indicator);
+    assert.equal(decodeQR(matrix).text, 'ABC\x1dDEF');
+  }
+  const ordinary = decodeQR(encodeQR('ABC%DEF%%'));
+  assert.equal(ordinary.text, 'ABC%DEF%%');
+});
+
+test('qr: FNC1 separators survive detector and browser bundle paths', async () => {
+  const esm = await import('../bundle/sythos-barcode.esm.js');
+  await import('../bundle/sythos-barcode.js');
+  for (const position of ['first', 'second']) {
+    const matrix = fnc1Fixture([{ mode: 'alphanumeric', text: 'ABC%DEF%%' }], position, 165);
+    const image = toImageData(matrix.withMargin(4), 4);
+    const found = detectAndDecodeQR(binarize(LuminanceSource.fromImageData(image)));
+    assert.equal(found[0]?.text, 'ABC\x1dDEF%');
+    for (const sdk of [esm, globalThis.SythosBarcode]) {
+      assert.equal(sdk.decodeQR(matrix).text, 'ABC\x1dDEF%');
+      assert.equal(sdk.decode(image, { formats: ['qr'] })[0]?.text, 'ABC\x1dDEF%');
+    }
+  }
+});
+
 test('qr: shift_jis 13-bit packing round-trips across both ranges', () => {
   // The two Shift_JIS ranges use different offsets, and the boundary between
   // them is the easy thing to fumble.

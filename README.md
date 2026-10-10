@@ -1089,6 +1089,12 @@ when the source encoding is known. ECI takes precedence; raw `bytes` stay unchan
 See [QR byte text and ECI](https://sythos.github.io/JS_Barcode_Universal/formats/qr-family/#byte-text-and-eci)
 for ambiguity, capacity and fallback rules.
 
+The QR reader honors FNC1 mode indicators: in Alphanumeric segments, `%` becomes
+the group separator (`\u001D`) and `%%` becomes a literal percent. Byte segments
+and ordinary QR text stay unchanged. The second-position application indicator
+is consumed but is not returned as metadata. This does not add a GS1 QR writer
+option or GS1 Application Identifier validation.
+
 ```js
 encode(text, options?) → BitMatrix
 ```
