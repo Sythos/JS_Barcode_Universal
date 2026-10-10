@@ -84,3 +84,22 @@ test('Aztec matrix decoder repairs a damaged Compact data codeword', () => {
   assert.equal(decoded.text, 'HELLO');
   assert.equal(decoded.corrections, 1);
 });
+
+test('Aztec text falls back to exact ISO-8859-1 for data that is not UTF-8', () => {
+  for (let code = 0x80; code <= 0x9f; code++) {
+    const result = decodeAztec(encodeAztec(Uint8Array.of(code)));
+    assert.deepEqual([...result.bytes], [code]);
+    assert.equal(result.text, String.fromCharCode(code), `byte ${code}`);
+  }
+  const all = Uint8Array.from({ length: 256 }, (_, i) => i);
+  const result = decodeAztec(encodeAztec(all));
+  assert.deepEqual([...result.bytes], [...all]);
+  assert.equal(result.text, String.fromCharCode(...all));
+});
+
+test('Aztec text keeps UTF-8 interpretation for valid UTF-8 data', () => {
+  const bytes = new TextEncoder().encode('é€');
+  const result = decodeAztec(encodeAztec(bytes));
+  assert.deepEqual([...result.bytes], [...bytes]);
+  assert.equal(result.text, 'é€');
+});
