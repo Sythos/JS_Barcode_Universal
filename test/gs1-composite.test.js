@@ -177,6 +177,15 @@ test('GS1 Composite reads rendered Expanded images with a large gap', () => {
   assert.equal(found.separatorGap, 6);
 });
 
+test('GS1 Composite reads a component with one blank scanline without metadata', () => {
+  const matrix = encodeGS1Composite({ ...input('databar14'), rowHeight: 7, separatorGap: 2 });
+  const copy = withoutMetadata(matrix);
+  for (let x = 0; x < copy.width; x++) if (copy.get(x, 1)) copy.flip(x, 1);
+  const decoded = detectGS1Composite(copy);
+  assert.ok(decoded);
+  assert.equal(decoded.text, '010950600013435217260101');
+});
+
 test('GS1 Composite rejects damaged separators without metadata for tall rows', () => {
   const matrix = encodeGS1Composite({ ...input('databar-expanded'), rowHeight: 7, separatorGap: 2 });
   const copy = withoutMetadata(matrix);

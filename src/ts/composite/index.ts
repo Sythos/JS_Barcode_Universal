@@ -433,38 +433,29 @@ function attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY,
   }
 }
 
-// The component ends at the first blank row: every MicroPDF417 row has dark
-// modules. The blank run after it is the separator. Both heights come from the
-// image, so the search does not depend on the writer option ranges.
-function deriveSeparator(image, canvasX, canvasWidth, topY, maxY, scale) {
-  if (canvasX + canvasWidth > image.width || maxY >= image.height) return null;
-  let y = topY;
-  while (y <= maxY && hasDark(image, canvasX, y, canvasWidth, 1)) y++;
-  const componentHeight = y - topY;
-  if (componentHeight < 1) return null;
-  const separatorStart = y;
-  while (y <= maxY && !hasDark(image, canvasX, y, canvasWidth, 1)) y++;
-  const separatorHeight = y - separatorStart;
-  if (y > maxY || separatorHeight % scale
-      || separatorHeight < scale || separatorHeight > MAX_SEPARATOR_GAP * scale) return null;
-  return { componentHeight, gap: separatorHeight / scale };
-}
-
-function derivedRowHeight(variant, componentHeight, scale) {
-  const rows = micropdf417.microPdf417VariantByNumber(variant).rows;
-  if (componentHeight % (rows * scale)) return null;
-  const rowHeight = componentHeight / (rows * scale);
-  return rowHeight >= MIN_ROW_HEIGHT && rowHeight <= MAX_ROW_HEIGHT ? rowHeight : null;
-}
-
+// Each candidate row height gives a component height. The blank run below that
+// height gives the separator gap. A blank scanline inside the component does
+// not end the search: attemptCandidate validates the separator and both parts.
 function searchLayout(image, host, scale, canvasX, topY, canvasWidth, maxY) {
-  const separator = deriveSeparator(image, canvasX, canvasWidth, topY, maxY, scale);
-  if (!separator) return null;
+  if (canvasX + canvasWidth > image.width || maxY >= image.height) return null;
+  const blankRows = new Map();
+  const isBlank = (y) => {
+    if (!blankRows.has(y)) blankRows.set(y, !hasDark(image, canvasX, y, canvasWidth, 1));
+    return blankRows.get(y);
+  };
   for (const variant of ALL_COMPONENT_VARIANTS) {
-    const rowHeight = derivedRowHeight(variant, separator.componentHeight, scale);
-    if (rowHeight === null) continue;
-    const found = attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY, separator.gap, canvasWidth, { maxY });
-    if (found) return found;
+    const rows = micropdf417.microPdf417VariantByNumber(variant).rows;
+    for (let rowHeight = MIN_ROW_HEIGHT; rowHeight <= MAX_ROW_HEIGHT; rowHeight++) {
+      const separatorY = topY + rows * rowHeight * scale;
+      if (separatorY > maxY) break;
+      if (!isBlank(separatorY)) continue;
+      let end = separatorY;
+      while (end <= maxY && end - separatorY <= MAX_SEPARATOR_GAP * scale && isBlank(end)) end++;
+      const height = end - separatorY;
+      if (end > maxY || height % scale || height > MAX_SEPARATOR_GAP * scale) continue;
+      const found = attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY, height / scale, canvasWidth, { maxY });
+      if (found) return found;
+    }
   }
   return null;
 }
