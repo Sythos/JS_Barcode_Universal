@@ -6027,20 +6027,20 @@ function decodeUPCE(row) {
     const parityStr = [];
     for (let i = 0; i < 6; i++)
         parityStr.push((parityBits >> (5 - i)) & 1 ? 'E' : 'O');
-    const check = UPCE_PARITY.indexOf(parityStr.join(''));
+    let system = 0;
+    let check = UPCE_PARITY.indexOf(parityStr.join(''));
+    if (check < 0) {
+        system = 1;
+        check = UPCE_PARITY.indexOf(parityStr.map((value) => value === 'E' ? 'O' : 'E').join(''));
+    }
     if (check < 0)
         return null;
-    // The parity pattern carries the check digit and nothing else, so on its own
-    // it says nothing about the six digits it was read alongside: any run whose
-    // parities happen to spell one of the ten patterns would be accepted. What
-    // ties the two together is the check digit itself — expand the body to the
-    // UPC-A it stands for and confirm the digits produce the check digit the
-    // parity claimed. Six digits scraped out of a neighbouring symbol pass the
-    // parity test one time in ten and this one almost never.
+    // Parity identifies the number system and check digit, not payload validity.
+    // Expand the body with that number system and verify the UPC-A checksum.
     const body = digits.join('');
-    if (ean13CheckDigit(upceToUpcaBody(0, body)) !== check)
+    if (ean13CheckDigit(upceToUpcaBody(system, body)) !== check)
         return null;
-    return attachEANAddon({ format: 'upce', text: '0' + body + String(check) }, row, trailing.end);
+    return attachEANAddon({ format: 'upce', text: String(system) + body + String(check) }, row, trailing.end);
 }
 /* ------------------------------------------------------------------ *
  * Guard finding

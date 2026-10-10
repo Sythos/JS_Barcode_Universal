@@ -38,7 +38,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { validateTables } from '../src/js/oned/patterns.js';
+import { validateTables, EAN_L, EAN_G, UPCE_PARITY } from '../src/js/oned/patterns.js';
+import { composeEANAddon } from '../src/js/oned/addons.js';
 import {
   encodeEAN13, encodeEAN8, encodeUPCA, encodeUPCE, encodeISBN, encodeJAN,
   encodeCode39, encodeCode93, encodeCode128,
@@ -175,6 +176,60 @@ test('UPC-E preserves number-system, length and numeric input validation', () =>
   assert.throws(() => encodeUPCE('12345'), EncodeError);
   assert.throws(() => encodeUPCE('012345650'), EncodeError);
   assert.throws(() => encodeUPCE('0123456X'), EncodeError);
+});
+
+function upceFixture(system, body, parity) {
+  let modules = '101';
+  for (let i = 0; i < 6; i++) {
+    const even = system === 0 ? parity[i] === 'E' : parity[i] === 'O';
+    modules += (even ? EAN_G : EAN_L)[Number(body[i])];
+  }
+  modules += '010101';
+  const matrix = new BitMatrix(modules.length, 1);
+  for (let x = 0; x < modules.length; x++) if (modules[x] === '1') matrix.set(x, 0);
+  return matrix;
+}
+
+test('UPC-E reads both number systems and every expansion branch', () => {
+  for (const system of [0, 1]) {
+    for (let last = 0; last <= 9; last++) {
+      const body = '12345' + last;
+      const expanded = last <= 2 ? '12' + last + '0000345'
+        : last === 3 ? '1230000045'
+          : last === 4 ? '1234000005' : '123450000' + last;
+      const text = String(system) + body + ean13CheckDigit(String(system) + expanded);
+      for (const scale of [1, 3, 5]) {
+        const results = decodeOneD(stretch(encodeUPCE(text), scale), { formats: ['upce'] });
+        assert.equal(results[0]?.text, text, `system ${system}, last ${last}, scale ${scale}`);
+      }
+    }
+  }
+  for (const [system, text, parity] of [[0, '01234565', 'EOOEEO'], [1, '11234562', 'EEOOEO']]) {
+    assert.equal(decodeOneD(stretch(upceFixture(system, '123456', parity)), { formats: ['upce'] })[0]?.text, text);
+  }
+});
+
+test('UPC-E rejects incorrect checksum parity, invalid parity and missing end guards', () => {
+  for (const [system, check] of [[0, 5], [1, 2]]) {
+    for (let digit = 0; digit <= 9; digit++) {
+      if (digit === check) continue;
+      assert.deepEqual(decodeOneD(stretch(upceFixture(system, '123456', UPCE_PARITY[digit])), { formats: ['upce'] }), []);
+    }
+    assert.deepEqual(decodeOneD(stretch(upceFixture(system, '123456', 'OOOOOO')), { formats: ['upce'] }), []);
+    const damaged = encodeUPCE(system === 0 ? '01234565' : '11234562');
+    for (let x = 45; x < damaged.width; x++) damaged.unset(x, 0);
+    assert.deepEqual(decodeOneD(stretch(damaged), { formats: ['upce'] }), []);
+  }
+});
+
+test('UPC-E retains EAN-2 and EAN-5 supplements for both number systems', () => {
+  for (const text of ['01234565', '11234562']) {
+    for (const supplement of ['12', '51234']) {
+      const result = decodeOneD(stretch(composeEANAddon(encodeUPCE(text), supplement)), { formats: ['upce', 'ean2', 'ean5'] })[0];
+      assert.equal(result?.text, text);
+      assert.equal(result?.addon?.text, supplement);
+    }
+  }
 });
 
 test('Code 39 wraps the payload in start/stop characters', () => {
