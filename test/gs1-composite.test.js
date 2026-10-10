@@ -128,6 +128,71 @@ test('GS1 Composite validates metadata bounds, layout and common scale', () => {
   }
 });
 
+function withoutMetadata(source) {
+  const output = new BitMatrix(source.width, source.height);
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) if (source.get(x, y)) output.set(x, y);
+  }
+  return output;
+}
+
+test('GS1 Composite reads every writer row height without metadata', () => {
+  for (const rowHeight of [2, 6, 7, 64]) {
+    for (const moduleScale of [1, 2]) {
+      const matrix = encodeGS1Composite({
+        linear: { format: 'databar14', value: GTIN },
+        data: '(20)23',
+        rowHeight,
+        moduleScale,
+      });
+      const direct = decodeGS1Composite(matrix);
+      for (const copy of [matrix.clone(), withoutMetadata(matrix)]) {
+        const decoded = decodeGS1Composite(copy);
+        assert.equal(decoded.text, direct.text);
+        assert.equal(decoded.componentRowHeight, direct.componentRowHeight);
+        assert.equal(decoded.separatorGap, direct.separatorGap);
+      }
+    }
+  }
+});
+
+test('GS1 Composite reads every writer separator gap without metadata', () => {
+  for (const format of ['databar-expanded', 'databar-limited', 'databar14']) {
+    for (const separatorGap of [1, 2, 3]) {
+      const matrix = encodeGS1Composite({ ...input(format), rowHeight: 9, separatorGap });
+      const decoded = decodeGS1Composite(withoutMetadata(matrix));
+      assert.equal(decoded.text, '010950600013435217260101');
+      assert.equal(decoded.linearFormat, format);
+      assert.equal(decoded.separatorGap, separatorGap);
+    }
+  }
+});
+
+test('GS1 Composite reads rendered Expanded images with a large gap', () => {
+  const image = encodeGS1Composite({ ...input('databar-expanded'), rowHeight: 7, separatorGap: 3 })
+    .withMargin(2).scale(2);
+  const found = detectGS1Composite(image);
+  assert.ok(found);
+  assert.equal(found.moduleSize, 2);
+  assert.equal(found.separatorGap, 6);
+});
+
+test('GS1 Composite reads a component with one blank scanline without metadata', () => {
+  const matrix = encodeGS1Composite({ ...input('databar14'), rowHeight: 7, separatorGap: 2 });
+  const copy = withoutMetadata(matrix);
+  for (let x = 0; x < copy.width; x++) if (copy.get(x, 1)) copy.flip(x, 1);
+  const decoded = detectGS1Composite(copy);
+  assert.ok(decoded);
+  assert.equal(decoded.text, '010950600013435217260101');
+});
+
+test('GS1 Composite rejects damaged separators without metadata for tall rows', () => {
+  const matrix = encodeGS1Composite({ ...input('databar-expanded'), rowHeight: 7, separatorGap: 2 });
+  const copy = withoutMetadata(matrix);
+  copy.flip(10, matrix.gs1composite.linearY - 1);
+  assert.equal(detectGS1Composite(copy), null);
+});
+
 test('root API exposes strict GS1 Composite encode, decode and format registry', () => {
   const listed = listFormats().find(({ id }) => id === 'gs1composite');
   assert.deepEqual(listed, {
