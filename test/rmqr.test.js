@@ -55,3 +55,17 @@ test('rMQR detector rejects unrelated raster', () => {
   const blank = new BitMatrix(139, 17);
   assert.throws(() => detectRMQR(blank), /rMQR/);
 });
+
+test('rMQR explicit ISO-8859-1 returns exact character values for every byte', () => {
+  for (let code = 0; code < 256; code++) {
+    const text = String.fromCharCode(code);
+    const result = decodeRMQR(encodeRMQR(text, { mode: 'byte', charset: 'iso-8859-1' }));
+    assert.equal(result.text.charCodeAt(0), code, `byte ${code}`);
+    assert.equal(result.text.length, 1);
+    assert.deepEqual([...result.bytes], [code]);
+  }
+  const range = String.fromCharCode(...Array.from({ length: 0x20 }, (_, i) => 0x80 + i));
+  const result = decodeRMQR(encodeRMQR(range, { mode: 'byte', charset: 'iso-8859-1' }));
+  assert.equal(result.text, range);
+  assert.notEqual(result.text.charCodeAt(0), 0x20ac);
+});
