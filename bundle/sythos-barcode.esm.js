@@ -26220,6 +26220,9 @@ const COMPONENT_VARIANTS = Object.freeze({
 });
 const ALL_COMPONENT_VARIANTS = Object.freeze([7, 8, 9, 10, 11, 12, 13]);
 const MAX_SCALE = 8;
+const MIN_ROW_HEIGHT = 2;
+const MAX_ROW_HEIGHT = 64;
+const MAX_SEPARATOR_GAP = 3;
 const MAX_DIMENSION = 16777216;
 const MAX_MODULES = 67108864;
 // A short, private marker is part of this bounded profile. It is intentionally
@@ -26408,10 +26411,10 @@ function encodeGS1Composite(input, options = {}) {
         throw new EncodeError('GS1 Composite linear.value is required');
     }
     const data = normalizedGS1Data(input.data);
-    const rowHeight = positiveInteger(input.rowHeight ?? options.rowHeight, 2, 'rowHeight', 64);
-    if (rowHeight < 2)
-        throw new EncodeError('GS1 Composite rowHeight must be at least 2');
-    const separatorGap = positiveInteger(input.separatorGap ?? options.separatorGap, 1, 'separatorGap', 3);
+    const rowHeight = positiveInteger(input.rowHeight ?? options.rowHeight, 2, 'rowHeight', MAX_ROW_HEIGHT);
+    if (rowHeight < MIN_ROW_HEIGHT)
+        throw new EncodeError(`GS1 Composite rowHeight must be at least ${MIN_ROW_HEIGHT}`);
+    const separatorGap = positiveInteger(input.separatorGap ?? options.separatorGap, 1, 'separatorGap', MAX_SEPARATOR_GAP);
     const moduleScale = positiveInteger(input.moduleScale ?? options.moduleScale, 1, 'moduleScale', MAX_SCALE);
     const requestedComponent = input.component ?? options.component ?? 'auto';
     const linearOptions = normalizedLinearOptions(input.linear.options ?? {});
@@ -26542,7 +26545,7 @@ function decodeFromMetadata(matrix) {
     const host = normalizeHost(meta.linearFormat);
     const hostModules = hostWidth(host);
     if (!Number.isSafeInteger(scale) || scale < 1 || scale > MAX_SCALE
-        || !Number.isSafeInteger(gap) || gap < scale || gap > 3 * scale || gap % scale
+        || !Number.isSafeInteger(gap) || gap < scale || gap > MAX_SEPARATOR_GAP * scale || gap % scale
         || meta.width !== matrix.width || meta.height !== matrix.height
         || meta.componentY !== 0 || meta.linearY !== meta.componentHeight + gap
         || meta.linearY + meta.linearHeight !== matrix.height
@@ -26624,11 +26627,54 @@ function attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY,
         return null;
     }
 }
+// The component ends at the first blank row: every MicroPDF417 row has dark
+// modules. The blank run after it is the separator. Both heights come from the
+// image, so the search does not depend on the writer option ranges.
+function deriveSeparator(image, canvasX, canvasWidth, topY, maxY, scale) {
+    if (canvasX + canvasWidth > image.width || maxY >= image.height)
+        return null;
+    let y = topY;
+    while (y <= maxY && hasDark(image, canvasX, y, canvasWidth, 1))
+        y++;
+    const componentHeight = y - topY;
+    if (componentHeight < 1)
+        return null;
+    const separatorStart = y;
+    while (y <= maxY && !hasDark(image, canvasX, y, canvasWidth, 1))
+        y++;
+    const separatorHeight = y - separatorStart;
+    if (y > maxY || separatorHeight % scale
+        || separatorHeight < scale || separatorHeight > MAX_SEPARATOR_GAP * scale)
+        return null;
+    return { componentHeight, gap: separatorHeight / scale };
+}
+function derivedRowHeight(variant, componentHeight, scale) {
+    const rows = micropdf417.microPdf417VariantByNumber(variant).rows;
+    if (componentHeight % (rows * scale))
+        return null;
+    const rowHeight = componentHeight / (rows * scale);
+    return rowHeight >= MIN_ROW_HEIGHT && rowHeight <= MAX_ROW_HEIGHT ? rowHeight : null;
+}
+function searchLayout(image, host, scale, canvasX, topY, canvasWidth, maxY) {
+    const separator = deriveSeparator(image, canvasX, canvasWidth, topY, maxY, scale);
+    if (!separator)
+        return null;
+    for (const variant of ALL_COMPONENT_VARIANTS) {
+        const rowHeight = derivedRowHeight(variant, separator.componentHeight, scale);
+        if (rowHeight === null)
+            continue;
+        const found = attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY, separator.gap, canvasWidth, { maxY });
+        if (found)
+            return found;
+    }
+    return null;
+}
 function fallbackDecode(image) {
     const bounds = image.getBounds?.();
     if (!bounds)
         return null;
     const topY = bounds.y;
+    const maxY = bounds.y + bounds.height - 1;
     for (let scale = 1; scale <= MAX_SCALE; scale++) {
         const xStart = Math.max(0, bounds.x - 2 * scale);
         const xEnd = Math.min(image.width - 1, bounds.x);
@@ -26639,22 +26685,9 @@ function fallbackDecode(image) {
             if (canvasWidth > image.width)
                 continue;
             for (let canvasX = xStart; canvasX <= xEnd; canvasX++) {
-                for (let rowHeight = 2; rowHeight <= 6; rowHeight++) {
-                    for (const variant of ALL_COMPONENT_VARIANTS) {
-                        const found = attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY, 1, canvasWidth, {
-                            maxY: bounds.y + bounds.height - 1,
-                        });
-                        if (found)
-                            return found;
-                        for (const gap of [2, 3]) {
-                            const withGap = attemptCandidate(image, host, variant, rowHeight, scale, canvasX, topY, gap, canvasWidth, {
-                                maxY: bounds.y + bounds.height - 1,
-                            });
-                            if (withGap)
-                                return withGap;
-                        }
-                    }
-                }
+                const found = searchLayout(image, host, scale, canvasX, topY, canvasWidth, maxY);
+                if (found)
+                    return found;
             }
         }
         // Expanded symbols have a payload-dependent width. Their dark bounds are
@@ -26663,15 +26696,9 @@ function fallbackDecode(image) {
             const canvasWidth = bounds.width + delta * scale;
             if (canvasWidth < COMPONENT_WIDTH * scale || canvasWidth > image.width)
                 continue;
-            for (const variant of ALL_COMPONENT_VARIANTS) {
-                for (let rowHeight = 2; rowHeight <= 6; rowHeight++) {
-                    const found = attemptCandidate(image, 'databar-expanded', variant, rowHeight, scale, bounds.x, topY, 1, canvasWidth, {
-                        maxY: bounds.y + bounds.height - 1,
-                    });
-                    if (found)
-                        return found;
-                }
-            }
+            const found = searchLayout(image, 'databar-expanded', scale, bounds.x, topY, canvasWidth, maxY);
+            if (found)
+                return found;
         }
     }
     return null;
