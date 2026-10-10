@@ -9965,9 +9965,10 @@ function charCost(info, i, mode) {
  *
  * @param {CharInfo} info
  * @param {number} version Any version in the band; only the band matters.
- * @returns {Segment[]}
+ * @param {boolean} [withoutEci] Exclude byte characters that require ECI.
+ * @returns {Segment[] | null} Null when the ECI-free path is not available.
  */
-function segmentize(info, version) {
+function segmentize(info, version, withoutEci = false) {
     const n = info.points.length;
     if (n === 0)
         return [{ mode: MODE.BYTE, start: 0, end: 0 }];
@@ -9986,7 +9987,9 @@ function segmentize(info, version) {
     for (let i = 0; i < n; i++) {
         const next = new Array(M);
         for (let m = 0; m < M; m++) {
-            const cc = charCost(info, i, SEARCH_MODES[m]);
+            const requiresEci = SEARCH_MODES[m] === MODE.BYTE &&
+                (info.utf8 || info.points[i].charCodeAt(0) > 0x7f);
+            const cc = withoutEci && requiresEci ? INFEASIBLE : charCost(info, i, SEARCH_MODES[m]);
             if (cc >= INFEASIBLE) {
                 next[m] = INFEASIBLE;
                 from[(i + 1) * M + m] = -1;
@@ -10017,6 +10020,8 @@ function segmentize(info, version) {
         }
     }
     if (bestMode < 0) {
+        if (withoutEci)
+            return null;
         throw new EncodeError('QR: no mode can represent this text');
     }
     // Walk the parent pointers back, collecting mode runs.
@@ -10503,12 +10508,25 @@ function encodeQR(text, options = {}) {
         const [lo, hi] = bands[b];
         if (forcedVersion !== undefined && (forcedVersion < lo || forcedVersion > hi))
             continue;
-        const segments = segmentize(info, lo);
-        const needsEci = segments.some((s) => s.mode === MODE.BYTE &&
+        let segments = segmentize(info, lo);
+        let needsEci = segments.some((s) => s.mode === MODE.BYTE &&
             (utf8 || info.points.slice(s.start, s.end).some((point) => point.charCodeAt(0) > 0x7f)));
         let bits = needsEci ? 12 : 0; // ECI mode indicator plus one designator byte
         for (let s = 0; s < segments.length; s++)
             bits += segmentBits(segments[s], info, lo);
+        // ECI adds a fixed cost only to paths with affected byte characters.
+        // Compare an ECI-free path before selecting a version or rejecting input.
+        if (needsEci) {
+            const alternative = segmentize(info, lo, true);
+            if (alternative) {
+                const alternativeBits = alternative.reduce((total, seg) => total + segmentBits(seg, info, lo), 0);
+                if (alternativeBits < bits) {
+                    segments = alternative;
+                    needsEci = false;
+                    bits = alternativeBits;
+                }
+            }
+        }
         const from = forcedVersion !== undefined ? forcedVersion : lo;
         const to = forcedVersion !== undefined ? forcedVersion : hi;
         for (let v = from; v <= to; v++) {

@@ -384,6 +384,24 @@ test('qr: ECI overhead is included in version selection', () => {
   assert.equal(encodeQR('a'.repeat(17), { ecc: 'L', version: 1 }).width, 21);
 });
 
+test('qr: ECI cost does not exclude a smaller alphanumeric and Kanji path', () => {
+  const text = 'AAAAAAAAA§AAAAAAAAA';
+  for (const charset of ['auto', 'iso-8859-1', 'utf-8']) {
+    for (let mask = 0; mask < 8; mask++) {
+      const result = decodeQR(encodeQR(text, { charset, version: 1, ecc: 'L', mask }));
+      assert.equal(result.text, text);
+      assert.equal(result.version, 1);
+      assert.equal(result.corrections, 0);
+      assert.equal(result.bytes.length, 0);
+    }
+    assert.equal(encodeQR(text, { charset, ecc: 'L' }).width, 21);
+  }
+  assert.throws(() => encodeQR(text, { charset: 'iso-8859-1', kanji: false, version: 1, ecc: 'L' }), EncodeError);
+  const byteResult = decodeQR(encodeQR(text, { charset: 'iso-8859-1', kanji: false, ecc: 'L' }));
+  assert.equal(byteResult.text, text);
+  assert.equal(byteResult.version, 2);
+});
+
 test('qr: no-ECI compatibility is explicit and does not change raw bytes', () => {
   // Fixed no-ECI symbol from the pre-fix writer: byte payload C3 A9, V1-L, mask 0.
   const rows = [
