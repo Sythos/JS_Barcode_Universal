@@ -1096,6 +1096,8 @@ is returned before the payload as two digits (`00`–`99`) or one letter (`A`–
 or `a`–`z`). Invalid indicator values produce `FormatError`. Raw bytes stay
 unchanged; no metadata fields are added. This does not add a GS1 QR writer
 option or GS1 Application Identifier validation.
+FNC1 must occur once, after optional headers and immediately before the first
+data segment. Repeated, late or separated FNC1 headers produce `FormatError`.
 
 ```js
 encode(text, options?) → BitMatrix

@@ -462,6 +462,9 @@ function fnc1Fixture(parts, position = 'first', applicationIndicator = 0) {
   if (position === 'second') { writer.put(9, 4); writer.put(applicationIndicator, 8); }
   const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
   for (const { mode, text } of parts) {
+    if (mode === 'fnc1-first') { writer.put(5, 4); continue; }
+    if (mode === 'fnc1-second') { writer.put(9, 4); writer.put(Number(text), 8); continue; }
+    if (mode === 'structured-append') { writer.put(3, 4); writer.put(0, 16); continue; }
     if (mode === 'eci') { writer.put(7, 4); writer.put(Number(text), 8); continue; }
     if (mode === 'byte') {
       writer.put(4, 4);
@@ -559,6 +562,34 @@ test('qr: FNC1 second-position application indicator prefixes text and rejects i
   }
   const ordinary = decodeQR(encodeQR('ABC%DEF%%'));
   assert.equal(ordinary.text, 'ABC%DEF%%');
+});
+
+test('qr: rejects late, repeated and separated FNC1 headers', async () => {
+  const esm = await import('../bundle/sythos-barcode.esm.js');
+  await import('../bundle/sythos-barcode.js');
+  const data = { mode: 'alphanumeric', text: 'ABC%DEF' };
+  const indicators = [{ mode: 'fnc1-first' }, { mode: 'fnc1-second', text: '165' }];
+  for (const indicator of indicators) {
+    const invalid = [
+      [data, indicator, data],
+      [{ mode: 'byte', text: '' }, indicator, data],
+      [{ mode: 'numeric', text: '123' }, indicator, data],
+      [indicator, { mode: 'eci', text: '3' }, data],
+      [indicator, { mode: 'structured-append' }, data],
+      ...indicators.map((other) => [indicator, other, data]),
+      ...indicators.map((other) => [indicator, data, other, data]),
+    ];
+    for (const parts of invalid) {
+      const matrix = fnc1Fixture(parts, 'none');
+      for (const decoder of [decodeQR, esm.decodeQR, globalThis.SythosBarcode.decodeQR]) {
+        assert.throws(() => decoder(matrix), /QR: FNC1 must/, JSON.stringify(parts));
+      }
+    }
+    const valid = fnc1Fixture([
+      { mode: 'structured-append' }, { mode: 'eci', text: '3' }, indicator, data,
+    ], 'none');
+    assert.equal(decodeQR(valid).text, (indicator.mode === 'fnc1-second' ? 'A' : '') + 'ABC\x1dDEF');
+  }
 });
 
 test('qr: FNC1 separators survive detector and browser bundle paths', async () => {

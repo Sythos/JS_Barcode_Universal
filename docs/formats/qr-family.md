@@ -56,6 +56,10 @@ digits, and values 165–190 or 197–222 become `A`–`Z` or `a`–`z` (ASCII p
 Other values produce `FormatError`. The indicator does not change raw `bytes`
 and is not exposed as metadata. This fix does not validate GS1 Application Identifiers or add a
 GS1 QR writer option. `encodeQR()` still creates ordinary QR payloads.
+FNC1 must occur once, after optional ECI or Structured Append headers and
+immediately before the first data segment. Repeated FNC1, FNC1 after data,
+or a header between FNC1 and the first data segment produces `FormatError`.
+An empty data segment still counts as data. Later ECI changes remain supported.
 
 ### Byte text and ECI
 

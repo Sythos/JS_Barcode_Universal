@@ -10966,12 +10966,19 @@ function parseSegments(data, version, charset) {
     /** @type {number | null} */
     let eci = null;
     let fnc1 = false;
+    let sawData = false;
     // A symbol whose payload ends exactly on a codeword boundary has no room for
     // a terminator, so running out of bits is a normal end, not an error.
     while (reader.available() >= 4) {
         const mode = reader.read(4);
         if (mode === MODE.TERMINATOR)
             break;
+        if ((mode === MODE.FNC1_FIRST || mode === MODE.FNC1_SECOND) && (fnc1 || sawData)) {
+            throw new FormatError('QR: FNC1 must occur once before the first data segment');
+        }
+        if (fnc1 && !sawData && (mode === MODE.ECI || mode === MODE.STRUCTURED_APPEND)) {
+            throw new FormatError('QR: FNC1 must immediately precede the first data segment');
+        }
         if (mode === MODE.ECI) {
             eci = readEciDesignator(reader);
             continue;
@@ -11004,6 +11011,7 @@ function parseSegments(data, version, charset) {
             throw new FormatError(`QR: unsupported mode indicator 0x${mode.toString(16)}`);
         }
         const count = reader.read(width);
+        sawData = true;
         switch (mode) {
             case MODE.NUMERIC: {
                 let i = 0;
