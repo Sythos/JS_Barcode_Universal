@@ -50,9 +50,11 @@ rule does not replace their percent characters. Numeric and Kanji decoding
 also keep their existing behavior. ECI changes do not clear the FNC1 state.
 
 FNC1 first position activates the GS1 separator rule. FNC1 second position
-also activates the rule, and the reader consumes its eight-bit application
-indicator. The indicator is not appended to `text` and is not exposed as
-metadata. This fix does not validate GS1 Application Identifiers or add a
+also activates the rule. The reader converts its eight-bit application
+indicator and returns it before the payload in `text`: values 0–99 become two
+digits, and values 165–190 or 197–222 become `A`–`Z` or `a`–`z` (ASCII plus 100).
+Other values produce `FormatError`. The indicator does not change raw `bytes`
+and is not exposed as metadata. This fix does not validate GS1 Application Identifiers or add a
 GS1 QR writer option. `encodeQR()` still creates ordinary QR payloads.
 
 ### Byte text and ECI

@@ -1092,7 +1092,9 @@ for ambiguity, capacity and fallback rules.
 The QR reader honors FNC1 mode indicators: in Alphanumeric segments, `%` becomes
 the group separator (`\u001D`) and `%%` becomes a literal percent. Byte segments
 and ordinary QR text stay unchanged. The second-position application indicator
-is consumed but is not returned as metadata. This does not add a GS1 QR writer
+is returned before the payload as two digits (`00`–`99`) or one letter (`A`–`Z`
+or `a`–`z`). Invalid indicator values produce `FormatError`. Raw bytes stay
+unchanged; no metadata fields are added. This does not add a GS1 QR writer
 option or GS1 Application Identifier validation.
 
 ```js

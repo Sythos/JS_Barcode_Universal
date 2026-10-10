@@ -511,7 +511,7 @@ test('qr: FNC1 interprets only alphanumeric percent escapes', () => {
       ['%A%', '\x1dA\x1d'], ['A%%B%C', 'A%B\x1dC'],
     ]) {
       const result = decodeQR(fnc1Fixture([{ mode: 'alphanumeric', text: input }], position, 165));
-      assert.equal(result.text, expected, `${position}: ${input}`);
+      assert.equal(result.text, (position === 'second' ? 'A' : '') + expected, `${position}: ${input}`);
       assert.equal(result.corrections, 0);
       assert.equal(result.bytes.length, 0);
       assert.equal(decodeQR(fnc1Fixture([{ mode: 'alphanumeric', text: input }], 'none')).text, input);
@@ -525,7 +525,8 @@ test('qr: FNC1 state persists across modes but percent pairs stay within segment
       { mode: 'alphanumeric', text: 'A%' },
       { mode: 'alphanumeric', text: '%B' },
     ], position));
-    assert.equal(split.text, 'A\x1d\x1dB');
+    const prefix = position === 'second' ? '00' : '';
+    assert.equal(split.text, prefix + 'A\x1d\x1dB');
     const mixed = decodeQR(fnc1Fixture([
       { mode: 'alphanumeric', text: 'ABC%' },
       { mode: 'eci', text: '3' },
@@ -533,16 +534,28 @@ test('qr: FNC1 state persists across modes but percent pairs stay within segment
       { mode: 'numeric', text: '123' },
       { mode: 'alphanumeric', text: '%%Z%' },
     ], position));
-    assert.equal(mixed.text, 'ABC\x1d%\x1d123%Z\x1d');
+    assert.equal(mixed.text, prefix + 'ABC\x1d%\x1d123%Z\x1d');
     assert.deepEqual([...mixed.bytes], [37, 29]);
     assert.equal(mixed.corrections, 0);
   }
 });
 
-test('qr: FNC1 second-position application indicator is consumed, not payload text', () => {
-  for (const indicator of [0, 1, 99, 165, 255]) {
+test('qr: FNC1 second-position application indicator prefixes text and rejects invalid values', () => {
+  for (let indicator = 0; indicator <= 255; indicator++) {
     const matrix = fnc1Fixture([{ mode: 'alphanumeric', text: 'ABC%DEF' }], 'second', indicator);
-    assert.equal(decodeQR(matrix).text, 'ABC\x1dDEF');
+    let prefix;
+    if (indicator <= 99) prefix = String(indicator).padStart(2, '0');
+    else if ((indicator >= 165 && indicator <= 190) || (indicator >= 197 && indicator <= 222)) {
+      prefix = String.fromCharCode(indicator - 100);
+    }
+    if (prefix === undefined) {
+      assert.throws(() => decodeQR(matrix), FormatError, `indicator ${indicator}`);
+    } else {
+      const result = decodeQR(matrix);
+      assert.equal(result.text, prefix + 'ABC\x1dDEF', `indicator ${indicator}`);
+      assert.equal(result.bytes.length, 0);
+      assert.equal(result.corrections, 0);
+    }
   }
   const ordinary = decodeQR(encodeQR('ABC%DEF%%'));
   assert.equal(ordinary.text, 'ABC%DEF%%');
@@ -553,12 +566,13 @@ test('qr: FNC1 separators survive detector and browser bundle paths', async () =
   await import('../bundle/sythos-barcode.js');
   for (const position of ['first', 'second']) {
     const matrix = fnc1Fixture([{ mode: 'alphanumeric', text: 'ABC%DEF%%' }], position, 165);
+    const expected = (position === 'second' ? 'A' : '') + 'ABC\x1dDEF%';
     const image = toImageData(matrix.withMargin(4), 4);
     const found = detectAndDecodeQR(binarize(LuminanceSource.fromImageData(image)));
-    assert.equal(found[0]?.text, 'ABC\x1dDEF%');
+    assert.equal(found[0]?.text, expected);
     for (const sdk of [esm, globalThis.SythosBarcode]) {
-      assert.equal(sdk.decodeQR(matrix).text, 'ABC\x1dDEF%');
-      assert.equal(sdk.decode(image, { formats: ['qr'] })[0]?.text, 'ABC\x1dDEF%');
+      assert.equal(sdk.decodeQR(matrix).text, expected);
+      assert.equal(sdk.decode(image, { formats: ['qr'] })[0]?.text, expected);
     }
   }
 });

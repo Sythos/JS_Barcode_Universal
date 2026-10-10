@@ -424,7 +424,17 @@ function parseSegments(data, version, charset) {
             continue;
         }
         if (mode === MODE.FNC1_SECOND) {
-            reader.read(8); // application indicator
+            const indicator = reader.read(8);
+            if (indicator <= 99) {
+                text += String(indicator).padStart(2, '0');
+            }
+            else if ((indicator >= 165 && indicator <= 190) ||
+                (indicator >= 197 && indicator <= 222)) {
+                text += String.fromCharCode(indicator - 100);
+            }
+            else {
+                throw new FormatError(`QR: invalid FNC1 application indicator ${indicator}`);
+            }
             fnc1 = true;
             continue;
         }
