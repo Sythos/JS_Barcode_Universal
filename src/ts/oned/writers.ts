@@ -327,6 +327,13 @@ export function encodeUPCE(value) {
     throw new EncodeError(`UPC-E: number system must be 0 or 1, got ${system}`);
   }
 
+  if (value.length === 8) {
+    const expected = ean13CheckDigit(upceToUpcaBody(system, body));
+    if (check !== expected) {
+      throw new EncodeError(`UPC-E: invalid check digit ${check}, expected ${expected}`);
+    }
+  }
+
   const parity = UPCE_PARITY[check];
   let modules = EAN_START_END;
   for (let i = 0; i < 6; i++) {

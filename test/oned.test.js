@@ -152,6 +152,31 @@ test('UPC-E produces a 51-module symbol', () => {
   assert.equal(m.width, 51);
 });
 
+test('UPC-E validates explicit check digits for both number systems', () => {
+  for (const value of ['01234565', '11234562']) {
+    const complete = encodeUPCE(value);
+    assert.equal(complete.width, 51);
+    assert.deepEqual(complete.bits, encodeUPCE(value.slice(0, 7)).bits);
+    if (value[0] === '0') {
+      assert.deepEqual(complete.bits, encodeUPCE(value.slice(1, 7)).bits);
+    }
+    for (let digit = 0; digit <= 9; digit++) {
+      if (digit === Number(value[7])) continue;
+      assert.throws(
+        () => encodeUPCE(value.slice(0, 7) + digit),
+        (error) => error instanceof EncodeError && /invalid check digit/.test(error.message),
+      );
+    }
+  }
+});
+
+test('UPC-E preserves number-system, length and numeric input validation', () => {
+  assert.throws(() => encodeUPCE('21234565'), /number system must be 0 or 1/);
+  assert.throws(() => encodeUPCE('12345'), EncodeError);
+  assert.throws(() => encodeUPCE('012345650'), EncodeError);
+  assert.throws(() => encodeUPCE('0123456X'), EncodeError);
+});
+
 test('Code 39 wraps the payload in start/stop characters', () => {
   const m = encodeCode39('ABC123');
   assert.ok(m.width > 0);
