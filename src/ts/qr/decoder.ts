@@ -344,17 +344,16 @@ const ECI_LABELS = {
 /**
  * Turn a byte segment into text.
  *
- * With no ECI in force the interpretation is genuinely ambiguous — the default
- * is ISO-8859-1, but the overwhelming majority of real symbols carry UTF-8
- * without announcing it. So: accept UTF-8 when the bytes are valid UTF-8, and
- * fall back to ISO-8859-1 when they are not. Bytes that are valid under both
- * readings cannot be told apart by anyone, encoder included.
+ * Without ECI, auto preserves the UTF-8-first compatibility policy. The caller
+ * can select a known encoding instead. Valid UTF-8 does not prove its origin.
  *
  * @param {Uint8Array} bytes @param {number | null} eci
+ * @param {'auto'|'utf-8'|'iso-8859-1'} charset
  * @returns {string}
  */
-function decodeBytes(bytes, eci) {
+function decodeBytes(bytes, eci, charset) {
   if (eci !== null && eci !== undefined) {
+    if (eci === 3 || eci === 1) return latin1(bytes);
     const label = ECI_LABELS[eci];
     if (label) {
       try {
@@ -364,9 +363,11 @@ function decodeBytes(bytes, eci) {
       }
     }
   } else {
+    if (charset === 'iso-8859-1') return latin1(bytes);
     try {
       return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch (e) {
+      if (charset === 'utf-8') throw new FormatError('QR: invalid UTF-8 byte segment');
       /* Not valid UTF-8; it is Latin-1. */
     }
   }
@@ -424,7 +425,7 @@ function readEciDesignator(reader) {
  * @param {number} version
  * @returns {{text: string, bytes: Uint8Array}}
  */
-function parseSegments(data, version) {
+function parseSegments(data, version, charset) {
   const reader = new BitReader(data);
   let text = '';
   /** @type {number[]} */
@@ -502,7 +503,7 @@ function parseSegments(data, version) {
           bytes[i] = reader.read(8);
           rawBytes.push(bytes[i]);
         }
-        text += decodeBytes(bytes, eci);
+        text += decodeBytes(bytes, eci, charset);
         break;
       }
 
@@ -541,11 +542,16 @@ function parseSegments(data, version) {
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix Square, exactly the
  *   symbol, no quiet zone. Set bit = dark module.
+ * @param {{charset?: 'auto'|'utf-8'|'iso-8859-1'}} [options] Encoding without ECI.
  * @returns {DecodeResult}
  * @throws {FormatError} If the geometry or content is malformed.
  * @throws {ChecksumError} If error correction cannot repair the symbol.
  */
-export function decodeQR(matrix) {
+export function decodeQR(matrix, options: { charset?: 'auto' | 'utf-8' | 'iso-8859-1' } = {}) {
+  const charset = options.charset ?? 'auto';
+  if (!['auto', 'utf-8', 'iso-8859-1'].includes(charset)) {
+    throw new FormatError(`QR: unknown charset "${charset}"`);
+  }
   if (!matrix || !matrix.width) throw new FormatError('QR: no matrix supplied');
 
   const size = matrix.width;
@@ -567,7 +573,7 @@ export function decodeQR(matrix) {
   const layout = blockLayout(version, ecc);
   const codewords = readCodewords(matrix, version, mask, layout.totalCodewords);
   const { data, corrections } = deinterleaveAndCorrect(codewords, layout);
-  const { text, bytes } = parseSegments(data, version);
+  const { text, bytes } = parseSegments(data, version, charset);
 
   return { text, bytes, version, ecc, mask, corrections };
 }

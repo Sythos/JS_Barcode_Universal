@@ -1082,6 +1082,13 @@ hatch.
 
 ### Encoding and decoding
 
+QR byte text uses ECI 3 for non-ASCII ISO-8859-1 and ECI 26 for UTF-8.
+For older symbols without ECI, `decodeQR(matrix)` keeps UTF-8-first compatibility.
+Use `decodeQR(matrix, { charset: 'iso-8859-1' })` or `{ charset: 'utf-8' }`
+when the source encoding is known. ECI takes precedence; raw `bytes` stay unchanged.
+See [QR byte text and ECI](https://sythos.github.io/JS_Barcode_Universal/formats/qr-family/#byte-text-and-eci)
+for ambiguity, capacity and fallback rules.
+
 ```js
 encode(text, options?) → BitMatrix
 ```

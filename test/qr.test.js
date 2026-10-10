@@ -49,7 +49,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BitMatrix } from '../src/js/core/bit-matrix.js';
-import { EncodeError } from '../src/js/core/errors.js';
+import { BitWriter } from '../src/js/core/bit-buffer.js';
+import { GF256_QR } from '../src/js/core/galois-field.js';
+import { rsEncode } from '../src/js/core/reed-solomon.js';
+import { EncodeError, FormatError } from '../src/js/core/errors.js';
 import { LuminanceSource } from '../src/js/image/luminance.js';
 import { binarize } from '../src/js/image/binarizer.js';
 import {
@@ -67,6 +70,7 @@ import {
   dataModuleOrder,
   freeModuleCount,
   geometricTotalCodewords,
+  maskBit,
   reservedModules,
   versionSize,
 } from '../src/js/qr/tables.js';
@@ -344,6 +348,94 @@ test('qr: byte-mode payload is exposed as raw bytes', () => {
 
   // A payload with no byte segment reports no bytes.
   assert.equal(decodeQR(encodeQR('12345', { ecc: 'L' })).bytes.length, 0);
+});
+
+test('qr: Latin-1 and UTF-8 byte text preserve the selected encoding', () => {
+  const texts = ['Ã©', 'Â£', 'café', '\u0080\u0091\u009f', 'ascii text'];
+  for (const text of texts) {
+    for (const charset of ['auto', 'iso-8859-1', 'utf-8']) {
+      const symbol = encodeQR(text, { charset, kanji: false });
+      const result = decodeQR(symbol);
+      assert.equal(result.text, text);
+      const expected = charset === 'utf-8' ? [...new TextEncoder().encode(text)]
+        : Array.from(text, (point) => point.charCodeAt(0));
+      assert.deepEqual([...result.bytes], expected);
+      assert.equal(decodeQR(symbol, { charset: 'iso-8859-1' }).text, text);
+      assert.equal(decodeQR(symbol, { charset: 'utf-8' }).text, text);
+    }
+  }
+  assert.equal(decodeQR(encodeQR('Greetings 👋', { charset: 'utf-8' })).text, 'Greetings 👋');
+  assert.throws(() => encodeQR('👋', { charset: 'iso-8859-1' }), EncodeError);
+});
+
+test('qr: every Latin-1 byte preserves its exact code point', () => {
+  for (let value = 0; value <= 255; value++) {
+    const text = 'a' + String.fromCharCode(value) + 'a';
+    const result = decodeQR(encodeQR(text, { charset: 'iso-8859-1', kanji: false }));
+    assert.equal(result.text, text, `Latin-1 byte ${value}`);
+    assert.deepEqual([...result.bytes], [97, value, 97]);
+  }
+});
+
+test('qr: ECI overhead is included in version selection', () => {
+  const text = 'é'.repeat(17);
+  assert.equal(decodeQR(encodeQR(text, { ecc: 'L', kanji: false })).version, 2);
+  assert.throws(() => encodeQR(text, { ecc: 'L', version: 1, kanji: false }), EncodeError);
+  assert.equal(encodeQR('a'.repeat(17), { ecc: 'L', version: 1 }).width, 21);
+});
+
+test('qr: no-ECI compatibility is explicit and does not change raw bytes', () => {
+  // Fixed no-ECI symbol from the pre-fix writer: byte payload C3 A9, V1-L, mask 0.
+  const rows = [
+    '111111100010101111111', '100000100000101000001', '101110101010001011101',
+    '101110100000101011101', '101110100101101011101', '100000100111001000001',
+    '111111101010101111111', '000000001010000000000', '111011111010111000100',
+    '100100011101010101111', '101100101111011101100', '000010011001110111001',
+    '110100100111011100101', '000000001100001000110', '111111101110100010010',
+    '100000101100001000111', '101110101010101010101', '101110100011010101010',
+    '101110101011011101101', '100000101011110111010', '111111101101011101111',
+  ];
+  const symbol = new BitMatrix(21, 21);
+  rows.forEach((row, y) => [...row].forEach((bit, x) => { if (bit === '1') symbol.set(x, y); }));
+  for (const [charset, text] of [['auto', 'é'], ['utf-8', 'é'], ['iso-8859-1', 'Ã©']]) {
+    const result = decodeQR(symbol, { charset });
+    assert.equal(result.text, text);
+    assert.deepEqual([...result.bytes], [195, 169]);
+  }
+  assert.equal(decodeQR(symbol).text, 'é');
+  assert.throws(() => decodeQR(symbol, { charset: 'unknown' }), FormatError);
+
+  // Rebuild the data and parity only. Keep the fixed V1-L, mask-0 function grid.
+  function byteFixture(bytes, eci = null) {
+    const writer = new BitWriter();
+    if (eci !== null) { writer.put(7, 4); writer.put(eci, 8); }
+    writer.put(4, 4);
+    writer.put(bytes.length, 8);
+    writer.putBytes(Uint8Array.from(bytes));
+    writer.put(0, 4);
+    writer.padToByte();
+    const raw = writer.toBytes();
+    const data = new Uint8Array(19);
+    data.set(raw);
+    for (let i = raw.length; i < data.length; i++) data[i] = (i - raw.length) % 2 ? 0x11 : 0xec;
+    const codewords = [...data, ...rsEncode(data, 7, GF256_QR)];
+    const fixture = symbol.clone();
+    const order = dataModuleOrder(1);
+    for (let bit = 0; bit < codewords.length * 8; bit++) {
+      const x = order[bit * 2], y = order[bit * 2 + 1];
+      const dark = Boolean((codewords[bit >> 3] >> (7 - (bit & 7))) & 1);
+      fixture.setValue(x, y, dark !== maskBit(0, x, y));
+    }
+    return fixture;
+  }
+  const invalidUtf8 = byteFixture([255, 169]);
+  assert.equal(decodeQR(invalidUtf8).text, 'ÿ©');
+  assert.throws(() => decodeQR(invalidUtf8, { charset: 'utf-8' }), FormatError);
+  for (const [eci, text] of [[3, 'Ã©'], [26, 'é'], [31, 'Ã©']]) {
+    const result = decodeQR(byteFixture([195, 169], eci));
+    assert.equal(result.text, text);
+    assert.deepEqual([...result.bytes], [195, 169]);
+  }
 });
 
 test('qr: shift_jis 13-bit packing round-trips across both ranges', () => {

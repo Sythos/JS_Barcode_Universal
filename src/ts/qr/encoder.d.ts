@@ -71,8 +71,8 @@ export type EncodeOptions = {
     mask?: number;
     /**
      * Byte mode interpretation.
-     * 'auto' uses ISO-8859-1 when the text allows it and UTF-8 with an ECI
-     * header otherwise.
+     * 'auto' uses ISO-8859-1 when the text allows it and UTF-8 otherwise.
+     * Non-ASCII Latin-1 byte text uses ECI 3; UTF-8 byte text uses ECI 26.
      */
     charset?: 'auto' | 'utf-8' | 'iso-8859-1';
     /**

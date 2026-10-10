@@ -75,5 +75,8 @@ export type DecodeResult = {
  * @throws {FormatError} If the geometry or content is malformed.
  * @throws {ChecksumError} If error correction cannot repair the symbol.
  */
-export declare function decodeQR(matrix: import('../core/bit-matrix.js').BitMatrix): DecodeResult;
+export declare function decodeQR(matrix: import('../core/bit-matrix.js').BitMatrix, options?: {
+    /** Encoding for byte segments without ECI. Auto tries UTF-8, then Latin-1. ECI takes precedence. */
+    charset?: 'auto' | 'utf-8' | 'iso-8859-1';
+}): DecodeResult;
 export { ChecksumError };

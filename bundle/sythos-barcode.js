@@ -9755,8 +9755,8 @@ const VERSION_GENERATOR = 0x1f25;
  * @property {number} [version] Force a version 1-40 instead of the smallest fit.
  * @property {number} [mask] Force a mask 0-7 instead of the best-scoring one.
  * @property {'auto'|'utf-8'|'iso-8859-1'} [charset] Byte mode interpretation.
- *   'auto' uses ISO-8859-1 when the text allows it and UTF-8 with an ECI
- *   header otherwise.
+ *   'auto' uses ISO-8859-1 when the text allows it and UTF-8 otherwise.
+ *   Non-ASCII Latin-1 byte text uses ECI 3; UTF-8 byte text uses ECI 26.
  * @property {boolean} [kanji] Allow kanji mode. Default true; ignored when the
  *   platform cannot supply a Shift_JIS codec.
  */
@@ -10095,7 +10095,7 @@ function writeBitstream(segments, info, version, ecc, withEci) {
     const encoder = info.utf8 ? new TextEncoder() : null;
     if (withEci) {
         writer.put(MODE.ECI, 4);
-        writer.put(ECI_UTF8, 8); // single-byte designator form, values 0-127
+        writer.put(info.utf8 ? ECI_UTF8 : 3, 8); // UTF-8 or ISO-8859-1
     }
     for (let s = 0; s < segments.length; s++) {
         const seg = segments[s];
@@ -10478,8 +10478,8 @@ function encodeQR(text, options = {}) {
     if (forcedMask !== undefined && (!Number.isInteger(forcedMask) || forcedMask < 0 || forcedMask > 7)) {
         throw new EncodeError(`QR: mask must be an integer 0-7, got ${forcedMask}`);
     }
-    // Byte mode interpretation. ISO-8859-1 is the default ECI, so Latin-1 text
-    // needs no header; anything else goes out as UTF-8 with ECI 26 announced.
+    // Announce non-ASCII Latin-1 byte text with ECI 3 to prevent UTF-8 guessing.
+    // UTF-8 byte text uses ECI 26. ASCII does not require a Latin-1 header.
     const charset = options.charset ?? 'auto';
     let utf8;
     if (charset === 'utf-8')
@@ -10504,7 +10504,8 @@ function encodeQR(text, options = {}) {
         if (forcedVersion !== undefined && (forcedVersion < lo || forcedVersion > hi))
             continue;
         const segments = segmentize(info, lo);
-        const needsEci = utf8 && segments.some((s) => s.mode === MODE.BYTE);
+        const needsEci = segments.some((s) => s.mode === MODE.BYTE &&
+            (utf8 || info.points.slice(s.start, s.end).some((point) => point.charCodeAt(0) > 0x7f)));
         let bits = needsEci ? 12 : 0; // ECI mode indicator plus one designator byte
         for (let s = 0; s < segments.length; s++)
             bits += segmentBits(segments[s], info, lo);
@@ -10850,17 +10851,17 @@ const ECI_LABELS = {
 /**
  * Turn a byte segment into text.
  *
- * With no ECI in force the interpretation is genuinely ambiguous — the default
- * is ISO-8859-1, but the overwhelming majority of real symbols carry UTF-8
- * without announcing it. So: accept UTF-8 when the bytes are valid UTF-8, and
- * fall back to ISO-8859-1 when they are not. Bytes that are valid under both
- * readings cannot be told apart by anyone, encoder included.
+ * Without ECI, auto preserves the UTF-8-first compatibility policy. The caller
+ * can select a known encoding instead. Valid UTF-8 does not prove its origin.
  *
  * @param {Uint8Array} bytes @param {number | null} eci
+ * @param {'auto'|'utf-8'|'iso-8859-1'} charset
  * @returns {string}
  */
-function decodeBytes(bytes, eci) {
+function decodeBytes(bytes, eci, charset) {
     if (eci !== null && eci !== undefined) {
+        if (eci === 3 || eci === 1)
+            return latin1(bytes);
         const label = ECI_LABELS[eci];
         if (label) {
             try {
@@ -10872,10 +10873,14 @@ function decodeBytes(bytes, eci) {
         }
     }
     else {
+        if (charset === 'iso-8859-1')
+            return latin1(bytes);
         try {
             return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
         }
         catch (e) {
+            if (charset === 'utf-8')
+                throw new FormatError('QR: invalid UTF-8 byte segment');
             /* Not valid UTF-8; it is Latin-1. */
         }
     }
@@ -10936,7 +10941,7 @@ function readEciDesignator(reader) {
  * @param {number} version
  * @returns {{text: string, bytes: Uint8Array}}
  */
-function parseSegments(data, version) {
+function parseSegments(data, version, charset) {
     const reader = new BitReader(data);
     let text = '';
     /** @type {number[]} */
@@ -11015,7 +11020,7 @@ function parseSegments(data, version) {
                     bytes[i] = reader.read(8);
                     rawBytes.push(bytes[i]);
                 }
-                text += decodeBytes(bytes, eci);
+                text += decodeBytes(bytes, eci, charset);
                 break;
             }
             case MODE.KANJI: {
@@ -11049,11 +11054,16 @@ function parseSegments(data, version) {
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix Square, exactly the
  *   symbol, no quiet zone. Set bit = dark module.
+ * @param {{charset?: 'auto'|'utf-8'|'iso-8859-1'}} [options] Encoding without ECI.
  * @returns {DecodeResult}
  * @throws {FormatError} If the geometry or content is malformed.
  * @throws {ChecksumError} If error correction cannot repair the symbol.
  */
-function decodeQR(matrix) {
+function decodeQR(matrix, options = {}) {
+    const charset = options.charset ?? 'auto';
+    if (!['auto', 'utf-8', 'iso-8859-1'].includes(charset)) {
+        throw new FormatError(`QR: unknown charset "${charset}"`);
+    }
     if (!matrix || !matrix.width)
         throw new FormatError('QR: no matrix supplied');
     const size = matrix.width;
@@ -11072,7 +11082,7 @@ function decodeQR(matrix) {
     const layout = blockLayout(version, ecc);
     const codewords = readCodewords(matrix, version, mask, layout.totalCodewords);
     const { data, corrections } = deinterleaveAndCorrect(codewords, layout);
-    const { text, bytes } = parseSegments(data, version);
+    const { text, bytes } = parseSegments(data, version, charset);
     return { text, bytes, version, ecc, mask, corrections };
 }
 __exports.ChecksumError = ChecksumError;

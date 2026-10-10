@@ -36,6 +36,35 @@ const decoded = decodeQR(matrix);
 console.log(decoded.text);
 ```
 
+### Byte text and ECI
+
+The writer uses ECI 3 for non-ASCII ISO-8859-1 byte text and ECI 26 for UTF-8
+byte text. ECI identifies the encoding. ASCII-only Latin-1 byte segments need
+no ECI header. Numeric, Alphanumeric and Kanji modes keep their existing rules.
+An ECI header uses 12 bits. A payload near a capacity limit can need a larger
+version. A forced version that is too small produces `EncodeError`.
+
+For a symbol without ECI, `decodeQR(matrix)` retains the compatibility policy:
+try valid UTF-8 first, then use ISO-8859-1. This is a heuristic, not proof of
+the original encoding. The bytes `C3 A9` can mean either `é` in UTF-8 or `Ã©`
+in ISO-8859-1. Use a known encoding when the source does not supply ECI:
+
+```js
+const decodedLatin1 = decodeQR(matrix, { charset: 'iso-8859-1' });
+const decodedUtf8 = decodeQR(matrix, { charset: 'utf-8' });
+const compatibility = decodeQR(matrix, { charset: 'auto' });
+```
+
+The `charset` option on the direct matrix decoder applies only without ECI.
+An explicit ECI takes precedence. The image API keeps the default compatibility
+policy. The new writer's ECI removes ambiguity for its non-ASCII byte text.
+The `bytes` result always retains the raw byte-segment data. ISO-8859-1 maps
+each byte to the same Unicode code point, including bytes `80`–`9F`.
+Unknown `charset` options and invalid UTF-8 under an explicit `utf-8` choice
+produce `FormatError`. Unknown ECI assignments or codecs unavailable in the
+runtime retain the existing one-character-per-byte fallback; this does not
+prove that the intended character encoding was decoded.
+
 The public encoder options are `ecc`, `version`, `mask`, `charset` and
 `kanji`. `mask` is normally selected by the penalty score; forcing it is useful
 for fixtures and interoperability work, not usually for application code.

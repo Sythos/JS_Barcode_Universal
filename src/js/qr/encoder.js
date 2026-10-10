@@ -72,8 +72,8 @@ const VERSION_GENERATOR = 0x1f25;
  * @property {number} [version] Force a version 1-40 instead of the smallest fit.
  * @property {number} [mask] Force a mask 0-7 instead of the best-scoring one.
  * @property {'auto'|'utf-8'|'iso-8859-1'} [charset] Byte mode interpretation.
- *   'auto' uses ISO-8859-1 when the text allows it and UTF-8 with an ECI
- *   header otherwise.
+ *   'auto' uses ISO-8859-1 when the text allows it and UTF-8 otherwise.
+ *   Non-ASCII Latin-1 byte text uses ECI 3; UTF-8 byte text uses ECI 26.
  * @property {boolean} [kanji] Allow kanji mode. Default true; ignored when the
  *   platform cannot supply a Shift_JIS codec.
  */
@@ -412,7 +412,7 @@ function writeBitstream(segments, info, version, ecc, withEci) {
     const encoder = info.utf8 ? new TextEncoder() : null;
     if (withEci) {
         writer.put(MODE.ECI, 4);
-        writer.put(ECI_UTF8, 8); // single-byte designator form, values 0-127
+        writer.put(info.utf8 ? ECI_UTF8 : 3, 8); // UTF-8 or ISO-8859-1
     }
     for (let s = 0; s < segments.length; s++) {
         const seg = segments[s];
@@ -795,8 +795,8 @@ export function encodeQR(text, options = {}) {
     if (forcedMask !== undefined && (!Number.isInteger(forcedMask) || forcedMask < 0 || forcedMask > 7)) {
         throw new EncodeError(`QR: mask must be an integer 0-7, got ${forcedMask}`);
     }
-    // Byte mode interpretation. ISO-8859-1 is the default ECI, so Latin-1 text
-    // needs no header; anything else goes out as UTF-8 with ECI 26 announced.
+    // Announce non-ASCII Latin-1 byte text with ECI 3 to prevent UTF-8 guessing.
+    // UTF-8 byte text uses ECI 26. ASCII does not require a Latin-1 header.
     const charset = options.charset ?? 'auto';
     let utf8;
     if (charset === 'utf-8')
@@ -821,7 +821,8 @@ export function encodeQR(text, options = {}) {
         if (forcedVersion !== undefined && (forcedVersion < lo || forcedVersion > hi))
             continue;
         const segments = segmentize(info, lo);
-        const needsEci = utf8 && segments.some((s) => s.mode === MODE.BYTE);
+        const needsEci = segments.some((s) => s.mode === MODE.BYTE &&
+            (utf8 || info.points.slice(s.start, s.end).some((point) => point.charCodeAt(0) > 0x7f)));
         let bits = needsEci ? 12 : 0; // ECI mode indicator plus one designator byte
         for (let s = 0; s < segments.length; s++)
             bits += segmentBits(segments[s], info, lo);
