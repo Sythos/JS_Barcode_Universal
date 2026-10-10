@@ -51,6 +51,10 @@ export type DecodeResult = {
  * Decode a square Aztec symbol with one bit per module and no quiet zone.
  * The matrix must already be oriented with the mode message at the top.
  *
+ * `bytes` holds the exact payload. `text` is UTF-8 when the payload is valid
+ * UTF-8. Otherwise `text` is exact ISO-8859-1: each byte gives the character
+ * with the same value, so 0x80 gives U+0080.
+ *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  * @returns {{text: string, bytes: Uint8Array, compact: boolean, layers: number, corrections: number, eccPercent: number}}
  */

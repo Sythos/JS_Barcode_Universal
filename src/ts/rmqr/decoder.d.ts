@@ -29,7 +29,11 @@
  * Original work. No code from any other barcode implementation.
  */
 import { ChecksumError } from '../core/errors.js';
-/** Decode an exact rMQR module matrix (without quiet zone). */
+/**
+ * Decode an exact rMQR module matrix (without quiet zone).
+ * Byte segments decode as UTF-8 after ECI 26. Other byte segments decode as
+ * exact ISO-8859-1: each byte gives the character with the same value.
+ */
 export declare function decodeRMQR(matrix: any): {
     text: string;
     bytes: Uint8Array<ArrayBuffer>;

@@ -269,15 +269,27 @@ function correctAndUnstuff(raw, layers, dataCodewords) {
   return { bits: corrected, corrections };
 }
 
-/** @param {Uint8Array} bytes */
+/**
+ * Text policy: valid UTF-8 decodes as UTF-8. Other data decodes as exact
+ * ISO-8859-1, where each byte gives the character with the same value.
+ * @param {Uint8Array} bytes
+ */
 function bytesToText(bytes) {
   try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
-  catch { return new TextDecoder('latin1').decode(bytes); }
+  catch {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return s;
+  }
 }
 
 /**
  * Decode a square Aztec symbol with one bit per module and no quiet zone.
  * The matrix must already be oriented with the mode message at the top.
+ *
+ * `bytes` holds the exact payload. `text` is UTF-8 when the payload is valid
+ * UTF-8. Otherwise `text` is exact ISO-8859-1: each byte gives the character
+ * with the same value, so 0x80 gives U+0080.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  * @returns {{text: string, bytes: Uint8Array, compact: boolean, layers: number, corrections: number, eccPercent: number}}

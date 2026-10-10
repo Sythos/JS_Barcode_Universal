@@ -69,7 +69,13 @@ function deinterleave(codewords, v, ecc) {
 }
 
 function decodeBytes(bytes, eci) {
-  try { return new TextDecoder(eci === 26 ? 'utf-8' : 'iso-8859-1', { fatal: false }).decode(bytes); } catch { return String.fromCharCode(...bytes); }
+  if (eci === 26) {
+    try { return new TextDecoder('utf-8', { fatal: false }).decode(bytes); } catch { /* Fall through to exact ISO-8859-1. */ }
+  }
+  // The TextDecoder label iso-8859-1 selects Windows-1252, so convert each byte directly.
+  let text = '';
+  for (let i = 0; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+  return text;
 }
 function parseSegments(data, v) {
   const reader = new BitReader(data); let text = ''; const raw = []; let eci = 3; let mode;
@@ -89,7 +95,11 @@ function parseSegments(data, v) {
   return { text, bytes: Uint8Array.from(raw) };
 }
 
-/** Decode an exact rMQR module matrix (without quiet zone). */
+/**
+ * Decode an exact rMQR module matrix (without quiet zone).
+ * Byte segments decode as UTF-8 after ECI 26. Other byte segments decode as
+ * exact ISO-8859-1: each byte gives the character with the same value.
+ */
 export function decodeRMQR(matrix) {
   if (!matrix || !matrix.width || !matrix.height) throw new FormatError('rMQR: no matrix supplied');
   const v = versionForSize(matrix.width, matrix.height); if (!v) throw new FormatError(`rMQR: unsupported symbol size ${matrix.width}x${matrix.height}`);

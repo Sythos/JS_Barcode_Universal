@@ -12625,18 +12625,29 @@ function correctAndUnstuff(raw, layers, dataCodewords) {
     }
     return { bits: corrected, corrections };
 }
-/** @param {Uint8Array} bytes */
+/**
+ * Text policy: valid UTF-8 decodes as UTF-8. Other data decodes as exact
+ * ISO-8859-1, where each byte gives the character with the same value.
+ * @param {Uint8Array} bytes
+ */
 function bytesToText(bytes) {
     try {
         return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     }
     catch {
-        return new TextDecoder('latin1').decode(bytes);
+        let s = '';
+        for (let i = 0; i < bytes.length; i++)
+            s += String.fromCharCode(bytes[i]);
+        return s;
     }
 }
 /**
  * Decode a square Aztec symbol with one bit per module and no quiet zone.
  * The matrix must already be oriented with the mode message at the top.
+ *
+ * `bytes` holds the exact payload. `text` is UTF-8 when the payload is valid
+ * UTF-8. Otherwise `text` is exact ISO-8859-1: each byte gives the character
+ * with the same value, so 0x80 gives U+0080.
  *
  * @param {import('../core/bit-matrix.js').BitMatrix} matrix
  * @returns {{text: string, bytes: Uint8Array, compact: boolean, layers: number, corrections: number, eccPercent: number}}
@@ -16701,12 +16712,17 @@ function deinterleave(codewords, v, ecc) {
     return { data: Uint8Array.from(data), corrections };
 }
 function decodeBytes(bytes, eci) {
-    try {
-        return new TextDecoder(eci === 26 ? 'utf-8' : 'iso-8859-1', { fatal: false }).decode(bytes);
+    if (eci === 26) {
+        try {
+            return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+        }
+        catch { /* Fall through to exact ISO-8859-1. */ }
     }
-    catch {
-        return String.fromCharCode(...bytes);
-    }
+    // The TextDecoder label iso-8859-1 selects Windows-1252, so convert each byte directly.
+    let text = '';
+    for (let i = 0; i < bytes.length; i++)
+        text += String.fromCharCode(bytes[i]);
+    return text;
 }
 function parseSegments(data, v) {
     const reader = new BitReader(data);
@@ -16788,7 +16804,11 @@ function parseSegments(data, v) {
     }
     return { text, bytes: Uint8Array.from(raw) };
 }
-/** Decode an exact rMQR module matrix (without quiet zone). */
+/**
+ * Decode an exact rMQR module matrix (without quiet zone).
+ * Byte segments decode as UTF-8 after ECI 26. Other byte segments decode as
+ * exact ISO-8859-1: each byte gives the character with the same value.
+ */
 function decodeRMQR(matrix) {
     if (!matrix || !matrix.width || !matrix.height)
         throw new FormatError('rMQR: no matrix supplied');
