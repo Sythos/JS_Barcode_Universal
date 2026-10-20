@@ -3282,7 +3282,7 @@ function normalizeGTIN(value) {
     if (!GTIN_LENGTHS.has(input.length)) {
         throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
     }
-    if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
+    if (gtinCheckDigit(input.slice(0, -1)) !== input.charAt(input.length - 1)) {
         throw new RangeError(`GTIN check digit is invalid for ${input}`);
     }
     return input.padStart(14, '0');
@@ -6941,7 +6941,7 @@ function decodeCode25Variant(row, variant, options = {}) {
         if (digits.length < 2)
             return null;
         const body = digits.slice(0, -1);
-        if (code25CheckDigit(body) !== Number(digits.at(-1)))
+        if (code25CheckDigit(body) !== Number(digits[digits.length - 1]))
             return null;
         digits = body;
         checkDigit = true;
@@ -7194,9 +7194,6 @@ function decodeCodabar(row) {
         return null;
     return { format: 'codabar', text };
 }
-/* ------------------------------------------------------------------ *
- * Public entry point
- * ------------------------------------------------------------------ */
 /** Decoders in the order they are tried. */
 const DECODERS = [
     ['ean13', decodeEANFamily],
@@ -8076,8 +8073,7 @@ function layoutFor(width, height) {
     }
     const rows = height / (regionRows + 2);
     const cols = width / (regionCols + 2);
-    const blockData = Array.isArray(entry.blockDataCodewords) ? entry.blockDataCodewords.slice() :
-        Array.isArray(entry.dataCodewordsPerBlock) ? entry.dataCodewordsPerBlock.slice() : null;
+    const blockData = entry.dataBlockLengths.slice();
     let dataLengths;
     if (blockData) {
         dataLengths = blockData;
@@ -11558,7 +11554,7 @@ function detectQR(binaryImage) {
     if (!binaryImage || !binaryImage.width) {
         throw new NotFoundError('detectQR: no image supplied');
     }
-    const finders = findPatterns(binaryImage, FINDER_RATIOS, 7);
+    const finders = findPatterns(binaryImage, FINDER_RATIOS, 7, undefined);
     // A single stray row hit is noise; a real finder is crossed many times.
     const solid = finders.filter((f) => f.hits >= 2);
     const pool = solid.length >= 3 ? solid : finders;
@@ -13233,9 +13229,10 @@ function decodeNumericSegment(codewords, at) {
  * modes that encode octets explicitly.
  */
 function decodePdf417CompactionDetailed(codewords) {
-    if (!Array.isArray(codewords) && !ArrayBuffer.isView(codewords))
+    if (!Number.isInteger(codewords.length))
         throw new FormatError('PDF417: codewords must be an array');
-    for (const codeword of codewords)
+    const values = Array.from(codewords);
+    for (const codeword of values)
         assertCodeword(codeword);
     let at = 0;
     // ISO/IEC 8859-1 is the PDF417 default; UTF-8 is selected explicitly with ECI 26.
@@ -13243,14 +13240,14 @@ function decodePdf417CompactionDetailed(codewords) {
     let output = '';
     const bytes = [];
     const segments = [];
-    while (at < codewords.length) {
-        const codeword = codewords[at];
+    while (at < values.length) {
+        const codeword = values[at];
         if (codeword < 900 || codeword === 900 || codeword === 913) {
             const start = at;
             const latch = codeword === 900 ? codeword : null;
             if (latch !== null)
                 at++;
-            const segment = decodeTextSegment(codewords, at, eci);
+            const segment = decodeTextSegment(values, at, eci);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
@@ -13261,29 +13258,29 @@ function decodePdf417CompactionDetailed(codewords) {
         const start = at;
         at++;
         if (codeword === 901) {
-            const segment = decodeByteSegment(codewords, at, eci);
+            const segment = decodeByteSegment(values, at, eci);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
             segments.push({ mode: 'byte', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 924) {
-            const segment = decodeByteSegment(codewords, at, eci, true);
+            const segment = decodeByteSegment(values, at, eci, true);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
             segments.push({ mode: 'byte', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 902) {
-            const segment = decodeNumericSegment(codewords, at);
+            const segment = decodeNumericSegment(values, at);
             at = segment.at;
             output += segment.text;
             segments.push({ mode: 'numeric', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 927) {
-            if (at >= codewords.length || codewords[at] > 899)
+            if (at >= values.length || values[at] > 899)
                 throw new FormatError('PDF417 ECI: missing assignment number');
-            eci = codewords[at++];
+            eci = values[at++];
         }
         else {
             throw new FormatError(`PDF417: unsupported compaction codeword ${codeword}`);
@@ -14658,12 +14655,15 @@ function chooseVariant(codewordCount, rowHeight, options) {
             ? variant : best);
     }
     const target = options.aspectRatio;
-    return candidates.reduce((best, variant) => {
+    const selected = candidates.reduce((best, variant) => {
         const ratio = symbolWidth(variant.columns) / (variant.rows * rowHeight);
         const score = Math.abs(Math.log(ratio / target)) +
             (variant.dataCodewords - codewordCount) / 10000;
         return !best || score < best.score ? { variant, score } : best;
-    }, null).variant;
+    }, null);
+    if (!selected)
+        throw new EncodeError('MicroPDF417: no candidate variant is available');
+    return selected.variant;
 }
 /** Encode a value as one of the 34 fixed MicroPDF417 variants. */
 function encodeMicroPDF417(value, options = {}) {
@@ -15088,24 +15088,19 @@ function microQrBlockLayout(version, ecc) {
 function microQrDataCapacityBits(version, ecc) {
     return microQrBlockLayout(version, ecc).dataBits;
 }
-/**
- * Encode the five format data bits with BCH(15,5), then apply the Micro QR
- * format mask. `symbolNumber` occupies the high three data bits and `mask`
- * the low two.
- */
 function microQrFormatInfo(symbolNumber, mask, maybeMask) {
     // Public convenience overload: (version, ecc, mask).
-    if (arguments.length === 3) {
-        symbolNumber = microQrSymbolNumber(symbolNumber, mask);
-        mask = maybeMask;
-    }
-    if (!Number.isInteger(symbolNumber) || symbolNumber < 0 || symbolNumber > 7) {
+    const encodedSymbolNumber = arguments.length === 3
+        ? microQrSymbolNumber(symbolNumber, mask)
+        : symbolNumber;
+    const encodedMask = arguments.length === 3 ? maybeMask : mask;
+    if (typeof encodedSymbolNumber !== 'number' || !Number.isInteger(encodedSymbolNumber) || encodedSymbolNumber < 0 || encodedSymbolNumber > 7) {
         throw new RangeError('Micro QR: symbol number must be an integer in 0..7');
     }
-    if (!Number.isInteger(mask) || mask < 0 || mask > 3) {
+    if (typeof encodedMask !== 'number' || !Number.isInteger(encodedMask) || encodedMask < 0 || encodedMask > 3) {
         throw new RangeError('Micro QR: mask must be an integer in 0..3');
     }
-    const data = (symbolNumber << 2) | mask;
+    const data = (encodedSymbolNumber << 2) | encodedMask;
     let remainder = data << 10;
     for (let bit = 14; bit >= 10; bit--) {
         if ((remainder & (1 << bit)) !== 0)
@@ -16593,16 +16588,18 @@ function encodeRMQR(text, options = {}) {
     const ecc = options.ecc || 'M';
     if (ecc !== 'M' && ecc !== 'H')
         throw new EncodeError('rMQR: ECC must be M or H');
-    let forced = options.version;
-    if (typeof forced === 'string') {
-        const match = /^R(\d+)x(\d+)$/i.exec(forced);
+    let forced;
+    if (typeof options.version === 'string') {
+        const match = /^R(\d+)x(\d+)$/i.exec(options.version);
         if (!match)
-            throw new EncodeError(`rMQR: invalid version ${forced}`);
+            throw new EncodeError(`rMQR: invalid version ${options.version}`);
         const info = versionForSize(Number(match[2]), Number(match[1]));
         if (!info)
-            throw new EncodeError(`rMQR: unsupported version ${forced}`);
+            throw new EncodeError(`rMQR: unsupported version ${options.version}`);
         forced = info.version;
     }
+    else
+        forced = options.version;
     if (forced !== undefined && (!Number.isInteger(forced) || forced < 1 || forced > 32))
         throw new EncodeError('rMQR: version must be 1-32');
     const versions = forced ? [forced] : Array.from({ length: 32 }, (_, i) => i + 1);
@@ -16623,8 +16620,7 @@ function encodeRMQR(text, options = {}) {
         throw new EncodeError(`rMQR: text is too long for ECC ${ecc}`);
     const codewords = interleave(selected.data, selected.v, ecc);
     const matrix = buildMatrix(selected.v.version, ecc, codewords);
-    matrix.rmqr = { version: selected.v.version, name: selected.v.name, ecc };
-    return matrix;
+    return Object.assign(matrix, { rmqr: { version: selected.v.version, name: selected.v.name, ecc } });
 }
 __exports.MODE = MODE;
 
@@ -16723,26 +16719,36 @@ function decodeBytes(bytes, eci) {
         text += String.fromCharCode(bytes[i]);
     return text;
 }
+function peekBits(bytes, offset, count) {
+    let value = 0;
+    for (let i = 0; i < count; i++) {
+        const bit = offset + i;
+        value = (value << 1) | ((bytes[bit >>> 3] >>> (7 - (bit & 7))) & 1);
+    }
+    return value;
+}
 function parseSegments(data, v) {
     const reader = new BitReader(data);
+    let position = 0;
     let text = '';
     const raw = [];
     let eci = 3;
     let mode;
+    const read = (count) => { const value = reader.read(count); position += count; return value; };
     while (reader.available() >= 3) {
-        const peek = (() => { const save = { byteOffset: reader.byteOffset, bitOffset: reader.bitOffset }; const n = reader.read(3); reader.byteOffset = save.byteOffset; reader.bitOffset = save.bitOffset; return n; })();
+        const peek = peekBits(data, position, 3);
         if (peek === 0)
             break;
-        mode = reader.read(3);
+        mode = read(3);
         if (mode === MODE.ECI) {
-            const first = reader.read(8);
+            const first = read(8);
             let value;
             if (!(first & 0x80))
                 value = first;
             else if ((first & 0xc0) === 0x80)
-                value = ((first & 0x3f) << 8) | reader.read(8);
+                value = ((first & 0x3f) << 8) | read(8);
             else if ((first & 0xe0) === 0xc0)
-                value = ((first & 0x1f) << 16) | reader.read(16);
+                value = ((first & 0x1f) << 16) | read(16);
             else
                 throw new FormatError('rMQR: invalid ECI');
             eci = value;
@@ -16751,33 +16757,33 @@ function parseSegments(data, v) {
         const kind = mode === MODE.NUMERIC ? 'numeric' : mode === MODE.ALPHANUMERIC ? 'alphanumeric' : mode === MODE.BYTE ? 'byte' : mode === MODE.KANJI ? 'kanji' : null;
         if (!kind)
             throw new FormatError(`rMQR: unsupported mode ${mode}`);
-        const count = reader.read(v.countBits(kind));
+        const count = read(v.countBits(kind));
         if (kind === 'numeric') {
             let remaining = count;
             while (remaining >= 3) {
-                const n = reader.read(10).toString().padStart(3, '0');
+                const n = read(10).toString().padStart(3, '0');
                 text += n;
                 remaining -= 3;
             }
             if (remaining === 2)
-                text += reader.read(7).toString().padStart(2, '0');
+                text += read(7).toString().padStart(2, '0');
             else if (remaining === 1)
-                text += reader.read(4).toString();
+                text += read(4).toString();
         }
         else if (kind === 'alphanumeric') {
             let remaining = count;
             while (remaining >= 2) {
-                const n = reader.read(11);
+                const n = read(11);
                 text += ALPHANUMERIC_CHARS[Math.floor(n / 45)] + ALPHANUMERIC_CHARS[n % 45];
                 remaining -= 2;
             }
             if (remaining)
-                text += ALPHANUMERIC_CHARS[reader.read(6)];
+                text += ALPHANUMERIC_CHARS[read(6)];
         }
         else if (kind === 'byte') {
             const b = new Uint8Array(count);
             for (let i = 0; i < count; i++) {
-                b[i] = reader.read(8);
+                b[i] = read(8);
                 raw.push(b[i]);
             }
             text += decodeBytes(b, eci);
@@ -16785,7 +16791,7 @@ function parseSegments(data, v) {
         else {
             const bytes = new Uint8Array(count * 2);
             for (let i = 0; i < count; i++) {
-                const n = reader.read(13);
+                const n = read(13);
                 const v2 = n;
                 const high = Math.floor(v2 / 0xc0);
                 const low = v2 % 0xc0;
@@ -17011,8 +17017,8 @@ function normalizeCanvasSpec(symbolSize, canvas = {}) {
     }
     const width = oddAtMost(Number(requestedWidth), maximumDimension);
     const height = oddAtMost(Number(requestedHeight), maximumDimension);
-    const centerX = Math.round(canvas.centerX ?? (symbolSize - 1) / 2);
-    const centerY = Math.round(canvas.centerY ?? (symbolSize - 1) / 2);
+    const centerX = Math.round(Number(canvas.centerX ?? (symbolSize - 1) / 2));
+    const centerY = Math.round(Number(canvas.centerY ?? (symbolSize - 1) / 2));
     const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
     if (![0, 90, 180, 270].includes(angle)) {
         throw new RangeError('Frame QR profile: angle must be 0, 90, 180 or 270 degrees');
@@ -17278,12 +17284,11 @@ function encodeFrameQR(text, options = {}) {
     }
     const { matrix, canvas } = selected;
     clearCanvas(matrix, canvasModules(matrix.width, canvas));
-    matrix.frameqr = {
-        profile: FRAMEQR_PROFILE.id,
-        certified: false,
-        canvas,
-    };
-    return matrix;
+    return Object.assign(matrix, { frameqr: {
+            profile: FRAMEQR_PROFILE.id,
+            certified: false,
+            canvas,
+        } });
 }
 
 __exports.encodeFrameQR = encodeFrameQR;
@@ -17311,6 +17316,11 @@ const { FRAMEQR_PROFILE, normalizeCanvasSpec, validateCanvasSpec, analyzeCanvasD
 /** @param {unknown} value @returns {boolean} */
 function isObject(value) {
     return value !== null && typeof value === 'object';
+}
+function isUnsafeValidation(value) {
+    if (value === false || (Array.isArray(value) && value.length > 0))
+        return true;
+    return isObject(value) && 'safe' in value && value.safe === false;
 }
 /**
  * Return the profile marker attached by the encoder. Older callers sometimes
@@ -17347,10 +17357,7 @@ function validateCanvas(symbolSize, version, canvas) {
     try {
         normalized = normalizeCanvasSpec(symbolSize, canvas);
         const validation = validateCanvasSpec(version, normalized);
-        if (validation === false ||
-            (Array.isArray(validation) && validation.length > 0) ||
-            (isObject(validation) && validation.valid === false) ||
-            (isObject(validation) && validation.safe === false)) {
+        if (isUnsafeValidation(validation)) {
             throw new Error('canvas geometry is outside the profile limits');
         }
     }
@@ -17590,12 +17597,13 @@ function detectFrameQR(binaryImage, options = {}) {
             // allowUnmarked escape hatch.
             if (canvasDarkCount(matrix, canvas) !== 0)
                 continue;
-            const marked = matrix;
-            marked.frameqr = {
-                profile: FRAMEQR_PROFILE.id,
-                certified: false,
-                canvas,
-            };
+            const marked = Object.assign(matrix, {
+                frameqr: {
+                    profile: FRAMEQR_PROFILE.id,
+                    certified: false,
+                    canvas,
+                },
+            });
             let decoded;
             try {
                 decoded = decodeFrameQR(marked, {
@@ -17867,10 +17875,7 @@ function encodeAztecRune(value, options = {}) {
             for (let x = 0; x < AZTEC_RUNE_SIZE; x++)
                 matrix.flip(x, y);
     }
-    matrix.format = 'aztecrune';
-    matrix.value = numeric;
-    matrix.inverted = inverted;
-    return matrix;
+    return Object.assign(matrix, { format: 'aztecrune', value: numeric, inverted });
 }
 __exports.codewordsForValue = codewordsForValue;
 
@@ -17880,17 +17885,6 @@ __exports.encodeAztecRune = encodeAztecRune;
 };
 
 __modules["js/aztecrune/decoder.js"] = function (__require, __exports) {
-/**
- * Aztec Rune decoder.
- *
- * The input is a square 11x11 module matrix. Structural modules are checked
- * before the seven masked GF(16) codewords are Reed-Solomon corrected. The
- * decoder tries the four in-plane quarter turns and both polarities, allowing
- * it to consume an oriented sampled image while still rejecting ordinary
- * Aztec/QR matrices.
- *
- * @module aztecrune/decoder
- */
 const { FormatError } = __require("js/core/errors.js");
 const { rsDecode } = __require("js/core/reed-solomon.js");
 const { AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, aztecRuneStructuralValue } = __require("js/aztecrune/tables.js");
@@ -17964,8 +17958,9 @@ function decodeAztecRune(matrix, options = {}) {
         throw new FormatError(`Aztec Rune: expected an ${AZTEC_RUNE_SIZE}x${AZTEC_RUNE_SIZE} module matrix`);
     }
     const invertedModes = options.inverted === true ? [true] : options.inverted === false ? [false] : [false, true];
-    const rotations = Number.isInteger(options.rotation)
-        ? [((options.rotation % 360) + 360) % 360]
+    const rotation = options.rotation;
+    const rotations = typeof rotation === 'number' && Number.isInteger(rotation)
+        ? [((rotation % 360) + 360) % 360]
         : [0, 90, 180, 270];
     let checksumError = null;
     for (const requestedRotation of rotations) {
@@ -19219,7 +19214,7 @@ function groupForValue(value) {
     return group;
 }
 function dataCharacterWidths(value) {
-    if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS.at(-1).last) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS[GROUPS.length - 1].last) {
         throw new RangeError('GS1 DataBar Limited character value is out of range');
     }
     const group = groupForValue(value);
@@ -19471,6 +19466,7 @@ function detectDataBarLimited(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         const bounds = oriented.getBounds?.();
         if (bounds && bounds.width > 0 && bounds.height > 0) {
@@ -19486,7 +19482,7 @@ function detectDataBarLimited(binaryImage, options = {}) {
                     const geometry = createDetectionCandidate({
                         corners: canonicalCorners(cornersFor(candidateBox).map((point) => toOriginal(point))),
                         moduleSize: scale,
-                        rotation: rotation * 90,
+                        rotation: rotationDegrees[rotation],
                         matrix,
                         confidence: 1,
                     }, {
@@ -20427,6 +20423,7 @@ function detectDataBarExpanded(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         const bounds = oriented.getBounds?.();
         if (bounds && bounds.width > 0 && bounds.height > 0) {
@@ -20436,7 +20433,7 @@ function detectDataBarExpanded(binaryImage, options = {}) {
                 const geometry = createDetectionCandidate({
                     corners: canonicalCorners(cornersFor(bounds).map((point) => toOriginal(point))),
                     moduleSize: result.moduleScale,
-                    rotation: rotation * 90,
+                    rotation: rotationDegrees[rotation],
                     matrix: candidate,
                     confidence: 1,
                 }, {
@@ -21470,6 +21467,7 @@ function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         try {
             const bounds = boundsFor(oriented);
@@ -21482,7 +21480,7 @@ function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
                     const geometry = createDetectionCandidate({
                         corners,
                         moduleSize: scale,
-                        rotation: rotation * 90,
+                        rotation: rotationDegrees[rotation],
                         matrix: candidate.matrix,
                         confidence: 1,
                     }, {
@@ -22269,13 +22267,12 @@ function decodePrimary(primary, mode) {
     const serviceClass = ((primary[8] >>> 2) & 0x0f) | (primary[9] << 4);
     if (mode === 2) {
         const length = ((primary[5] >>> 4) & 0x03) | ((primary[6] & 0x0f) << 2);
-        let postal = ((primary[0] >>> 4) & 0x03) |
+        const postal = String(((primary[0] >>> 4) & 0x03) |
             (primary[1] << 2) |
             (primary[2] << 8) |
             (primary[3] << 14) |
             (primary[4] << 20) |
-            ((primary[5] & 0x0f) << 26);
-        postal = String(postal).padStart(length, '0');
+            ((primary[5] & 0x0f) << 26)).padStart(length, '0');
         return { postalCode: postal, countryCode, serviceClass };
     }
     const values = [
@@ -22851,7 +22848,7 @@ function parseRow(row, start, moduleSize, columns) {
     const stop = modules.slice(offset, offset + 13);
     if (stop !== code128CodewordsModules([STOP]))
         return null;
-    return { indicator, data };
+    return { indicator, columns, data };
 }
 function rowBits(matrix, y) {
     let bits = '';
@@ -26806,14 +26803,6 @@ __modules["js/render/options.js"] = function (__require, __exports) {
  * @module render/options
  */
 const { BitMatrix } = __require("js/core/bit-matrix.js");
-/**
- * @typedef {object} RenderOptions
- * @property {number} [scale] Pixels per module. Default 8.
- * @property {number} [margin] Quiet-zone modules on every side. Default 4.
- * @property {string} [dark] Colour of set modules. Default '#000000'.
- * @property {string} [light] Colour of clear modules, or 'none' for transparent.
- * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
- */
 // Keep renderer allocations aligned with the image decoder's resource limits.
 const MAX_RENDER_DIMENSION = 16384;
 const MAX_RENDER_PIXELS = 16777216;
@@ -27057,9 +27046,18 @@ function toBase64(text) {
         binary += String.fromCharCode(bytes[i]);
     if (typeof btoa === 'function')
         return btoa(binary);
-    // Node before btoa was global, and non-browser embedders.
-    /* eslint-disable-next-line no-undef */
-    return Buffer.from(bytes).toString('base64');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let output = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+        const first = bytes[i];
+        const second = bytes[i + 1];
+        const third = bytes[i + 2];
+        output += alphabet[first >> 2];
+        output += alphabet[((first & 3) << 4) | ((second ?? 0) >> 4)];
+        output += second === undefined ? '=' : alphabet[((second & 15) << 2) | ((third ?? 0) >> 6)];
+        output += third === undefined ? '=' : alphabet[third & 63];
+    }
+    return output;
 }
 /**
  * Render to a data URI usable directly as an `<img>` src.
@@ -27290,16 +27288,6 @@ function deflateStored(data) {
  * @returns {Promise<Uint8Array>}
  */
 async function deflate(data) {
-    // Node: zlib is built in, so this is not a dependency.
-    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-        try {
-            const zlib = await import('node:zlib');
-            return new Uint8Array(zlib.deflateSync(data));
-        }
-        catch {
-            /* fall through */
-        }
-    }
     // Browsers: CompressionStream('deflate') emits the zlib format PNG wants.
     if (typeof CompressionStream === 'function') {
         try {
@@ -27312,6 +27300,20 @@ async function deflate(data) {
         }
     }
     return deflateStored(data);
+}
+function base64(bytes) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let output = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+        const first = bytes[i];
+        const second = bytes[i + 1];
+        const third = bytes[i + 2];
+        output += alphabet[first >> 2];
+        output += alphabet[((first & 3) << 4) | ((second ?? 0) >> 4)];
+        output += second === undefined ? '=' : alphabet[((second & 15) << 2) | ((third ?? 0) >> 6)];
+        output += third === undefined ? '=' : alphabet[third & 63];
+    }
+    return output;
 }
 /* ------------------------------------------------------------------ *
  * PNG assembly
@@ -27411,11 +27413,10 @@ async function toPNGDataURI(matrix, options = {}) {
     let binary = '';
     for (let i = 0; i < bytes.length; i++)
         binary += String.fromCharCode(bytes[i]);
-    const base64 = typeof btoa === 'function'
+    const encoded = typeof btoa === 'function'
         ? btoa(binary)
-        /* eslint-disable-next-line no-undef */
-        : Buffer.from(bytes).toString('base64');
-    return 'data:image/png;base64,' + base64;
+        : base64(bytes);
+    return 'data:image/png;base64,' + encoded;
 }
 
 __exports.deflateStored = deflateStored;
@@ -27665,6 +27666,10 @@ fn fragmentMain(@location(0) quadUV : vec2<f32>) -> @location(0) vec4<f32> {
   return select(style.light, style.dark, v > 0.5);
 }
 `;
+const GPU_TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
+const GPU_TEXTURE_USAGE_COPY_DST = 0x08;
+const GPU_BUFFER_USAGE_COPY_DST = 0x08;
+const GPU_BUFFER_USAGE_UNIFORM = 0x40;
 /**
  * The adapter and device are per-page, not per-barcode.
  *
@@ -27821,7 +27826,7 @@ async function renderToCanvasWebGPU(matrix, canvas, options = {}) {
         texture = device.createTexture({
             size: { width: source.width, height: source.height, depthOrArrayLayers: 1 },
             format: 'r8unorm',
-            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+            usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST,
         });
         // `bytesPerRow` needs no 256-byte alignment here — that rule belongs to
         // buffer-to-texture copies, not to writeTexture's linear source data.
@@ -27852,7 +27857,7 @@ async function renderToCanvasWebGPU(matrix, canvas, options = {}) {
         style[9] = source.height;
         uniforms = device.createBuffer({
             size: style.byteLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
         });
         device.queue.writeBuffer(uniforms, 0, style);
         const shader = device.createShaderModule({ code: SHADER });
@@ -28237,11 +28242,12 @@ const __reexport19 = __require("js/frameqr/index.js"); __exports.encodeFrameQR =
 // QR module is the full implementation or a stand-in: a module may opt out
 // explicitly with QR_CAN_ENCODE/QR_CAN_DECODE, and is otherwise taken at face
 // value.
-const qrPresent = qr.QR_PLACEHOLDER !== true;
+const qrCompatibility = qr;
+const qrPresent = qrCompatibility.QR_PLACEHOLDER !== true;
 const qrCanEncode = qrPresent &&
-    typeof qr.encodeQR === 'function' && qr.QR_CAN_ENCODE !== false;
+    typeof qr.encodeQR === 'function' && qrCompatibility.QR_CAN_ENCODE !== false;
 const qrCanDecode = qrPresent &&
-    typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
+    typeof qr.detectAndDecodeQR === 'function' && qrCompatibility.QR_CAN_DECODE !== false;
 const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 const aztecCanEncode = typeof aztec.encodeAztec === 'function';
@@ -28303,7 +28309,7 @@ function listFormats() {
         canWrite: true,
         canRead: info.readable,
         kind: /** @type {'1D'} */ ('1D'),
-        ...(info.role ? { role: info.role } : {}),
+        ...('role' in info && info.role ? { role: info.role } : {}),
     }));
     formats.push({
         id: 'qr',
@@ -28462,8 +28468,8 @@ function listFormats() {
  * output medium. Linear symbols come back one module tall; height is a
  * rendering decision, not an encoding one.
  *
- * @param {string | number} text
- * @param {object} [options]
+ * @param {EncodeInput} text
+ * @param {EncodeOptions} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
  * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
  * @param {number} [options.version] QR version 1-40 or Han Xin version 1-3. Auto if omitted.
@@ -28505,6 +28511,18 @@ function listFormats() {
 function encode(text, options = {}) {
     const format = String(options.format ?? 'qr').toLowerCase();
     const value = typeof text === 'number' ? String(text) : text;
+    if (typeof value !== 'string') {
+        if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
+            return composite.encodeGS1Composite(value, options);
+        }
+        if (format === 'dotcode' || format === 'dot-code') {
+            return dotcode.encodeDotCode(value, options);
+        }
+        const entry = ONED_FORMATS[format];
+        if (entry)
+            return entry.encode(value, options);
+        throw new EncodeError('This barcode format requires a text payload');
+    }
     if (format === 'qr' || format === 'qrcode') {
         return qr.encodeQR(value, options);
     }
@@ -28568,7 +28586,7 @@ function encode(text, options = {}) {
         return hanxin.encodeHanXin(value, options);
     }
     if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
-        return composite.encodeGS1Composite(value, options);
+        throw new EncodeError('GS1 Composite input must be an object');
     }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
@@ -28580,8 +28598,9 @@ function encode(text, options = {}) {
         return encodeCode32(value);
     }
     if (format === 'pzn' || format === 'pzn7' || format === 'pzn8') {
+        const variant = options.variant === 'pzn7' || options.variant === 'pzn8' ? options.variant : undefined;
         return encodePZN(value, {
-            ...options,
+            variant,
             pzn8: format === 'pzn8' || options.pzn8 === true || options.variant === 'pzn8',
         });
     }
@@ -28674,13 +28693,7 @@ function encode(text, options = {}) {
  * make the common scanning loop a try/catch.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
- * @param {string[]} [options.formats] Restrict to these format ids.
- * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
- * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {'camera'} [options.profile] Opt-in strict camera profile for validated reads.
- * @param {object} [options.frameqr] Sythos Canvas QR detector options when
- *   the profile marker is not preserved through image rendering.
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult[]}
  */
 function decode(image, options = {}) {
@@ -29244,10 +29257,10 @@ function rotateLuminanceSourceByDegrees(source, degrees) {
  * Decode, or throw if nothing is found.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult}
  */
-function decodeStrict(image, options) {
+function decodeStrict(image, options = {}) {
     const results = decode(image, options);
     if (results.length === 0)
         throw new NotFoundError('No barcode found in image');
