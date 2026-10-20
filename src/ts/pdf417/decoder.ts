@@ -33,12 +33,14 @@ import { decodePdf417CompactionDetailed } from './compaction.js';
 import { pdf417CorrectErrors, pdf417EccLength } from './error-correction.js';
 import { pdf417CodewordForPattern } from './tables.js';
 
+type Pdf417DecodeOptions = { rowHeight?: number };
+
 const START = '11111111010101000';
 const STOP = '111111101000101001';
 function bits(matrix, y, x, width) { let value = 0; for (let i = 0; i < width; i++) value = (value << 1) | (matrix.get(x + i, y) ? 1 : 0); return value; }
 function indicators(row, rows, cols, level) { const group = Math.floor(row / 3), y = Math.floor((rows - 1) / 3), z = level * 3 + (rows - 1) % 3, v = cols - 1; return row % 3 === 0 ? [30 * group + y, 30 * group + v] : row % 3 === 1 ? [30 * group + z, 30 * group + y] : [30 * group + v, 30 * group + z]; }
 
-export function decodePDF417(matrix, options = {}) {
+export function decodePDF417(matrix, options: Pdf417DecodeOptions = {}) {
   if (!matrix?.width || !matrix?.height || (matrix.width - 69) % 17) throw new FormatError('PDF417: invalid matrix dimensions');
   const cols = (matrix.width - 69) / 17, rowHeight = options.rowHeight ?? matrix.pdf417?.rowHeight ?? 3;
   if (!Number.isInteger(rowHeight) || matrix.height % rowHeight) throw new FormatError('PDF417: invalid row height');

@@ -38,6 +38,7 @@ export interface CodablockFDecodeResult {
 
 interface ParsedRow {
   readonly indicator: number;
+  readonly columns: number;
   readonly data: number[];
 }
 
@@ -77,7 +78,7 @@ function parseRow(row: Uint8Array, start: number, moduleSize: number, columns: n
   offset += 11;
   const stop = modules.slice(offset, offset + 13);
   if (stop !== code128CodewordsModules([STOP])) return null;
-  return { indicator, data };
+  return { indicator, columns, data };
 }
 
 function rowBits(matrix: BitMatrix, y: number): string {

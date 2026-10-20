@@ -33,8 +33,15 @@
 import { EncodeError } from '../core/errors.js';
 import { GF929 } from '../core/galois-field.js';
 import { generatorPoly, rsDecode, rsEncode } from '../core/reed-solomon.js';
+type MicroPdf417Variant = { readonly eccCodewords: number };
 
-function eccLength(entry) {
+declare module '../core/galois-field.js' {
+  interface GaloisField {
+    size: number;
+  }
+}
+
+function eccLength(entry: MicroPdf417Variant) {
   if (!entry || !Number.isInteger(entry.eccCodewords)) throw new EncodeError('MicroPDF417: a variant with an ECC length is required');
   if (entry.eccCodewords < 1 || entry.eccCodewords >= GF929.size) throw new EncodeError('MicroPDF417: ECC length is outside GF(929) bounds');
   return entry.eccCodewords;

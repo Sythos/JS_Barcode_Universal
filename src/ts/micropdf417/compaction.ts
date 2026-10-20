@@ -82,7 +82,10 @@ function compactByte(value, eci) {
  * an explicit 900 latch. Byte compaction always emits 901 or 924 so its start
  * state is unambiguous, including when an ECI designator precedes it.
  */
-export function compactMicroPDF417(value, options = {}) {
+export function compactMicroPDF417(value, options: {
+  compaction?: 'auto' | 'text' | 'byte' | 'numeric';
+  eci?: number;
+} = {}) {
   assertNotEmpty(value);
   const mode = options.compaction ?? 'auto';
   const eci = options.eci;
