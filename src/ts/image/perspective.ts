@@ -43,6 +43,16 @@
  */
 
 export class PerspectiveTransform {
+  a11: number;
+  a21: number;
+  a31: number;
+  a12: number;
+  a22: number;
+  a32: number;
+  a13: number;
+  a23: number;
+  a33: number;
+
   /* eslint-disable-next-line max-params */
   constructor(a11, a21, a31, a12, a22, a32, a13, a23, a33) {
     this.a11 = a11; this.a21 = a21; this.a31 = a31;

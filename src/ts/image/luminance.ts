@@ -93,6 +93,10 @@ function validateByteData(data, expected, label) {
  */
 
 export class LuminanceSource {
+  grey: Uint8Array | Uint8ClampedArray;
+  width: number;
+  height: number;
+
   /**
    * @param {Uint8Array} grey One byte per pixel.
    * @param {number} width
