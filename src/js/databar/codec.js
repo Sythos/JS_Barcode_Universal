@@ -67,7 +67,7 @@ export function normalizeGTIN(value) {
     if (!GTIN_LENGTHS.has(input.length)) {
         throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
     }
-    if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
+    if (gtinCheckDigit(input.slice(0, -1)) !== input.charAt(input.length - 1)) {
         throw new RangeError(`GTIN check digit is invalid for ${input}`);
     }
     return input.padStart(14, '0');

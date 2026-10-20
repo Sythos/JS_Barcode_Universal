@@ -47,6 +47,15 @@ const SEPARATOR_MINIMUM = 1;
 const HALF_ELEMENT_COUNT = 23;
 const MAX_SYMBOL_DIMENSION = 32_768;
 
+type DataBarStackedOptions = {
+  linkage?: boolean;
+  moduleScale?: number;
+  scale?: number;
+  topHeight?: number;
+  separatorHeight?: number;
+  bottomHeight?: number;
+};
+
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -223,7 +232,7 @@ function paintRow(matrix, y, height, bits, scale) {
  * an integer nearest-neighbour raster. Explicit row heights are accepted when
  * they satisfy the same minima and are already expressed in output modules.
  */
-export function encodeDataBar14Stacked(value, options = {}) {
+export function encodeDataBar14Stacked(value, options: DataBarStackedOptions = {}) {
   const gtin = strictGTIN14(value);
   const geometry = resolveGeometry(options);
   const compacted = encodeDataBar14GTIN(gtin, { linkage: options.linkage });

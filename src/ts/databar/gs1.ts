@@ -34,7 +34,7 @@ import { EncodeError, FormatError } from '../core/errors.js';
 
 export const GS1_SEPARATOR = '\x1d';
 
-const EXACT = new Map([
+const EXACT = new Map<string, readonly [number, boolean]>([
   ['00', [18, true]], ['01', [14, true]], ['02', [14, true]],
   ['10', [20, false]], ['11', [6, true]], ['12', [6, true]],
   ['13', [6, true]], ['15', [6, true]], ['16', [6, true]],
@@ -67,7 +67,7 @@ const EXACT = new Map([
   ['8200', [70, false]],
 ]);
 
-function rangedAI(ai) {
+function rangedAI(ai: string): readonly [number, boolean] | undefined {
   if (/^31[0-6]\d$/.test(ai) || /^32[0-7]\d$/.test(ai) ||
       /^33[0-7]\d$/.test(ai) || /^34[0-9]\d$/.test(ai) ||
       /^35[0-7]\d$/.test(ai) || /^36[0-9]\d$/.test(ai)) return [6, true];

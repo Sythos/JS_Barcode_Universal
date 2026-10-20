@@ -482,6 +482,7 @@ export function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         try {
             const bounds = boundsFor(oriented);
@@ -494,7 +495,7 @@ export function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
                     const geometry = createDetectionCandidate({
                         corners,
                         moduleSize: scale,
-                        rotation: rotation * 90,
+                        rotation: rotationDegrees[rotation],
                         matrix: candidate.matrix,
                         confidence: 1,
                     }, {
