@@ -35,6 +35,12 @@ import { GF256_DM } from '../core/galois-field.js';
 import { rsEncode } from '../core/reed-solomon.js';
 import { symbolForDataCodewords } from './tables.js';
 
+type DataMatrixOptions = {
+  encoding?: 'ascii' | 'base256';
+  shape?: 'any' | 'square' | 'rectangular';
+  gs1?: boolean;
+};
+
 function asciiCodewords(text) {
   const out = [];
   for (let i = 0; i < text.length;) {
@@ -169,7 +175,7 @@ function buildMatrix(codewords, symbol) {
  * @param {string | Uint8Array} value
  * @param {{encoding?: 'ascii' | 'base256', shape?: 'any' | 'square' | 'rectangular', gs1?: boolean}} [options]
  */
-export function encodeDataMatrix(value, options = {}) {
+export function encodeDataMatrix(value, options: DataMatrixOptions = {}) {
   const encoding = options.encoding ?? (value instanceof Uint8Array ? 'base256' : 'ascii');
   let raw;
   if (encoding === 'ascii') {
@@ -191,7 +197,7 @@ export function encodeDataMatrix(value, options = {}) {
 }
 
 /** Encode already compacted ASCII/Base256 codewords, primarily for conformance tests. */
-export function encodeDataMatrixCodewords(codewords, options = {}) {
+export function encodeDataMatrixCodewords(codewords, options: Pick<DataMatrixOptions, 'shape'> = {}) {
   if (!Array.isArray(codewords) && !(codewords instanceof Uint8Array)) throw new EncodeError('Data Matrix: codewords must be an array');
   for (const c of codewords) if (!Number.isInteger(c) || c < 0 || c > 255) throw new EncodeError('Data Matrix: codewords must be bytes');
   const symbol = symbolForDataCodewords(codewords.length, options.shape ?? 'any');

@@ -71,8 +71,7 @@ function layoutFor(width, height) {
     }
     const rows = height / (regionRows + 2);
     const cols = width / (regionCols + 2);
-    const blockData = Array.isArray(entry.blockDataCodewords) ? entry.blockDataCodewords.slice() :
-        Array.isArray(entry.dataCodewordsPerBlock) ? entry.dataCodewordsPerBlock.slice() : null;
+    const blockData = entry.dataBlockLengths.slice();
     let dataLengths;
     if (blockData) {
         dataLengths = blockData;
