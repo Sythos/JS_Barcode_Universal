@@ -46,6 +46,14 @@
 
 import { BitMatrix } from '../core/bit-matrix.js';
 import { EncodeError, FormatError } from '../core/errors.js';
+
+declare module '../core/bit-matrix.js' {
+  interface BitMatrix {
+    width: number;
+    height: number;
+    eanAddon?: {format: string, text: string, parity: string, checksum?: number, gap?: number};
+  }
+}
 import {
   EAN_L,
   EAN_G,
@@ -367,7 +375,7 @@ export const decodeEANAddOn = decodeEANAddon;
  * @param {{gap?:number}} [options]
  * @returns {BitMatrix}
  */
-export function composeEANAddon(base, addon, options = {}) {
+export function composeEANAddon(base, addon, options: {gap?: number} = {}) {
   if (!base || !Number.isInteger(base.width) || base.height !== 1) {
     throw new TypeError('EAN add-on: base must be a one-row module matrix');
   }
@@ -400,21 +408,21 @@ export function composeEANAddon(base, addon, options = {}) {
  * @param {{gap?:number}} [options]
  * @returns {BitMatrix}
  */
-export function encodeEAN13WithAddon(value, addon, options = {}) {
+export function encodeEAN13WithAddon(value, addon, options: {gap?: number} = {}) {
   return composeEANAddon(encodeEAN13(value), addon, options);
 }
 
 /** @see encodeEAN13WithAddon */
-export function encodeEAN8WithAddon(value, addon, options = {}) {
+export function encodeEAN8WithAddon(value, addon, options: {gap?: number} = {}) {
   return composeEANAddon(encodeEAN8(value), addon, options);
 }
 
 /** @see encodeEAN13WithAddon */
-export function encodeUPCAWithAddon(value, addon, options = {}) {
+export function encodeUPCAWithAddon(value, addon, options: {gap?: number} = {}) {
   return composeEANAddon(encodeUPCA(value), addon, options);
 }
 
 /** @see encodeEAN13WithAddon */
-export function encodeUPCEWithAddon(value, addon, options = {}) {
+export function encodeUPCEWithAddon(value, addon, options: {gap?: number} = {}) {
   return composeEANAddon(encodeUPCE(value), addon, options);
 }

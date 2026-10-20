@@ -1314,7 +1314,7 @@ function decodeCode25Variant(row, variant, options = {}) {
         if (digits.length < 2)
             return null;
         const body = digits.slice(0, -1);
-        if (code25CheckDigit(body) !== Number(digits.at(-1)))
+        if (code25CheckDigit(body) !== Number(digits[digits.length - 1]))
             return null;
         digits = body;
         checkDigit = true;
@@ -1567,9 +1567,6 @@ function decodeCodabar(row) {
         return null;
     return { format: 'codabar', text };
 }
-/* ------------------------------------------------------------------ *
- * Public entry point
- * ------------------------------------------------------------------ */
 /** Decoders in the order they are tried. */
 const DECODERS = [
     ['ean13', decodeEANFamily],
