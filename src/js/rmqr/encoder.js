@@ -285,16 +285,18 @@ export function encodeRMQR(text, options = {}) {
     const ecc = options.ecc || 'M';
     if (ecc !== 'M' && ecc !== 'H')
         throw new EncodeError('rMQR: ECC must be M or H');
-    let forced = options.version;
-    if (typeof forced === 'string') {
-        const match = /^R(\d+)x(\d+)$/i.exec(forced);
+    let forced;
+    if (typeof options.version === 'string') {
+        const match = /^R(\d+)x(\d+)$/i.exec(options.version);
         if (!match)
-            throw new EncodeError(`rMQR: invalid version ${forced}`);
+            throw new EncodeError(`rMQR: invalid version ${options.version}`);
         const info = versionForSize(Number(match[2]), Number(match[1]));
         if (!info)
-            throw new EncodeError(`rMQR: unsupported version ${forced}`);
+            throw new EncodeError(`rMQR: unsupported version ${options.version}`);
         forced = info.version;
     }
+    else
+        forced = options.version;
     if (forced !== undefined && (!Number.isInteger(forced) || forced < 1 || forced > 32))
         throw new EncodeError('rMQR: version must be 1-32');
     const versions = forced ? [forced] : Array.from({ length: 32 }, (_, i) => i + 1);
@@ -315,7 +317,6 @@ export function encodeRMQR(text, options = {}) {
         throw new EncodeError(`rMQR: text is too long for ECC ${ecc}`);
     const codewords = interleave(selected.data, selected.v, ecc);
     const matrix = buildMatrix(selected.v.version, ecc, codewords);
-    matrix.rmqr = { version: selected.v.version, name: selected.v.name, ecc };
-    return matrix;
+    return Object.assign(matrix, { rmqr: { version: selected.v.version, name: selected.v.name, ecc } });
 }
 export { MODE };

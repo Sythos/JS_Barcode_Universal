@@ -49,6 +49,10 @@ import {
 
 const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
 
+type DataBarLinkageOptions = {
+  linkage?: boolean;
+};
+
 function digits(value, label) {
   const text = String(value);
   if (!/^\d+$/.test(text)) throw new TypeError(`${label} must contain only decimal digits`);
@@ -79,7 +83,7 @@ export function normalizeGTIN(value) {
   if (!GTIN_LENGTHS.has(input.length)) {
     throw new RangeError('GTIN must contain 8, 12, 13, or 14 digits including its check digit');
   }
-  if (gtinCheckDigit(input.slice(0, -1)) !== input.at(-1)) {
+  if (gtinCheckDigit(input.slice(0, -1)) !== input.charAt(input.length - 1)) {
     throw new RangeError(`GTIN check digit is invalid for ${input}`);
   }
   return input.padStart(14, '0');
@@ -106,7 +110,7 @@ function gtinFromSymbolValue(symbolValue) {
  * Stacked and Stacked Omnidirectional. The `physicalCharacters` sequence is
  * left-to-right on a linear DataBar-14 row: 1, 2, 4, 3.
  */
-export function encodeDataBar14GTIN(value, options = {}) {
+export function encodeDataBar14GTIN(value, options: DataBarLinkageOptions = {}) {
   const gtin = normalizeGTIN(value);
   const linkage = options.linkage === true;
   if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
@@ -144,7 +148,7 @@ export function decodeDataBar14GTIN(values) {
 }
 
 /** Compact a DataBar Limited-eligible GTIN into its two data character values. */
-export function encodeDataBarLimitedGTIN(value, options = {}) {
+export function encodeDataBarLimitedGTIN(value, options: DataBarLinkageOptions = {}) {
   const gtin = normalizeGTIN(value);
   const linkage = options.linkage === true;
   if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {

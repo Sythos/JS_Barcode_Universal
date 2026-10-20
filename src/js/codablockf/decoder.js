@@ -53,7 +53,7 @@ function parseRow(row, start, moduleSize, columns) {
     const stop = modules.slice(offset, offset + 13);
     if (stop !== code128CodewordsModules([STOP]))
         return null;
-    return { indicator, data };
+    return { indicator, columns, data };
 }
 function rowBits(matrix, y) {
     let bits = '';

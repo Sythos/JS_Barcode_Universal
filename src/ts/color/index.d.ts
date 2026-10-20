@@ -10,6 +10,6 @@
  * Original work. No code from any other barcode implementation.
  */
 export { PolychromeMatrix } from './matrix.js';
-export type { RGB } from './matrix.js';
+export type { KarTrakMatrixMetadata, RGB } from './matrix.js';
 export { toColorImageData } from './render.js';
 export { classifyGrid } from './classify.js';

@@ -60,6 +60,37 @@ const MAX_MODULES = 67_108_864;
 // claim; it only prevents a standalone component from being accepted here.
 const COMPONENT_PREFIX = Object.freeze({ 'cc-a': 'A|', 'cc-b': 'B|' });
 
+type GS1Element = {
+  ai: string;
+  value: string;
+};
+
+export type GS1CompositeInput = {
+  linear: {
+    format: string;
+    value: string | number | GS1Element[];
+    options?: Record<string, unknown>;
+  };
+  data: string | GS1Element[];
+  component?: 'auto' | 'cc-a' | 'cc-b';
+  rowHeight?: number;
+  separatorGap?: number;
+  moduleScale?: number;
+};
+
+export type GS1CompositeOptions = Pick<GS1CompositeInput, 'component' | 'rowHeight' | 'separatorGap' | 'moduleScale'>;
+
+type CompositeGeometry = {
+  moduleScale?: number;
+  separatorGap?: number;
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -218,7 +249,7 @@ function metadataFor({ component, linear, width, height, scale, gap, host }) {
 }
 
 /** Encode a bounded, linked GS1 DataBar Composite profile. */
-export function encodeGS1Composite(input, options = {}) {
+export function encodeGS1Composite(input: GS1CompositeInput, options: GS1CompositeOptions = {}) {
   if (!isRecord(input)) throw new EncodeError('GS1 Composite input must be an object');
   if (!isRecord(options)) throw new EncodeError('GS1 Composite options must be an object');
   if (!isRecord(input.linear)) throw new EncodeError('GS1 Composite linear host is required');
@@ -324,7 +355,7 @@ function payloadFromComponent(decoded, kind) {
   return { raw, elements };
 }
 
-function compositeResult(host, linear, component, kind, raw, elements, geometry = {}) {
+function compositeResult(host, linear, component, kind, raw, elements, geometry: CompositeGeometry = {}) {
   if (linear.linkage !== true) throw new FormatError('GS1 Composite linear host is not linked');
   return Object.freeze({
     format: 'gs1composite',

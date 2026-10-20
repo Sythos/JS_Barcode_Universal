@@ -159,7 +159,7 @@ function decodeTrack(matrix, row) {
   return bits;
 }
 
-function decodeFromBits(clock, data) {
+function decodeFromBits(clock: string, data: string): DXFilmEdgeDecodeResult | null {
   const length = data.length;
   if (length !== SHORT_LENGTH && length !== LONG_LENGTH) return null;
   if (clock !== clockTrack(length)) return null;
@@ -178,7 +178,7 @@ function decodeFromBits(clock, data) {
   cursor += 1; // separator
   const generation = fromBits(data.slice(cursor, cursor + 4)); cursor += 4;
 
-  const result = { format: 'dxfilmedge', productCode, generation };
+  const result: DXFilmEdgeDecodeResult = { format: 'dxfilmedge', productCode, generation };
   if (length === LONG_LENGTH) {
     const frameNumber = fromBits(data.slice(cursor, cursor + 6)); cursor += 6;
     const halfFrame = data[cursor] === '1'; cursor += 1;

@@ -133,6 +133,13 @@ const ISO646_VALUES = new Map([
   [' ', 252],
 ]);
 
+type DataBarExpandedOptions = {
+  linkage?: boolean;
+  moduleScale?: number;
+  scale?: number;
+  height?: number;
+};
+
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -144,7 +151,7 @@ function positiveInteger(value, label) {
   return value;
 }
 
-function resolveGeometry(options, logicalWidth) {
+function resolveGeometry(options: DataBarExpandedOptions, logicalWidth) {
   if (options === undefined) options = {};
   if (!isRecord(options)) throw new TypeError('GS1 DataBar Expanded options must be an object');
   if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
@@ -518,7 +525,7 @@ function paint(bits, height, scale) {
 }
 
 /** Encode a GS1 element string as linear GS1 DataBar Expanded. */
-export function encodeDataBarExpanded(value, options = {}) {
+export function encodeDataBarExpanded(value, options: DataBarExpandedOptions = {}) {
   const raw = encodeGS1ElementString(value);
   const linkage = options?.linkage === true;
   const payload = encodePayload(raw, linkage);
@@ -890,6 +897,7 @@ export function detectDataBarExpanded(binaryImage, options = {}) {
   if (!validImage(binaryImage) || !isRecord(options)) return null;
   let oriented = binaryImage;
   let toOriginal = (point) => ({ x: point.x, y: point.y });
+  const rotationDegrees = [0, 90, 180, 270] as const;
   for (let rotation = 0; rotation < 4; rotation++) {
     const bounds = oriented.getBounds?.();
     if (bounds && bounds.width > 0 && bounds.height > 0) {
@@ -899,7 +907,7 @@ export function detectDataBarExpanded(binaryImage, options = {}) {
         const geometry = createDetectionCandidate({
           corners: canonicalCorners(cornersFor(bounds).map((point) => toOriginal(point))),
           moduleSize: result.moduleScale,
-          rotation: rotation * 90,
+          rotation: rotationDegrees[rotation],
           matrix: candidate,
           confidence: 1,
         }, {

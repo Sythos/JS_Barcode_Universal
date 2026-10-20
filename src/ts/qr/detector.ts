@@ -444,7 +444,7 @@ export function detectQR(binaryImage) {
     throw new NotFoundError('detectQR: no image supplied');
   }
 
-  const finders = findPatterns(binaryImage, FINDER_RATIOS, 7);
+  const finders = findPatterns(binaryImage, FINDER_RATIOS, 7, undefined);
   // A single stray row hit is noise; a real finder is crossed many times.
   const solid = finders.filter((f) => f.hits >= 2);
   const pool = solid.length >= 3 ? solid : finders;

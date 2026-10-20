@@ -43,6 +43,16 @@
 
 import { EncodeError } from '../core/errors.js';
 
+export type CompactPdf417Options = {
+  rows?: number;
+  columns?: number;
+  aspectRatio?: number;
+  eccLevel?: number;
+  rowHeight?: number;
+  compaction?: 'auto' | 'text' | 'byte' | 'numeric';
+  charset?: string;
+};
+
 /** PDF417 start pattern, in module widths. */
 export const COMPACT_PDF417_START = '81111113';
 
@@ -106,7 +116,7 @@ export function compactPdf417Geometry(width, height, rowHeight = 3) {
  * Validate encoder dimensions before codeword packing.
  * @param {object} options
  */
-export function validateCompactPdf417Options(options = {}) {
+export function validateCompactPdf417Options(options: CompactPdf417Options = {}) {
   const { minRows, maxRows, minColumns, maxColumns } = COMPACT_PDF417_LIMITS;
   const rowHeight = options.rowHeight ?? 3;
   if (!Number.isInteger(rowHeight) || rowHeight < 3) {

@@ -39,6 +39,12 @@ import {
   dataBar14CharacterWidths,
 } from './patterns.js';
 
+type DataBar14Options = {
+  variant?: 'omnidirectional' | 'truncated';
+  height?: number;
+  linkage?: boolean;
+};
+
 function finderIndexes(characters) {
   const widths = characters.map((value, index) =>
     dataBar14CharacterWidths(value, index === 0 || index === 3 ? 'outside' : 'inside')
@@ -70,7 +76,7 @@ function widthsToMatrix(widths, height) {
 }
 
 /** Encode a checked GTIN as DataBar Omnidirectional or Truncated. */
-export function encodeDataBar14(value, options = {}) {
+export function encodeDataBar14(value, options: DataBar14Options = {}) {
   const variant = options.variant ?? 'omnidirectional';
   if (variant !== 'omnidirectional' && variant !== 'truncated') {
     throw new EncodeError('GS1 DataBar-14 physical encoder currently supports omnidirectional and truncated');

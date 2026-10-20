@@ -62,7 +62,7 @@ function patternString(matrix, y, x, width) {
  * @param {object} [options]
  * @param {number} [options.rowHeight]
  */
-export function decodeCompactPDF417(matrix, options = {}) {
+export function decodeCompactPDF417(matrix, options: { rowHeight?: number } = {}) {
   if (!matrix?.width || !matrix?.height) throw new FormatError('Compact PDF417: no matrix supplied');
   const rowHeight = options.rowHeight ?? matrix.compactPdf417?.rowHeight ?? 3;
   let geometry;

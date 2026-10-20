@@ -639,7 +639,7 @@ function finalizeCode11(encoded, requested) {
  * @param {boolean} [options.checkDigit]
  * @returns {{format:'code11', text:string}|null}
  */
-export function decodeCode11(row, options = {}) {
+export function decodeCode11(row, options: OneDDecodeOptions = {}) {
   const counters = new Array(5).fill(0);
   let start = null;
   for (let i = 0; i < row.length; i++) {
@@ -714,7 +714,7 @@ function finalizeMSI(encoded, requested) {
  * @param {boolean} [options.checkDigit]
  * @returns {{format:'msi', text:string}|null}
  */
-export function decodeMSI(row, options = {}) {
+export function decodeMSI(row, options: OneDDecodeOptions = {}) {
   const start = findGuard(row, 0, [2, 1], false);
   if (!start) return null;
   const scale = (start.end - start.start) / 3;
@@ -889,7 +889,7 @@ function decodeCode128(row) {
  * @param {object} options
  * @returns {{format: string, text: string} | null}
  */
-function decodeCode39(row, options = {}) {
+function decodeCode39(row, options: OneDDecodeOptions = {}) {
   const counters = new Array(9).fill(0);
   let offset = 0;
 
@@ -1202,7 +1202,7 @@ function findCode25Start(row, startPattern, preferLeftmost = false, threshold = 
  * @param {object} options
  * @returns {{format:'industrial2of5'|'iata2of5'|'datalogic2of5'|'matrix2of5',text:string,checkDigit:boolean}|null}
  */
-function decodeCode25Variant(row, variant, options = {}) {
+function decodeCode25Variant(row, variant, options: OneDDecodeOptions = {}) {
   const profile = CODE25_VARIANTS[variant];
   const digitPatterns = profile.digitPatterns;
   // The Data Logic digit grammar is shorter and less self-checking than the
@@ -1312,7 +1312,7 @@ function decodeCode25Variant(row, variant, options = {}) {
   if (options.checkDigit === true || options.profile === 'camera') {
     if (digits.length < 2) return null;
     const body = digits.slice(0, -1);
-    if (code25CheckDigit(body) !== Number(digits.at(-1))) return null;
+    if (code25CheckDigit(body) !== Number(digits[digits.length - 1])) return null;
     digits = body;
     checkDigit = true;
   }
@@ -1325,32 +1325,32 @@ function decodeCode25Variant(row, variant, options = {}) {
 }
 
 /** Decode the canonical Standard/Industrial 2 of 5 frame. */
-export function decodeIndustrial2of5(row, options = {}) {
+export function decodeIndustrial2of5(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'industrial', options);
 }
 
 /** Decode IATA 2 of 5 with its shorter guard frame. */
-export function decodeIATA2of5(row, options = {}) {
+export function decodeIATA2of5(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'iata', options);
 }
 
 /** Decode Code 2 of 5 Data Logic (also known as China Post). */
-export function decodeDataLogic2of5(row, options = {}) {
+export function decodeDataLogic2of5(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'datalogic', options);
 }
 
 /** Decode Matrix 2 of 5. */
-export function decodeMatrix2of5(row, options = {}) {
+export function decodeMatrix2of5(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'matrix', options);
 }
 
 /** Decode the canonical Standard 2 of 5 frame. */
-export function decodeStandard2of5(row, options = {}) {
+export function decodeStandard2of5(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'standard', options);
 }
 
 /** Decode any Code 25 family frame using the canonical Standard profile. */
-export function decodeCode25(row, options = {}) {
+export function decodeCode25(row, options: OneDDecodeOptions = {}) {
   return decodeCode25Variant(row, 'standard', options);
 }
 
@@ -1553,8 +1553,25 @@ function decodeCodabar(row) {
  * Public entry point
  * ------------------------------------------------------------------ */
 
+type OneDDecodeOptions = {
+  checkDigit?: boolean;
+  formats?: string[];
+  rows?: number;
+  tryHarder?: boolean;
+  profile?: 'camera';
+  cameraRotation?: 0|90|180|270;
+  [key: string]: unknown;
+};
+
+type OneDDecodeResult = {
+  format: string;
+  text: string;
+  addon?: {format: string, text: string};
+  [key: string]: unknown;
+};
+
 /** Decoders in the order they are tried. */
-const DECODERS = [
+const DECODERS: Array<[string, (row: Uint8Array, options?: OneDDecodeOptions) => OneDDecodeResult | null]> = [
   ['ean13', decodeEANFamily],
   ['upca', decodeEANFamily],
   ['ean8', decodeEAN8],
@@ -1676,7 +1693,7 @@ function cameraMetadata(result, geometry, rows, options) {
  * @param {0|90|180|270} [options.cameraRotation] Orientation already normalized by the caller.
  * @returns {Array<{format: string, text: string, row: number}>}
  */
-export function decodeOneD(image, options = {}) {
+export function decodeOneD(image, options: OneDDecodeOptions = {}) {
   const { formats = null, rows = 15, tryHarder = true, profile = null } = options;
   const cameraProfile = profile === 'camera';
   const enabled = formats ? new Set(formats) : null;

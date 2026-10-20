@@ -213,7 +213,7 @@ function groupForValue(value) {
     return group;
 }
 function dataCharacterWidths(value) {
-    if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS.at(-1).last) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS[GROUPS.length - 1].last) {
         throw new RangeError('GS1 DataBar Limited character value is out of range');
     }
     const group = groupForValue(value);
@@ -465,6 +465,7 @@ export function detectDataBarLimited(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         const bounds = oriented.getBounds?.();
         if (bounds && bounds.width > 0 && bounds.height > 0) {
@@ -480,7 +481,7 @@ export function detectDataBarLimited(binaryImage, options = {}) {
                     const geometry = createDetectionCandidate({
                         corners: canonicalCorners(cornersFor(candidateBox).map((point) => toOriginal(point))),
                         moduleSize: scale,
-                        rotation: rotation * 90,
+                        rotation: rotationDegrees[rotation],
                         matrix,
                         confidence: 1,
                     }, {

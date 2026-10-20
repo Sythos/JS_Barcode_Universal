@@ -94,7 +94,7 @@ function putEci(writer, assignment) {
 function makeData(text, v, ecc, options) {
   const requested = options.mode;
   const mode = chooseMode(text, requested);
-  const charset = options.charset || (mode === 'byte' && Array.from(text).every((ch) => ch.charCodeAt(0) <= 255) ? 'iso-8859-1' : 'utf-8');
+  const charset = options.charset || (mode === 'byte' && Array.from(text).every((ch: string) => ch.charCodeAt(0) <= 255) ? 'iso-8859-1' : 'utf-8');
   const bytes = mode === 'byte' ? (charset === 'iso-8859-1' ? latin1Bytes(text) : utf8Bytes(text)) : new Uint8Array();
   const countBits = v.countBits(mode);
   if (!countBits) throw new EncodeError(`rMQR: unsupported mode ${mode}`);
@@ -157,16 +157,16 @@ function buildMatrix(version, ecc, codewords) {
 }
 
 /** Encode text into a rMQR module matrix. */
-export function encodeRMQR(text, options = {}) {
+export function encodeRMQR(text: string, options: { ecc?: 'M' | 'H'; version?: string | number; mode?: string; charset?: string; eci?: number } = {}) {
   if (typeof text !== 'string' || text.length === 0) throw new EncodeError('rMQR: text must be a non-empty string');
   const ecc = options.ecc || 'M'; if (ecc !== 'M' && ecc !== 'H') throw new EncodeError('rMQR: ECC must be M or H');
-  let forced = options.version; if (typeof forced === 'string') { const match = /^R(\d+)x(\d+)$/i.exec(forced); if (!match) throw new EncodeError(`rMQR: invalid version ${forced}`); const info = versionForSize(Number(match[2]), Number(match[1])); if (!info) throw new EncodeError(`rMQR: unsupported version ${forced}`); forced = info.version; }
+  let forced: number | undefined; if (typeof options.version === 'string') { const match = /^R(\d+)x(\d+)$/i.exec(options.version); if (!match) throw new EncodeError(`rMQR: invalid version ${options.version}`); const info = versionForSize(Number(match[2]), Number(match[1])); if (!info) throw new EncodeError(`rMQR: unsupported version ${options.version}`); forced = info.version; } else forced = options.version;
   if (forced !== undefined && (!Number.isInteger(forced) || forced < 1 || forced > 32)) throw new EncodeError('rMQR: version must be 1-32');
   const versions = forced ? [forced] : Array.from({ length: 32 }, (_, i) => i + 1);
   let selected = null;
   for (const n of versions) { const v = versionInfo(n); try { const data = makeData(text, v, ecc, options); selected = { v, data }; break; } catch (error) { if (forced) throw error; } }
   if (!selected) throw new EncodeError(`rMQR: text is too long for ECC ${ecc}`);
-  const codewords = interleave(selected.data, selected.v, ecc); const matrix = buildMatrix(selected.v.version, ecc, codewords); matrix.rmqr = { version: selected.v.version, name: selected.v.name, ecc }; return matrix;
+  const codewords = interleave(selected.data, selected.v, ecc); const matrix = buildMatrix(selected.v.version, ecc, codewords); return Object.assign(matrix, { rmqr: { version: selected.v.version, name: selected.v.name, ecc } });
 }
 
 export { MODE };

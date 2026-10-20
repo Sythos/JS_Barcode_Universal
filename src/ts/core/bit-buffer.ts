@@ -43,6 +43,9 @@ import { FormatError } from './errors.js';
 
 /** Growable MSB-first bit writer. */
 export class BitWriter {
+  bytes: number[];
+  bitLength: number;
+
   constructor() {
     /** @type {number[]} Packed bytes; the last one may be partially filled. */
     this.bytes = [];
@@ -104,6 +107,10 @@ export class BitWriter {
 
 /** MSB-first bit reader over a byte array. */
 export class BitReader {
+  bytes: ArrayLike<number>;
+  byteOffset: number;
+  bitOffset: number;
+
   /** @param {ArrayLike<number>} bytes */
   constructor(bytes) {
     this.bytes = bytes;

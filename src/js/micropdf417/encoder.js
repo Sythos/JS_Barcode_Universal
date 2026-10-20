@@ -125,12 +125,15 @@ function chooseVariant(codewordCount, rowHeight, options) {
             ? variant : best);
     }
     const target = options.aspectRatio;
-    return candidates.reduce((best, variant) => {
+    const selected = candidates.reduce((best, variant) => {
         const ratio = symbolWidth(variant.columns) / (variant.rows * rowHeight);
         const score = Math.abs(Math.log(ratio / target)) +
             (variant.dataCodewords - codewordCount) / 10000;
         return !best || score < best.score ? { variant, score } : best;
-    }, null).variant;
+    }, null);
+    if (!selected)
+        throw new EncodeError('MicroPDF417: no candidate variant is available');
+    return selected.variant;
 }
 /** Encode a value as one of the 34 fixed MicroPDF417 variants. */
 export function encodeMicroPDF417(value, options = {}) {

@@ -86,7 +86,7 @@ function mapCorners(corners, toOriginal) {
  * @param {number} [options.rowHeight] Restrict the row-height search.
  * @returns {object|null}
  */
-export function detectCompactPDF417(binaryImage, options = {}) {
+export function detectCompactPDF417(binaryImage, options: { rowHeight?: number } = {}) {
   if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function') return null;
 
   let oriented = binaryImage;
@@ -134,6 +134,6 @@ export function detectCompactPDF417(binaryImage, options = {}) {
   return null;
 }
 
-export function detectAndDecodeCompactPDF417(binaryImage, options = {}) {
+export function detectAndDecodeCompactPDF417(binaryImage, options: { rowHeight?: number } = {}) {
   return detectCompactPDF417(binaryImage, options);
 }

@@ -327,9 +327,10 @@ function decodeNumericSegment(codewords, at) {
  * modes that encode octets explicitly.
  */
 export function decodePdf417CompactionDetailed(codewords) {
-    if (!Array.isArray(codewords) && !ArrayBuffer.isView(codewords))
+    if (!Number.isInteger(codewords.length))
         throw new FormatError('PDF417: codewords must be an array');
-    for (const codeword of codewords)
+    const values = Array.from(codewords);
+    for (const codeword of values)
         assertCodeword(codeword);
     let at = 0;
     // ISO/IEC 8859-1 is the PDF417 default; UTF-8 is selected explicitly with ECI 26.
@@ -337,14 +338,14 @@ export function decodePdf417CompactionDetailed(codewords) {
     let output = '';
     const bytes = [];
     const segments = [];
-    while (at < codewords.length) {
-        const codeword = codewords[at];
+    while (at < values.length) {
+        const codeword = values[at];
         if (codeword < 900 || codeword === 900 || codeword === 913) {
             const start = at;
             const latch = codeword === 900 ? codeword : null;
             if (latch !== null)
                 at++;
-            const segment = decodeTextSegment(codewords, at, eci);
+            const segment = decodeTextSegment(values, at, eci);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
@@ -355,29 +356,29 @@ export function decodePdf417CompactionDetailed(codewords) {
         const start = at;
         at++;
         if (codeword === 901) {
-            const segment = decodeByteSegment(codewords, at, eci);
+            const segment = decodeByteSegment(values, at, eci);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
             segments.push({ mode: 'byte', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 924) {
-            const segment = decodeByteSegment(codewords, at, eci, true);
+            const segment = decodeByteSegment(values, at, eci, true);
             at = segment.at;
             output += segment.text;
             bytes.push(...segment.bytes);
             segments.push({ mode: 'byte', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 902) {
-            const segment = decodeNumericSegment(codewords, at);
+            const segment = decodeNumericSegment(values, at);
             at = segment.at;
             output += segment.text;
             segments.push({ mode: 'numeric', text: segment.text, bytes: segment.bytes, eci, latch: codeword, codewordStart: start, codewordEnd: at });
         }
         else if (codeword === 927) {
-            if (at >= codewords.length || codewords[at] > 899)
+            if (at >= values.length || values[at] > 899)
                 throw new FormatError('PDF417 ECI: missing assignment number');
-            eci = codewords[at++];
+            eci = values[at++];
         }
         else {
             throw new FormatError(`PDF417: unsupported compaction codeword ${codeword}`);

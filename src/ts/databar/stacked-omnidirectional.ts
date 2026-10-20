@@ -48,6 +48,13 @@ const SEPARATOR_MODULES = 3;
 const MAX_DIMENSION = 32_768;
 const MAX_MODULES = 16_777_216;
 
+type DataBarStackedOmnidirectionalOptions = {
+  linkage?: boolean;
+  variant?: 'stacked-omnidirectional';
+  rowHeight?: number;
+  separator?: boolean;
+};
+
 // These two public DataBar separator fragments are the only fixed geometry
 // beyond the four symbol characters. They are expressed as module values so
 // the same code serves the writer and the strict reader.
@@ -251,7 +258,7 @@ function matrixForRows(rows, rowHeight, compacted) {
 }
 
 /** Encode a checked GTIN as a GS1 DataBar Stacked Omnidirectional matrix. */
-export function encodeDataBarStackedOmnidirectional(value, options = {}) {
+export function encodeDataBarStackedOmnidirectional(value, options: DataBarStackedOmnidirectionalOptions = {}) {
   const opts = normalizedOptions(options, TypeError);
   validateVariant(opts);
   validateSeparatorOption(opts, EncodeError);
@@ -492,6 +499,7 @@ export function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
 
   let oriented = binaryImage;
   let toOriginal = (point) => ({ x: point.x, y: point.y });
+  const rotationDegrees = [0, 90, 180, 270] as const;
   for (let rotation = 0; rotation < 4; rotation++) {
     try {
       const bounds = boundsFor(oriented);
@@ -504,7 +512,7 @@ export function detectDataBarStackedOmnidirectional(binaryImage, options = {}) {
           const geometry = createDetectionCandidate({
             corners,
             moduleSize: scale,
-            rotation: rotation * 90,
+            rotation: rotationDegrees[rotation],
             matrix: candidate.matrix,
             confidence: 1,
           }, {

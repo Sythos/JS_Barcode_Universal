@@ -361,7 +361,7 @@ export function encodeUPCE(value) {
  * @param {number} [options.wideRatio] Wide-to-narrow ratio, 2 or 3.
  * @returns {BitMatrix}
  */
-export function encodeCode39(value, options = {}) {
+export function encodeCode39(value, options: {checkDigit?: boolean, fullAscii?: boolean, wideRatio?: number} = {}) {
   const { checkDigit = false, fullAscii = false, wideRatio = 3 } = options;
   if (wideRatio < 2 || wideRatio > 3) {
     throw new EncodeError(`Code 39: wide ratio must be 2 or 3, got ${wideRatio}`);
@@ -509,7 +509,7 @@ function pznCheckDigit(body, pzn8) {
  * @param {'pzn7'|'pzn8'} [options.variant] Alias for `pzn8`.
  * @returns {BitMatrix}
  */
-export function encodePZN(value, options = {}) {
+export function encodePZN(value, options: {pzn8?: boolean, variant?: 'pzn7'|'pzn8'} = {}) {
   const pzn8 = options.pzn8 === true || options.variant === 'pzn8';
   const digits = String(value);
   const bodyLength = pzn8 ? 7 : 6;
@@ -601,7 +601,7 @@ const CODE128_B_OFFSET = 32;
  * @param {{gs1?: boolean, startSet?: 'A'|'B'|'C'}} [options]
  * @returns {{start: number, values: number[], mode: 'A'|'B'|'C'}}
  */
-export function code128DataCodewords(value, options = {}) {
+export function code128DataCodewords(value, options: {gs1?: boolean, startSet?: 'A'|'B'|'C'} = {}) {
   const { gs1 = false, startSet = null } = options;
   for (const ch of value) {
     if (ch.charCodeAt(0) > 127) {
@@ -737,7 +737,7 @@ export function encodeCode128(value, options = {}) {
  * @param {number} [options.wideRatio]
  * @returns {BitMatrix}
  */
-export function encodeITF(value, options = {}) {
+export function encodeITF(value, options: {checkDigit?: boolean, wideRatio?: number} = {}) {
   const { checkDigit = false, wideRatio = 3 } = options;
   requireDigits(value, 'ITF');
 
@@ -814,7 +814,7 @@ export function encodeITF6(value) {
  * @param {number} [options.wideRatio]
  * @returns {BitMatrix}
  */
-export function encodeCodabar(value, options = {}) {
+export function encodeCodabar(value, options: {start?: string, stop?: string, wideRatio?: number} = {}) {
   const { wideRatio = 3 } = options;
   let text = value.toUpperCase();
   let start = (options.start || '').toUpperCase();
@@ -860,7 +860,7 @@ const CODE11_CHARSET = '0123456789-';
  * @param {number} [options.wideRatio]
  * @returns {BitMatrix}
  */
-export function encodeCode11(value, options = {}) {
+export function encodeCode11(value, options: {checkDigit?: boolean, wideRatio?: number} = {}) {
   const { checkDigit = true, wideRatio = 3 } = options;
 
   for (const ch of value) {
@@ -904,7 +904,7 @@ export function encodeCode11(value, options = {}) {
  * @param {boolean} [options.checkDigit] Append the Luhn modulo-10 check digit.
  * @returns {BitMatrix}
  */
-export function encodeMSI(value, options = {}) {
+export function encodeMSI(value, options: {checkDigit?: boolean} = {}) {
   const { checkDigit = false } = options;
   requireDigits(value, 'MSI');
 

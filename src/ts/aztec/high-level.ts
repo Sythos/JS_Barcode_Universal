@@ -177,10 +177,10 @@ export function writeBinaryShift(writer, bytes, start, length) {
  * @param {{charset?: 'utf-8'}} [options]
  * @returns {BitWriter}
  */
-export function encodeHighLevel(value, options = {}) {
+export function encodeHighLevel(value: string | ArrayBuffer | ArrayBufferView, options: { charset?: 'utf-8' } = {}) {
   const bytes = aztecBytes(value, options.charset ?? 'utf-8');
   const writer = new BitWriter();
-  let mode = HIGH_LEVEL_MODE.UPPER;
+  let mode: number = HIGH_LEVEL_MODE.UPPER;
 
   for (let at = 0; at < bytes.length;) {
     let bestMode = -1;

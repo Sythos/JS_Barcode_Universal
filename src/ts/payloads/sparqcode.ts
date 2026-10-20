@@ -95,7 +95,7 @@ export function buildSPARQCodePayload(type: 'bizcard', fields: VCardFields): str
 export function buildSPARQCodePayload(type: 'youtube', fields: SPARQCodeYoutubeFields): string;
 export function buildSPARQCodePayload(type: 'googleplay', fields: SPARQCodeGooglePlayFields): string;
 export function buildSPARQCodePayload(type: 'icalendar', fields: SPARQCodeICalendarFields): string;
-export function buildSPARQCodePayload(type: SPARQCodeType, fields: Record<string, unknown>): string {
+export function buildSPARQCodePayload(type: SPARQCodeType, fields: object): string {
   switch (type) {
     case 'url': {
       const { url } = fields as unknown as SPARQCodeUrlFields;
@@ -168,7 +168,7 @@ function unescapeWifi(value: string): string {
 
 export interface ParsedSPARQCode {
   type: SPARQCodeType;
-  fields: Record<string, unknown>;
+  fields: object;
 }
 
 /**

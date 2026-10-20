@@ -23,6 +23,13 @@ import {
   CODE128_SHIFT,
 } from '../oned/patterns.js';
 
+declare module '../core/bit-matrix.js' {
+  interface BitMatrix {
+    width: number;
+    height: number;
+  }
+}
+
 /** A row candidate returned by the integer-module scanner. */
 export interface StackedRowCandidate<T = unknown> {
   readonly x: number;

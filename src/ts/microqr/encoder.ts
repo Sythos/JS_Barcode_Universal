@@ -47,6 +47,16 @@ const COUNT_BITS = {
   byte: [0, 0, 0, 4, 5], kanji: [0, 0, 0, 3, 4],
 };
 
+type MicroQrMode = 'numeric' | 'alphanumeric' | 'byte' | 'kanji';
+type MicroQrOptions = {
+  eci?: unknown;
+  gs1?: boolean;
+  mode?: MicroQrMode;
+  version?: string | number;
+  ecc?: string;
+  mask?: number;
+};
+
 function parseVersion(value) {
   if (value == null) return null;
   const match = /^M?([1-4])$/i.exec(String(value));
@@ -184,7 +194,7 @@ function writeData(text, mode, version, layout) {
   return writer;
 }
 
-function finalMessage(dataWriter, layout) {
+function finalMessage(dataWriter: BitWriter, layout: ReturnType<typeof microQrBlockLayout>) {
   const bytes = Array.from(dataWriter.toBytes());
   if (layout.shortDataCodewordBits === 4) bytes[bytes.length - 1] &= 0xf0;
   const ecc = rsEncode(bytes, layout.eccCodewords, GF256_QR, 0);
@@ -230,7 +240,7 @@ function buildMatrix(version, ecc, mask, bits) {
   return matrix;
 }
 
-export function encodeMicroQR(text, options = {}) {
+export function encodeMicroQR(text: unknown, options: MicroQrOptions = {}) {
   text = String(text);
   if (!text) throw new EncodeError('Micro QR: payload must not be empty');
   if (options.eci != null || options.gs1 === true) throw new EncodeError('Micro QR: ECI and GS1/FNC1 are unavailable');

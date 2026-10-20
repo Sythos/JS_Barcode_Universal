@@ -43,6 +43,35 @@ import {
   microPdf417VariantForCapacity,
 } from './tables.js';
 
+type MicroPdf417Options = {
+  rowHeight?: number;
+  columns?: number;
+  variant?: number;
+  aspectRatio?: number;
+  rows?: number;
+  eccLevel?: number;
+  compaction?: 'auto' | 'text' | 'byte' | 'numeric';
+  eci?: number;
+  [feature: string]: unknown;
+};
+
+type MicroPdf417Variant = typeof MICROPDF417_VARIANTS[number];
+
+declare module '../core/bit-matrix.js' {
+  interface BitMatrix {
+    micropdf417?: {
+      variant: number;
+      rows: number;
+      columns: number;
+      eccCodewords: number;
+      rowHeight: number;
+      payloadCodewords: number;
+      dataCodewords: number[];
+      codewords: number[];
+    };
+  }
+}
+
 function appendWidths(matrix, y, x, sequence, height) {
   let dark = true;
   for (const digit of sequence) {
@@ -68,7 +97,7 @@ function symbolWidth(columns) {
   return 21 + columns * 17 + (columns > 2 ? 10 : 0);
 }
 
-function validateOptions(options) {
+function validateOptions(options: MicroPdf417Options) {
   const rowHeight = options.rowHeight ?? 2;
   if (!Number.isInteger(rowHeight) || rowHeight < 2) {
     throw new EncodeError('MicroPDF417: rowHeight must be an integer of at least 2');
@@ -102,7 +131,7 @@ function validateOptions(options) {
   return rowHeight;
 }
 
-function chooseVariant(codewordCount, rowHeight, options) {
+function chooseVariant(codewordCount: number, rowHeight: number, options: MicroPdf417Options): MicroPdf417Variant {
   if (options.variant !== undefined) {
     const variant = microPdf417VariantByNumber(options.variant);
     if (!variant) throw new EncodeError(`MicroPDF417: unknown variant ${options.variant}`);
@@ -143,16 +172,18 @@ function chooseVariant(codewordCount, rowHeight, options) {
   }
 
   const target = options.aspectRatio;
-  return candidates.reduce((best, variant) => {
+  const selected = candidates.reduce<{ variant: MicroPdf417Variant; score: number } | null>((best, variant) => {
     const ratio = symbolWidth(variant.columns) / (variant.rows * rowHeight);
     const score = Math.abs(Math.log(ratio / target)) +
       (variant.dataCodewords - codewordCount) / 10000;
     return !best || score < best.score ? { variant, score } : best;
-  }, null).variant;
+  }, null);
+  if (!selected) throw new EncodeError('MicroPDF417: no candidate variant is available');
+  return selected.variant;
 }
 
 /** Encode a value as one of the 34 fixed MicroPDF417 variants. */
-export function encodeMicroPDF417(value, options = {}) {
+export function encodeMicroPDF417(value, options: MicroPdf417Options = {}) {
   const rowHeight = validateOptions(options);
   const payload = compactMicroPDF417(value, options);
   const variant = chooseVariant(payload.length, rowHeight, options);

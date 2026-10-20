@@ -165,7 +165,7 @@ function numericGlyphs(value) {
  * @param {boolean} [options.numeric] Use two-digit numeric compaction.
  * @returns {BitMatrix}
  */
-export function encodeTelepen(value, options = {}) {
+export function encodeTelepen(value, options: {numeric?: boolean, mode?: 'numeric'|'normal', telepenMode?: 'numeric'|'normal'} = {}) {
   const text = String(value);
   const numeric = options.numeric === true || options.mode === 'numeric' || options.telepenMode === 'numeric';
   if (text.length > TELEPEN_MAX_LENGTH) {
@@ -321,7 +321,7 @@ function decodeNumericGlyphs(glyphs) {
  * @param {boolean} [options.numeric] Decode two-digit numeric glyphs.
  * @returns {{format:'telepen'|'telepennumeric', text:string, mode:'ascii'|'numeric'}|null}
  */
-export function decodeTelepen(row, options = {}) {
+export function decodeTelepen(row, options: {numeric?: boolean, mode?: 'numeric'|'normal', telepenMode?: 'numeric'|'normal'} = {}) {
   const numeric = options.numeric === true || options.mode === 'numeric' || options.telepenMode === 'numeric';
   const start = findStart(row, 0, START_RUNS);
   if (!start) return null;

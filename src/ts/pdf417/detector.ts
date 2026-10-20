@@ -446,7 +446,7 @@ function detectInOrientation(image, options, supplied) {
  * The detector estimates a projective quadrilateral; grayscale binarization
  * remains the caller's responsibility.
  */
-export function detectPDF417(binaryImage, options = {}) {
+export function detectPDF417(binaryImage, options: { rowHeight?: number; quadrilateral?: Array<{ x: number; y: number }> } = {}) {
   if (!binaryImage?.width || !binaryImage?.height || typeof binaryImage.get !== 'function') return null;
   let oriented = binaryImage;
   let toOriginal = (point) => ({ x: point.x, y: point.y });
@@ -465,4 +465,4 @@ export function detectPDF417(binaryImage, options = {}) {
   return null;
 }
 
-export function detectAndDecodePDF417(binaryImage, options = {}) { return detectPDF417(binaryImage, options); }
+export function detectAndDecodePDF417(binaryImage, options: { rowHeight?: number; quadrilateral?: Array<{ x: number; y: number }> } = {}) { return detectPDF417(binaryImage, options); }

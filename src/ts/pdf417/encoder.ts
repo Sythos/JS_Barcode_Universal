@@ -34,6 +34,27 @@ import { compactPdf417 } from './compaction.js';
 import { pdf417ErrorCorrection, pdf417EccLength } from './error-correction.js';
 import { pdf417PatternForCodeword } from './tables.js';
 
+type Pdf417Options = {
+  rows?: number;
+  columns?: number;
+  eccLevel?: number;
+  rowHeight?: number;
+  aspectRatio?: number;
+  compaction?: 'auto' | 'text' | 'byte' | 'numeric';
+};
+
+declare module '../core/bit-matrix.js' {
+  interface BitMatrix {
+    pdf417?: {
+      rows: number;
+      columns: number;
+      eccLevel: number;
+      rowHeight: number;
+      codewords: number[];
+    };
+  }
+}
+
 const START = '81111113';
 const STOP = '711311121';
 
@@ -53,7 +74,7 @@ function indicators(row, rows, cols, level) {
   if (row % 3 === 1) return [30 * group + z, 30 * group + y];
   return [30 * group + v, 30 * group + z];
 }
-function dimensions(needed, level, options) {
+function dimensions(needed: number, level: number, options: Pdf417Options) {
   for (const [name, value, min, max] of [['rows', options.rows, 3, 90], ['columns', options.columns, 1, 30]]) {
     if (value !== undefined && (!Number.isInteger(value) || value < min || value > max)) throw new EncodeError(`PDF417: ${name} must be an integer in ${min}..${max}`);
   }
@@ -69,7 +90,7 @@ function dimensions(needed, level, options) {
   return best;
 }
 
-export function encodePDF417(value, options = {}) {
+export function encodePDF417(value, options: Pdf417Options = {}) {
   const level = options.eccLevel ?? 2, rowHeight = options.rowHeight ?? 3;
   if (!Number.isInteger(rowHeight) || rowHeight < 3) throw new EncodeError('PDF417: rowHeight must be an integer of at least 3');
   const payload = compactPdf417(value, { compaction: options.compaction });

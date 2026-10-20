@@ -53,8 +53,13 @@ import {
 } from './tables.js';
 
 /** @param {unknown} value @returns {boolean} */
-function isObject(value) {
+function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
+}
+
+function isUnsafeValidation(value: unknown): boolean {
+  if (value === false || (Array.isArray(value) && value.length > 0)) return true;
+  return isObject(value) && 'safe' in value && value.safe === false;
 }
 
 /**
@@ -92,13 +97,8 @@ function validateCanvas(symbolSize, version, canvas) {
   let normalized;
   try {
     normalized = normalizeCanvasSpec(symbolSize, canvas);
-    const validation = validateCanvasSpec(version, normalized);
-    if (
-      validation === false ||
-      (Array.isArray(validation) && validation.length > 0) ||
-      (isObject(validation) && validation.valid === false) ||
-      (isObject(validation) && validation.safe === false)
-    ) {
+    const validation: unknown = validateCanvasSpec(version, normalized);
+    if (isUnsafeValidation(validation)) {
       throw new Error('canvas geometry is outside the profile limits');
     }
   } catch (error) {

@@ -57,7 +57,7 @@
  */
 
 import { ChecksumError, EncodeError, FormatError, NotFoundError } from '../core/errors.js';
-import { PolychromeMatrix } from '../color/matrix.js';
+import { PolychromeMatrix, type RGB } from '../color/matrix.js';
 import { classifyGrid } from '../color/classify.js';
 import { toColorImageData } from '../color/render.js';
 import { PerspectiveTransform } from '../image/perspective.js';
@@ -69,18 +69,33 @@ export { PolychromeMatrix, toColorImageData };
 
 export const KARTRAK_PROFILE = 'sythos-kartrak-aci';
 
+export type KarTrakDetectOptions = {
+  palette?: readonly RGB[];
+};
+
+export type KarTrakResult = {
+  format: 'kartrak';
+  profile: typeof KARTRAK_PROFILE;
+  text: string;
+  equipmentCode: string;
+  ownershipCode: string;
+  carNumber: string;
+  checkDigit: number;
+  bounds?: { x: number; y: number; width: number; height: number };
+};
+
 // Index 0 is PolychromeMatrix's fixed background/quiet-zone slot. A mid
 // grey — not a light one — keeps it far in RGB space from all four label
 // colours (white/checkerboard included) so a bounding-box search has a
 // real margin against noise, rather than sitting close enough to white
 // that ordinary pixel noise crosses the boundary.
-const BACKGROUND = [128, 128, 128];
-const BLUE = [0, 51, 204];
-const WHITE = [255, 255, 255];
-const RED = [204, 0, 0];
-const BLACK = [0, 0, 0];
+const BACKGROUND: RGB = [128, 128, 128];
+const BLUE: RGB = [0, 51, 204];
+const WHITE: RGB = [255, 255, 255];
+const RED: RGB = [204, 0, 0];
+const BLACK: RGB = [0, 0, 0];
 
-export const KARTRAK_PALETTE = Object.freeze([BACKGROUND, BLUE, WHITE, RED, BLACK]);
+export const KARTRAK_PALETTE: readonly RGB[] = Object.freeze([BACKGROUND, BLUE, WHITE, RED, BLACK]);
 const BLUE_I = 1;
 const WHITE_I = 2;
 const RED_I = 3;
@@ -344,7 +359,10 @@ function findBounds(image, palette) {
  * @param {{palette?: readonly RGB[]}} [options]
  * @returns {object | null} `null` if no plate was found or it failed to decode.
  */
-export function detectKarTrak(image, options = {}) {
+export function detectKarTrak(
+  image: { data: Uint8ClampedArray; width: number; height: number },
+  options: KarTrakDetectOptions = {},
+): KarTrakResult | null {
   if (!image || typeof image.width !== 'number' || typeof image.height !== 'number' || !image.data) return null;
   const palette = options.palette ?? KARTRAK_PALETTE;
   const bounds = findBounds(image, palette);
@@ -376,7 +394,10 @@ export function detectKarTrak(image, options = {}) {
  * Decode either an already-classified `PolychromeMatrix` or a raw RGBA
  * image (via `detectKarTrak`).
  */
-export function decodeKarTrak(input, options = {}) {
+export function decodeKarTrak(
+  input: PolychromeMatrix | { data: Uint8ClampedArray; width: number; height: number },
+  options: KarTrakDetectOptions = {},
+): KarTrakResult {
   if (input instanceof PolychromeMatrix) return decodeKarTrakMatrix(input);
   const found = detectKarTrak(input, options);
   if (!found) throw new FormatError('KarTrak ACI plate was not found in the image');

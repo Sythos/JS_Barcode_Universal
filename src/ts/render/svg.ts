@@ -103,9 +103,18 @@ function toBase64(text) {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   if (typeof btoa === 'function') return btoa(binary);
-  // Node before btoa was global, and non-browser embedders.
-  /* eslint-disable-next-line no-undef */
-  return Buffer.from(bytes).toString('base64');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let output = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const first = bytes[i];
+    const second = bytes[i + 1];
+    const third = bytes[i + 2];
+    output += alphabet[first >> 2];
+    output += alphabet[((first & 3) << 4) | ((second ?? 0) >> 4)];
+    output += second === undefined ? '=' : alphabet[((second & 15) << 2) | ((third ?? 0) >> 6)];
+    output += third === undefined ? '=' : alphabet[third & 63];
+  }
+  return output;
 }
 
 /**

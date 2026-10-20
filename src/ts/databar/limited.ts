@@ -54,6 +54,13 @@ const MIN_HEIGHT_MODULES = 10;
 const MAX_DIMENSION = 32_768;
 const MAX_MODULES = 16_777_216;
 
+type DataBarLimitedOptions = {
+  linkage?: boolean;
+  moduleScale?: number;
+  scale?: number;
+  height?: number;
+};
+
 const GROUPS = Object.freeze([
   Object.freeze({
     first: 0, last: 183_063, gsum: 0,
@@ -128,7 +135,7 @@ function positiveInteger(value, label) {
   return value;
 }
 
-function checkedGeometry(options) {
+function checkedGeometry(options: DataBarLimitedOptions) {
   if (options === undefined) options = {};
   if (!isRecord(options)) throw new TypeError('GS1 DataBar Limited options must be an object');
   if (options.linkage !== undefined && typeof options.linkage !== 'boolean') {
@@ -219,7 +226,7 @@ function groupForValue(value) {
 }
 
 function dataCharacterWidths(value) {
-  if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS.at(-1).last) {
+  if (!Number.isSafeInteger(value) || value < 0 || value > GROUPS[GROUPS.length - 1].last) {
     throw new RangeError('GS1 DataBar Limited character value is out of range');
   }
   const group = groupForValue(value);
@@ -307,7 +314,7 @@ function paintRuns(widths, height, scale) {
  * digit must be zero or one. The returned matrix is 79 modules wide and at
  * least 10 modules high.
  */
-export function encodeDataBarLimited(value, options = {}) {
+export function encodeDataBarLimited(value, options: DataBarLimitedOptions = {}) {
   const geometry = checkedGeometry(options);
   const compacted = encodeDataBarLimitedGTIN(value, { linkage: geometry.linkage });
   const left = dataCharacterWidths(compacted.left);
@@ -485,6 +492,7 @@ export function detectDataBarLimited(binaryImage, options = {}) {
   if (!validImage(binaryImage) || !isRecord(options)) return null;
   let oriented = binaryImage;
   let toOriginal = (point) => ({ x: point.x, y: point.y });
+  const rotationDegrees = [0, 90, 180, 270] as const;
 
   for (let rotation = 0; rotation < 4; rotation++) {
     const bounds = oriented.getBounds?.();
@@ -501,7 +509,7 @@ export function detectDataBarLimited(binaryImage, options = {}) {
           const geometry = createDetectionCandidate({
             corners: canonicalCorners(cornersFor(candidateBox).map((point) => toOriginal(point))),
             moduleSize: scale,
-            rotation: rotation * 90,
+            rotation: rotationDegrees[rotation],
             matrix,
             confidence: 1,
           }, {

@@ -27,17 +27,6 @@
  *
  * Original work. No code from any other barcode implementation.
  */
-/**
- * Aztec Rune decoder.
- *
- * The input is a square 11x11 module matrix. Structural modules are checked
- * before the seven masked GF(16) codewords are Reed-Solomon corrected. The
- * decoder tries the four in-plane quarter turns and both polarities, allowing
- * it to consume an oriented sampled image while still rejecting ordinary
- * Aztec/QR matrices.
- *
- * @module aztecrune/decoder
- */
 import { FormatError } from '../core/errors.js';
 import { rsDecode } from '../core/reed-solomon.js';
 import { AZTEC_RUNE_DATA_POSITIONS, AZTEC_RUNE_ECC_CODEWORDS, AZTEC_RUNE_MASK, AZTEC_RUNE_SIZE, aztecRuneField, aztecRuneStructuralValue, } from './tables.js';
@@ -111,8 +100,9 @@ export function decodeAztecRune(matrix, options = {}) {
         throw new FormatError(`Aztec Rune: expected an ${AZTEC_RUNE_SIZE}x${AZTEC_RUNE_SIZE} module matrix`);
     }
     const invertedModes = options.inverted === true ? [true] : options.inverted === false ? [false] : [false, true];
-    const rotations = Number.isInteger(options.rotation)
-        ? [((options.rotation % 360) + 360) % 360]
+    const rotation = options.rotation;
+    const rotations = typeof rotation === 'number' && Number.isInteger(rotation)
+        ? [((rotation % 360) + 360) % 360]
         : [0, 90, 180, 270];
     let checksumError = null;
     for (const requestedRotation of rotations) {

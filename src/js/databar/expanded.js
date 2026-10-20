@@ -908,6 +908,7 @@ export function detectDataBarExpanded(binaryImage, options = {}) {
         return null;
     let oriented = binaryImage;
     let toOriginal = (point) => ({ x: point.x, y: point.y });
+    const rotationDegrees = [0, 90, 180, 270];
     for (let rotation = 0; rotation < 4; rotation++) {
         const bounds = oriented.getBounds?.();
         if (bounds && bounds.width > 0 && bounds.height > 0) {
@@ -917,7 +918,7 @@ export function detectDataBarExpanded(binaryImage, options = {}) {
                 const geometry = createDetectionCandidate({
                     corners: canonicalCorners(cornersFor(bounds).map((point) => toOriginal(point))),
                     moduleSize: result.moduleScale,
-                    rotation: rotation * 90,
+                    rotation: rotationDegrees[rotation],
                     matrix: candidate,
                     confidence: 1,
                 }, {

@@ -39,8 +39,22 @@ import {
   COMPACT_PDF417_START,
   compactPdf417Indicators,
   compactPdf417Width,
+  type CompactPdf417Options,
   validateCompactPdf417Options,
 } from './tables.js';
+
+declare module '../core/bit-matrix.js' {
+  interface BitMatrix {
+    compactPdf417?: {
+      rows: number;
+      columns: number;
+      eccLevel: number;
+      rowHeight: number;
+      codewords: number[];
+      layout: 'compact';
+    };
+  }
+}
 
 function appendWidths(matrix, y, x, sequence, height) {
   let dark = true;
@@ -60,7 +74,7 @@ function patternSequence(pattern) {
   return pattern.toString(2).padStart(17, '0').replace(/0+|1+/g, (run) => String(run.length));
 }
 
-function dimensions(needed, level, options, rowHeight) {
+function dimensions(needed: number, level: number, options: CompactPdf417Options, rowHeight: number) {
   const ecc = pdf417EccLength(level);
   let best = null;
   for (let rows = options.rows ?? 3; rows <= (options.rows ?? 90); rows++) {
@@ -92,7 +106,7 @@ function dimensions(needed, level, options, rowHeight) {
  * @param {object} [options]
  * @returns {import('../core/bit-matrix.js').BitMatrix}
  */
-export function encodeCompactPDF417(value, options = {}) {
+export function encodeCompactPDF417(value, options: CompactPdf417Options = {}) {
   const rowHeight = validateCompactPdf417Options(options);
   const level = options.eccLevel ?? 2;
   if (!Number.isInteger(level) || level < 0 || level > 8) {

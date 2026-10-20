@@ -95,9 +95,6 @@ export function encodeAztecRune(value, options = {}) {
             for (let x = 0; x < AZTEC_RUNE_SIZE; x++)
                 matrix.flip(x, y);
     }
-    matrix.format = 'aztecrune';
-    matrix.value = numeric;
-    matrix.inverted = inverted;
-    return matrix;
+    return Object.assign(matrix, { format: 'aztecrune', value: numeric, inverted });
 }
 export { codewordsForValue };

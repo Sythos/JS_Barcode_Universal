@@ -55,7 +55,7 @@ function sample(matrix, width, height, scale, offsetX, offsetY) {
 function bounds(matrix) { return matrix.getBounds(); }
 
 /** Detect an axis-aligned, clean rMQR raster and return the exact module matrix. */
-export function detectRMQR(image, options = {}) {
+export function detectRMQR(image, options: { perspective?: boolean } = {}) {
   if (!image || !image.width || !image.height) throw new NotFoundError('rMQR: no raster supplied');
   if (options.perspective) throw new NotFoundError('rMQR: perspective detection is not available for clean-raster mode');
   const orientations = [image, rotate90(image), rotate180(image), rotate270(image)];
