@@ -47,6 +47,21 @@ import { rsEncode } from '../core/reed-solomon.js';
 import { encodeHighLevel } from './high-level.js';
 import { AZTEC_COMPACT_LAYERS, AZTEC_FULL_LAYERS, aztecLayer, eccCodewordsFor, fieldForLayers, fieldForWordSize, wordSizeForLayers } from './tables.js';
 
+type AztecEncodeOptions = {
+  layers?: number;
+  compact?: boolean;
+  eccPercent?: number;
+  charset?: 'utf-8';
+};
+
+type AztecMatrix = BitMatrix & {
+  format?: string;
+  layers?: number;
+  compact?: boolean;
+  eccPercent?: number;
+  dataCodewords?: number;
+};
+
 /** @param {BitWriter} bits @param {number} at @returns {boolean} */
 function bitAt(bits, at) {
   return at >= 0 && at < bits.length && ((bits.bytes[at >>> 3] >>> (7 - (at & 7))) & 1) !== 0;
@@ -229,7 +244,7 @@ function candidates(layers, compact) {
  * @param {{layers?:number,compact?:boolean,eccPercent?:number,charset?:'utf-8'}} [options]
  * @returns {BitMatrix & {format?:string,layers?:number,compact?:boolean,eccPercent?:number,dataCodewords?:number}}
  */
-export function encodeAztec(value, options = {}) {
+export function encodeAztec(value: string | ArrayBuffer | ArrayBufferView, options: AztecEncodeOptions = {}): AztecMatrix {
   const eccPercent = options.eccPercent ?? 23;
   if (!Number.isFinite(eccPercent) || eccPercent < 5 || eccPercent > 95) {
     throw new EncodeError('Aztec: eccPercent must be between 5 and 95');
@@ -247,7 +262,7 @@ export function encodeAztec(value, options = {}) {
     // than the requested percentage, never weaker, and canonical for a chosen
     // layer/data-word combination.
     const symbol = { ...candidate, dataWords: checked.dataWords };
-    const matrix = buildAztecMatrix(checked.bits, symbol);
+    const matrix: AztecMatrix = buildAztecMatrix(checked.bits, symbol);
     matrix.format = 'aztec'; matrix.layers = candidate.layers; matrix.compact = candidate.compact;
     matrix.eccPercent = Math.round(checked.eccWords * wordSize * 100 / Math.max(1, stuffed.length));
     matrix.dataCodewords = checked.dataWords;

@@ -101,7 +101,10 @@ function writeDataRing(matrix, codewords) {
  *   format: 'aztecrune', value: number, inverted: boolean
  * }}
  */
-export function encodeAztecRune(value, options = {}) {
+export function encodeAztecRune(
+  value: number | string | ArrayBuffer | ArrayBufferView,
+  options: { inverted?: boolean } = {},
+): BitMatrix & { format: 'aztecrune'; value: number; inverted: boolean } {
   const numeric = normalizeAztecRuneValue(value);
   if (options.inverted !== undefined && typeof options.inverted !== 'boolean') {
     throw new EncodeError('Aztec Rune: inverted must be boolean');
@@ -112,10 +115,7 @@ export function encodeAztecRune(value, options = {}) {
   if (inverted) {
     for (let y = 0; y < AZTEC_RUNE_SIZE; y++) for (let x = 0; x < AZTEC_RUNE_SIZE; x++) matrix.flip(x, y);
   }
-  matrix.format = 'aztecrune';
-  matrix.value = numeric;
-  matrix.inverted = inverted;
-  return matrix;
+  return Object.assign(matrix, { format: 'aztecrune' as const, value: numeric, inverted });
 }
 
 export { codewordsForValue };

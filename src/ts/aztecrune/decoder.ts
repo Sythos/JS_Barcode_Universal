@@ -40,6 +40,7 @@
  * @module aztecrune/decoder
  */
 
+import { BitMatrix } from '../core/bit-matrix.js';
 import { FormatError } from '../core/errors.js';
 import { rsDecode } from '../core/reed-solomon.js';
 import {
@@ -115,13 +116,17 @@ function result(value, inverted, rotation, corrections) {
  * @returns {{format:'aztecrune',value:number,text:string,bytes:Uint8Array,dimension:number,inverted:boolean,rotation:number,corrections:number}}
  * @throws {FormatError} For non-Rune geometry, structure or uncorrectable data.
  */
-export function decodeAztecRune(matrix, options = {}) {
+export function decodeAztecRune(
+  matrix: BitMatrix,
+  options: { inverted?: boolean | 'auto'; rotation?: number | 'auto' } = {},
+) {
   if (!matrix || matrix.width !== AZTEC_RUNE_SIZE || matrix.height !== AZTEC_RUNE_SIZE) {
     throw new FormatError(`Aztec Rune: expected an ${AZTEC_RUNE_SIZE}x${AZTEC_RUNE_SIZE} module matrix`);
   }
   const invertedModes = options.inverted === true ? [true] : options.inverted === false ? [false] : [false, true];
-  const rotations = Number.isInteger(options.rotation)
-    ? [((options.rotation % 360) + 360) % 360]
+  const rotation = options.rotation;
+  const rotations = typeof rotation === 'number' && Number.isInteger(rotation)
+    ? [((rotation % 360) + 360) % 360]
     : [0, 90, 180, 270];
 
   let checksumError = null;
