@@ -45,7 +45,7 @@
 const MAX_RENDER_DIMENSION = 16_384;
 const MAX_RENDER_PIXELS = 16_777_216;
 
-function boundedInteger(value, name, defaultValue, minimum, maximum) {
+function boundedInteger(value: number | undefined, name: string, defaultValue: number, minimum: number, maximum: number): number {
   const resolved = value ?? defaultValue;
   if (!Number.isSafeInteger(resolved) || resolved < minimum || resolved > maximum) {
     throw new RangeError(`Render option "${name}" must be an integer between ${minimum} and ${maximum}, got ${resolved}`);
@@ -58,7 +58,7 @@ function boundedInteger(value, name, defaultValue, minimum, maximum) {
  * @param {{scale?: number, margin?: number}} [options]
  * @returns {{data: Uint8ClampedArray, width: number, height: number}}
  */
-export function toColorImageData(matrix, options = {}) {
+export function toColorImageData(matrix: import('./matrix.js').PolychromeMatrix, options: {scale?: number, margin?: number} = {}) {
   if (!matrix || !Number.isSafeInteger(matrix.width) || !Number.isSafeInteger(matrix.height)
     || matrix.width < 1 || matrix.height < 1
     || matrix.width > MAX_RENDER_DIMENSION || matrix.height > MAX_RENDER_DIMENSION) {

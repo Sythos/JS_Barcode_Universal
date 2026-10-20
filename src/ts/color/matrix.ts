@@ -53,17 +53,29 @@ import { EncodeError } from '../core/errors.js';
 
 const MAX_PALETTE_SIZE = 16;
 
-/**
- * @typedef {[number, number, number]} RGB
- */
+export type RGB = readonly [number, number, number];
+
+export type KarTrakMatrixMetadata = Readonly<{
+  profile: string;
+  text: string;
+  equipmentCode: string;
+  ownershipCode: string;
+  carNumber: string;
+  checkDigit: number;
+}>;
 
 export class PolychromeMatrix {
+  readonly width: number;
+  readonly height: number;
+  readonly palette: RGB[];
+  kartrak?: KarTrakMatrixMetadata;
+  private readonly cells: Uint8Array;
   /**
    * @param {number} width
    * @param {number} height
    * @param {readonly RGB[]} palette Index 0 is always the background/quiet-zone colour.
    */
-  constructor(width, height, palette) {
+  constructor(width, height, palette: readonly RGB[]) {
     if (width < 1 || height < 1) {
       throw new EncodeError(`PolychromeMatrix: dimensions must be positive, got ${width}x${height}`);
     }
@@ -80,7 +92,7 @@ export class PolychromeMatrix {
     }
     this.width = width;
     this.height = height;
-    this.palette = palette.map((c) => [...c]);
+    this.palette = palette.map((c): RGB => [c[0], c[1], c[2]]);
     // One byte per module is deliberately generous headroom over the 16-entry
     // palette cap above; it keeps indexing simple (no bit-packing) since a
     // colour symbol's module count is orders of magnitude below where that

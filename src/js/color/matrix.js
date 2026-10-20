@@ -49,9 +49,6 @@
  */
 import { EncodeError } from '../core/errors.js';
 const MAX_PALETTE_SIZE = 16;
-/**
- * @typedef {[number, number, number]} RGB
- */
 export class PolychromeMatrix {
     /**
      * @param {number} width
@@ -73,7 +70,7 @@ export class PolychromeMatrix {
         }
         this.width = width;
         this.height = height;
-        this.palette = palette.map((c) => [...c]);
+        this.palette = palette.map((c) => [c[0], c[1], c[2]]);
         // One byte per module is deliberately generous headroom over the 16-entry
         // palette cap above; it keeps indexing simple (no bit-packing) since a
         // colour symbol's module count is orders of magnitude below where that
