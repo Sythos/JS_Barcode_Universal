@@ -90,7 +90,7 @@ fn fragmentMain(@location(0) quadUV : vec2<f32>) -> @location(0) vec4<f32> {
 }
 `;
 const GPU_TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
-const GPU_TEXTURE_USAGE_COPY_DST = 0x08;
+const GPU_TEXTURE_USAGE_COPY_DST = 0x02;
 const GPU_BUFFER_USAGE_COPY_DST = 0x08;
 const GPU_BUFFER_USAGE_UNIFORM = 0x40;
 /**

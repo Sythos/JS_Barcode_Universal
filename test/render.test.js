@@ -701,6 +701,54 @@ test('probes: WebGPU resolves false in Node without throwing', async () => {
   assert.equal(available, false, 'there is no WebGPU in Node');
 });
 
+test('WebGPU texture supports shader sampling and queue uploads', async () => {
+  const { renderToCanvasWebGPU } = await import('../src/js/render/webgpu.js');
+  let textureUsage = 0;
+  const texture = { createView: () => ({}), destroy() {} };
+  const uniformBuffer = { destroy() {} };
+  const pipeline = { getBindGroupLayout: () => ({}) };
+  const renderPass = { setPipeline() {}, setBindGroup() {}, draw() {}, end() {} };
+  const device = {
+    limits: { maxTextureDimension2D: 8192 },
+    lost: new Promise(() => {}),
+    createTexture: ({ usage }) => {
+      textureUsage = usage;
+      return texture;
+    },
+    createBuffer: () => uniformBuffer,
+    createSampler: () => ({}),
+    createShaderModule: () => ({ getCompilationInfo: async () => ({ messages: [] }) }),
+    createRenderPipeline: () => pipeline,
+    createBindGroup: () => ({}),
+    createCommandEncoder: () => ({
+      beginRenderPass: () => renderPass,
+      finish: () => ({}),
+    }),
+    queue: {
+      writeTexture() {},
+      writeBuffer() {},
+      submit() {},
+      onSubmittedWorkDone: async () => {},
+    },
+  };
+  const gpu = {
+    requestAdapter: async () => ({ requestDevice: async () => device }),
+    getPreferredCanvasFormat: () => 'bgra8unorm',
+  };
+  const context = {
+    configure() {},
+    getCurrentTexture: () => ({ createView: () => ({}) }),
+  };
+  const canvas = mockCanvas((type) => (type === 'webgpu' ? context : null));
+
+  const rendered = await withBrowserGlobals({ navigator: { gpu } }, () =>
+    renderToCanvasWebGPU(SAMPLE, canvas));
+
+  assert.equal(rendered, true);
+  assert.equal(textureUsage & 0x02, 0x02, 'texture needs COPY_DST for writeTexture');
+  assert.equal(textureUsage & 0x04, 0x04, 'texture needs TEXTURE_BINDING for the shader');
+});
+
 /* ------------------------------------------------------------------ *
  * Cross-backend agreement
  * ------------------------------------------------------------------ */
