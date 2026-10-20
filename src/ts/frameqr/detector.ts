@@ -108,7 +108,7 @@ function sameCandidate(left, right) {
  * @returns {FrameQRDetection[]} Best candidate first; empty when no verified
  *   profile signature is found.
  */
-export function detectFrameQR(binaryImage, options = {}) {
+export function detectFrameQR(binaryImage, options: { canvas?: object; voting?: boolean } = {}) {
   if (!binaryImage || !binaryImage.width || !binaryImage.height) {
     throw new NotFoundError('detectFrameQR: no image supplied');
   }
@@ -133,12 +133,13 @@ export function detectFrameQR(binaryImage, options = {}) {
       // allowUnmarked escape hatch.
       if (canvasDarkCount(matrix, canvas) !== 0) continue;
 
-      const marked = matrix;
-      marked.frameqr = {
+      const marked = Object.assign(matrix, {
+        frameqr: {
         profile: FRAMEQR_PROFILE.id,
         certified: false,
         canvas,
-      };
+        },
+      });
       let decoded;
       try {
         decoded = decodeFrameQR(marked, {

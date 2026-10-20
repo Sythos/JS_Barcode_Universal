@@ -116,26 +116,36 @@ function decodeBytes(bytes, eci) {
         text += String.fromCharCode(bytes[i]);
     return text;
 }
+function peekBits(bytes, offset, count) {
+    let value = 0;
+    for (let i = 0; i < count; i++) {
+        const bit = offset + i;
+        value = (value << 1) | ((bytes[bit >>> 3] >>> (7 - (bit & 7))) & 1);
+    }
+    return value;
+}
 function parseSegments(data, v) {
     const reader = new BitReader(data);
+    let position = 0;
     let text = '';
     const raw = [];
     let eci = 3;
     let mode;
+    const read = (count) => { const value = reader.read(count); position += count; return value; };
     while (reader.available() >= 3) {
-        const peek = (() => { const save = { byteOffset: reader.byteOffset, bitOffset: reader.bitOffset }; const n = reader.read(3); reader.byteOffset = save.byteOffset; reader.bitOffset = save.bitOffset; return n; })();
+        const peek = peekBits(data, position, 3);
         if (peek === 0)
             break;
-        mode = reader.read(3);
+        mode = read(3);
         if (mode === MODE.ECI) {
-            const first = reader.read(8);
+            const first = read(8);
             let value;
             if (!(first & 0x80))
                 value = first;
             else if ((first & 0xc0) === 0x80)
-                value = ((first & 0x3f) << 8) | reader.read(8);
+                value = ((first & 0x3f) << 8) | read(8);
             else if ((first & 0xe0) === 0xc0)
-                value = ((first & 0x1f) << 16) | reader.read(16);
+                value = ((first & 0x1f) << 16) | read(16);
             else
                 throw new FormatError('rMQR: invalid ECI');
             eci = value;
@@ -144,33 +154,33 @@ function parseSegments(data, v) {
         const kind = mode === MODE.NUMERIC ? 'numeric' : mode === MODE.ALPHANUMERIC ? 'alphanumeric' : mode === MODE.BYTE ? 'byte' : mode === MODE.KANJI ? 'kanji' : null;
         if (!kind)
             throw new FormatError(`rMQR: unsupported mode ${mode}`);
-        const count = reader.read(v.countBits(kind));
+        const count = read(v.countBits(kind));
         if (kind === 'numeric') {
             let remaining = count;
             while (remaining >= 3) {
-                const n = reader.read(10).toString().padStart(3, '0');
+                const n = read(10).toString().padStart(3, '0');
                 text += n;
                 remaining -= 3;
             }
             if (remaining === 2)
-                text += reader.read(7).toString().padStart(2, '0');
+                text += read(7).toString().padStart(2, '0');
             else if (remaining === 1)
-                text += reader.read(4).toString();
+                text += read(4).toString();
         }
         else if (kind === 'alphanumeric') {
             let remaining = count;
             while (remaining >= 2) {
-                const n = reader.read(11);
+                const n = read(11);
                 text += ALPHANUMERIC_CHARS[Math.floor(n / 45)] + ALPHANUMERIC_CHARS[n % 45];
                 remaining -= 2;
             }
             if (remaining)
-                text += ALPHANUMERIC_CHARS[reader.read(6)];
+                text += ALPHANUMERIC_CHARS[read(6)];
         }
         else if (kind === 'byte') {
             const b = new Uint8Array(count);
             for (let i = 0; i < count; i++) {
-                b[i] = reader.read(8);
+                b[i] = read(8);
                 raw.push(b[i]);
             }
             text += decodeBytes(b, eci);
@@ -178,7 +188,7 @@ function parseSegments(data, v) {
         else {
             const bytes = new Uint8Array(count * 2);
             for (let i = 0; i < count; i++) {
-                const n = reader.read(13);
+                const n = read(13);
                 const v2 = n;
                 const high = Math.floor(v2 / 0xc0);
                 const low = v2 % 0xc0;

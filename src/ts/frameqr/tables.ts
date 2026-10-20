@@ -55,6 +55,16 @@ import {
   versionSize,
 } from '../qr/tables.js';
 
+type CanvasInput = {
+  shape?: unknown;
+  size?: unknown;
+  width?: unknown;
+  height?: unknown;
+  centerX?: unknown;
+  centerY?: unknown;
+  angle?: unknown;
+};
+
 /** Public identity and compatibility boundary of the implementable profile. */
 export const FRAMEQR_PROFILE = Object.freeze({
   id: 'sythos-canvas-qr/1',
@@ -92,7 +102,7 @@ function assertSymbolSize(symbolSize) {
  * @param {object} [canvas]
  * @returns {{shape:string,centerX:number,centerY:number,width:number,height:number,angle:number}}
  */
-export function normalizeCanvasSpec(symbolSize, canvas = {}) {
+export function normalizeCanvasSpec(symbolSize: number, canvas: CanvasInput = {}) {
   assertSymbolSize(symbolSize);
   if (canvas === null || typeof canvas !== 'object' || Array.isArray(canvas)) {
     throw new TypeError('Frame QR profile: canvas must be an object');
@@ -117,8 +127,8 @@ export function normalizeCanvasSpec(symbolSize, canvas = {}) {
   }
   const width = oddAtMost(Number(requestedWidth), maximumDimension);
   const height = oddAtMost(Number(requestedHeight), maximumDimension);
-  const centerX = Math.round(canvas.centerX ?? (symbolSize - 1) / 2);
-  const centerY = Math.round(canvas.centerY ?? (symbolSize - 1) / 2);
+  const centerX = Math.round(Number(canvas.centerX ?? (symbolSize - 1) / 2));
+  const centerY = Math.round(Number(canvas.centerY ?? (symbolSize - 1) / 2));
   const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
 
   if (![0, 90, 180, 270].includes(angle)) {
@@ -140,7 +150,7 @@ export function normalizeCanvasSpec(symbolSize, canvas = {}) {
  * @param {object} [canvas]
  * @returns {Array<[number, number]>}
  */
-export function canvasModules(symbolSize, canvas = {}) {
+export function canvasModules(symbolSize: number, canvas: CanvasInput = {}) {
   const spec = normalizeCanvasSpec(symbolSize, canvas);
   const rotate = spec.angle === 90 || spec.angle === 270;
   const width = rotate ? spec.height : spec.width;
@@ -164,7 +174,7 @@ export function canvasModules(symbolSize, canvas = {}) {
 }
 
 /** Build the interleaved-codeword to RS-block map used by QR Model 2. */
-function codewordBlockMap(layout) {
+function codewordBlockMap(layout: ReturnType<typeof blockLayout>): number[] {
   const dataCounts = new Array(layout.blockCount);
   for (let block = 0; block < layout.blockCount; block++) {
     dataCounts[block] = block < layout.group1Blocks
@@ -194,7 +204,7 @@ function codewordBlockMap(layout) {
  * @param {number} version QR version 1..40.
  * @param {object} [canvas]
  */
-export function analyzeCanvasDamage(version, canvas = {}) {
+export function analyzeCanvasDamage(version: number, canvas: CanvasInput = {}) {
   if (!Number.isInteger(version) || version < 1 || version > 40) {
     throw new RangeError(`Frame QR profile: version must be an integer 1-40, got ${version}`);
   }
@@ -206,14 +216,14 @@ export function analyzeCanvasDamage(version, canvas = {}) {
 
   const moduleKeys = new Set(modules.map(([x, y]) => `${x},${y}`));
   const order = dataModuleOrder(version);
-  const touchedCodewords = new Set();
+  const touchedCodewords = new Set<number>();
   for (let bit = 0; bit < order.length / 2; bit++) {
     if (moduleKeys.has(`${order[bit * 2]},${order[bit * 2 + 1]}`)) touchedCodewords.add(bit >> 3);
   }
 
   const layout = blockLayout(version, 'H');
   const blockMap = codewordBlockMap(layout);
-  const touchedByBlockSets = Array.from({ length: layout.blockCount }, () => new Set());
+  const touchedByBlockSets = Array.from({ length: layout.blockCount }, () => new Set<number>());
   for (const codeword of touchedCodewords) {
     const block = blockMap[codeword];
     if (block !== undefined) touchedByBlockSets[block].add(codeword);
@@ -239,7 +249,7 @@ export function analyzeCanvasDamage(version, canvas = {}) {
 }
 
 /** Validate a canvas and return the non-certifying structural analysis. */
-export function validateCanvasSpec(version, canvas = {}) {
+export function validateCanvasSpec(version: number, canvas: CanvasInput = {}) {
   return analyzeCanvasDamage(version, canvas);
 }
 

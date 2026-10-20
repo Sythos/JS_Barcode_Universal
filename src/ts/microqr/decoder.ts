@@ -55,7 +55,11 @@ const COUNT_BITS = {
 };
 
 class LimitedBitReader {
-  constructor(bytes, limit) {
+  bytes: Uint8Array;
+  limit: number;
+  offset: number;
+
+  constructor(bytes: Uint8Array, limit: number) {
     this.bytes = bytes;
     this.limit = limit;
     this.offset = 0;

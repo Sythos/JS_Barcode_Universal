@@ -134,10 +134,9 @@ export function encodeFrameQR(text, options = {}) {
     }
     const { matrix, canvas } = selected;
     clearCanvas(matrix, canvasModules(matrix.width, canvas));
-    matrix.frameqr = {
-        profile: FRAMEQR_PROFILE.id,
-        certified: false,
-        canvas,
-    };
-    return matrix;
+    return Object.assign(matrix, { frameqr: {
+            profile: FRAMEQR_PROFILE.id,
+            certified: false,
+            canvas,
+        } });
 }

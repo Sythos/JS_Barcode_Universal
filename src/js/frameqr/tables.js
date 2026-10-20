@@ -102,8 +102,8 @@ export function normalizeCanvasSpec(symbolSize, canvas = {}) {
     }
     const width = oddAtMost(Number(requestedWidth), maximumDimension);
     const height = oddAtMost(Number(requestedHeight), maximumDimension);
-    const centerX = Math.round(canvas.centerX ?? (symbolSize - 1) / 2);
-    const centerY = Math.round(canvas.centerY ?? (symbolSize - 1) / 2);
+    const centerX = Math.round(Number(canvas.centerX ?? (symbolSize - 1) / 2));
+    const centerY = Math.round(Number(canvas.centerY ?? (symbolSize - 1) / 2));
     const angle = ((Number(canvas.angle ?? 0) % 360) + 360) % 360;
     if (![0, 90, 180, 270].includes(angle)) {
         throw new RangeError('Frame QR profile: angle must be 0, 90, 180 or 270 degrees');

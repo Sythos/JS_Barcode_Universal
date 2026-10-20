@@ -48,6 +48,15 @@ import {
   validateCanvasSpec,
 } from './tables.js';
 
+type FrameQrEncodeOptions = {
+  ecc?: 'H';
+  version?: number;
+  mask?: number;
+  charset?: 'auto' | 'utf-8' | 'iso-8859-1';
+  kanji?: boolean;
+  canvas?: object;
+};
+
 /**
  * @typedef {object} FrameQrEncodeOptions
  * @property {'H'} [ecc] The profile always uses QR error correction H.
@@ -82,7 +91,7 @@ function clearCanvas(matrix, modules) {
  * @throws {EncodeError} When the QR payload/options are invalid or the canvas
  *   cannot safely fit the selected QR version.
  */
-export function encodeFrameQR(text, options = {}) {
+export function encodeFrameQR(text, options: FrameQrEncodeOptions = {}) {
   if (typeof text !== 'string') {
     throw new EncodeError('Sythos Canvas QR: text must be a string');
   }
@@ -90,7 +99,7 @@ export function encodeFrameQR(text, options = {}) {
     throw new EncodeError('Sythos Canvas QR: ecc is fixed to H for this profile');
   }
 
-  const qrOptions = {
+  const qrOptions: { mask?: number; charset?: 'auto' | 'utf-8' | 'iso-8859-1'; kanji?: boolean; ecc: 'H' } = {
     mask: options.mask,
     charset: options.charset,
     kanji: options.kanji,
@@ -147,10 +156,9 @@ export function encodeFrameQR(text, options = {}) {
 
   const { matrix, canvas } = selected;
   clearCanvas(matrix, canvasModules(matrix.width, canvas));
-  matrix.frameqr = {
+  return Object.assign(matrix, { frameqr: {
     profile: FRAMEQR_PROFILE.id,
     certified: false,
     canvas,
-  };
-  return matrix;
+  } });
 }

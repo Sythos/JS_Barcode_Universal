@@ -98,24 +98,19 @@ export function microQrBlockLayout(version, ecc) {
 export function microQrDataCapacityBits(version, ecc) {
     return microQrBlockLayout(version, ecc).dataBits;
 }
-/**
- * Encode the five format data bits with BCH(15,5), then apply the Micro QR
- * format mask. `symbolNumber` occupies the high three data bits and `mask`
- * the low two.
- */
 export function microQrFormatInfo(symbolNumber, mask, maybeMask) {
     // Public convenience overload: (version, ecc, mask).
-    if (arguments.length === 3) {
-        symbolNumber = microQrSymbolNumber(symbolNumber, mask);
-        mask = maybeMask;
-    }
-    if (!Number.isInteger(symbolNumber) || symbolNumber < 0 || symbolNumber > 7) {
+    const encodedSymbolNumber = arguments.length === 3
+        ? microQrSymbolNumber(symbolNumber, mask)
+        : symbolNumber;
+    const encodedMask = arguments.length === 3 ? maybeMask : mask;
+    if (typeof encodedSymbolNumber !== 'number' || !Number.isInteger(encodedSymbolNumber) || encodedSymbolNumber < 0 || encodedSymbolNumber > 7) {
         throw new RangeError('Micro QR: symbol number must be an integer in 0..7');
     }
-    if (!Number.isInteger(mask) || mask < 0 || mask > 3) {
+    if (typeof encodedMask !== 'number' || !Number.isInteger(encodedMask) || encodedMask < 0 || encodedMask > 3) {
         throw new RangeError('Micro QR: mask must be an integer in 0..3');
     }
-    const data = (symbolNumber << 2) | mask;
+    const data = (encodedSymbolNumber << 2) | encodedMask;
     let remainder = data << 10;
     for (let bit = 14; bit >= 10; bit--) {
         if ((remainder & (1 << bit)) !== 0)

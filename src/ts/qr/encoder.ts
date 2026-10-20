@@ -74,6 +74,14 @@ import {
   versionSize,
 } from './tables.js';
 
+type EncodeOptions = {
+  ecc?: 'L' | 'M' | 'Q' | 'H';
+  version?: number;
+  mask?: number;
+  charset?: 'auto' | 'utf-8' | 'iso-8859-1';
+  kanji?: boolean;
+};
+
 /** Alphanumeric mode character set; a character's index is its encoded value. */
 export const ALPHANUMERIC_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
 
@@ -256,7 +264,7 @@ const INFEASIBLE = Number.MAX_SAFE_INTEGER / 4;
  * @param {boolean} allowKanji
  * @returns {CharInfo}
  */
-function classify(text, utf8, allowKanji) {
+function classify(text: string, utf8: boolean, allowKanji: boolean) {
   const points = Array.from(text);
   const n = points.length;
   const numeric = new Uint8Array(n);
@@ -853,7 +861,7 @@ function buildMatrix(version, ecc, mask, codewords) {
  * @returns {BitMatrix} Set bit = dark module.
  * @throws {EncodeError} If the text does not fit, or the options are invalid.
  */
-export function encodeQR(text, options = {}) {
+export function encodeQR(text: string, options: EncodeOptions = {}) {
   if (typeof text !== 'string') {
     throw new EncodeError('QR: text must be a string');
   }

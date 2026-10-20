@@ -48,6 +48,11 @@ import { FRAMEQR_PROFILE, normalizeCanvasSpec, validateCanvasSpec, analyzeCanvas
 function isObject(value) {
     return value !== null && typeof value === 'object';
 }
+function isUnsafeValidation(value) {
+    if (value === false || (Array.isArray(value) && value.length > 0))
+        return true;
+    return isObject(value) && 'safe' in value && value.safe === false;
+}
 /**
  * Return the profile marker attached by the encoder. Older callers sometimes
  * use camel case, so accepting it here is harmless while the emitted marker
@@ -83,10 +88,7 @@ function validateCanvas(symbolSize, version, canvas) {
     try {
         normalized = normalizeCanvasSpec(symbolSize, canvas);
         const validation = validateCanvasSpec(version, normalized);
-        if (validation === false ||
-            (Array.isArray(validation) && validation.length > 0) ||
-            (isObject(validation) && validation.valid === false) ||
-            (isObject(validation) && validation.safe === false)) {
+        if (isUnsafeValidation(validation)) {
             throw new Error('canvas geometry is outside the profile limits');
         }
     }
