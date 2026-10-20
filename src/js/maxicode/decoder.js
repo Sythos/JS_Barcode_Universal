@@ -185,13 +185,12 @@ function decodePrimary(primary, mode) {
     const serviceClass = ((primary[8] >>> 2) & 0x0f) | (primary[9] << 4);
     if (mode === 2) {
         const length = ((primary[5] >>> 4) & 0x03) | ((primary[6] & 0x0f) << 2);
-        let postal = ((primary[0] >>> 4) & 0x03) |
+        const postal = String(((primary[0] >>> 4) & 0x03) |
             (primary[1] << 2) |
             (primary[2] << 8) |
             (primary[3] << 14) |
             (primary[4] << 20) |
-            ((primary[5] & 0x0f) << 26);
-        postal = String(postal).padStart(length, '0');
+            ((primary[5] & 0x0f) << 26)).padStart(length, '0');
         return { postalCode: postal, countryCode, serviceClass };
     }
     const values = [
