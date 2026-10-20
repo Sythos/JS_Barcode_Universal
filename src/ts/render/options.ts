@@ -36,14 +36,13 @@
 
 import { BitMatrix } from '../core/bit-matrix.js';
 
-/**
- * @typedef {object} RenderOptions
- * @property {number} [scale] Pixels per module. Default 8.
- * @property {number} [margin] Quiet-zone modules on every side. Default 4.
- * @property {string} [dark] Colour of set modules. Default '#000000'.
- * @property {string} [light] Colour of clear modules, or 'none' for transparent.
- * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
- */
+export interface RenderOptions {
+  scale?: number;
+  margin?: number;
+  dark?: string;
+  light?: string;
+  barHeight?: number;
+}
 
 // Keep renderer allocations aligned with the image decoder's resource limits.
 const MAX_RENDER_DIMENSION = 16_384;
@@ -52,7 +51,7 @@ const MAX_RENDER_SCALE = MAX_RENDER_DIMENSION;
 const MAX_RENDER_MARGIN = Math.floor((MAX_RENDER_DIMENSION - 1) / 2);
 const MAX_RENDER_BAR_HEIGHT = MAX_RENDER_DIMENSION;
 
-function boundedInteger(value, name, defaultValue, minimum, maximum) {
+function boundedInteger(value: number | undefined, name: string, defaultValue: number, minimum: number, maximum: number): number {
   const resolved = value ?? defaultValue;
   if (!Number.isSafeInteger(resolved)) {
     throw new RangeError(
@@ -104,7 +103,7 @@ function validatePixelDimensions(width, height) {
  * @param {BitMatrix} matrix
  * @param {RenderOptions} options
  */
-export function normalizeOptions(matrix, options = {}) {
+export function normalizeOptions(matrix: BitMatrix, options: RenderOptions = {}) {
   validateMatrixDimensions(matrix);
   const scale = boundedInteger(options.scale, 'scale', 8, 1, MAX_RENDER_SCALE);
   const margin = boundedInteger(options.margin, 'margin', 4, 0, MAX_RENDER_MARGIN);

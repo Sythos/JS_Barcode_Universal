@@ -156,16 +156,6 @@ export function deflateStored(data) {
  * @returns {Promise<Uint8Array>}
  */
 async function deflate(data) {
-  // Node: zlib is built in, so this is not a dependency.
-  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-    try {
-      const zlib = await import('node:zlib');
-      return new Uint8Array(zlib.deflateSync(data));
-    } catch {
-      /* fall through */
-    }
-  }
-
   // Browsers: CompressionStream('deflate') emits the zlib format PNG wants.
   if (typeof CompressionStream === 'function') {
     try {
@@ -178,6 +168,21 @@ async function deflate(data) {
   }
 
   return deflateStored(data);
+}
+
+function base64(bytes: Uint8Array): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let output = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const first = bytes[i];
+    const second = bytes[i + 1];
+    const third = bytes[i + 2];
+    output += alphabet[first >> 2];
+    output += alphabet[((first & 3) << 4) | ((second ?? 0) >> 4)];
+    output += second === undefined ? '=' : alphabet[((second & 15) << 2) | ((third ?? 0) >> 6)];
+    output += third === undefined ? '=' : alphabet[third & 63];
+  }
+  return output;
 }
 
 /* ------------------------------------------------------------------ *
@@ -287,9 +292,8 @@ export async function toPNGDataURI(matrix, options = {}) {
   const bytes = await toPNG(matrix, options);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  const base64 = typeof btoa === 'function'
+  const encoded = typeof btoa === 'function'
     ? btoa(binary)
-    /* eslint-disable-next-line no-undef */
-    : Buffer.from(bytes).toString('base64');
-  return 'data:image/png;base64,' + base64;
+    : base64(bytes);
+  return 'data:image/png;base64,' + encoded;
 }

@@ -93,6 +93,11 @@ fn fragmentMain(@location(0) quadUV : vec2<f32>) -> @location(0) vec4<f32> {
 }
 `;
 
+const GPU_TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
+const GPU_TEXTURE_USAGE_COPY_DST = 0x08;
+const GPU_BUFFER_USAGE_COPY_DST = 0x08;
+const GPU_BUFFER_USAGE_UNIFORM = 0x40;
+
 /**
  * The adapter and device are per-page, not per-barcode.
  *
@@ -250,7 +255,7 @@ export async function renderToCanvasWebGPU(matrix, canvas, options = {}) {
     texture = device.createTexture({
       size: { width: source.width, height: source.height, depthOrArrayLayers: 1 },
       format: 'r8unorm',
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+      usage: GPU_TEXTURE_USAGE_TEXTURE_BINDING | GPU_TEXTURE_USAGE_COPY_DST,
     });
 
     // `bytesPerRow` needs no 256-byte alignment here — that rule belongs to
@@ -291,7 +296,7 @@ export async function renderToCanvasWebGPU(matrix, canvas, options = {}) {
 
     uniforms = device.createBuffer({
       size: style.byteLength,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
     });
     device.queue.writeBuffer(uniforms, 0, style);
 

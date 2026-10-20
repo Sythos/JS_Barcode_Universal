@@ -184,7 +184,7 @@ async function drawViaScratchAsync(canvas, draw) {
  * @param {import('./options.js').RenderOptions & {backend?: 'auto'|'webgl2'|'2d'}} [options]
  * @returns {{backend: 'webgl2' | '2d' | 'none'}}
  */
-export function renderToCanvasAuto(matrix, canvas, options = {}) {
+export function renderToCanvasAuto(matrix, canvas, options: import('./options.js').RenderOptions & {backend?: 'auto'|'webgl2'|'2d'} = {}) {
   const preferred = options.backend ?? 'auto';
 
   if ((preferred === 'auto' || preferred === 'webgl2') && isWebGL2Available()) {
@@ -213,7 +213,7 @@ export function renderToCanvasAuto(matrix, canvas, options = {}) {
  * @param {import('./options.js').RenderOptions & {backend?: 'auto'|'webgpu'|'webgl2'|'2d'}} [options]
  * @returns {Promise<{backend: 'webgpu' | 'webgl2' | '2d' | 'none'}>}
  */
-export async function renderToCanvasAutoAsync(matrix, canvas, options = {}) {
+export async function renderToCanvasAutoAsync(matrix, canvas, options: import('./options.js').RenderOptions & {backend?: 'auto'|'webgpu'|'webgl2'|'2d'} = {}) {
   const preferred = options.backend ?? 'auto';
 
   if (preferred === 'auto' || preferred === 'webgpu') {

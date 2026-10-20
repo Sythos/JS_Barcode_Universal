@@ -33,14 +33,6 @@
  * @module render/options
  */
 import { BitMatrix } from '../core/bit-matrix.js';
-/**
- * @typedef {object} RenderOptions
- * @property {number} [scale] Pixels per module. Default 8.
- * @property {number} [margin] Quiet-zone modules on every side. Default 4.
- * @property {string} [dark] Colour of set modules. Default '#000000'.
- * @property {string} [light] Colour of clear modules, or 'none' for transparent.
- * @property {number} [barHeight] For 1D symbols: total bar height in pixels.
- */
 // Keep renderer allocations aligned with the image decoder's resource limits.
 const MAX_RENDER_DIMENSION = 16384;
 const MAX_RENDER_PIXELS = 16777216;
