@@ -34,6 +34,7 @@
  * @module core
  */
 export { BitMatrix } from './bit-matrix.js';
+export type { DataBarMatrixMetadata, GS1CompositeMatrixMetadata, MaxiCodeMatrixMetadata } from './bit-matrix.js';
 export { BitWriter, BitReader } from './bit-buffer.js';
 export { GaloisField, GF256_QR, GF256_DM, GF929, GF16, GF64, GF1024, GF4096, } from './galois-field.js';
 export { rsEncode, rsDecode, generatorPoly } from './reed-solomon.js';

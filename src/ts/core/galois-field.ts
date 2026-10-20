@@ -58,6 +58,15 @@
  */
 
 export class GaloisField {
+  size: number;
+  prime: boolean;
+  primitive: number;
+  generator: number;
+  name: string;
+  order: number;
+  expTable: Int32Array;
+  logTable: Int32Array;
+
   /**
    * @param {object} opts
    * @param {number} opts.size      Field order: 2^m for binary, p for prime.

@@ -48,6 +48,9 @@ export declare class BitMatrix {
     height: number;
     rowWords: number;
     bits: Uint32Array<ArrayBuffer>;
+    databar?: DataBarMatrixMetadata;
+    gs1composite?: GS1CompositeMatrixMetadata;
+    maxicode?: MaxiCodeMatrixMetadata;
     /**
      * @param {number} width
      * @param {number} height
@@ -127,3 +130,52 @@ export declare class BitMatrix {
      */
     toString(dark?: string, light?: string): string;
 }
+export type DataBarMatrixMetadata = Readonly<{
+    variant: string;
+    gtin?: string;
+    raw?: string;
+    linkage?: boolean;
+    checksum?: number;
+    dataCharacters?: number;
+    pairs?: number;
+    modules?: number;
+    moduleScale?: number;
+    height?: number;
+    rows?: number;
+    modulesPerRow?: number;
+    topHeight?: number;
+    separatorHeight?: number;
+    bottomHeight?: number;
+    rowHeight?: number;
+    separatorModules?: number;
+}>;
+export type GS1CompositeMatrixMetadata = Readonly<{
+    profile: string;
+    component: string;
+    componentVariant: number;
+    componentRows: number;
+    componentColumns: number;
+    componentRowHeight: number;
+    componentX: number;
+    componentY: number;
+    componentWidth: number;
+    componentHeight: number;
+    linearFormat: string;
+    linearX: number;
+    linearY: number;
+    linearWidth: number;
+    linearHeight: number;
+    separatorGap: number;
+    moduleScale: number;
+    width: number;
+    height: number;
+}>;
+export type MaxiCodeMatrixMetadata = Readonly<{
+    mode: 2 | 3 | 4 | 5;
+    codewords: number[];
+    dataCodewords: number[];
+    dataModules: number;
+    moduleShape: 'hexagonal';
+    width: number;
+    height: number;
+}>;

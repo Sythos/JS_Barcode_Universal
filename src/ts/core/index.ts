@@ -35,6 +35,7 @@
  */
 
 export { BitMatrix } from './bit-matrix.js';
+export type { DataBarMatrixMetadata, GS1CompositeMatrixMetadata, MaxiCodeMatrixMetadata } from './bit-matrix.js';
 export { BitWriter, BitReader } from './bit-buffer.js';
 export {
   GaloisField,
