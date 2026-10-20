@@ -76,7 +76,7 @@ export const JABCODE_PROFILE = 'sythos-jabcode-default-mode';
 // distinct from every real JAB module colour (which legitimately includes
 // both black and white) -- same reasoning as KarTrak's mid-grey background.
 const BACKGROUND: readonly [number, number, number] = [128, 128, 128];
-export const JABCODE_PALETTE: readonly [number, number, number][] = Object.freeze([
+export const JABCODE_PALETTE: readonly (readonly [number, number, number])[] = Object.freeze([
   BACKGROUND,
   ...DEFAULT_PALETTE,
 ]);
