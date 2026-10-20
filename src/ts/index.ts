@@ -75,6 +75,69 @@ import * as micropdf417 from './micropdf417/index.js';
 import * as microqr from './microqr/index.js';
 import * as rmqr from './rmqr/index.js';
 import * as frameqr from './frameqr/index.js';
+import type { GS1CompositeInput } from './composite/index.js';
+import type { DXFilmEdgeFields } from './oned/dxfilmedge.js';
+import type { DotCodeInput } from './dotcode/encoder.js';
+
+type EncodeOptions = {
+  format?: string;
+  ecc?: 'L' | 'M' | 'Q' | 'H' | 'L1' | 'L2' | 'L3' | 'L4' | 1 | 2 | 3 | 4;
+  version?: number;
+  checkDigit?: boolean;
+  customerEncoding?: 'character' | 'numeric';
+  custinfoenc?: 'character' | 'numeric';
+  pzn8?: boolean;
+  variant?: 'pzn7' | 'pzn8' | 'standard' | 'industrial' | 'iata' | 'omnidirectional' | 'truncated' | 'stacked' | 'stacked-omnidirectional' | 'expanded' | 'limited' | 'data-logic' | 'matrix';
+  wideRatio?: number;
+  telepenMode?: 'ascii' | 'numeric';
+  numeric?: boolean;
+  fullAscii?: boolean;
+  gs1?: boolean;
+  layers?: number;
+  compact?: boolean;
+  eccPercent?: number;
+  eccLevel?: number;
+  columns?: number;
+  rows?: number;
+  rowHeight?: number;
+  compaction?: 'auto' | 'text' | 'byte' | 'numeric';
+  eci?: number;
+  aspectRatio?: number;
+  mode?: 2 | 3 | 4 | 5 | 'auto' | 'numeric' | 'text' | 'byte';
+  mask?: 0 | 1 | 2 | 3;
+  primary?: { postalCode: string; countryCode: number; serviceClass: number };
+  charset?: 'latin1';
+  linkage?: boolean;
+  moduleScale?: number;
+  scale?: number;
+  height?: number;
+  component?: GS1CompositeInput['component'];
+  separatorGap?: 1 | 2 | 3;
+  canvas?: {
+    shape?: 'square' | 'circle' | 'diamond';
+    size?: number;
+    width?: number;
+    height?: number;
+    centerX?: number;
+    centerY?: number;
+    angle?: 0 | 90 | 180 | 270;
+  };
+};
+
+type DecodeOptions = {
+  formats?: string[];
+  tryHarder?: boolean;
+  binarizer?: 'global' | 'hybrid' | 'auto';
+  profile?: 'camera';
+  frameqr?: object;
+  customerEncoding?: 'character' | 'numeric';
+  custinfoenc?: 'character' | 'numeric';
+};
+
+export type EncodeInput = string | number | GS1CompositeInput | DXFilmEdgeFields | DotCodeInput
+  | { postalCode: string; machineId: string }
+  | { postalCode: string; addressLocator: string; customerInfo: string }
+  | { countryCode: string; postalCode: string };
 import * as aztecRune from './aztecrune/index.js';
 import * as compactPdf417 from './compactpdf417/index.js';
 import * as databar from './databar/index.js';
@@ -157,11 +220,16 @@ export {
 // QR module is the full implementation or a stand-in: a module may opt out
 // explicitly with QR_CAN_ENCODE/QR_CAN_DECODE, and is otherwise taken at face
 // value.
-const qrPresent = qr.QR_PLACEHOLDER !== true;
+const qrCompatibility = qr as typeof qr & {
+  QR_PLACEHOLDER?: boolean;
+  QR_CAN_ENCODE?: boolean;
+  QR_CAN_DECODE?: boolean;
+};
+const qrPresent = qrCompatibility.QR_PLACEHOLDER !== true;
 const qrCanEncode = qrPresent &&
-  typeof qr.encodeQR === 'function' && qr.QR_CAN_ENCODE !== false;
+  typeof qr.encodeQR === 'function' && qrCompatibility.QR_CAN_ENCODE !== false;
 const qrCanDecode = qrPresent &&
-  typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
+  typeof qr.detectAndDecodeQR === 'function' && qrCompatibility.QR_CAN_DECODE !== false;
 const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 const aztecCanEncode = typeof aztec.encodeAztec === 'function';
@@ -224,7 +292,7 @@ export function listFormats() {
     canWrite: true,
     canRead: info.readable,
     kind: /** @type {'1D'} */ ('1D'),
-    ...(info.role ? { role: info.role } : {}),
+    ...('role' in info && info.role ? { role: info.role } : {}),
   }));
 
   formats.push({
@@ -386,8 +454,8 @@ export function listFormats() {
  * output medium. Linear symbols come back one module tall; height is a
  * rendering decision, not an encoding one.
  *
- * @param {string | number} text
- * @param {object} [options]
+ * @param {EncodeInput} text
+ * @param {EncodeOptions} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
  * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
  * @param {number} [options.version] QR version 1-40 or Han Xin version 1-3. Auto if omitted.
@@ -426,21 +494,33 @@ export function listFormats() {
  * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
-export function encode(text, options = {}) {
+export function encode(text: EncodeInput, options: EncodeOptions = {}) {
   const format = String(options.format ?? 'qr').toLowerCase();
   const value = typeof text === 'number' ? String(text) : text;
 
+  if (typeof value !== 'string') {
+    if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
+      return composite.encodeGS1Composite(value as GS1CompositeInput, options);
+    }
+    if (format === 'dotcode' || format === 'dot-code') {
+      return dotcode.encodeDotCode(value as DotCodeInput, options);
+    }
+    const entry = ONED_FORMATS[format];
+    if (entry) return entry.encode(value, options);
+    throw new EncodeError('This barcode format requires a text payload');
+  }
+
   if (format === 'qr' || format === 'qrcode') {
-    return qr.encodeQR(value, options);
+    return qr.encodeQR(value, options as unknown as Parameters<typeof qr.encodeQR>[1]);
   }
   if (format === 'datamatrix' || format === 'data-matrix') {
     return datamatrix.encodeDataMatrix(value, options);
   }
   if (format === 'aztec' || format === 'aztec-code') {
-    return aztec.encodeAztec(value, options);
+    return aztec.encodeAztec(value, options as unknown as Parameters<typeof aztec.encodeAztec>[1]);
   }
   if (format === 'aztecrune' || format === 'aztec-rune' || format === 'rune') {
-    return aztecRune.encodeAztecRune(value, options);
+    return aztecRune.encodeAztecRune(value, options as Parameters<typeof aztecRune.encodeAztecRune>[1]);
   }
   if (format === 'pdf417' || format === 'pdf-417') {
     return pdf417.encodePDF417(value, options);
@@ -449,19 +529,19 @@ export function encode(text, options = {}) {
     return compactPdf417.encodeCompactPDF417(value, options);
   }
   if (format === 'micropdf417' || format === 'micro-pdf417' || format === 'micro-pdf-417') {
-    return micropdf417.encodeMicroPDF417(value, options);
+    return micropdf417.encodeMicroPDF417(value, options as unknown as Parameters<typeof micropdf417.encodeMicroPDF417>[1]);
   }
   if (format === 'microqr' || format === 'micro-qr') {
-    return microqr.encodeMicroQR(value, options);
+    return microqr.encodeMicroQR(value, options as Parameters<typeof microqr.encodeMicroQR>[1]);
   }
   if (format === 'rmqr' || format === 'r-mqr' || format === 'rectangular-micro-qr') {
-    return rmqr.encodeRMQR(value, options);
+    return rmqr.encodeRMQR(value, options as Parameters<typeof rmqr.encodeRMQR>[1]);
   }
   if (format === 'frameqr' || format === 'frame-qr' || format === 'canvas-qr') {
-    return frameqr.encodeFrameQR(value, options);
+    return frameqr.encodeFrameQR(value, options as unknown as Parameters<typeof frameqr.encodeFrameQR>[1]);
   }
   if (format === 'gs1databar14' || format === 'gs1-databar14' || format === 'databar') {
-    return databar.encodeDataBar14(value, options);
+    return databar.encodeDataBar14(value, options as Parameters<typeof databar.encodeDataBar14>[1]);
   }
   if (format === 'gs1databar-stacked' || format === 'gs1-databar-stacked' || format === 'databar-stacked') {
     return databar.encodeDataBar14Stacked(value, options);
@@ -469,7 +549,7 @@ export function encode(text, options = {}) {
   if (format === 'gs1databar-stacked-omnidirectional'
     || format === 'gs1-databar-stacked-omnidirectional'
     || format === 'databar-stacked-omni') {
-    return databar.encodeDataBarStackedOmnidirectional(value, options);
+    return databar.encodeDataBarStackedOmnidirectional(value, options as Parameters<typeof databar.encodeDataBarStackedOmnidirectional>[1]);
   }
   if (format === 'gs1databar-limited' || format === 'gs1-databar-limited' || format === 'databar-limited') {
     return databar.encodeDataBarLimited(value, options);
@@ -484,30 +564,31 @@ export function encode(text, options = {}) {
     return codablockf.encodeCodablockF(value, options);
   }
   if (format === 'code16k' || format === 'code-16k') {
-    return code16k.encodeCode16K(value, options);
+    return code16k.encodeCode16K(value, options as Parameters<typeof code16k.encodeCode16K>[1]);
   }
   if (format === 'dotcode' || format === 'dot-code') {
     return dotcode.encodeDotCode(value, options);
   }
   if (format === 'hanxin' || format === 'han-xin') {
-    return hanxin.encodeHanXin(value, options);
+    return hanxin.encodeHanXin(value, options as Parameters<typeof hanxin.encodeHanXin>[1]);
   }
   if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
-    return composite.encodeGS1Composite(value, options);
+    throw new EncodeError('GS1 Composite input must be an object');
   }
   if (format === 'telepennumeric' || format === 'telepen-numeric') {
     return encodeTelepenNumeric(value);
   }
   if (format === 'telepen' || format === 'telepen-alpha') {
-    return encodeTelepen(value, options);
+    return encodeTelepen(value, options as Parameters<typeof encodeTelepen>[1]);
   }
 
   if (format === 'code32' || format === 'italian-pharmacode') {
     return encodeCode32(value);
   }
   if (format === 'pzn' || format === 'pzn7' || format === 'pzn8') {
+    const variant = options.variant === 'pzn7' || options.variant === 'pzn8' ? options.variant : undefined;
     return encodePZN(value, {
-      ...options,
+      variant,
       pzn8: format === 'pzn8' || options.pzn8 === true || options.variant === 'pzn8',
     });
   }
@@ -603,16 +684,10 @@ export function encode(text, options = {}) {
  * make the common scanning loop a try/catch.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
- * @param {string[]} [options.formats] Restrict to these format ids.
- * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
- * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {'camera'} [options.profile] Opt-in strict camera profile for validated reads.
- * @param {object} [options.frameqr] Sythos Canvas QR detector options when
- *   the profile marker is not preserved through image rendering.
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult[]}
  */
-export function decode(image, options = {}) {
+export function decode(image, options: DecodeOptions = {}) {
   const { formats = null, tryHarder = true, binarizer = 'auto', profile = null } = options;
   const want = formats ? new Set(formats.map((f) => f.toLowerCase())) : null;
   const wantQR = !want || want.has('qr') || want.has('qrcode');
@@ -1147,10 +1222,10 @@ function rotateLuminanceSourceByDegrees(source, degrees) {
  * Decode, or throw if nothing is found.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult}
  */
-export function decodeStrict(image, options) {
+export function decodeStrict(image, options: DecodeOptions = {}) {
   const results = decode(image, options);
   if (results.length === 0) throw new NotFoundError('No barcode found in image');
   return results[0];

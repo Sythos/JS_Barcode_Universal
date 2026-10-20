@@ -46,6 +46,8 @@
  */
 import { BitMatrix } from './core/bit-matrix.js';
 import type { GS1CompositeComponent, GS1CompositeInput } from './composite/index.js';
+import type { DXFilmEdgeFields } from './oned/dxfilmedge.js';
+import type { DotCodeInput } from './dotcode/encoder.js';
 export { BitMatrix };
 export { BarcodeError, EncodeError, NotFoundError, FormatError, ChecksumError, } from './core/errors.js';
 export { LuminanceSource } from './image/luminance.js';
@@ -91,6 +93,10 @@ export type FormatInfo = {
     kind: '1D' | '2D';
     role?: 'supplement';
 };
+export type EncodeInput = string | number | GS1CompositeInput | DXFilmEdgeFields | DotCodeInput
+  | { postalCode: string; machineId: string }
+  | { postalCode: string; addressLocator: string; customerInfo: string }
+  | { countryCode: string; postalCode: string };
 /**
  * Every format this build supports.
  *
@@ -141,7 +147,7 @@ export declare function listFormats(): FormatInfo[];
  * @param {0|90|180|270} [options.canvas.angle] Canvas quarter-turn.
  * @returns {BitMatrix}
  */
-export declare function encode(text: string | number | GS1CompositeInput, options?: {
+export declare function encode(text: EncodeInput, options?: {
     format?: string;
     ecc?: 'L' | 'M' | 'Q' | 'H';
     version?: number;

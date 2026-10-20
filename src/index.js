@@ -114,11 +114,12 @@ export { encodeFrameQR, decodeFrameQR, detectFrameQR, detectAndDecodeFrameQR, } 
 // QR module is the full implementation or a stand-in: a module may opt out
 // explicitly with QR_CAN_ENCODE/QR_CAN_DECODE, and is otherwise taken at face
 // value.
-const qrPresent = qr.QR_PLACEHOLDER !== true;
+const qrCompatibility = qr;
+const qrPresent = qrCompatibility.QR_PLACEHOLDER !== true;
 const qrCanEncode = qrPresent &&
-    typeof qr.encodeQR === 'function' && qr.QR_CAN_ENCODE !== false;
+    typeof qr.encodeQR === 'function' && qrCompatibility.QR_CAN_ENCODE !== false;
 const qrCanDecode = qrPresent &&
-    typeof qr.detectAndDecodeQR === 'function' && qr.QR_CAN_DECODE !== false;
+    typeof qr.detectAndDecodeQR === 'function' && qrCompatibility.QR_CAN_DECODE !== false;
 const dataMatrixCanEncode = typeof datamatrix.encodeDataMatrix === 'function';
 const dataMatrixCanDecode = typeof datamatrix.detectAndDecodeDataMatrix === 'function';
 const aztecCanEncode = typeof aztec.encodeAztec === 'function';
@@ -180,7 +181,7 @@ export function listFormats() {
         canWrite: true,
         canRead: info.readable,
         kind: /** @type {'1D'} */ ('1D'),
-        ...(info.role ? { role: info.role } : {}),
+        ...('role' in info && info.role ? { role: info.role } : {}),
     }));
     formats.push({
         id: 'qr',
@@ -339,8 +340,8 @@ export function listFormats() {
  * output medium. Linear symbols come back one module tall; height is a
  * rendering decision, not an encoding one.
  *
- * @param {string | number} text
- * @param {object} [options]
+ * @param {EncodeInput} text
+ * @param {EncodeOptions} [options]
  * @param {string} [options.format] Format id. Default 'qr'.
  * @param {'L'|'M'|'Q'|'H'|'L1'|'L2'|'L3'|'L4'|1|2|3|4} [options.ecc] QR or Han Xin error-correction level.
  * @param {number} [options.version] QR version 1-40 or Han Xin version 1-3. Auto if omitted.
@@ -382,6 +383,18 @@ export function listFormats() {
 export function encode(text, options = {}) {
     const format = String(options.format ?? 'qr').toLowerCase();
     const value = typeof text === 'number' ? String(text) : text;
+    if (typeof value !== 'string') {
+        if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
+            return composite.encodeGS1Composite(value, options);
+        }
+        if (format === 'dotcode' || format === 'dot-code') {
+            return dotcode.encodeDotCode(value, options);
+        }
+        const entry = ONED_FORMATS[format];
+        if (entry)
+            return entry.encode(value, options);
+        throw new EncodeError('This barcode format requires a text payload');
+    }
     if (format === 'qr' || format === 'qrcode') {
         return qr.encodeQR(value, options);
     }
@@ -445,7 +458,7 @@ export function encode(text, options = {}) {
         return hanxin.encodeHanXin(value, options);
     }
     if (format === 'gs1composite' || format === 'gs1-composite' || format === 'composite') {
-        return composite.encodeGS1Composite(value, options);
+        throw new EncodeError('GS1 Composite input must be an object');
     }
     if (format === 'telepennumeric' || format === 'telepen-numeric') {
         return encodeTelepenNumeric(value);
@@ -457,8 +470,9 @@ export function encode(text, options = {}) {
         return encodeCode32(value);
     }
     if (format === 'pzn' || format === 'pzn7' || format === 'pzn8') {
+        const variant = options.variant === 'pzn7' || options.variant === 'pzn8' ? options.variant : undefined;
         return encodePZN(value, {
-            ...options,
+            variant,
             pzn8: format === 'pzn8' || options.pzn8 === true || options.variant === 'pzn8',
         });
     }
@@ -551,13 +565,7 @@ export function encode(text, options = {}) {
  * make the common scanning loop a try/catch.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
- * @param {string[]} [options.formats] Restrict to these format ids.
- * @param {boolean} [options.tryHarder] Retry inverted and rotated. Default true.
- * @param {'global'|'hybrid'|'auto'} [options.binarizer]
- * @param {'camera'} [options.profile] Opt-in strict camera profile for validated reads.
- * @param {object} [options.frameqr] Sythos Canvas QR detector options when
- *   the profile marker is not preserved through image rendering.
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult[]}
  */
 export function decode(image, options = {}) {
@@ -1121,10 +1129,10 @@ function rotateLuminanceSourceByDegrees(source, degrees) {
  * Decode, or throw if nothing is found.
  *
  * @param {{data: Uint8ClampedArray|Uint8Array|number[], width: number, height: number}} image
- * @param {object} [options]
+ * @param {DecodeOptions} [options]
  * @returns {DecodeResult}
  */
-export function decodeStrict(image, options) {
+export function decodeStrict(image, options = {}) {
     const results = decode(image, options);
     if (results.length === 0)
         throw new NotFoundError('No barcode found in image');
