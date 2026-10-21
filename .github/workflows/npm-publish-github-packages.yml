@@ -218,8 +218,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          npm pack --ignore-scripts --json > npm-pack.json
-          PACKAGE_FILE=$(node -e "const fs=require('node:fs'); const result=JSON.parse(fs.readFileSync('npm-pack.json','utf8')); if (!Array.isArray(result) || result.length !== 1 || typeof result[0].filename !== 'string') process.exit(1); process.stdout.write(result[0].filename);")
+          PACKAGE_FILE=$(npm pack --ignore-scripts | tail -n 1)
 
           test -f "$PACKAGE_FILE"
           echo "filename=$PACKAGE_FILE" >> "$GITHUB_OUTPUT"
