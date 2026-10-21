@@ -29,6 +29,12 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@sythos'
 
+      - name: Install pinned npm version
+        run: npm install --global "npm@$(node .github/ci/check-npm-version.mjs --print)"
+
+      - name: Check pinned npm version
+        run: node .github/ci/check-npm-version.mjs
+
       - name: Install validation dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
@@ -185,6 +191,12 @@ jobs:
           node-version: 24
           registry-url: https://npm.pkg.github.com
           scope: '@sythos'
+
+      - name: Install pinned npm version
+        run: npm install --global "npm@$(node .github/ci/check-npm-version.mjs --print)"
+
+      - name: Check pinned npm version
+        run: node .github/ci/check-npm-version.mjs
 
       - name: Show package metadata
         run: |
