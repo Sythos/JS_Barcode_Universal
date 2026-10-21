@@ -14,7 +14,7 @@
   "unpkg": "./bundle/sythos-barcode.js",
   "jsdelivr": "./bundle/sythos-barcode.js",
   "sideEffects": false,
-  "packageManager": "npm@12.2.0",
+  "packageManager": "npm@11.21.1",
   "engines": {
     "node": ">=24"
   },
