@@ -200,3 +200,13 @@ test('decodeKarTrak dispatches on both a matrix and a raw image, and throws when
   const blank = { data: new Uint8ClampedArray(64 * 64 * 4).fill(200), width: 64, height: 64 };
   assert.throws(() => decodeKarTrak(blank), /was not found/);
 });
+
+test('detectKarTrak rejects invalid dimensions and short buffers before it scans', () => {
+  const data = new Uint8ClampedArray(16);
+  const sizes = [[0, 4], [4, 0], [-1, 4], [1.5, 2], [NaN, 4], [Infinity, 4], [Number.MAX_SAFE_INTEGER, 1], [16385, 1], [8192, 8192]];
+  for (const [width, height] of sizes) {
+    assert.throws(() => detectKarTrak({ data, width, height }), /Image (dimensions|contains)/, `${width}x${height}`);
+  }
+  assert.throws(() => detectKarTrak({ data: new Uint8ClampedArray(60), width: 4, height: 4 }), /shorter than the required 64/);
+  assert.throws(() => detectKarTrak({ data: 'abcd', width: 1, height: 1 }), /must be a Uint8Array/);
+});

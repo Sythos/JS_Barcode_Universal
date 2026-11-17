@@ -86,6 +86,23 @@ function validateByteData(data, expected, label) {
 }
 
 /**
+ * Check RGBA image metadata and buffer before any allocation or scan.
+ * Throws `NotFoundError` when the image is not valid or is too large.
+ *
+ * @param {ImageLike} image
+ * @returns {number} The pixel count.
+ */
+export function validateImageData(image) {
+  if (!image || typeof image !== 'object') {
+    throw new NotFoundError('Image must be an object with RGBA data');
+  }
+  const { data, width, height } = image;
+  const pixels = validateDimensions(width, height);
+  validateByteData(data, pixels * 4, 'Image data');
+  return pixels;
+}
+
+/**
  * @typedef {object} ImageLike
  * @property {Uint8ClampedArray | Uint8Array | number[]} data RGBA, 4 bytes per pixel.
  * @property {number} width
