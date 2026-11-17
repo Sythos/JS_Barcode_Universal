@@ -154,3 +154,12 @@ test('PolychromeMatrix rejects fractional and oversized dimensions before alloca
   assert.throws(() => new PolychromeMatrix(1e6, 1e6, JABCODE_PALETTE), /exceed the limit/);
   assert.throws(() => new PolychromeMatrix(4097, 1, JABCODE_PALETTE), /exceed the limit/);
 });
+
+test('decodeJABCode rejects non-finite corner coordinates', () => {
+  const image = { data: new Uint8ClampedArray(32 * 32 * 4).fill(255), width: 32, height: 32 };
+  const good = { x: 1, y: 1 };
+  for (const bad of [Infinity, -Infinity, NaN]) {
+    const corners = { topLeft: good, topRight: { x: bad, y: 1 }, bottomRight: good, bottomLeft: good };
+    assert.throws(() => decodeJABCode(image, corners, 1), /corner coordinates must be finite/);
+  }
+});

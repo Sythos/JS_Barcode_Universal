@@ -210,3 +210,28 @@ test('detectKarTrak rejects invalid dimensions and short buffers before it scans
   assert.throws(() => detectKarTrak({ data: new Uint8ClampedArray(60), width: 4, height: 4 }), /shorter than the required 64/);
   assert.throws(() => detectKarTrak({ data: 'abcd', width: 1, height: 1 }), /must be a Uint8Array/);
 });
+
+test('classifyGrid rejects non-finite transform output', () => {
+  const image = { data: new Uint8ClampedArray(8 * 8 * 4).fill(255), width: 8, height: 8 };
+  for (const bad of [Infinity, -Infinity, NaN]) {
+    const transform = { transformPoint: (x, y) => ({ x: x * bad, y }) };
+    assert.throws(() => classifyGrid(image, 2, 2, transform, CLASSIFY_PALETTE), /non-finite|escapes/);
+  }
+});
+
+test('classifyGrid rejects large coordinates that wrap with an integer conversion', () => {
+  const image = { data: new Uint8ClampedArray(8 * 8 * 4).fill(255), width: 8, height: 8 };
+  // 2 ** 32 + 0.5 wraps to 0 with `|0`, so it must not pass as inside the image.
+  const transform = { transformPoint: (x, y) => ({ x: 2 ** 32 + x, y }) };
+  assert.throws(() => classifyGrid(image, 1, 1, transform, CLASSIFY_PALETTE), /escapes the image/);
+});
+
+test('classifyGrid keeps the sample window bounded for a huge module pitch', () => {
+  const image = { data: new Uint8ClampedArray(64 * 64 * 4).fill(255), width: 64, height: 64 };
+  // Module pitch of 1e9 pixels. The first module centre is inside the image.
+  const transform = { transformPoint: (x, y) => ({ x: (x - 0.5) * 1e9 + 1, y: (y - 0.5) * 1e9 + 1 }) };
+  const started = Date.now();
+  assert.throws(() => classifyGrid(image, 2, 2, transform, CLASSIFY_PALETTE), /escapes the image/);
+  assert.ok(Date.now() - started < 2000);
+  assert.equal(classifyGrid(image, 1, 1, transform, CLASSIFY_PALETTE).get(0, 0), 1);
+});
