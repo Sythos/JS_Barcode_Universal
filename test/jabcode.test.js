@@ -134,3 +134,23 @@ test('toColorImageData checks the output size before allocating the margin', () 
   assert.equal(ok.width, 5);
   assert.equal(marginCalls, 1);
 });
+
+test('decodeJABCode rejects a version that is not an integer from 1 to 32', () => {
+  const image = { data: new Uint8ClampedArray(4), width: 1, height: 1 };
+  const p = { x: 0, y: 0 };
+  const corners = { topLeft: p, topRight: p, bottomRight: p, bottomLeft: p };
+  for (const version of [-1, 0, 0.5, 1.5, 33, 1e9, 2 ** 31, NaN, Infinity, '5', undefined]) {
+    assert.throws(() => decodeJABCode(image, corners, version), /version must be an integer from 1 to 32/);
+  }
+});
+
+test('decodeJABCodeMatrix rejects a matrix with an out-of-range side-version', () => {
+  assert.throws(() => decodeJABCodeMatrix(new PolychromeMatrix(21 + 4 * 32, 21 + 4 * 32, JABCODE_PALETTE)), /version must be/);
+});
+
+test('PolychromeMatrix rejects fractional and oversized dimensions before allocation', () => {
+  assert.throws(() => new PolychromeMatrix(1.5, 2, JABCODE_PALETTE), /positive integers/);
+  assert.throws(() => new PolychromeMatrix(NaN, 2, JABCODE_PALETTE), /positive integers/);
+  assert.throws(() => new PolychromeMatrix(1e6, 1e6, JABCODE_PALETTE), /exceed the limit/);
+  assert.throws(() => new PolychromeMatrix(4097, 1, JABCODE_PALETTE), /exceed the limit/);
+});

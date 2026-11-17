@@ -52,6 +52,8 @@
 import { EncodeError } from '../core/errors.js';
 
 const MAX_PALETTE_SIZE = 16;
+const MAX_DIMENSION = 4096;
+const MAX_CELLS = 4096 * 4096;
 
 export type RGB = readonly [number, number, number];
 
@@ -76,8 +78,13 @@ export class PolychromeMatrix {
    * @param {readonly RGB[]} palette Index 0 is always the background/quiet-zone colour.
    */
   constructor(width, height, palette: readonly RGB[]) {
-    if (width < 1 || height < 1) {
-      throw new EncodeError(`PolychromeMatrix: dimensions must be positive, got ${width}x${height}`);
+    if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
+      throw new EncodeError(`PolychromeMatrix: dimensions must be positive integers, got ${width}x${height}`);
+    }
+    if (width > MAX_DIMENSION || height > MAX_DIMENSION || width * height > MAX_CELLS) {
+      throw new EncodeError(
+        `PolychromeMatrix: dimensions ${width}x${height} exceed the limit of ${MAX_DIMENSION} per side and ${MAX_CELLS} cells`,
+      );
     }
     if (!Array.isArray(palette) || palette.length < 2 || palette.length > MAX_PALETTE_SIZE) {
       throw new EncodeError(

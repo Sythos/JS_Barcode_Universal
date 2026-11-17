@@ -80,6 +80,15 @@ const fromImage = decodeJABCode(image, {
 
 Both return the decoded payload as a `Uint8Array`.
 
+## Input limits
+
+`decodeJABCode` throws `NotFoundError` when `version` is not an integer from 1
+through 32. The check runs before the decoder calculates the grid size or
+allocates a matrix. `decodeJABCodeMatrix` applies the same check to the version
+derived from the matrix side. `PolychromeMatrix` also rejects non-integer
+dimensions, more than 4096 modules on one side, and more than 4096 x 4096
+cells. These limits stop untrusted input from causing a large allocation.
+
 ## Provenance
 
 JAB Code's reference implementation (github.com/jabcode/jabcode) was
