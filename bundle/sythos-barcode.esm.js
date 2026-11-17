@@ -517,6 +517,8 @@ class LuminanceSource {
     }
 }
 
+__exports.MAX_IMAGE_DIMENSION = MAX_IMAGE_DIMENSION;
+__exports.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS;
 __exports.validateImageData = validateImageData;
 __exports.LuminanceSource = LuminanceSource;
 
@@ -28204,7 +28206,7 @@ __modules["index.js"] = function (__require, __exports) {
  */
 const { BitMatrix } = __require("js/core/bit-matrix.js");
 const { EncodeError, NotFoundError } = __require("js/core/errors.js");
-const { LuminanceSource } = __require("js/image/luminance.js");
+const { LuminanceSource, MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS } = __require("js/image/luminance.js");
 const { binarize } = __require("js/image/binarizer.js");
 const { ONED_FORMATS, encodeCode32, encodePZN, encodeStandard2of5, encodeIndustrial2of5, encodeIATA2of5, encodePostnet, encodePlanet, encodeRM4SCC, encodeKIX, encodeAustraliaPost, encodeJapanPost, encodeIMB } = __require("js/oned/index.js");
 const { decodeOneD } = __require("js/oned/reader.js");
@@ -29054,6 +29056,9 @@ function decode(image, options = {}) {
                                 ? rotateLuminanceSourceByDegrees(pass, 180)
                                 : pass.rotate90().rotate90().rotate90()
                     : rotateLuminanceSourceByDegrees(pass, inverse);
+                // Skip a diagonal rotation that exceeds the image size limits.
+                if (orientedSource === null)
+                    continue;
                 if (readTwoD(binarize(orientedSource, binarizer), rotation, orientedSource))
                     break;
             }
@@ -29088,6 +29093,9 @@ function decode(image, options = {}) {
                                 ? (() => { const copy = bits.clone(); copy.rotate180(); return copy; })()
                                 : rotateBitMatrix90(bits, inverse === 90)
                         : rotateBitMatrixByDegrees(bits, inverse);
+                    // Skip a diagonal rotation that exceeds the image size limits.
+                    if (oriented === null)
+                        continue;
                     oneDPasses.push({ bits: oriented, rotation });
                 }
                 for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
@@ -29184,6 +29192,21 @@ function rotateBitMatrix90(matrix, clockwise) {
     return rotated;
 }
 /**
+ * Bounding size of a diagonal rotation. Returns null when the result exceeds
+ * the image size limits, so the caller skips the rotation before it allocates.
+ */
+function rotatedBoundingSize(sourceWidth, sourceHeight, sin, cos) {
+    const width = Math.ceil(Math.abs(sourceWidth * cos) + Math.abs(sourceHeight * sin));
+    const height = Math.ceil(Math.abs(sourceWidth * sin) + Math.abs(sourceHeight * cos));
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+        || width < 1 || height < 1
+        || width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
+        || width * height > MAX_IMAGE_PIXELS) {
+        return null;
+    }
+    return { width, height };
+}
+/**
  * Rotate a binarized raster by an arbitrary clockwise angle without changing
  * the source matrix. This is intentionally used only by the strict camera
  * profile: arbitrary-angle resampling is useful for linear symbols, but is
@@ -29191,7 +29214,7 @@ function rotateBitMatrix90(matrix, clockwise) {
  *
  * @param {BitMatrix} matrix
  * @param {number} degrees Clockwise angle, normally one of 45/135/225/315.
- * @returns {BitMatrix}
+ * @returns {BitMatrix | null} Null when the rotated raster exceeds the image limits.
  */
 function rotateBitMatrixByDegrees(matrix, degrees) {
     const angle = ((degrees % 360) + 360) % 360;
@@ -29209,8 +29232,10 @@ function rotateBitMatrixByDegrees(matrix, degrees) {
     const radians = angle * Math.PI / 180;
     const sin = Math.sin(radians);
     const cos = Math.cos(radians);
-    const width = Math.ceil(Math.abs(matrix.width * cos) + Math.abs(matrix.height * sin));
-    const height = Math.ceil(Math.abs(matrix.width * sin) + Math.abs(matrix.height * cos));
+    const size = rotatedBoundingSize(matrix.width, matrix.height, sin, cos);
+    if (size === null)
+        return null;
+    const { width, height } = size;
     const rotated = new BitMatrix(width, height);
     const sourceCenterX = (matrix.width - 1) / 2;
     const sourceCenterY = (matrix.height - 1) / 2;
@@ -29241,7 +29266,7 @@ function rotateBitMatrixByDegrees(matrix, degrees) {
  *
  * @param {LuminanceSource} source
  * @param {number} degrees Clockwise angle.
- * @returns {LuminanceSource}
+ * @returns {LuminanceSource | null} Null when the rotated raster exceeds the image limits.
  */
 function rotateLuminanceSourceByDegrees(source, degrees) {
     const angle = ((degrees % 360) + 360) % 360;
@@ -29256,8 +29281,10 @@ function rotateLuminanceSourceByDegrees(source, degrees) {
     const radians = angle * Math.PI / 180;
     const sin = Math.sin(radians);
     const cos = Math.cos(radians);
-    const width = Math.ceil(Math.abs(source.width * cos) + Math.abs(source.height * sin));
-    const height = Math.ceil(Math.abs(source.width * sin) + Math.abs(source.height * cos));
+    const size = rotatedBoundingSize(source.width, source.height, sin, cos);
+    if (size === null)
+        return null;
+    const { width, height } = size;
     const rotated = new Uint8Array(width * height);
     rotated.fill(255);
     const sourceCenterX = (source.width - 1) / 2;

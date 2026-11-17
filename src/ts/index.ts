@@ -48,7 +48,7 @@
 
 import { BitMatrix } from './core/bit-matrix.js';
 import { EncodeError, NotFoundError } from './core/errors.js';
-import { LuminanceSource } from './image/luminance.js';
+import { LuminanceSource, MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS } from './image/luminance.js';
 import { binarize } from './image/binarizer.js';
 import {
   ONED_FORMATS,
@@ -990,6 +990,8 @@ export function decode(image, options: DecodeOptions = {}) {
                 ? rotateLuminanceSourceByDegrees(pass, 180)
                 : pass.rotate90().rotate90().rotate90()
           : rotateLuminanceSourceByDegrees(pass, inverse);
+        // Skip a diagonal rotation that exceeds the image size limits.
+        if (orientedSource === null) continue;
         if (readTwoD(binarize(orientedSource, binarizer), rotation, orientedSource)) break;
       }
     }
@@ -1024,6 +1026,8 @@ export function decode(image, options: DecodeOptions = {}) {
                 ? (() => { const copy = bits.clone(); copy.rotate180(); return copy; })()
                 : rotateBitMatrix90(bits, inverse === 90)
             : rotateBitMatrixByDegrees(bits, inverse);
+          // Skip a diagonal rotation that exceeds the image size limits.
+          if (oriented === null) continue;
           oneDPasses.push({ bits: oriented, rotation });
         }
         for (let i = 1; i < oneDPasses.length && oneDResults.length === 0; i++) {
@@ -1120,6 +1124,22 @@ function rotateBitMatrix90(matrix, clockwise) {
 }
 
 /**
+ * Bounding size of a diagonal rotation. Returns null when the result exceeds
+ * the image size limits, so the caller skips the rotation before it allocates.
+ */
+function rotatedBoundingSize(sourceWidth, sourceHeight, sin, cos) {
+  const width = Math.ceil(Math.abs(sourceWidth * cos) + Math.abs(sourceHeight * sin));
+  const height = Math.ceil(Math.abs(sourceWidth * sin) + Math.abs(sourceHeight * cos));
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+    || width < 1 || height < 1
+    || width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
+    || width * height > MAX_IMAGE_PIXELS) {
+    return null;
+  }
+  return { width, height };
+}
+
+/**
  * Rotate a binarized raster by an arbitrary clockwise angle without changing
  * the source matrix. This is intentionally used only by the strict camera
  * profile: arbitrary-angle resampling is useful for linear symbols, but is
@@ -1127,7 +1147,7 @@ function rotateBitMatrix90(matrix, clockwise) {
  *
  * @param {BitMatrix} matrix
  * @param {number} degrees Clockwise angle, normally one of 45/135/225/315.
- * @returns {BitMatrix}
+ * @returns {BitMatrix | null} Null when the rotated raster exceeds the image limits.
  */
 function rotateBitMatrixByDegrees(matrix, degrees) {
   const angle = ((degrees % 360) + 360) % 360;
@@ -1143,8 +1163,9 @@ function rotateBitMatrixByDegrees(matrix, degrees) {
   const radians = angle * Math.PI / 180;
   const sin = Math.sin(radians);
   const cos = Math.cos(radians);
-  const width = Math.ceil(Math.abs(matrix.width * cos) + Math.abs(matrix.height * sin));
-  const height = Math.ceil(Math.abs(matrix.width * sin) + Math.abs(matrix.height * cos));
+  const size = rotatedBoundingSize(matrix.width, matrix.height, sin, cos);
+  if (size === null) return null;
+  const { width, height } = size;
   const rotated = new BitMatrix(width, height);
   const sourceCenterX = (matrix.width - 1) / 2;
   const sourceCenterY = (matrix.height - 1) / 2;
@@ -1177,7 +1198,7 @@ function rotateBitMatrixByDegrees(matrix, degrees) {
  *
  * @param {LuminanceSource} source
  * @param {number} degrees Clockwise angle.
- * @returns {LuminanceSource}
+ * @returns {LuminanceSource | null} Null when the rotated raster exceeds the image limits.
  */
 function rotateLuminanceSourceByDegrees(source, degrees) {
   const angle = ((degrees % 360) + 360) % 360;
@@ -1189,8 +1210,9 @@ function rotateLuminanceSourceByDegrees(source, degrees) {
   const radians = angle * Math.PI / 180;
   const sin = Math.sin(radians);
   const cos = Math.cos(radians);
-  const width = Math.ceil(Math.abs(source.width * cos) + Math.abs(source.height * sin));
-  const height = Math.ceil(Math.abs(source.width * sin) + Math.abs(source.height * cos));
+  const size = rotatedBoundingSize(source.width, source.height, sin, cos);
+  if (size === null) return null;
+  const { width, height } = size;
   const rotated = new Uint8Array(width * height);
   rotated.fill(255);
   const sourceCenterX = (source.width - 1) / 2;
