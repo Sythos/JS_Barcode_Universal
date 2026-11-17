@@ -46,6 +46,12 @@ The current hard limits are:
 - positive safe-integer source image dimensions and four channel values per
   pixel.
 
+The colour matrix path has its own limits. `decodeJABCode` accepts only an
+integer version from 1 through 32. It checks the version and the derived grid
+size before it allocates a matrix. `PolychromeMatrix` accepts only integer
+dimensions, no more than 4,096 modules on one side and no more than 16,777,216
+cells.
+
 The total-pixel ceiling is still a high limit: it is roughly twice the area of
 an ordinary 4K image. It is a safety ceiling, not a recommendation to accept
 every frame at that size. An application processing remote files or a live
