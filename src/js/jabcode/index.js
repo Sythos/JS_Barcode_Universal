@@ -82,6 +82,15 @@ function assertVersion(version) {
         throw new NotFoundError(`jabcode: version must be an integer from 1 to ${MAX_VERSION}, got ${version}`);
     }
 }
+/** Returns the side length in modules for a version. Checks the version and the derived size first. */
+function gridSizeForVersion(version) {
+    assertVersion(version);
+    const size = 4 * version + 17;
+    if (!Number.isSafeInteger(size) || size < 21 || size > 4 * MAX_VERSION + 17) {
+        throw new NotFoundError(`jabcode: grid size ${size} is outside the valid range for version ${version}`);
+    }
+    return size;
+}
 function chooseVersion(requiredBits) {
     for (let version = 1; version <= MAX_VERSION; version++) {
         const gross = masterSymbolCapacity(version);
@@ -161,8 +170,7 @@ export function decodeJABCodeMatrix(matrix) {
  * @returns {Uint8Array}
  */
 export function decodeJABCode(image, corners, version) {
-    assertVersion(version);
-    const size = 4 * version + 17;
+    const size = gridSizeForVersion(version);
     for (const corner of [corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft]) {
         if (!Number.isFinite(corner.x) || !Number.isFinite(corner.y)) {
             throw new NotFoundError('jabcode: corner coordinates must be finite numbers');
