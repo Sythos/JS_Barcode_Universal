@@ -76,6 +76,12 @@ export const JABCODE_PALETTE = Object.freeze([
     ...DEFAULT_PALETTE,
 ]);
 const MAX_VERSION = 32;
+/** Rejects a side-version that is not an integer from 1 through 32, before any size or allocation. */
+function assertVersion(version) {
+    if (!Number.isInteger(version) || version < 1 || version > MAX_VERSION) {
+        throw new NotFoundError(`jabcode: version must be an integer from 1 to ${MAX_VERSION}, got ${version}`);
+    }
+}
 function chooseVersion(requiredBits) {
     for (let version = 1; version <= MAX_VERSION; version++) {
         const gross = masterSymbolCapacity(version);
@@ -131,6 +137,7 @@ function decodeLayout(layout, version, sampleColor) {
 /** Decodes an already-classified `PolychromeMatrix` of the exact symbol layout for its version. */
 export function decodeJABCodeMatrix(matrix) {
     const version = Math.round((matrix.width - 17) / 4);
+    assertVersion(version);
     if (matrix.width !== matrix.height || matrix.width !== 4 * version + 17) {
         throw new NotFoundError(`jabcode: matrix dimensions ${matrix.width}x${matrix.height} do not match any valid symbol side-version`);
     }
@@ -154,6 +161,7 @@ export function decodeJABCodeMatrix(matrix) {
  * @returns {Uint8Array}
  */
 export function decodeJABCode(image, corners, version) {
+    assertVersion(version);
     const size = 4 * version + 17;
     const transform = PerspectiveTransform.quadToQuad(0, 0, size, 0, size, size, 0, size, corners.topLeft.x, corners.topLeft.y, corners.topRight.x, corners.topRight.y, corners.bottomRight.x, corners.bottomRight.y, corners.bottomLeft.x, corners.bottomLeft.y);
     const classified = classifyGrid(image, size, size, transform, JABCODE_PALETTE);
