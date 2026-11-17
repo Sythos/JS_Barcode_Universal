@@ -173,6 +173,17 @@ test('camera profile detects all 45-degree orientations without mutating or dupl
   assert.deepEqual(source.data, original, 'decode must preserve the original input');
 });
 
+test('camera profile skips diagonal rotations that exceed the image limits', () => {
+  // A 16384 x 1 frame expands to about 11586 x 11586 pixels at 45 degrees.
+  // The decoder must skip that rotation and must not throw.
+  const wide = { data: new Uint8ClampedArray(16384 * 4).fill(255), width: 16384, height: 1 };
+  const tall = { data: new Uint8ClampedArray(16384 * 4).fill(255), width: 1, height: 16384 };
+  for (const image of [wide, tall]) {
+    assert.deepEqual(camera(image, ['ean13']), []);
+    assert.deepEqual(camera(image, ['qr', 'datamatrix']), []);
+  }
+});
+
 test('camera profile preserves check-validated Code 11 and MSI reads', () => {
   const code11 = camera(raster(encodeCode11('12345', { checkDigit: true })), ['code11']);
   assert.equal(code11.length, 1);

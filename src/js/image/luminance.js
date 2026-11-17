@@ -41,8 +41,8 @@
 import { NotFoundError } from '../core/errors.js';
 // Camera and file inputs are untrusted. Keep allocations bounded before any
 // raster is copied into the decoder pipeline.
-const MAX_IMAGE_DIMENSION = 16384;
-const MAX_IMAGE_PIXELS = 16777216;
+export const MAX_IMAGE_DIMENSION = 16384;
+export const MAX_IMAGE_PIXELS = 16777216;
 function validateDimensions(width, height) {
     if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
         || width < 1 || height < 1
