@@ -60,6 +60,10 @@ const ALIGNMENT_RATIOS = [1, 1, 1, 1, 1];
 /** Smallest and largest legal symbol dimensions, in modules. */
 const MIN_DIMENSION = 21;
 const MAX_DIMENSION = 177;
+/** Most pattern candidates that `findPatterns` keeps. */
+const MAX_CANDIDATES = 256;
+/** Most confirmed pattern hits that `findPatterns` processes. */
+const MAX_CONFIRMED_HITS = 8192;
 /**
  * Do five alternating runs match the expected ratios?
  *
@@ -230,8 +234,13 @@ function findPatterns(image, ratios, unitsWide, region) {
     const found = [];
     const y0 = region ? Math.max(0, region.y0) : 0;
     const y1 = region ? Math.min(image.height, region.y1) : image.height;
-    for (let y = y0; y < y1; y++) {
+    // Work budget: the merge scan below is linear in the list length, so a cap on
+    // the list and on the confirmed hits keeps the total work bounded.
+    let hitBudget = MAX_CONFIRMED_HITS;
+    for (let y = y0; y < y1 && hitBudget > 0; y++) {
         scanRow(image, y, ratios, (centreX, moduleSize) => {
+            if (hitBudget <= 0)
+                return;
             if (region && (centreX < region.x0 || centreX > region.x1))
                 return;
             const px = Math.floor(centreX);
@@ -246,6 +255,7 @@ function findPatterns(image, ratios, unitsWide, region) {
             if (Number.isNaN(offsetX))
                 return;
             const cx = px + offsetX;
+            hitBudget--;
             // Merge with an existing centre when they describe the same pattern.
             for (let i = 0; i < found.length; i++) {
                 const c = found[i];
@@ -260,7 +270,10 @@ function findPatterns(image, ratios, unitsWide, region) {
                     return;
                 }
             }
-            found.push({ x: cx, y: cy, moduleSize, hits: 1 });
+            // A full list still merges hits but accepts no new candidate.
+            if (found.length < MAX_CANDIDATES) {
+                found.push({ x: cx, y: cy, moduleSize, hits: 1 });
+            }
         });
     }
     return found;
