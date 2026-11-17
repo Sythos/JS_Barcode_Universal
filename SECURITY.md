@@ -88,6 +88,10 @@ positive safe-integer dimensions, with a maximum of 16,384 pixels per side and 1
 in total. The direct KarTrak detector applies the same checks, and the buffer length check, before it allocates or scans. Renderers enforce the same final-image limits before allocating output and reject invalid,
 fractional or oversized `scale`, `margin` and `barHeight` values.
 
+Colour grid sampling (`classifyGrid` and `decodeJABCode`) rejects non-finite corners and transform
+output, and rejects sample centres outside the image before any integer conversion. The sample
+window radius has a fixed limit of 16 pixels, so the work for each module has a fixed bound.
+
 The browser examples render scanned payloads and browser error messages as DOM text, not HTML.
 Applications using decoded data should preserve that boundary and apply their own scheme and
 business-policy checks before acting on a scanned value.
