@@ -726,6 +726,33 @@ test('qr pipeline: encode, render, binarize, detect and decode', () => {
   }
 });
 
+test('qr pipeline: detector bounds work on dense finder-like patterns', () => {
+  // 100 x 100 finder patterns: far more than the candidate and hit budgets.
+  const pitch = 9;
+  const count = 100;
+  const image = new BitMatrix(pitch * count, pitch * count);
+  for (let gy = 0; gy < count; gy++) {
+    for (let gx = 0; gx < count; gx++) {
+      const ox = gx * pitch + 1;
+      const oy = gy * pitch + 1;
+      image.setRegion(ox, oy, 7, 7);
+      for (let i = 1; i < 6; i++) {
+        for (let j = 1; j < 6; j++) image.unset(ox + i, oy + j);
+      }
+      image.setRegion(ox + 2, oy + 2, 3, 3);
+    }
+  }
+
+  const start = Date.now();
+  const detections = detectQR(image);
+  const elapsed = Date.now() - start;
+
+  assert.ok(Array.isArray(detections), 'returns a list');
+  assert.ok(elapsed < 10000, `dense input finished in ${elapsed} ms`);
+  // The combination step only looks at 12 finders, so output stays small.
+  assert.ok(detections.length <= 220, `${detections.length} detections`);
+});
+
 test('qr pipeline: detector reports geometry before decoding', () => {
   const symbol = encodeQR('DETECTOR GEOMETRY', { ecc: 'M', version: 4 });
   const scale = 4;
