@@ -61,6 +61,7 @@ import { PolychromeMatrix, type RGB } from '../color/matrix.js';
 import { classifyGrid } from '../color/classify.js';
 import { toColorImageData } from '../color/render.js';
 import { PerspectiveTransform } from '../image/perspective.js';
+import { validateImageData } from '../image/luminance.js';
 
 // Re-exported for convenience, so a consumer of this format doesn't need a
 // second import from the separate (still experimental) `../color/`
@@ -364,6 +365,7 @@ export function detectKarTrak(
   options: KarTrakDetectOptions = {},
 ): KarTrakResult | null {
   if (!image || typeof image.width !== 'number' || typeof image.height !== 'number' || !image.data) return null;
+  validateImageData(image);
   const palette = options.palette ?? KARTRAK_PALETTE;
   const bounds = findBounds(image, palette);
   if (!bounds) return null;

@@ -163,6 +163,11 @@ export function decodeJABCodeMatrix(matrix) {
 export function decodeJABCode(image, corners, version) {
     assertVersion(version);
     const size = 4 * version + 17;
+    for (const corner of [corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft]) {
+        if (!Number.isFinite(corner.x) || !Number.isFinite(corner.y)) {
+            throw new NotFoundError('jabcode: corner coordinates must be finite numbers');
+        }
+    }
     const transform = PerspectiveTransform.quadToQuad(0, 0, size, 0, size, size, 0, size, corners.topLeft.x, corners.topLeft.y, corners.topRight.x, corners.topRight.y, corners.bottomRight.x, corners.bottomRight.y, corners.bottomLeft.x, corners.bottomLeft.y);
     const classified = classifyGrid(image, size, size, transform, JABCODE_PALETTE);
     return decodeJABCodeMatrix(classified);

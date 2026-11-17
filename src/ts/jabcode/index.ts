@@ -183,6 +183,11 @@ export function decodeJABCode(
 ): Uint8Array {
   assertVersion(version);
   const size = 4 * version + 17;
+  for (const corner of [corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft]) {
+    if (!Number.isFinite(corner.x) || !Number.isFinite(corner.y)) {
+      throw new NotFoundError('jabcode: corner coordinates must be finite numbers');
+    }
+  }
   const transform = PerspectiveTransform.quadToQuad(
     0, 0, size, 0, size, size, 0, size,
     corners.topLeft.x, corners.topLeft.y,

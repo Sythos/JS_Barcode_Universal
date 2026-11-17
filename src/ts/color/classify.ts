@@ -86,6 +86,9 @@ function nearestPaletteIndex(sample, palette) {
   return best;
 }
 
+/** Upper limit of the sample window radius, in image pixels. */
+const MAX_SAMPLE_RADIUS = 16;
+
 /**
  * Sample and classify a `width` x `height` grid.
  *
@@ -107,18 +110,25 @@ export function classifyGrid(image, width, height, transform, palette) {
   const p2 = transform.transformPoint(0.5, 1.5);
   const stepX = Math.hypot(p1.x - p0.x, p1.y - p0.y);
   const stepY = Math.hypot(p2.x - p0.x, p2.y - p0.y);
-  const rx = Math.max(1, Math.round(stepX / 4));
-  const ry = Math.max(1, Math.round(stepY / 4));
+  if (!Number.isFinite(stepX) || !Number.isFinite(stepY)) {
+    throw new NotFoundError('Sampling grid has a non-finite or degenerate transform');
+  }
+  // The radius has a fixed upper limit, so the work for each module stays
+  // within a fixed budget for any caller geometry.
+  const rx = Math.min(MAX_SAMPLE_RADIUS, Math.max(1, Math.round(stepX / 4)));
+  const ry = Math.min(MAX_SAMPLE_RADIUS, Math.max(1, Math.round(stepY / 4)));
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const c = transform.transformPoint(x + 0.5, y + 0.5);
-      const cx = c.x | 0;
-      const cy = c.y | 0;
-      if (cx < 0 || cy < 0 || cx >= image.width || cy >= image.height) {
+      // Check the real values before the integer conversion: `|0` wraps large
+      // values and turns NaN into 0.
+      if (!(c.x >= 0 && c.y >= 0 && c.x < image.width && c.y < image.height)) {
         throw new NotFoundError(`Sampling grid escapes the image at module (${x}, ${y})`);
       }
 
+      const cx = c.x | 0;
+      const cy = c.y | 0;
       let sumR = 0, sumG = 0, sumB = 0, count = 0;
       for (let dy = -ry; dy <= ry; dy++) {
         for (let dx = -rx; dx <= rx; dx++) {
