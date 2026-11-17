@@ -85,7 +85,7 @@ or the npm/GitHub package publication path.
 
 Camera and file rasters are untrusted input. The decoder accepts only byte-valued channels and
 positive safe-integer dimensions, with a maximum of 16,384 pixels per side and 16,777,216 pixels
-in total. Renderers enforce the same final-image limits before allocating output and reject invalid,
+in total. The direct KarTrak detector applies the same checks, and the buffer length check, before it allocates or scans. Renderers enforce the same final-image limits before allocating output and reject invalid,
 fractional or oversized `scale`, `margin` and `barHeight` values.
 
 The browser examples render scanned payloads and browser error messages as DOM text, not HTML.
